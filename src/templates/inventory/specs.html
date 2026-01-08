@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% block title %}Fichas Técnicas - Argos{% endblock %}
+{% block header_title %}Comparativa de Especificaciones Hardware{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <h3 class="font-bold text-slate-800">Matriz de Activos Desplegados</h3>
+        <div class="flex gap-4">
+            <button class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center">
+                <i data-lucide="download" class="w-4 h-4 mr-2"></i> Exportar CSV
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-900 text-white">
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider">Modelo / Generación</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-center">Procesador (CPU)</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-center">Memoria RAM</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-center">Almacenamiento</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-center">Gráficos (GPU)</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-center">TPM 2.0</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-center">Ficha Técnica</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200">
+                    <tr class="hover:bg-indigo-50 transition-colors">
+                        <td class="px-6 py-4">
+                            <span class="font-bold text-slate-800 block">Intel NUC 11 Pro</span>
+                            <span class="text-[10px] text-slate-400">Tiger Canyon</span>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="px-2 py-1 bg-slate-100 rounded text-xs font-medium">Core i5-1135G7</span>
+                        </td>
+                        <td class="px-6 py-4 text-center text-sm font-semibold">16GB DDR4</td>
+                        <td class="px-6 py-4 text-center text-sm">512GB NVMe SSD</td>
+                        <td class="px-6 py-4 text-center text-sm">Intel Iris Xe</td>
+                        <td class="px-6 py-4 text-center text-emerald-500"><i data-lucide="check-circle" class="w-5 h-5 mx-auto"></i></td>
+                        <td class="px-6 py-4 text-center">
+                            <a href="#" class="text-indigo-600 hover:text-indigo-900"><i data-lucide="external-link" class="w-5 h-5 mx-auto"></i></a>
+                        </td>
+                    </tr>
+                    <tr class="hover:bg-indigo-50 transition-colors">
+                        <td class="px-6 py-4">
+                            <span class="font-bold text-slate-800 block">Intel NUC 12 Pro</span>
+                            <span class="text-[10px] text-slate-400">Wall Street Canyon</span>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="px-2 py-1 bg-slate-100 rounded text-xs font-medium">Core i7-1260P</span>
+                        </td>
+                        <td class="px-6 py-4 text-center text-sm font-semibold">32GB DDR4</td>
+                        <td class="px-6 py-4 text-center text-sm">1TB Gen4 SSD</td>
+                        <td class="px-6 py-4 text-center text-sm">Intel Iris Xe</td>
+                        <td class="px-6 py-4 text-center text-emerald-500"><i data-lucide="check-circle" class="w-5 h-5 mx-auto"></i></td>
+                        <td class="px-6 py-4 text-center">
+                            <a href="#" class="text-indigo-600 hover:text-indigo-900"><i data-lucide="external-link" class="w-5 h-5 mx-auto"></i></a>
+                        </td>
+                    </tr>
+                    <tr class="hover:bg-indigo-50 transition-colors">
+                        <td class="px-6 py-4">
+                            <span class="font-bold text-slate-800 block">Mini PC Fanless</span>
+                            <span class="text-[10px] text-slate-400">Rugged Edge</span>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="px-2 py-1 bg-slate-100 rounded text-xs font-medium">Celeron J4125</span>
+                        </td>
+                        <td class="px-6 py-4 text-center text-sm font-semibold">8GB DDR4</td>
+                        <td class="px-6 py-4 text-center text-sm">128GB eMMC</td>
+                        <td class="px-6 py-4 text-center text-sm">Intel UHD 600</td>
+                        <td class="px-6 py-4 text-center text-slate-300"><i data-lucide="minus-circle" class="w-5 h-5 mx-auto"></i></td>
+                        <td class="px-6 py-4 text-center">
+                            <a href="#" class="text-indigo-600 hover:text-indigo-900"><i data-lucide="external-link" class="w-5 h-5 mx-auto"></i></a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start">
+        <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 mr-3 mt-0.5"></i>
+        <p class="text-xs text-amber-800">
+            <strong>Nota de TI:</strong> Los modelos Marcados con TPM 2.0 son los únicos autorizados para actualizaciones de seguridad de Windows 11 Enterprise. 
+            El hardware "Rugged Edge" solo debe utilizarse en ambientes de alta temperatura (Túneles/Exteriores).
+        </p>
+    </div>
+</div>
+{% endblock %}

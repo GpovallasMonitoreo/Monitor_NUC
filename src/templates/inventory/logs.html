@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Bitácora - Argos{% endblock %}
+{% block header_title %}Bitácora de Cambios y Mantenimiento{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="lg:col-span-1">
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <h3 class="font-bold text-slate-800 mb-4">Registrar Actividad</h3>
+            <form id="log-form" class="space-y-4">
+                <input type="text" placeholder="Equipo / NUC" class="w-full p-2.5 bg-slate-50 border rounded-lg text-sm">
+                <select class="w-full p-2.5 bg-slate-50 border rounded-lg text-sm">
+                    <option>Cambio de Pantalla</option>
+                    <option>Mantenimiento</option>
+                    <option>Cambio de NUC</option>
+                </select>
+                <textarea placeholder="Notas del cambio..." class="w-full p-2.5 bg-slate-50 border rounded-lg text-sm h-24"></textarea>
+                <button class="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 transition">
+                    Guardar Registro
+                </button>
+            </form>
+        </div>
+    </div>
+    <div class="lg:col-span-2 space-y-4" id="logs-container">
+        </div>
+</div>
+{% endblock %}

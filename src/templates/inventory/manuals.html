@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}Manuales - Argos{% endblock %}
+{% block header_title %}Manuales de Operación{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow group">
+        <div class="w-12 h-12 bg-red-50 text-red-500 rounded-lg flex items-center justify-center mb-4">
+            <i data-lucide="file-type-2" class="w-6 h-6"></i>
+        </div>
+        <h3 class="font-bold text-slate-800">Manual NUC i5</h3>
+        <p class="text-xs text-slate-500 mb-4">Guía de instalación y BIOS.</p>
+        <a href="#" class="inline-flex items-center text-sm font-semibold text-indigo-600 hover:text-indigo-800">
+            Descargar <i data-lucide="download" class="ml-2 w-4 h-4"></i>
+        </a>
+    </div>
+</div>
+{% endblock %}

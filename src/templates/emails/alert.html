@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<body style="font-family: sans-serif; color: #333;">
+    <div style="max-width: 500px; border: 1px solid #eee; padding: 20px;">
+        <h2 style="color: #2563eb;">Argos Monitor: {{ type }}</h2>
+        <hr>
+        <p>Equipo: <strong>{{ device.pc_name }}</strong></p>
+        <p>Unidad: {{ device.unit }}</p>
+        <p>Estatus Actual: <span style="color: red;">{{ device.status }}</span></p>
+        <p>Latencia: {{ device.latency }} ms</p>
+        <p>Hora del Evento: {{ time }}</p>
+        <br>
+        <small style="color: #999;">Este es un mensaje automatico.</small>
+    </div>
+</body>
+</html>

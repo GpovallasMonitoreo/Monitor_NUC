@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block title %}Inventario General - Argos{% endblock %}
+{% block header_title %}Gestión de Recursos e Inventario{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="bg-indigo-700 rounded-2xl p-8 mb-10 text-white shadow-lg relative overflow-hidden">
+        <div class="relative z-10">
+            <h2 class="text-3xl font-extrabold mb-2">Centro de Control de Activos</h2>
+            <p class="text-indigo-100 max-w-2xl">
+                Bienvenido al sistema centralizado de gestión de hardware. Aquí podrá administrar la documentación técnica, 
+                comparar especificaciones de equipos y auditar cada cambio físico realizado en la red.
+            </p>
+        </div>
+        <i data-lucide="package" class="absolute right-[-20px] top-[-20px] w-64 h-64 text-indigo-600 opacity-20 transform rotate-12"></i>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+        <div class="lg:col-span-2 space-y-8">
+            <section>
+                <h3 class="text-xl font-bold text-slate-800 mb-4 flex items-center">
+                    <i data-lucide="info" class="w-5 h-5 mr-2 text-indigo-600"></i> ¿Para qué es esta página?
+                </h3>
+                <p class="text-slate-600 leading-relaxed italic">
+                    Esta plataforma garantiza que cada NUC y pantalla operativa tenga un respaldo documental y un historial de mantenimiento traceable. 
+                    El objetivo es reducir los tiempos de respuesta ante fallas y estandarizar el hardware utilizado en todas las unidades.
+                </p>
+            </section>
+
+            <section>
+                <h3 class="text-xl font-bold text-slate-800 mb-6 flex items-center">
+                    <i data-lucide="help-circle" class="w-5 h-5 mr-2 text-indigo-600"></i> Guía de Uso del Módulo
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="text-indigo-600 font-bold mb-2">01. Consulta</div>
+                        <p class="text-xs text-slate-500">Acceda a "Manuales" para obtener guías rápidas de configuración y BIOS.</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="text-emerald-600 font-bold mb-2">02. Análisis</div>
+                        <p class="text-xs text-slate-500">Use "Fichas Técnicas" para comparar componentes y asegurar la compatibilidad.</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="text-amber-600 font-bold mb-2">03. Auditoría</div>
+                        <p class="text-xs text-slate-500">Registre cada cambio en la "Bitácora" para mantener el historial de vida del equipo.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="space-y-4">
+            <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest px-2">Explorar Módulo</h3>
+            <a href="/inventory/manuals" class="block p-4 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:shadow-md transition group">
+                <div class="flex items-center">
+                    <div class="p-2 bg-red-50 text-red-600 rounded-lg group-hover:bg-red-500 group-hover:text-white transition">
+                        <i data-lucide="book-open" class="w-5 h-5"></i>
+                    </div>
+                    <div class="ml-4">
+                        <span class="block font-bold text-slate-800">Manuales de Usuario</span>
+                        <span class="text-xs text-slate-500">Descarga de documentos técnicos.</span>
+                    </div>
+                </div>
+            </a>
+            <a href="/inventory/specs" class="block p-4 bg-white border border-slate-200 rounded-xl hover:border-emerald-500 hover:shadow-md transition group">
+                <div class="flex items-center">
+                    <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg group-hover:bg-emerald-500 group-hover:text-white transition">
+                        <i data-lucide="file-text" class="w-5 h-5"></i>
+                    </div>
+                    <div class="ml-4">
+                        <span class="block font-bold text-slate-800">Fichas Técnicas</span>
+                        <span class="text-xs text-slate-500">Comparativa detallada de hardware.</span>
+                    </div>
+                </div>
+            </a>
+            <a href="/inventory/logs" class="block p-4 bg-white border border-slate-200 rounded-xl hover:border-amber-500 hover:shadow-md transition group">
+                <div class="flex items-center">
+                    <div class="p-2 bg-amber-50 text-amber-600 rounded-lg group-hover:bg-amber-500 group-hover:text-white transition">
+                        <i data-lucide="clipboard-list" class="w-5 h-5"></i>
+                    </div>
+                    <div class="ml-4">
+                        <span class="block font-bold text-slate-800">Bitácora de Cambios</span>
+                        <span class="text-xs text-slate-500">Historial de mantenimiento técnico.</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

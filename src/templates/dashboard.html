@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+
+{% block header_title %}Monitoreo de Infraestructura en Tiempo Real{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100">
+        <div class="flex justify-between items-start">
+            <div>
+                <p class="text-xs font-semibold text-slate-500 uppercase">Total Equipos</p>
+                <h3 class="text-2xl font-bold text-slate-800 mt-1" id="kpi-total">--</h3>
+            </div>
+            <div class="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                <i data-lucide="monitor"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100">
+        <div class="flex justify-between items-start">
+            <div>
+                <p class="text-xs font-semibold text-slate-500 uppercase">Offline / Críticos</p>
+                <h3 class="text-2xl font-bold text-red-600 mt-1" id="kpi-offline">--</h3>
+            </div>
+            <div class="p-2 bg-red-50 rounded-lg text-red-600">
+                <i data-lucide="alert-triangle"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100">
+        <div class="flex justify-between items-start">
+            <div>
+                <p class="text-xs font-semibold text-slate-500 uppercase">Carga CPU Promedio</p>
+                <h3 class="text-2xl font-bold text-slate-800 mt-1" id="kpi-cpu">--%</h3>
+            </div>
+            <div class="p-2 bg-blue-50 rounded-lg text-blue-600">
+                <i data-lucide="cpu"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100">
+        <div class="flex justify-between items-start">
+            <div>
+                <p class="text-xs font-semibold text-slate-500 uppercase">Latencia Promedio</p>
+                <h3 class="text-2xl font-bold text-emerald-600 mt-1" id="kpi-latency">-- ms</h3>
+            </div>
+            <div class="p-2 bg-emerald-50 rounded-lg text-emerald-600">
+                <i data-lucide="activity"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+        <h3 class="font-bold text-slate-700">Estado de Dispositivos</h3>
+        <span class="text-xs text-slate-400" id="last-update">Esperando datos...</span>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left text-slate-600">
+            <thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b">
+                <tr>
+                    <th class="px-6 py-3">Estado</th>
+                    <th class="px-6 py-3">Nombre PC</th>
+                    <th class="px-6 py-3">Unidad</th>
+                    <th class="px-6 py-3">IP Local</th>
+                    <th class="px-6 py-3 text-center">CPU</th>
+                    <th class="px-6 py-3 text-center">Latencia</th>
+                    <th class="px-6 py-3 text-right">Última Vez</th>
+                </tr>
+            </thead>
+            <tbody id="devices-table-body" class="divide-y divide-slate-100">
+                <tr>
+                    <td colspan="7" class="px-6 py-8 text-center text-slate-400">
+                        Cargando datos del servidor...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // --- LÓGICA DEL FRONTEND (Cliente) ---
+    
+    async function fetchData() {
+        try {
+            // 1. Llamamos a la API que creamos
+            const response = await fetch('/api/data');
+            const devices = await response.json();
+            
+            // 2. Calculamos KPIs
+            updateKPIs(devices);
+            
+            // 3. Renderizamos la tabla
+            renderTable(devices);
+            
+            // Actualizar hora
+            document.getElementById('last-update').innerText = 'Actualizado: ' + new Date().toLocaleTimeString();
+            
+        } catch (error) {
+            console.error('Error fetching data:', error);
+        }
+    }
+
+    function updateKPIs(devices) {
+        if (!devices.length) return;
+        
+        const total = devices.length;
+        // Contamos offline o críticos
+        const offline = devices.filter(d => d.status === 'offline' || d.status === 'critical').length;
+        
+        // Calculamos promedios seguros (evitando NaN)
+        const avgCpu = devices.reduce((acc, d) => acc + (d.metrics.cpu || 0), 0) / total;
+        const avgLat = devices.reduce((acc, d) => acc + (d.metrics.latency || 0), 0) / total;
+
+        document.getElementById('kpi-total').innerText = total;
+        document.getElementById('kpi-offline').innerText = offline;
+        document.getElementById('kpi-cpu').innerText = avgCpu.toFixed(1) + '%';
+        document.getElementById('kpi-latency').innerText = avgLat.toFixed(0) + ' ms';
+        
+        // Cambio de color dinámico si hay muchos offline
+        const offElem = document.getElementById('kpi-offline');
+        if(offline > 0) offElem.className = "text-2xl font-bold text-red-600 mt-1 animate-pulse";
+        else offElem.className = "text-2xl font-bold text-slate-800 mt-1";
+    }
+
+    function renderTable(devices) {
+        const tbody = document.getElementById('devices-table-body');
+        tbody.innerHTML = ''; // Limpiar tabla anterior
+
+        if (devices.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center">No hay dispositivos reportando.</td></tr>';
+            return;
+        }
+
+        devices.forEach(dev => {
+            // Definir color del estado
+            let statusColor = 'bg-slate-100 text-slate-600';
+            let statusText = 'Desconocido';
+            
+            if (dev.status === 'online') {
+                statusColor = 'bg-emerald-100 text-emerald-700';
+                statusText = 'En Línea';
+            } else if (dev.status === 'offline') {
+                statusColor = 'bg-red-100 text-red-700';
+                statusText = 'Offline';
+            } else if (dev.status === 'critical') {
+                statusColor = 'bg-amber-100 text-amber-700';
+                statusText = 'Alerta';
+            }
+
+            const row = `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 rounded-full text-xs font-bold ${statusColor}">
+                            ${statusText}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 font-medium text-slate-800">${dev.pc_name}</td>
+                    <td class="px-6 py-4 text-slate-500">${dev.unit}</td>
+                    <td class="px-6 py-4 font-mono text-xs text-slate-500">${dev.ip}</td>
+                    <td class="px-6 py-4 text-center">
+                        <div class="w-full bg-slate-200 rounded-full h-1.5 dark:bg-slate-200 mt-1">
+                            <div class="bg-indigo-600 h-1.5 rounded-full" style="width: ${dev.metrics.cpu}%"></div>
+                        </div>
+                        <span class="text-xs text-slate-500">${dev.metrics.cpu}%</span>
+                    </td>
+                    <td class="px-6 py-4 text-center font-mono text-xs">${dev.metrics.latency} ms</td>
+                    <td class="px-6 py-4 text-right text-xs text-slate-400">${dev.last_seen_human}</td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+        
+        // Re-inicializar iconos de Lucide por si acaso
+        lucide.createIcons();
+    }
+
+    // Ejecutar al cargar y luego cada 3 segundos
+    fetchData();
+    setInterval(fetchData, 3000);
+</script>
+{% endblock %}

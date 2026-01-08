@@ -1,0 +1,17 @@
+# .gitignore
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+.env
+
+# Data & Logs (No queremos subir la base de datos real a GitHub)
+/data/*.json
+/logs/*.log
+
+# IDE settings
+.vscode/
+.idea/

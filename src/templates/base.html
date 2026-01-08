@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Argos Monitor{% endblock %}</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        /* Estilos Globales */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .nav-active {
+            background-color: #4f46e5 !important;
+            color: white !important;
+        }
+        .nav-active i { color: white !important; }
+
+        #inventory-menu { transition: all 0.3s ease-in-out; }
+        .rotate-180 { transform: rotate(180deg); }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased h-screen flex overflow-hidden">
+
+    <aside class="w-64 bg-slate-900 text-white flex flex-col flex-shrink-0 transition-all duration-300 shadow-xl z-20">
+        
+        <div class="h-16 flex items-center px-6 border-b border-slate-800 bg-slate-950">
+            <i data-lucide="activity" class="text-indigo-500 mr-3 w-6 h-6"></i>
+            <span class="font-bold text-xl tracking-tight">ARGOS</span>
+        </div>
+
+        <nav class="flex-1 overflow-y-auto py-6">
+            <ul class="space-y-2 px-3">
+                <li>
+                    <a href="/" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200">
+                        <i data-lucide="layout-grid" class="w-5 h-5 mr-3 group-hover:text-indigo-400 transition-colors"></i>
+                        <span class="font-medium">Inicio</span>
+                    </a>
+                </li>
+
+                <li class="px-3 pt-4 pb-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                    Operaciones
+                </li>
+
+                <li>
+                    <a href="/monitor" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200">
+                        <i data-lucide="activity" class="w-5 h-5 mr-3 group-hover:text-indigo-400 transition-colors"></i>
+                        <span class="font-medium">Monitor Principal</span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="/latency" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200">
+                        <i data-lucide="wifi" class="w-5 h-5 mr-3 group-hover:text-emerald-400 transition-colors"></i>
+                        <span class="font-medium">Latencia</span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="/map" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200">
+                        <i data-lucide="map" class="w-5 h-5 mr-3 group-hover:text-blue-400 transition-colors"></i>
+                        <span class="font-medium">Mapa de Red</span>
+                    </a>
+                </li>
+
+                <li class="px-3 pt-4 pb-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                    Gestión
+                </li>
+
+                <li>
+                    <button onclick="toggleInventoryMenu()" class="w-full flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200 outline-none">
+                        <i data-lucide="package" class="w-5 h-5 mr-3 group-hover:text-amber-400 transition-colors"></i>
+                        <span class="font-medium">Biblioteca</span>
+                        <i data-lucide="chevron-down" id="inv-arrow" class="w-4 h-4 ml-auto transition-transform duration-300"></i>
+                    </button>
+                    
+                    <ul id="inventory-menu" class="hidden mt-1 space-y-1 px-2">
+                        <li>
+                            <a href="/inventory/manuals" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+                                <i data-lucide="book-open" class="w-4 h-4 mr-3"></i> Manuales
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/inventory/specs" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+                                <i data-lucide="file-text" class="w-4 h-4 mr-3"></i> Fichas Técnicas
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/inventory/logs" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+                                <i data-lucide="clipboard-list" class="w-4 h-4 mr-3"></i> Bitácora
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+
+            <div class="mt-8 px-3">
+                <a href="/settings" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200">
+                    <i data-lucide="settings" class="w-5 h-5 mr-3 group-hover:text-slate-200"></i>
+                    <span class="font-medium">Configuración</span>
+                </a>
+            </div>
+        </nav>
+
+        <div class="p-4 border-t border-slate-800 bg-slate-950">
+            <div class="flex items-center">
+                <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-sm font-bold shadow-lg text-white">A</div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-white">Admin User</p>
+                    <p class="text-xs text-slate-500">Director TI</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-50">
+        
+        <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-8 shadow-sm z-10">
+            <h1 class="text-xl font-bold text-slate-800 tracking-tight">
+                {% block header_title %}Vista General{% endblock %}
+            </h1>
+
+            <div class="flex items-center space-x-6">
+                <div class="flex items-center bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
+                    <span class="relative flex h-2.5 w-2.5 mr-2">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                    </span>
+                    <span class="text-xs font-semibold text-slate-600">Sistema Operativo</span>
+                </div>
+                
+                <button class="relative p-2 text-slate-400 hover:text-slate-600 transition-colors">
+                    <i data-lucide="bell" class="w-6 h-6"></i>
+                    <span class="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500 border border-white"></span>
+                </button>
+            </div>
+        </header>
+
+        <main class="flex-1 overflow-y-auto p-8 scroll-smooth">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script>
+        // Inicializar Iconos Lucide
+        lucide.createIcons();
+
+        function toggleInventoryMenu() {
+            const menu = document.getElementById('inventory-menu');
+            const arrow = document.getElementById('inv-arrow');
+            menu.classList.toggle('hidden');
+            arrow.classList.toggle('rotate-180');
+        }
+
+        // Lógica de navegación activa
+        document.addEventListener("DOMContentLoaded", function() {
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.nav-link');
+            const invMenu = document.getElementById('inventory-menu');
+            const invArrow = document.getElementById('inv-arrow');
+            
+            navLinks.forEach(link => {
+                const href = link.getAttribute('href');
+                if (href === currentPath || (currentPath === '/' && href === '/')) {
+                    link.classList.add('nav-active');
+                    if (currentPath.startsWith('/inventory')) {
+                        invMenu.classList.remove('hidden');
+                        invArrow.classList.add('rotate-180');
+                    }
+                    const icon = link.querySelector('i');
+                    if(icon) {
+                        icon.classList.remove('text-slate-400', 'group-hover:text-indigo-400');
+                        icon.classList.add('text-white');
+                    }
+                }
+            });
+        });
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

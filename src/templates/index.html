@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block header_title %}Panel de Control Principal{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    
+    <div class="mb-8 text-center md:text-left">
+        <h2 class="text-2xl font-bold text-slate-800">Bienvenido, Admin</h2>
+        <p class="text-slate-500">Seleccione un módulo para comenzar la gestión.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+
+        <a href="/monitor" class="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-lg hover:border-indigo-300 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <i data-lucide="layout-dashboard" class="w-24 h-24 text-indigo-600"></i>
+            </div>
+            <div class="p-3 bg-indigo-50 rounded-xl w-fit text-indigo-600 mb-4 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                <i data-lucide="activity" class="w-8 h-8"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2">Monitor Principal</h3>
+            <p class="text-sm text-slate-500">Estado en tiempo real de CPU, RAM y alertas críticas de los 500 equipos.</p>
+            <div class="mt-4 flex items-center text-indigo-600 font-medium text-sm">
+                Ver Métricas <i data-lucide="arrow-right" class="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform"></i>
+            </div>
+        </a>
+
+        <a href="/latency" class="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-lg hover:border-emerald-300 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <i data-lucide="zap" class="w-24 h-24 text-emerald-600"></i>
+            </div>
+            <div class="p-3 bg-emerald-50 rounded-xl w-fit text-emerald-600 mb-4 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                <i data-lucide="wifi" class="w-8 h-8"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2">Monitor de Latencia</h3>
+            <p class="text-sm text-slate-500">Análisis detallado de ping, estabilidad de red y micro-cortes.</p>
+            <div class="mt-4 flex items-center text-emerald-600 font-medium text-sm">
+                Analizar Red <i data-lucide="arrow-right" class="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform"></i>
+            </div>
+        </a>
+
+        <a href="/map" class="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-lg hover:border-blue-300 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <i data-lucide="map" class="w-24 h-24 text-blue-600"></i>
+            </div>
+            <div class="p-3 bg-blue-50 rounded-xl w-fit text-blue-600 mb-4 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                <i data-lucide="map-pin" class="w-8 h-8"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2">Mapa de Red</h3>
+            <p class="text-sm text-slate-500">Geolocalización de NUCs, mapas de calor e infraestructura física.</p>
+            <div class="mt-4 flex items-center text-blue-600 font-medium text-sm">
+                Ver Mapa <i data-lucide="arrow-right" class="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform"></i>
+            </div>
+        </a>
+
+        <a href="/inventory" class="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-lg hover:border-amber-300 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <i data-lucide="package" class="w-24 h-24 text-amber-600"></i>
+            </div>
+            <div class="p-3 bg-amber-50 rounded-xl w-fit text-amber-600 mb-4 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                <i data-lucide="clipboard-list" class="w-8 h-8"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2">Biblioteca</h3>
+            <p class="text-sm text-slate-500">Gestión de activos, fichas técnicas y vinculación con Google Sheets.</p>
+            <div class="mt-4 flex items-center text-amber-600 font-medium text-sm">
+                Gestionar <i data-lucide="arrow-right" class="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform"></i>
+            </div>
+        </a>
+
+    </div>
+
+    <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-indigo-900 rounded-2xl p-6 text-white flex items-center justify-between">
+            <div>
+                <h4 class="font-bold text-lg">Estado del Sistema</h4>
+                <p class="text-indigo-200 text-sm">Todos los servicios operando normalmente.</p>
+            </div>
+            <div class="bg-indigo-800 p-3 rounded-full animate-pulse">
+                <i data-lucide="check-circle" class="text-green-400"></i>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 flex items-center justify-between">
+            <div>
+                <h4 class="font-bold text-lg text-slate-800">Documentación</h4>
+                <p class="text-slate-500 text-sm">Guías de instalación y manuales.</p>
+            </div>
+            <button class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 text-sm font-medium transition-colors">
+                Ver Docs
+            </button>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
