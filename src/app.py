@@ -11,16 +11,25 @@ from threading import Lock, Thread
 from functools import wraps
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError # Requiere Python 3.9+
 
-from flask import Flask, request, jsonify, render_template, session, redirect, url_for, Response, send_from_directory
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for, Response, send_from_directory, flash
 from flask_cors import CORS
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-# --- 1. CONFIGURACIÓN DEL SISTEMA ---
+# --- 1. CONFIGURACIÓN DEL SISTEMA Y RUTAS ABSOLUTAS (FIX ARGOS) ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-app = Flask(__name__)
-logging.info("✅ Servidor Argos Iniciado.")
+# --- FIX CRÍTICO: Definición de Rutas Absolutas ---
+# Esto asegura que Flask encuentre los templates sin importar desde dónde se ejecute Gunicorn
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
+STATIC_DIR = os.path.join(BASE_DIR, 'static')
+DATA_FILE = os.path.join(BASE_DIR, 'data.json')
+
+# Inicializamos Flask forzando las carpetas correctas
+app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
+logging.info(f"✅ Servidor Argos Iniciado. Directorio base: {BASE_DIR}")
+logging.info(f"📂 Templates cargados desde: {TEMPLATE_DIR}")
 
 # Configuración de Entorno
 FLASK_ENV = os.environ.get('FLASK_ENV', 'production')
@@ -45,9 +54,6 @@ except ZoneInfoNotFoundError:
 USERS = { "admin": "password123", "gpovallas": "monitor2025", "Soporte01": "monitor2025" }
 
 # --- 2. PERSISTENCIA DE DATOS (JSON) ---
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_FILE = os.path.join(BASE_DIR, 'data.json')
-
 data_store = {}     # Memoria RAM principal
 alerted_pcs = {}    # Control de estado de alertas (para no spammear correos)
 data_lock = Lock()  # Semáforo para hilos
@@ -60,6 +66,8 @@ def load_data_on_startup():
             with open(DATA_FILE, 'r') as f:
                 data_store = json.load(f)
                 logging.info(f"✅ Base de datos cargada: {len(data_store)} equipos.")
+        else:
+            logging.info("ℹ️ No se encontró data.json, se iniciará una base nueva.")
     except Exception as e:
         logging.error(f"⚠️ Error cargando datos: {e}")
         data_store = {}
@@ -81,7 +89,7 @@ EMAIL_ACCOUNTS = [
     {'sender': os.environ.get('EMAIL_SENDER_1'), 'password': os.environ.get('EMAIL_PASSWORD_1'), 'name': 'Argos Alerta 1'},
     {'sender': os.environ.get('EMAIL_SENDER_2'), 'password': os.environ.get('EMAIL_PASSWORD_2'), 'name': 'Argos Alerta 2'},
 ]
-# Filtrar cuentas vacías
+# Filtrar cuentas vacías por si faltan env vars
 EMAIL_ACCOUNTS = [acc for acc in EMAIL_ACCOUNTS if acc['sender'] and acc['password']]
 
 EMAIL_CONFIG = {
@@ -159,17 +167,23 @@ def login_required(f):
 
 @app.route('/static/<path:filename>')
 def serve_static(filename):
-    return send_from_directory('static', filename)
+    return send_from_directory(STATIC_DIR, filename)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         user = request.form.get('username')
         pwd = request.form.get('password')
+        
         if USERS.get(user) == pwd:
             session['user'] = user
             session.permanent = True
-            return redirect(url_for('index'))
+            logging.info(f"🔑 Login exitoso: {user}")
+            return redirect(url_for('monitor')) # Redirigir a monitor explícitamente
+        else:
+            flash("Credenciales incorrectas", "error")
+            logging.warning(f"⛔ Intento fallido login: {user}")
+            
     return render_template('login.html')
 
 @app.route('/logout')
@@ -182,7 +196,6 @@ def logout():
 @app.route('/')
 @login_required
 def index():
-    # Redirección por defecto al Monitor Principal
     return redirect(url_for('monitor'))
 
 @app.route('/monitor')
@@ -227,7 +240,7 @@ def receive_report():
             
             # Asegurar campos para evitar errores en frontend
             if 'latency_ms' not in data: data['latency_ms'] = 0
-            if 'unit' not in data: data['unit'] = "Sin Asignar" # Para BioBox/ViaVerde/Ecovallas
+            if 'unit' not in data: data['unit'] = "Sin Asignar" 
             
             data_store[pc_name] = data
 
@@ -254,8 +267,8 @@ def live_data():
             
             # Lógica de DESCONEXIÓN
             if diff > EMAIL_CONFIG['timeout_offline']:
-                pc_export['status'] = 'offline' # Forzar status offline para el frontend
-                pc_export['latency_ms'] = 0     # Latencia 0 si está caído
+                pc_export['status'] = 'offline'
+                pc_export['latency_ms'] = 0
                 
                 # Disparar alerta si no se ha alertado antes
                 if alerted_pcs.get(pc_name) != 'offline':
@@ -264,7 +277,7 @@ def live_data():
                     alerted_pcs[pc_name] = 'offline'
             else:
                 pc_export['status'] = 'online'
-                # Resetear alerta si estaba marcado como offline pero sigue reportando (caso raro)
+                # Resetear alerta si estaba marcado como offline pero sigue reportando
                 if alerted_pcs.get(pc_name) == 'offline':
                     alerted_pcs[pc_name] = 'online'
 
@@ -290,7 +303,7 @@ def download_csv():
                 d.get('latency_ms', 0),
                 d.get('cpu_load_percent', 0),
                 d.get('ram_percent', 0),
-                d.get('basic_metrics', {}).get('temp', 'N/A'), # Ajustar según tu payload
+                d.get('basic_metrics', {}).get('temp', 'N/A'),
                 d.get('last_seen_str', '')
             ])
             
@@ -302,5 +315,5 @@ def download_csv():
 if __name__ == '__main__':
     load_data_on_startup()
     atexit.register(save_data_on_exit)
-    port = int(os.environ.get('PORT', 8000))
+    port = int(os.environ.get('PORT', 10000)) # Cambiado a 10000 default para Render
     app.run(host='0.0.0.0', port=port)
