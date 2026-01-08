@@ -16,29 +16,80 @@ from flask_cors import CORS
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-# --- 1. CONFIGURACIÓN DEL SISTEMA Y RUTAS ABSOLUTAS (FIX ARGOS) ---
+# --- 1. CONFIGURACIÓN DEL SISTEMA Y RUTAS ABSOLUTAS ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# --- FIX CRÍTICO: Definición de Rutas Absolutas ---
 # Obtenemos la ruta absoluta de ESTE archivo (app.py)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+logging.info(f"📍 Directorio Base detectado: {BASE_DIR}")
 
-# Definimos las carpetas relativas a este archivo
-# Estructura esperada:
-# /.../src/app.py
-# /.../src/templates/login.html
-TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
+# --- DETECCIÓN INTELIGENTE DE TEMPLATES ---
+# Intenta encontrar la carpeta de templates automáticamente
+def find_template_folder():
+    # Posibles nombres de carpeta
+    possible_folders = ['templates', 'template', 'Template', 'Templates']
+    
+    for folder in possible_folders:
+        folder_path = os.path.join(BASE_DIR, folder)
+        if os.path.exists(folder_path):
+            logging.info(f"✅ Carpeta de templates encontrada: {folder}")
+            return folder_path
+    
+    # Si no encuentra ninguna, busca en el directorio padre
+    parent_dir = os.path.dirname(BASE_DIR)
+    for folder in possible_folders:
+        folder_path = os.path.join(parent_dir, folder)
+        if os.path.exists(folder_path):
+            logging.info(f"✅ Carpeta de templates encontrada en directorio padre: {folder}")
+            return folder_path
+    
+    # Si aún no encuentra, crea una carpeta templates
+    default_path = os.path.join(BASE_DIR, 'templates')
+    os.makedirs(default_path, exist_ok=True)
+    logging.warning(f"⚠️ No se encontró carpeta de templates. Creando: {default_path}")
+    return default_path
+
+TEMPLATE_DIR = find_template_folder()
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
 DATA_FILE = os.path.join(BASE_DIR, 'data.json')
 
-logging.info(f"📍 Directorio Base: {BASE_DIR}")
 logging.info(f"📂 Directorio Templates configurado: {TEMPLATE_DIR}")
 
-# Verificación preliminar (Solo logs)
-if os.path.exists(os.path.join(TEMPLATE_DIR, 'login.html')):
-    logging.info("✅ login.html encontrado en el sistema de archivos.")
+# Verificación detallada
+logging.info("🔍 Verificando estructura de archivos...")
+if os.path.exists(TEMPLATE_DIR):
+    items = os.listdir(TEMPLATE_DIR)
+    logging.info(f"📁 Contenido de {TEMPLATE_DIR}: {items}")
+    
+    login_path = os.path.join(TEMPLATE_DIR, 'login.html')
+    if os.path.exists(login_path):
+        logging.info(f"✅ login.html encontrado: {login_path}")
+    else:
+        logging.error(f"❌ login.html NO encontrado en {TEMPLATE_DIR}")
+        
+        # Crear un login.html básico si no existe
+        try:
+            basic_login = """<!DOCTYPE html>
+<html>
+<head><title>Login Argos</title></head>
+<body>
+<h1>Login Argos (Autogenerado)</h1>
+<form method="POST">
+<input name="username" placeholder="Usuario"><br>
+<input type="password" name="password" placeholder="Contraseña"><br>
+<button type="submit">Ingresar</button>
+</form>
+<p>Por favor, sube el login.html correcto a: {}</p>
+</body>
+</html>""".format(TEMPLATE_DIR)
+            
+            with open(login_path, 'w') as f:
+                f.write(basic_login)
+            logging.info(f"📝 Se creó un login.html básico en {login_path}")
+        except Exception as e:
+            logging.error(f"❌ Error creando login.html: {e}")
 else:
-    logging.error(f"❌ CRÍTICO: login.html NO encontrado en {TEMPLATE_DIR}")
+    logging.error(f"❌ CRÍTICO: Carpeta TEMPLATE_DIR no existe: {TEMPLATE_DIR}")
 
 # Inicializamos Flask forzando las carpetas correctas
 app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
@@ -183,11 +234,36 @@ def login():
         if USERS.get(user) == pwd:
             session['user'] = user
             session.permanent = True
-            return redirect(url_for('monitor')) # FIX: Redirige a monitor, no index
+            return redirect(url_for('monitor'))
         else:
             flash('Credenciales Incorrectas', 'error')
     
-    # Flask buscará esto en TEMPLATE_DIR
+    # Verificar que el template existe
+    login_path = os.path.join(TEMPLATE_DIR, 'login.html')
+    if not os.path.exists(login_path):
+        # Crear un login temporal si no existe
+        temp_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head><title>Login Argos - Debug</title></head>
+        <body>
+            <h1>⚠️ Sistema Argos - Debug</h1>
+            <p>El archivo login.html no se encontró en: {login_path}</p>
+            <p>Por favor, accede a <a href="/debug-argos">/debug-argos</a> para ver la estructura de archivos.</p>
+            <p>BASE_DIR: {BASE_DIR}</p>
+            <p>TEMPLATE_DIR: {TEMPLATE_DIR}</p>
+            <hr>
+            <h3>Login Temporal:</h3>
+            <form method="POST">
+                <input name="username" placeholder="Usuario" value="admin"><br>
+                <input type="password" name="password" placeholder="Contraseña" value="password123"><br>
+                <button type="submit">Ingresar</button>
+            </form>
+        </body>
+        </html>
+        """
+        return temp_html
+    
     return render_template('login.html')
 
 @app.route('/logout')
@@ -292,35 +368,69 @@ def download_csv():
     return output
 
 # --- RUTA DE DIAGNÓSTICO DE ARGOS ---
-# USA ESTA RUTA SI FALLA: https://tu-url.onrender.com/debug-argos
 @app.route('/debug-argos')
 def debug_files():
     """Muestra la estructura de archivos del servidor para debuggear."""
     output = []
-    output.append(f"Directorio Actual (getcwd): {os.getcwd()}")
-    output.append(f"Archivo app.py (file): {os.path.abspath(__file__)}")
-    output.append(f"Directorio BASE calculado: {BASE_DIR}")
-    output.append(f"Directorio TEMPLATES objetivo: {TEMPLATE_DIR}")
-    output.append("-" * 30)
-    output.append("LISTADO RECURSIVO DE ARCHIVOS:")
+    output.append(f"<h2>🔍 Diagnóstico del Sistema Argos</h2>")
+    output.append(f"<p><strong>Directorio Actual (getcwd):</strong> {os.getcwd()}</p>")
+    output.append(f"<p><strong>Archivo app.py:</strong> {os.path.abspath(__file__)}</p>")
+    output.append(f"<p><strong>Directorio BASE calculado:</strong> {BASE_DIR}</p>")
+    output.append(f"<p><strong>Directorio TEMPLATES configurado:</strong> {TEMPLATE_DIR}</p>")
+    output.append(f"<p><strong>TEMPLATE_DIR existe:</strong> {os.path.exists(TEMPLATE_DIR)}</p>")
     
-    # Listar todo lo que hay en /opt/render/project
-    root_to_scan = os.path.dirname(BASE_DIR) # Subimos un nivel para ver todo el proyecto
+    if os.path.exists(TEMPLATE_DIR):
+        items = os.listdir(TEMPLATE_DIR)
+        output.append(f"<p><strong>Archivos en TEMPLATE_DIR ({len(items)}):</strong></p><ul>")
+        for item in items:
+            item_path = os.path.join(TEMPLATE_DIR, item)
+            is_file = os.path.isfile(item_path)
+            size = os.path.getsize(item_path) if is_file else 0
+            output.append(f"<li>{item} {'📄' if is_file else '📁'} ({size} bytes)</li>")
+        output.append("</ul>")
     
-    for root, dirs, files in os.walk(root_to_scan):
-        level = root.replace(root_to_scan, '').count(os.sep)
-        indent = ' ' * 4 * (level)
-        output.append(f"{indent}[DIR] {os.path.basename(root)}/")
-        subindent = ' ' * 4 * (level + 1)
-        for f in files:
-            output.append(f"{subindent}{f}")
-            
-    return "<pre>" + "\n".join(output) + "</pre>"
+    output.append("<hr><h3>📁 Estructura del Proyecto (desde raíz):</h3>")
+    
+    # Listar desde el directorio raíz del proyecto en Render
+    render_project_root = "/opt/render/project"
+    if os.path.exists(render_project_root):
+        for root, dirs, files in os.walk(render_project_root):
+            level = root.replace(render_project_root, '').count(os.sep)
+            if level > 2:  # Limitar profundidad
+                continue
+            indent = '&nbsp;' * 4 * level
+            output.append(f"{indent}<b>[DIR] {os.path.basename(root) or 'ROOT'}/</b><br>")
+            subindent = '&nbsp;' * 4 * (level + 1)
+            for f in files[:10]:  # Mostrar solo primeros 10 archivos
+                file_path = os.path.join(root, f)
+                size = os.path.getsize(file_path)
+                output.append(f"{subindent}{f} ({size} bytes)<br>")
+            if len(files) > 10:
+                output.append(f"{subindent}... y {len(files)-10} más<br>")
+    else:
+        # Si no está en Render, mostrar desde BASE_DIR
+        for root, dirs, files in os.walk(BASE_DIR):
+            level = root.replace(BASE_DIR, '').count(os.sep)
+            if level > 2:
+                continue
+            indent = '&nbsp;' * 4 * level
+            output.append(f"{indent}<b>[DIR] {os.path.basename(root) or 'ROOT'}/</b><br>")
+            subindent = '&nbsp;' * 4 * (level + 1)
+            for f in files[:10]:
+                file_path = os.path.join(root, f)
+                size = os.path.getsize(file_path)
+                output.append(f"{subindent}{f} ({size} bytes)<br>")
+    
+    output.append("<hr><h3>🎯 Información de Flask:</h3>")
+    output.append(f"<p><strong>template_folder configurado:</strong> {app.template_folder}</p>")
+    output.append(f"<p><strong>static_folder configurado:</strong> {app.static_folder}</p>")
+    
+    return "<div style='font-family: monospace; background: #1a1a1a; color: #fff; padding: 20px;'>" + "".join(output) + "</div>"
 
 # --- EJECUCIÓN ---
 if __name__ == '__main__':
     load_data_on_startup()
     atexit.register(save_data_on_exit)
     port = int(os.environ.get('PORT', 10000))
-    # Usar '0.0.0.0' es vital para Render
+    logging.info(f"✅ Servidor Argos Iniciado en puerto {port}")
     app.run(host='0.0.0.0', port=port)
