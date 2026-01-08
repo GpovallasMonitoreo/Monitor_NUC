@@ -1,306 +1,338 @@
 import os
-import logging
-import json
-import time
-import smtplib
-import csv
-import io
-import atexit
-from datetime import datetime, timedelta
-from threading import Lock, Thread
-from functools import wraps
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError # Requiere Python 3.9+
+import sys
+from flask import Flask, render_template_string, request, session, redirect, jsonify
 
-from flask import Flask, request, jsonify, render_template, session, redirect, url_for, Response, send_from_directory
-from flask_cors import CORS
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-
-# --- 1. CONFIGURACIÓN DEL SISTEMA ---
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
+# ============================================
+# 1. CONFIGURACIÓN BÁSICA
+# ============================================
 app = Flask(__name__)
-logging.info("✅ Servidor Argos Iniciado.")
+app.secret_key = 'argos-secret-123'
 
-# Configuración de Entorno
-FLASK_ENV = os.environ.get('FLASK_ENV', 'production')
-IS_PRODUCTION = FLASK_ENV == 'production'
+# ============================================
+# 2. DIAGNÓSTICO AL INICIAR
+# ============================================
+print("=" * 60)
+print("🚀 ARGOS - DIAGNÓSTICO INICIAL")
+print(f"📂 Directorio: {os.getcwd()}")
+print("📁 Archivos en directorio actual:")
 
-app.config.update(
-    SESSION_COOKIE_SAMESITE='None',
-    SESSION_COOKIE_SECURE=IS_PRODUCTION,
-    SECRET_KEY=os.environ.get('FLASK_SECRET_KEY', 'argos-clave-maestra-2026')
-)
-app.permanent_session_lifetime = timedelta(days=365)
+for item in os.listdir('.'):
+    if os.path.isdir(item):
+        print(f"  📁 {item}/")
+        # Si es una carpeta de templates, mostrar contenido
+        if item.lower() in ['templates', 'template']:
+            try:
+                files = os.listdir(item)
+                print(f"    Contiene: {', '.join(files)}")
+            except:
+                pass
+    else:
+        print(f"  📄 {item}")
 
-CORS(app, supports_credentials=True, origins="*")
+print("=" * 60)
 
-# Zona Horaria
-try:
-    TZ_CDMX = ZoneInfo("America/Mexico_City")
-except ZoneInfoNotFoundError:
-    TZ_CDMX = ZoneInfo("UTC")
-
-# Usuarios (Hardcoded por seguridad básica)
-USERS = { "admin": "password123", "gpovallas": "monitor2025", "Soporte01": "monitor2025" }
-
-# --- 2. PERSISTENCIA DE DATOS (JSON) ---
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_FILE = os.path.join(BASE_DIR, 'data.json')
-
-data_store = {}     # Memoria RAM principal
-alerted_pcs = {}    # Control de estado de alertas (para no spammear correos)
-data_lock = Lock()  # Semáforo para hilos
-
-def load_data_on_startup():
-    """Carga la base de datos JSON al iniciar."""
-    global data_store
-    try:
-        if os.path.exists(DATA_FILE):
-            with open(DATA_FILE, 'r') as f:
-                data_store = json.load(f)
-                logging.info(f"✅ Base de datos cargada: {len(data_store)} equipos.")
-    except Exception as e:
-        logging.error(f"⚠️ Error cargando datos: {e}")
-        data_store = {}
-
-def save_data_on_exit():
-    """Guarda la base de datos JSON al apagar."""
-    with data_lock:
-        try:
-            with open(DATA_FILE, 'w') as f:
-                # Limpiamos datos internos no serializables si los hubiera
-                clean_data = {k: v for k, v in data_store.items()}
-                json.dump(clean_data, f, indent=4)
-            logging.info("✅ Datos guardados correctamente.")
-        except Exception as e:
-            logging.error(f"🔥 Error guardando datos: {e}")
-
-# --- 3. SISTEMA DE CORREOS ---
-EMAIL_ACCOUNTS = [
-    {'sender': os.environ.get('EMAIL_SENDER_1'), 'password': os.environ.get('EMAIL_PASSWORD_1'), 'name': 'Argos Alerta 1'},
-    {'sender': os.environ.get('EMAIL_SENDER_2'), 'password': os.environ.get('EMAIL_PASSWORD_2'), 'name': 'Argos Alerta 2'},
-]
-# Filtrar cuentas vacías
-EMAIL_ACCOUNTS = [acc for acc in EMAIL_ACCOUNTS if acc['sender'] and acc['password']]
-
-EMAIL_CONFIG = {
-    'server': 'smtp.gmail.com',
-    'port': 587,
-    'recipients': ['incidencias.vallas@gpovallas.com'],
-    'timeout_offline': 45 # Segundos sin señal para considerar OFFLINE
-}
-
-email_lock = Lock()
-current_email_idx = 0
-
-def get_smtp_account():
-    """Rota entre cuentas de correo para evitar bloqueos."""
-    global current_email_idx
-    if not EMAIL_ACCOUNTS: return None
-    with email_lock:
-        acc = EMAIL_ACCOUNTS[current_email_idx]
-        current_email_idx = (current_email_idx + 1) % len(EMAIL_ACCOUNTS)
-    return acc
-
-def send_email_alert(pc_name, alert_type, pc_data):
-    """Envía correos de desconexión o reconexión."""
-    account = get_smtp_account()
-    if not account: return
-
-    is_offline = (alert_type == 'offline')
-    subject = f"🚨 ALERTA: {pc_name} Desconectado" if is_offline else f"✅ RESTAURADO: {pc_name} Online"
-    color = "#d9534f" if is_offline else "#5cb85c"
-    title = "PÉRDIDA DE CONEXIÓN" if is_offline else "CONEXIÓN RESTABLECIDA"
-    
-    # Formatear hora
-    now_str = datetime.now(TZ_CDMX).strftime('%d/%m/%Y %H:%M:%S')
-
-    html_body = f"""
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 8px;">
-        <div style="background-color: {color}; color: white; padding: 20px; text-align: center;">
-            <h2>{title}</h2>
-        </div>
-        <div style="padding: 20px;">
-            <p><strong>Equipo:</strong> {pc_name}</p>
-            <p><strong>Unidad:</strong> {pc_data.get('unit', 'Desconocida')}</p>
-            <p><strong>IP Local:</strong> {pc_data.get('ip', 'N/A')}</p>
-            <p><strong>Hora del evento:</strong> {now_str}</p>
-            <hr>
-            <p style="font-size: 12px; color: #777;">Reporte automático del Sistema Argos.</p>
+# ============================================
+# 3. HTML INLINE (NO necesita archivos!)
+# ============================================
+LOGIN_PAGE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Argos Login</title>
+    <style>
+        body {
+            background: #0f172a;
+            color: white;
+            font-family: Arial;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-box {
+            background: #1e293b;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            width: 300px;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 5px;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .error {
+            color: #ef4444;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <h2>👁️ ARGOS</h2>
+        <p>Sistema de Monitoreo</p>
+        
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+        
+        <form method="POST">
+            <input type="text" name="username" placeholder="Usuario" required>
+            <input type="password" name="password" placeholder="Contraseña" required>
+            <button type="submit">Ingresar</button>
+        </form>
+        
+        <div style="margin-top: 20px; font-size: 12px; color: #94a3b8;">
+            Usuarios:<br>
+            admin / password123<br>
+            gpovallas / monitor2025
         </div>
     </div>
-    """
+</body>
+</html>
+"""
 
-    msg = MIMEMultipart()
-    msg['From'] = f"{account['name']} <{account['sender']}>"
-    msg['To'] = ", ".join(EMAIL_CONFIG['recipients'])
-    msg['Subject'] = subject
-    msg.attach(MIMEText(html_body, 'html'))
+DASHBOARD_PAGE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Argos Dashboard</title>
+    <style>
+        body {
+            background: #0f172a;
+            color: white;
+            font-family: Arial;
+            margin: 0;
+            padding: 20px;
+        }
+        .header {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .card {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+        a {
+            color: #3b82f6;
+            text-decoration: none;
+        }
+        .online { color: #10b981; }
+        .offline { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>👁️ ARGOS MONITOR</h1>
+        <p>Bienvenido, {{ username }} | <a href="/logout">Cerrar sesión</a></p>
+    </div>
+    
+    <div class="card">
+        <h2>✅ Sistema Operativo</h2>
+        <p>El servidor Argos está funcionando correctamente.</p>
+        <p><strong>URL API:</strong> /report (POST) - Para clientes</p>
+        <p><strong>URL Datos:</strong> /api/data (GET) - Para dashboard</p>
+    </div>
+    
+    <div class="card">
+        <h2>🔗 Enlaces útiles:</h2>
+        <p><a href="/debug">/debug</a> - Información del sistema</p>
+        <p><a href="/api/status">/api/status</a> - Estado del servicio</p>
+    </div>
+</body>
+</html>
+"""
 
-    try:
-        with smtplib.SMTP(EMAIL_CONFIG['server'], EMAIL_CONFIG['port']) as server:
-            server.starttls()
-            server.login(account['sender'], account['password'])
-            server.send_message(msg)
-        logging.info(f"📧 Correo enviado: {alert_type} - {pc_name}")
-    except Exception as e:
-        logging.error(f"🔥 Error enviando correo: {e}")
+DEBUG_PAGE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Diagnóstico Argos</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 20px;
+        }
+        pre {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 5px;
+            overflow: auto;
+        }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <h1>🔧 DIAGNÓSTICO ARGOS</h1>
+    
+    <h2>📊 Información del Sistema</h2>
+    <pre>{{ system_info }}</pre>
+    
+    <h2>📁 Estructura de Archivos</h2>
+    <pre>{{ file_structure }}</pre>
+    
+    <h2>🎯 Acciones</h2>
+    <p><a href="/">Inicio</a> | <a href="/login">Login</a> | <a href="/monitor">Dashboard</a></p>
+</body>
+</html>
+"""
 
-# --- 4. SEGURIDAD Y RUTAS ---
+# ============================================
+# 4. USUARIOS Y DATOS
+# ============================================
+USERS = {
+    "admin": "password123",
+    "gpovallas": "monitor2025",
+    "Soporte01": "monitor2025"
+}
 
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user' not in session:
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
+data_store = {}
 
-@app.route('/static/<path:filename>')
-def serve_static(filename):
-    return send_from_directory('static', filename)
+# ============================================
+# 5. RUTAS PRINCIPALES
+# ============================================
+@app.route('/')
+def home():
+    if 'user' in session:
+        return redirect('/monitor')
+    return redirect('/login')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        user = request.form.get('username')
-        pwd = request.form.get('password')
-        if USERS.get(user) == pwd:
-            session['user'] = user
-            session.permanent = True
-            return redirect(url_for('index'))
-    return render_template('login.html')
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        
+        if USERS.get(username) == password:
+            session['user'] = username
+            return redirect('/monitor')
+        else:
+            # Mostrar error en la misma página
+            return render_template_string(LOGIN_PAGE, error="Usuario o contraseña incorrectos")
+    
+    return render_template_string(LOGIN_PAGE)
 
 @app.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for('login'))
-
-# --- 5. VISTAS DEL DASHBOARD (HTMLs) ---
-
-@app.route('/')
-@login_required
-def index():
-    # Redirección por defecto al Monitor Principal
-    return redirect(url_for('monitor'))
+    return redirect('/login')
 
 @app.route('/monitor')
-@login_required
 def monitor():
-    """Dashboard Principal con KPIs y Gráficas en Vivo."""
-    return render_template('monitor.html')
+    if 'user' not in session:
+        return redirect('/login')
+    
+    return render_template_string(DASHBOARD_PAGE, username=session['user'])
 
-@app.route('/latency')
-@login_required
-def latency():
-    """Dashboard de Latencia y Fichas Técnicas."""
-    return render_template('latency.html')
-
-@app.route('/map')
-@login_required
-def map_view():
-    return render_template('map.html')
-
-# --- 6. API (COMUNICACIÓN AGENTE <-> SERVIDOR <-> FRONTEND) ---
+# ============================================
+# 6. API ENDPOINTS
+# ============================================
+@app.route('/api/status')
+def api_status():
+    return jsonify({
+        "status": "online",
+        "service": "Argos Monitor",
+        "version": "2.0",
+        "timestamp": "2026-01-08T22:30:00Z"
+    })
 
 @app.route('/report', methods=['POST'])
-def receive_report():
-    """Endpoint donde los NUCs envían sus datos (POST)."""
+def report():
     try:
         data = request.json
         pc_name = data.get('pc_name')
-        if not pc_name: return jsonify({"error": "No pc_name"}), 400
-
-        now = datetime.now(TZ_CDMX)
         
-        with data_lock:
-            # Detectar RECONEXIÓN
-            if alerted_pcs.get(pc_name) == 'offline':
-                logging.info(f"🔄 {pc_name} ha vuelto ONLINE.")
-                Thread(target=send_email_alert, args=(pc_name, 'online', data)).start()
-                alerted_pcs[pc_name] = 'online'
-
-            # Actualizar datos
-            data['last_seen'] = now.timestamp()
-            data['last_seen_str'] = now.strftime('%Y-%m-%d %H:%M:%S')
-            
-            # Asegurar campos para evitar errores en frontend
-            if 'latency_ms' not in data: data['latency_ms'] = 0
-            if 'unit' not in data: data['unit'] = "Sin Asignar" # Para BioBox/ViaVerde/Ecovallas
-            
-            data_store[pc_name] = data
-
-        return jsonify({"status": "received"}), 200
+        if not pc_name:
+            return jsonify({"error": "Se requiere pc_name"}), 400
+        
+        import datetime
+        data['received_at'] = datetime.datetime.now().isoformat()
+        data_store[pc_name] = data
+        
+        print(f"📡 Reporte recibido de {pc_name}")
+        return jsonify({"status": "ok"}), 200
+        
     except Exception as e:
-        logging.error(f"Error en /report: {e}")
+        print(f"❌ Error en /report: {e}")
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/live-data', methods=['GET'])
-@login_required
-def live_data():
-    """Endpoint que consume el Frontend (Monitor/Latency)."""
-    response_list = []
-    now_ts = datetime.now(TZ_CDMX).timestamp()
-
-    with data_lock:
-        for pc_name, data in data_store.items():
-            # Calcular tiempo desde último reporte
-            last_seen = data.get('last_seen', 0)
-            diff = now_ts - last_seen
-            
-            # Copia para enviar
-            pc_export = data.copy()
-            
-            # Lógica de DESCONEXIÓN
-            if diff > EMAIL_CONFIG['timeout_offline']:
-                pc_export['status'] = 'offline' # Forzar status offline para el frontend
-                pc_export['latency_ms'] = 0     # Latencia 0 si está caído
-                
-                # Disparar alerta si no se ha alertado antes
-                if alerted_pcs.get(pc_name) != 'offline':
-                    logging.warning(f"🚨 {pc_name} ha caído OFFLINE.")
-                    Thread(target=send_email_alert, args=(pc_name, 'offline', data)).start()
-                    alerted_pcs[pc_name] = 'offline'
-            else:
-                pc_export['status'] = 'online'
-                # Resetear alerta si estaba marcado como offline pero sigue reportando (caso raro)
-                if alerted_pcs.get(pc_name) == 'offline':
-                    alerted_pcs[pc_name] = 'online'
-
-            response_list.append(pc_export)
-
-    return jsonify(response_list)
-
-@app.route('/download_csv')
-@login_required
-def download_csv():
-    """Descarga reporte CSV."""
-    si = io.StringIO()
-    cw = csv.writer(si)
-    cw.writerow(['PC Name', 'Unit', 'Status', 'IP', 'Latency (ms)', 'CPU %', 'RAM %', 'Temp', 'Last Seen'])
+@app.route('/api/data')
+def api_data():
+    if 'user' not in session:
+        return jsonify({"error": "No autorizado"}), 401
     
-    with data_lock:
-        for pc, d in data_store.items():
-            cw.writerow([
-                pc, 
-                d.get('unit', 'N/A'),
-                d.get('status', 'unknown'),
-                d.get('ip', 'N/A'),
-                d.get('latency_ms', 0),
-                d.get('cpu_load_percent', 0),
-                d.get('ram_percent', 0),
-                d.get('basic_metrics', {}).get('temp', 'N/A'), # Ajustar según tu payload
-                d.get('last_seen_str', '')
-            ])
-            
-    output = Response(si.getvalue(), mimetype="text/csv")
-    output.headers["Content-Disposition"] = "attachment; filename=reporte_argos.csv"
-    return output
+    return jsonify(list(data_store.values()))
 
-# --- EJECUCIÓN ---
+# ============================================
+# 7. RUTA DE DIAGNÓSTICO
+# ============================================
+@app.route('/debug')
+def debug():
+    import datetime
+    
+    # Información del sistema
+    system_info = {
+        "app_name": "Argos Monitor",
+        "timestamp": datetime.datetime.now().isoformat(),
+        "python_version": sys.version,
+        "current_directory": os.getcwd(),
+        "files_here": os.listdir('.'),
+        "session_user": session.get('user'),
+        "data_count": len(data_store),
+        "on_render": 'RENDER' in os.environ
+    }
+    
+    # Estructura de archivos
+    file_structure_lines = []
+    for item in os.listdir('.'):
+        if os.path.isdir(item):
+            file_structure_lines.append(f"📁 {item}/")
+            try:
+                subitems = os.listdir(item)
+                for sub in subitems[:5]:
+                    file_structure_lines.append(f"  └── {sub}")
+                if len(subitems) > 5:
+                    file_structure_lines.append(f"  └── ... y {len(subitems)-5} más")
+            except:
+                pass
+        else:
+            file_structure_lines.append(f"📄 {item}")
+    
+    return render_template_string(
+        DEBUG_PAGE,
+        system_info=str(system_info),
+        file_structure='\n'.join(file_structure_lines)
+    )
+
+# ============================================
+# 8. INICIAR SERVIDOR
+# ============================================
 if __name__ == '__main__':
-    load_data_on_startup()
-    atexit.register(save_data_on_exit)
-    port = int(os.environ.get('PORT', 8000))
+    print("\n" + "=" * 60)
+    print("✅ SERVIDOR LISTO")
+    print("🔗 URL Principal: http://localhost:10000")
+    print("🔗 Debug: http://localhost:10000/debug")
+    print("👤 Login: admin / password123")
+    print("=" * 60)
+    
+    port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
