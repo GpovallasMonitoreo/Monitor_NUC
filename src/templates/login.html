@@ -3,71 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | Argos System</title>
+    <title>Login | Sistema Argos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
-            background-color: #f4f6f9;
+            background-color: #0f172a; /* Color oscuro profesional */
+            color: #e2e8f0;
             display: flex;
             align-items: center;
             justify-content: center;
             height: 100vh;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         .login-card {
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            border: none;
-            border-radius: 10px;
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            border-radius: 12px;
+            width: 100%;
+            max-width: 400px;
         }
         .card-header {
-            background-color: #2c3e50;
-            color: white;
+            background-color: #0f172a;
+            color: #38bdf8; /* Azul cyan moderno */
             text-align: center;
-            border-radius: 10px 10px 0 0 !important;
-            padding: 20px;
+            border-bottom: 1px solid #334155;
+            border-radius: 12px 12px 0 0 !important;
+            padding: 25px;
+        }
+        .form-control {
+            background-color: #334155;
+            border: 1px solid #475569;
+            color: white;
+        }
+        .form-control:focus {
+            background-color: #334155;
+            border-color: #38bdf8;
+            color: white;
+            box-shadow: 0 0 0 0.25rem rgba(56, 189, 248, 0.25);
+        }
+        .btn-primary {
+            background-color: #38bdf8;
+            border-color: #38bdf8;
+            color: #0f172a;
+            font-weight: bold;
+        }
+        .btn-primary:hover {
+            background-color: #0ea5e9;
+            border-color: #0ea5e9;
+        }
+        label {
+            color: #94a3b8;
         }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-4">
-            <div class="card login-card">
-                <div class="card-header">
-                    <h4>Iniciar Sesión</h4>
-                </div>
-                <div class="card-body p-4">
-                    
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                      {% if messages %}
-                        {% for category, message in messages %}
-                          <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                          </div>
-                        {% endfor %}
-                      {% endif %}
-                    {% endwith %}
+<div class="login-card">
+    <div class="card-header">
+        <h3 class="mb-0">👁️ ARGOS</h3>
+        <small>Acceso al Sistema de Monitoreo</small>
+    </div>
+    <div class="card-body p-4">
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
-                    <form method="POST" action="/login">
-                        <div class="mb-3">
-                            <label for="username" class="form-label">Usuario</label>
-                            <input type="text" class="form-control" id="username" name="username" required autofocus>
-                        </div>
-                        <div class="mb-3">
-                            <label for="password" class="form-label">Contraseña</label>
-                            <input type="password" class="form-control" id="password" name="password" required>
-                        </div>
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary">Ingresar</button>
-                        </div>
-                    </form>
-                </div>
+        <form method="POST" action="/login">
+            <div class="mb-3">
+                <label for="username" class="form-label">Usuario</label>
+                <input type="text" class="form-control" id="username" name="username" required autofocus autocomplete="off">
             </div>
-            <div class="text-center mt-3 text-muted">
-                <small>Powered by Argos Server</small>
+            <div class="mb-4">
+                <label for="password" class="form-label">Contraseña</label>
+                <input type="password" class="form-control" id="password" name="password" required>
             </div>
-        </div>
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary py-2">Ingresar</button>
+            </div>
+        </form>
+    </div>
+    <div class="card-footer text-center py-3 border-0">
+        <small class="text-muted">v2.0 Production Build</small>
     </div>
 </div>
 
