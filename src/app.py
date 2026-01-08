@@ -9,7 +9,7 @@ import atexit
 from datetime import datetime, timedelta
 from threading import Lock, Thread
 from functools import wraps
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError # Requiere Python 3.9+
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for, Response, send_from_directory, flash
 from flask_cors import CORS
@@ -20,16 +20,28 @@ from email.mime.multipart import MIMEMultipart
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # --- FIX CRÍTICO: Definición de Rutas Absolutas ---
-# Esto asegura que Flask encuentre los templates sin importar desde dónde se ejecute Gunicorn
+# Obtenemos la ruta absoluta de ESTE archivo (app.py)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Definimos las carpetas relativas a este archivo
+# Estructura esperada:
+# /.../src/app.py
+# /.../src/templates/login.html
 TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
 DATA_FILE = os.path.join(BASE_DIR, 'data.json')
 
+logging.info(f"📍 Directorio Base: {BASE_DIR}")
+logging.info(f"📂 Directorio Templates configurado: {TEMPLATE_DIR}")
+
+# Verificación preliminar (Solo logs)
+if os.path.exists(os.path.join(TEMPLATE_DIR, 'login.html')):
+    logging.info("✅ login.html encontrado en el sistema de archivos.")
+else:
+    logging.error(f"❌ CRÍTICO: login.html NO encontrado en {TEMPLATE_DIR}")
+
 # Inicializamos Flask forzando las carpetas correctas
 app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
-logging.info(f"✅ Servidor Argos Iniciado. Directorio base: {BASE_DIR}")
-logging.info(f"📂 Templates cargados desde: {TEMPLATE_DIR}")
 
 # Configuración de Entorno
 FLASK_ENV = os.environ.get('FLASK_ENV', 'production')
@@ -67,7 +79,7 @@ def load_data_on_startup():
                 data_store = json.load(f)
                 logging.info(f"✅ Base de datos cargada: {len(data_store)} equipos.")
         else:
-            logging.info("ℹ️ No se encontró data.json, se iniciará una base nueva.")
+            logging.info("ℹ️ No se encontró data.json, iniciando vacío.")
     except Exception as e:
         logging.error(f"⚠️ Error cargando datos: {e}")
         data_store = {}
@@ -77,7 +89,6 @@ def save_data_on_exit():
     with data_lock:
         try:
             with open(DATA_FILE, 'w') as f:
-                # Limpiamos datos internos no serializables si los hubiera
                 clean_data = {k: v for k, v in data_store.items()}
                 json.dump(clean_data, f, indent=4)
             logging.info("✅ Datos guardados correctamente.")
@@ -89,21 +100,19 @@ EMAIL_ACCOUNTS = [
     {'sender': os.environ.get('EMAIL_SENDER_1'), 'password': os.environ.get('EMAIL_PASSWORD_1'), 'name': 'Argos Alerta 1'},
     {'sender': os.environ.get('EMAIL_SENDER_2'), 'password': os.environ.get('EMAIL_PASSWORD_2'), 'name': 'Argos Alerta 2'},
 ]
-# Filtrar cuentas vacías por si faltan env vars
 EMAIL_ACCOUNTS = [acc for acc in EMAIL_ACCOUNTS if acc['sender'] and acc['password']]
 
 EMAIL_CONFIG = {
     'server': 'smtp.gmail.com',
     'port': 587,
     'recipients': ['incidencias.vallas@gpovallas.com'],
-    'timeout_offline': 45 # Segundos sin señal para considerar OFFLINE
+    'timeout_offline': 45
 }
 
 email_lock = Lock()
 current_email_idx = 0
 
 def get_smtp_account():
-    """Rota entre cuentas de correo para evitar bloqueos."""
     global current_email_idx
     if not EMAIL_ACCOUNTS: return None
     with email_lock:
@@ -112,7 +121,6 @@ def get_smtp_account():
     return acc
 
 def send_email_alert(pc_name, alert_type, pc_data):
-    """Envía correos de desconexión o reconexión."""
     account = get_smtp_account()
     if not account: return
 
@@ -120,8 +128,6 @@ def send_email_alert(pc_name, alert_type, pc_data):
     subject = f"🚨 ALERTA: {pc_name} Desconectado" if is_offline else f"✅ RESTAURADO: {pc_name} Online"
     color = "#d9534f" if is_offline else "#5cb85c"
     title = "PÉRDIDA DE CONEXIÓN" if is_offline else "CONEXIÓN RESTABLECIDA"
-    
-    # Formatear hora
     now_str = datetime.now(TZ_CDMX).strftime('%d/%m/%Y %H:%M:%S')
 
     html_body = f"""
@@ -174,16 +180,14 @@ def login():
     if request.method == 'POST':
         user = request.form.get('username')
         pwd = request.form.get('password')
-        
         if USERS.get(user) == pwd:
             session['user'] = user
             session.permanent = True
-            logging.info(f"🔑 Login exitoso: {user}")
-            return redirect(url_for('monitor')) # Redirigir a monitor explícitamente
+            return redirect(url_for('monitor')) # FIX: Redirige a monitor, no index
         else:
-            flash("Credenciales incorrectas", "error")
-            logging.warning(f"⛔ Intento fallido login: {user}")
-            
+            flash('Credenciales Incorrectas', 'error')
+    
+    # Flask buscará esto en TEMPLATE_DIR
     return render_template('login.html')
 
 @app.route('/logout')
@@ -194,20 +198,19 @@ def logout():
 # --- 5. VISTAS DEL DASHBOARD (HTMLs) ---
 
 @app.route('/')
-@login_required
 def index():
-    return redirect(url_for('monitor'))
+    if 'user' in session:
+        return redirect(url_for('monitor'))
+    return redirect(url_for('login'))
 
 @app.route('/monitor')
 @login_required
 def monitor():
-    """Dashboard Principal con KPIs y Gráficas en Vivo."""
     return render_template('monitor.html')
 
 @app.route('/latency')
 @login_required
 def latency():
-    """Dashboard de Latencia y Fichas Técnicas."""
     return render_template('latency.html')
 
 @app.route('/map')
@@ -215,11 +218,10 @@ def latency():
 def map_view():
     return render_template('map.html')
 
-# --- 6. API (COMUNICACIÓN AGENTE <-> SERVIDOR <-> FRONTEND) ---
+# --- 6. API Y DEBUGGING ---
 
 @app.route('/report', methods=['POST'])
 def receive_report():
-    """Endpoint donde los NUCs envían sus datos (POST)."""
     try:
         data = request.json
         pc_name = data.get('pc_name')
@@ -228,19 +230,15 @@ def receive_report():
         now = datetime.now(TZ_CDMX)
         
         with data_lock:
-            # Detectar RECONEXIÓN
             if alerted_pcs.get(pc_name) == 'offline':
                 logging.info(f"🔄 {pc_name} ha vuelto ONLINE.")
                 Thread(target=send_email_alert, args=(pc_name, 'online', data)).start()
                 alerted_pcs[pc_name] = 'online'
 
-            # Actualizar datos
             data['last_seen'] = now.timestamp()
             data['last_seen_str'] = now.strftime('%Y-%m-%d %H:%M:%S')
-            
-            # Asegurar campos para evitar errores en frontend
             if 'latency_ms' not in data: data['latency_ms'] = 0
-            if 'unit' not in data: data['unit'] = "Sin Asignar" 
+            if 'unit' not in data: data['unit'] = "Sin Asignar"
             
             data_store[pc_name] = data
 
@@ -252,68 +250,77 @@ def receive_report():
 @app.route('/api/live-data', methods=['GET'])
 @login_required
 def live_data():
-    """Endpoint que consume el Frontend (Monitor/Latency)."""
     response_list = []
     now_ts = datetime.now(TZ_CDMX).timestamp()
 
     with data_lock:
         for pc_name, data in data_store.items():
-            # Calcular tiempo desde último reporte
             last_seen = data.get('last_seen', 0)
             diff = now_ts - last_seen
-            
-            # Copia para enviar
             pc_export = data.copy()
             
-            # Lógica de DESCONEXIÓN
             if diff > EMAIL_CONFIG['timeout_offline']:
                 pc_export['status'] = 'offline'
                 pc_export['latency_ms'] = 0
-                
-                # Disparar alerta si no se ha alertado antes
                 if alerted_pcs.get(pc_name) != 'offline':
                     logging.warning(f"🚨 {pc_name} ha caído OFFLINE.")
                     Thread(target=send_email_alert, args=(pc_name, 'offline', data)).start()
                     alerted_pcs[pc_name] = 'offline'
             else:
                 pc_export['status'] = 'online'
-                # Resetear alerta si estaba marcado como offline pero sigue reportando
                 if alerted_pcs.get(pc_name) == 'offline':
                     alerted_pcs[pc_name] = 'online'
 
             response_list.append(pc_export)
-
     return jsonify(response_list)
 
 @app.route('/download_csv')
 @login_required
 def download_csv():
-    """Descarga reporte CSV."""
     si = io.StringIO()
     cw = csv.writer(si)
     cw.writerow(['PC Name', 'Unit', 'Status', 'IP', 'Latency (ms)', 'CPU %', 'RAM %', 'Temp', 'Last Seen'])
-    
     with data_lock:
         for pc, d in data_store.items():
             cw.writerow([
-                pc, 
-                d.get('unit', 'N/A'),
-                d.get('status', 'unknown'),
-                d.get('ip', 'N/A'),
-                d.get('latency_ms', 0),
-                d.get('cpu_load_percent', 0),
-                d.get('ram_percent', 0),
-                d.get('basic_metrics', {}).get('temp', 'N/A'),
-                d.get('last_seen_str', '')
+                pc, d.get('unit', 'N/A'), d.get('status', 'unknown'), d.get('ip', 'N/A'),
+                d.get('latency_ms', 0), d.get('cpu_load_percent', 0), d.get('ram_percent', 0),
+                d.get('basic_metrics', {}).get('temp', 'N/A'), d.get('last_seen_str', '')
             ])
-            
     output = Response(si.getvalue(), mimetype="text/csv")
     output.headers["Content-Disposition"] = "attachment; filename=reporte_argos.csv"
     return output
+
+# --- RUTA DE DIAGNÓSTICO DE ARGOS ---
+# USA ESTA RUTA SI FALLA: https://tu-url.onrender.com/debug-argos
+@app.route('/debug-argos')
+def debug_files():
+    """Muestra la estructura de archivos del servidor para debuggear."""
+    output = []
+    output.append(f"Directorio Actual (getcwd): {os.getcwd()}")
+    output.append(f"Archivo app.py (file): {os.path.abspath(__file__)}")
+    output.append(f"Directorio BASE calculado: {BASE_DIR}")
+    output.append(f"Directorio TEMPLATES objetivo: {TEMPLATE_DIR}")
+    output.append("-" * 30)
+    output.append("LISTADO RECURSIVO DE ARCHIVOS:")
+    
+    # Listar todo lo que hay en /opt/render/project
+    root_to_scan = os.path.dirname(BASE_DIR) # Subimos un nivel para ver todo el proyecto
+    
+    for root, dirs, files in os.walk(root_to_scan):
+        level = root.replace(root_to_scan, '').count(os.sep)
+        indent = ' ' * 4 * (level)
+        output.append(f"{indent}[DIR] {os.path.basename(root)}/")
+        subindent = ' ' * 4 * (level + 1)
+        for f in files:
+            output.append(f"{subindent}{f}")
+            
+    return "<pre>" + "\n".join(output) + "</pre>"
 
 # --- EJECUCIÓN ---
 if __name__ == '__main__':
     load_data_on_startup()
     atexit.register(save_data_on_exit)
-    port = int(os.environ.get('PORT', 10000)) # Cambiado a 10000 default para Render
+    port = int(os.environ.get('PORT', 10000))
+    # Usar '0.0.0.0' es vital para Render
     app.run(host='0.0.0.0', port=port)
