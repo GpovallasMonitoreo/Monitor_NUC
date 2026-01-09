@@ -71,15 +71,22 @@
     </div>
 
     <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="bg-indigo-900 rounded-2xl p-6 text-white flex items-center justify-between">
+        <!-- Estado del Sistema - ACTUALIZABLE EN TIEMPO REAL -->
+        <div id="system-status-card" class="bg-indigo-900 rounded-2xl p-6 text-white flex items-center justify-between">
             <div>
                 <h4 class="font-bold text-lg">Estado del Sistema</h4>
-                <p class="text-indigo-200 text-sm">Todos los servicios operando normalmente.</p>
+                <p id="system-status-text" class="text-indigo-200 text-sm">Verificando conexión...</p>
+                <div id="system-stats" class="mt-2 text-xs text-indigo-300 hidden">
+                    <span id="online-count">0</span> en línea • 
+                    <span id="offline-count">0</span> offline • 
+                    <span id="critical-count">0</span> críticos
+                </div>
             </div>
-            <div class="bg-indigo-800 p-3 rounded-full animate-pulse">
-                <i data-lucide="check-circle" class="text-green-400"></i>
+            <div id="system-status-icon" class="bg-indigo-800 p-3 rounded-full">
+                <i data-lucide="circle" class="text-slate-400"></i>
             </div>
         </div>
+        
         <div class="bg-white rounded-2xl p-6 border border-slate-200 flex items-center justify-between">
             <div>
                 <h4 class="font-bold text-lg text-slate-800">Documentación</h4>
@@ -92,4 +99,139 @@
     </div>
 
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Crear iconos de Lucide
+    lucide.createIcons();
+    
+    // Función para actualizar el estado del sistema
+    async function updateSystemStatus() {
+        try {
+            const response = await fetch('/api/data');
+            const rawData = await response.json();
+            const devices = Object.values(rawData);
+            
+            // Contar estados
+            let onlineCount = 0;
+            let offlineCount = 0;
+            let criticalCount = 0;
+            let totalCount = devices.length;
+            
+            devices.forEach(dev => {
+                if (dev.status === 'offline') {
+                    offlineCount++;
+                } else if (dev.status === 'critical' || dev.cpu_load_percent > 90) {
+                    criticalCount++;
+                } else {
+                    onlineCount++;
+                }
+            });
+            
+            // Determinar estado general del sistema
+            let systemStatus = '';
+            let statusColor = '';
+            let statusIcon = 'check-circle';
+            let statusMessage = '';
+            let showStats = false;
+            
+            if (totalCount === 0) {
+                systemStatus = 'SIN DATOS';
+                statusColor = 'text-slate-400';
+                statusIcon = 'alert-circle';
+                statusMessage = 'No se detectaron equipos en la red.';
+            } else if (onlineCount === 0 && offlineCount > 0) {
+                systemStatus = 'SISTEMA CAÍDO';
+                statusColor = 'text-red-400';
+                statusIcon = 'x-circle';
+                statusMessage = `Todos los equipos (${offlineCount}) están offline.`;
+                showStats = true;
+            } else if (criticalCount > 0) {
+                systemStatus = 'ADVERTENCIA';
+                statusColor = 'text-amber-400';
+                statusIcon = 'alert-triangle';
+                statusMessage = `${criticalCount} equipo(s) en estado crítico.`;
+                showStats = true;
+            } else if (offlineCount > 0) {
+                systemStatus = 'ATENCIÓN PARCIAL';
+                statusColor = 'text-yellow-400';
+                statusIcon = 'alert-circle';
+                statusMessage = `${offlineCount} equipo(s) offline de ${totalCount} totales.`;
+                showStats = true;
+            } else {
+                systemStatus = 'OPERATIVO';
+                statusColor = 'text-green-400';
+                statusIcon = 'check-circle';
+                statusMessage = `Todos los equipos (${totalCount}) operando normalmente.`;
+                showStats = true;
+            }
+            
+            // Actualizar la interfaz
+            const statusCard = document.getElementById('system-status-card');
+            const statusText = document.getElementById('system-status-text');
+            const statusIconDiv = document.getElementById('system-status-icon');
+            const statsDiv = document.getElementById('system-stats');
+            const onlineSpan = document.getElementById('online-count');
+            const offlineSpan = document.getElementById('offline-count');
+            const criticalSpan = document.getElementById('critical-count');
+            
+            // Actualizar colores del card según estado
+            if (systemStatus === 'SISTEMA CAÍDO' || systemStatus === 'SIN DATOS') {
+                statusCard.className = 'bg-red-900 rounded-2xl p-6 text-white flex items-center justify-between';
+            } else if (systemStatus === 'ADVERTENCIA' || systemStatus === 'ATENCIÓN PARCIAL') {
+                statusCard.className = 'bg-amber-900 rounded-2xl p-6 text-white flex items-center justify-between';
+            } else {
+                statusCard.className = 'bg-indigo-900 rounded-2xl p-6 text-white flex items-center justify-between';
+            }
+            
+            // Actualizar contenido
+            statusText.innerHTML = `<span class="font-bold ${statusColor}">${systemStatus}</span> • ${statusMessage}`;
+            
+            // Actualizar icono
+            statusIconDiv.innerHTML = `<i data-lucide="${statusIcon}" class="${statusColor}"></i>`;
+            
+            // Actualizar estadísticas
+            if (showStats) {
+                onlineSpan.textContent = onlineCount;
+                offlineSpan.textContent = offlineCount;
+                criticalSpan.textContent = criticalCount;
+                statsDiv.classList.remove('hidden');
+            } else {
+                statsDiv.classList.add('hidden');
+            }
+            
+            // Volver a crear iconos (necesario después de cambiar dinámicamente)
+            lucide.createIcons();
+            
+        } catch (error) {
+            console.error('Error al verificar estado del sistema:', error);
+            
+            // Mostrar estado de error
+            document.getElementById('system-status-text').innerHTML = 
+                '<span class="font-bold text-red-400">ERROR DE CONEXIÓN</span> • No se pudo conectar con la API.';
+            
+            document.getElementById('system-status-icon').innerHTML = 
+                '<i data-lucide="wifi-off" class="text-red-400"></i>';
+            
+            document.getElementById('system-status-card').className = 
+                'bg-red-900 rounded-2xl p-6 text-white flex items-center justify-between';
+            
+            document.getElementById('system-stats').classList.add('hidden');
+            
+            lucide.createIcons();
+        }
+    }
+    
+    // Actualizar inmediatamente y luego cada 5 segundos
+    updateSystemStatus();
+    setInterval(updateSystemStatus, 5000);
+    
+    // También actualizar cuando la ventana vuelve a tener foco
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            updateSystemStatus();
+        }
+    });
+});
+</script>
 {% endblock %}
