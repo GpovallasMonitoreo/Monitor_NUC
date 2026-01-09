@@ -1,124 +1,75 @@
+{% extends 'base.html' %}
+
+{% block header_title %}Mapa de Red{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<div id="map" style="height: 80vh; width: 100%; border-radius: 12px; z-index: 1;"></div>
+{% endblock %}
+
 {% block scripts %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-<script src="{{ url_for('static', filename='js/datos_speedtest.js') }}"></script> 
-
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-
-    // --- BASE DE DATOS DE UBICACIONES (Simulada para NUCs sin GPS) ---
-    // Como tus NUCs no tienen GPS, les asignamos una ubicación fija por nombre.
-    const COORDS_DB = {
-        'LUNAMARIOPMX5264': [19.4326, -99.1332], // Zocalo
-        'MX_NUC_001': [19.4270, -99.1677],
-        'MX_NUC_002': [19.4350, -99.1400],
-    };
-
-    // Función para obtener coordenadas (o generar aleatoria cerca si no existe)
-    function getDeviceLocation(pcName) {
-        if (COORDS_DB[pcName]) return COORDS_DB[pcName];
-        
-        // Generar aleatorio cerca del centro para demo
-        const baseLat = 19.4326;
-        const baseLng = -99.1332;
-        const lat = baseLat + (Math.random() - 0.5) * 0.05;
-        const lng = baseLng + (Math.random() - 0.5) * 0.05;
-        
-        // Guardar para que no brinque en el mapa
-        COORDS_DB[pcName] = [lat, lng];
-        return [lat, lng];
-    }
-
-    // --- SETUP MAPA ---
-    const map = L.map('map', { renderer: L.canvas(), zoomControl: false }).setView([19.4326, -99.1332], 13);
+    // 1. INICIALIZAR MAPA
+    const map = L.map('map').setView([19.4326, -99.1332], 12); // CDMX
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: 'Argos', maxZoom: 19
+        attribution: 'Argos'
     }).addTo(map);
-    
-    // Panes
-    map.createPane('nucPane').style.zIndex = 700;
 
-    const layers = {
-        'BioBox': L.layerGroup().addTo(map), 
-        'ViaVerde': L.layerGroup().addTo(map), 
-        'Ecovallas': L.layerGroup().addTo(map), 
-        'General': L.layerGroup().addTo(map)
+    const markers = {};
+    
+    // Base de datos de coordenadas simuladas (por si el agente no manda GPS)
+    const FIXED_COORDS = {
+        'LUNAMARIOPMX5264': [19.4326, -99.1332],
+        'MX_NUC_001': [19.4270, -99.1677]
     };
 
-    const markerRegistry = {}; 
+    function getLocation(dev) {
+        // Prioridad: 1. GPS del agente, 2. Base de datos fija, 3. Aleatorio
+        if (dev.lat && dev.lng) return [dev.lat, dev.lng];
+        if (FIXED_COORDS[dev.pc_name]) return FIXED_COORDS[dev.pc_name];
+        
+        // Generar aleatorio y guardar para que no brinque
+        if (!FIXED_COORDS[dev.pc_name]) {
+            FIXED_COORDS[dev.pc_name] = [
+                19.4326 + (Math.random() - 0.5) * 0.1,
+                -99.1332 + (Math.random() - 0.5) * 0.1
+            ];
+        }
+        return FIXED_COORDS[dev.pc_name];
+    }
 
-    // --- CONSUMO DE API ---
-    async function fetchLiveNucs() {
+    async function updateMap() {
         try {
-            // 1. URL CORRECTA
-            const response = await fetch('/api/data');
-            const rawData = await response.json();
-            
-            // 2. CONVERTIR A LISTA
+            const res = await fetch('/api/data');
+            const rawData = await res.json();
             const devices = Object.values(rawData);
-            
-            updateMap(devices);
-            updateSidebars(devices);
-            updateKPIs(devices);
-            
-        } catch (e) { console.error("Error API Map:", e); }
-    }
 
-    function updateMap(devices) {
-        devices.forEach(dev => {
-            // Asignar ubicación artificial si no viene del agente
-            const loc = getDeviceLocation(dev.pc_name);
-            dev.lat = loc[0];
-            dev.lng = loc[1];
-            dev.unit = dev.unit || 'General';
+            devices.forEach(dev => {
+                const loc = getLocation(dev);
+                const color = dev.status === 'offline' ? '#94a3b8' : '#10b981';
+                
+                // Icono CSS personalizado
+                const icon = L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div style="background:${color}; width:14px; height:14px; border-radius:50%; border:2px solid white; box-shadow:0 2px 5px rgba(0,0,0,0.3);"></div>`,
+                    iconSize: [14, 14]
+                });
 
-            const uniqueId = dev.pc_name;
-
-            // Icono
-            let color = '#10b981'; // Green
-            if (dev.status === 'offline') color = '#94a3b8'; // Grey
-            else if ((dev.cpu_load_percent || 0) > 80) color = '#ef4444'; // Red
-
-            const icon = L.divIcon({
-                className: 'custom-marker',
-                html: `<div style="background:${color}; width:12px; height:12px; border-radius:50%; border:2px solid white; box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>`,
-                iconSize: [12, 12]
+                if (markers[dev.pc_name]) {
+                    markers[dev.pc_name].setLatLng(loc).setIcon(icon);
+                } else {
+                    markers[dev.pc_name] = L.marker(loc, {icon: icon})
+                        .bindPopup(`<b>${dev.pc_name}</b><br>${dev.status}`)
+                        .addTo(map);
+                }
             });
-
-            // Actualizar o Crear Marcador
-            if (markerRegistry[uniqueId]) {
-                markerRegistry[uniqueId].setLatLng([dev.lat, dev.lng]);
-                markerRegistry[uniqueId].setIcon(icon);
-            } else {
-                const marker = L.marker([dev.lat, dev.lng], { icon: icon, pane: 'nucPane' })
-                    .bindPopup(`<b>${dev.pc_name}</b><br>CPU: ${Math.round(dev.cpu_load_percent||0)}%<br>${dev.status}`);
-                
-                if(layers[dev.unit]) layers[dev.unit].addLayer(marker);
-                else layers['General'].addLayer(marker);
-                
-                markerRegistry[uniqueId] = marker;
-            }
-        });
+        } catch(e) { console.error(e); }
     }
 
-    function updateKPIs(devices) {
-        const online = devices.filter(d => d.status === 'online').length;
-        const issues = devices.filter(d => (d.cpu_load_percent||0) > 90).length;
-        
-        const kpiOnline = document.getElementById('kpi-online');
-        const kpiIssues = document.getElementById('kpi-issues');
-        
-        if(kpiOnline) kpiOnline.innerText = online;
-        if(kpiIssues) kpiIssues.innerText = issues;
-    }
-
-    function updateSidebars(devices) {
-        // Opcional: Lógica para actualizar lista lateral
-    }
-
-    // Loop
-    setInterval(fetchLiveNucs, 3000);
-    fetchLiveNucs();
+    setInterval(updateMap, 3000);
+    updateMap();
 });
 </script>
 {% endblock %}
