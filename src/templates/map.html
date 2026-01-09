@@ -7,38 +7,150 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
 <style>
-    #app-container { position: relative; height: calc(100vh - 5rem); width: 100%; overflow: hidden; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; }
-    #map { height: 100%; width: 100%; z-index: 1; background: #e2e8f0; }
+    /* --- CONTENEDOR PRINCIPAL --- */
+    #app-container { 
+        position: relative; 
+        height: calc(100vh - 5rem); 
+        width: 100%; 
+        overflow: hidden; 
+        background: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px; 
+    }
     
-    /* Sidebar */
-    #sidebar { position: absolute; top: 0; bottom: 0; right: 0; width: 350px; background: #ffffff; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 2000; display: flex; flex-direction: column; transition: transform 0.3s ease; transform: translateX(0); border-left: 1px solid #e2e8f0; }
+    #map { height: 100%; width: 100%; z-index: 1; background: #e2e8f0; }
+
+    /* --- SIDEBAR DERECHO (ESTILO EJECUTIVO) --- */
+    #sidebar {
+        position: absolute; top: 0; bottom: 0; right: 0;
+        width: 350px; 
+        background: #ffffff;
+        box-shadow: -2px 0 10px rgba(0,0,0,0.1); 
+        z-index: 2000;
+        display: flex; flex-direction: column;
+        transition: transform 0.3s ease;
+        transform: translateX(0);
+        border-left: 1px solid #e2e8f0;
+    }
     #sidebar.collapsed { transform: translateX(100%); }
-    #sidebar-toggle { position: absolute; top: 20px; right: 365px; z-index: 2001; background: #334155; color: white; border: none; width: 40px; height: 40px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: right 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+
+    /* Botón Toggle */
+    #sidebar-toggle {
+        position: absolute; top: 20px; right: 365px; z-index: 2001;
+        background: #334155; color: white; border: none;
+        width: 40px; height: 40px; border-radius: 6px;
+        cursor: pointer; display: flex; align-items: center; justify-content: center;
+        transition: right 0.3s ease; 
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
     #sidebar-toggle:hover { background: #1e293b; }
     #sidebar.collapsed + #sidebar-toggle { right: 20px; }
 
-    /* Cards */
-    .sidebar-header { padding: 18px 20px; background: #f8fafc; color: #1e293b; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; }
-    .sidebar-content { flex: 1; overflow-y: auto; padding: 15px; background: #ffffff; }
-    .control-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 12px; overflow: hidden; }
-    .card-header { padding: 10px 15px; background: #f8fafc; color: #334155; font-weight: 600; font-size: 0.85rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; cursor: pointer; }
-    .card-body.hidden { display: none; }
-    
-    /* Markers */
-    .nuc-marker { display: flex; justify-content: center; align-items: center; background: white; border-radius: 4px; border: 2px solid #64748b; width: 24px; height: 24px; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: all 0.3s; }
-    .nuc-online { border-color: #16a34a; color: #16a34a; background: #f0fdf4; }
-    .nuc-offline { border-color: #94a3b8; color: #94a3b8; background: #f8fafc; }
-    .nuc-critical { border-color: #dc2626; color: #dc2626; background: #fef2f2; animation: soft-pulse 2s infinite; z-index: 1000 !important; }
-    
-    @keyframes soft-pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); } 70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); } }
+    /* --- ESTILOS INTERNOS --- */
+    .sidebar-header { 
+        padding: 18px 20px; 
+        background: #f8fafc; 
+        color: #1e293b; 
+        display: flex; justify-content: space-between; align-items: center; 
+        border-bottom: 1px solid #e2e8f0; 
+    }
+    .sidebar-header h2 { margin: 0; font-size: 1rem; font-weight: 700; color: #0f172a; }
+    .sidebar-header small { color: #64748b; font-weight: 500; }
 
+    .sidebar-content { flex: 1; overflow-y: auto; padding: 15px; background: #ffffff; }
+    
+    /* Tarjetas de Control */
+    .control-card { 
+        background: #ffffff; 
+        border: 1px solid #e2e8f0; 
+        border-radius: 6px; 
+        margin-bottom: 12px; 
+        overflow: hidden; 
+    }
+    .card-header { 
+        padding: 10px 15px; 
+        background: #f8fafc; 
+        color: #334155; 
+        font-weight: 600; 
+        font-size: 0.85rem;
+        border-bottom: 1px solid #f1f5f9; 
+        display: flex; justify-content: space-between; cursor: pointer; 
+    }
+    .card-header:hover { background: #f1f5f9; color: #0f172a; }
+    .card-body { padding: 0; }
+    .card-body.hidden { display: none; }
+
+    .layer-toggle { padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; }
+    .layer-info { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; color: #475569; }
+    .color-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+    /* Switch Estándar */
+    .switch { position: relative; display: inline-block; width: 32px; height: 18px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .3s; border-radius: 34px; }
+    .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 2px; bottom: 2px; background-color: white; transition: .3s; border-radius: 50%; }
+    input:checked + .slider { background-color: #2563eb; }
+    input:checked + .slider:before { transform: translateX(14px); }
+
+    /* KPI Dashboard Flotante */
     .kpi-dashboard { position: absolute; top: 15px; left: 15px; z-index: 1000; display: flex; gap: 10px; }
-    .kpi-card { background: white; padding: 10px 15px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; min-width: 110px; }
+    .kpi-card { 
+        background: white; padding: 10px 15px; border-radius: 6px; 
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; 
+        min-width: 110px; 
+    }
     .kpi-title { font-size: 0.65rem; color: #64748b; font-weight: 700; text-transform: uppercase; }
     .kpi-value { font-size: 1.1rem; font-weight: 700; color: #0f172a; display: block; margin-top: 2px; }
+
+    /* --- ICONOS DE NUC (Estilo Profesional) --- */
+    .nuc-marker {
+        display: flex; justify-content: center; align-items: center;
+        background: white;
+        border-radius: 4px;
+        border: 2px solid #64748b;
+        width: 24px; height: 24px;
+        font-size: 12px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        transition: all 0.3s;
+    }
+    
+    /* Estados */
+    .nuc-online { border-color: #16a34a; color: #16a34a; background: #f0fdf4; }
+    .nuc-offline { border-color: #94a3b8; color: #94a3b8; background: #f8fafc; }
+    .nuc-critical { 
+        border-color: #dc2626; color: #dc2626; background: #fef2f2; 
+        animation: soft-pulse 2s infinite;
+        z-index: 1000 !important;
+    }
+
+    @keyframes soft-pulse {
+        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+        70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+    }
+
+    /* Listas del Sidebar */
+    .marker-list { max-height: 200px; overflow-y: auto; }
+    .marker-row { 
+        padding: 8px 15px; display: flex; align-items: center; 
+        border-bottom: 1px solid #f1f5f9; font-size: 0.8rem; 
+        cursor: pointer; color: #334155; 
+    }
+    .marker-row:hover { background: #f1f5f9; color: #0f172a; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 10px; }
+    .dot-green { background: #16a34a; }
+    .dot-red { background: #dc2626; }
+    
+    /* Iconos FontAwesome Custom (POI) */
+    .custom-fa-icon { 
+        display: flex !important; justify-content: center; align-items: center; 
+        background: white; border-radius: 50%; border: 1px solid #94a3b8; 
+        box-shadow: 0 2px 4px rgba(0,0,0,0.15); 
+    }
 </style>
 
 <div id="app-container">
+    
     <div class="kpi-dashboard">
         <div class="kpi-card">
             <span class="kpi-title">Equipos Activos</span>
@@ -54,52 +166,170 @@
 
     <div id="sidebar">
         <div class="sidebar-header">
-            <div><h2>Panel Ejecutivo</h2><small>Infraestructura</small></div>
+            <div>
+                <h2>Panel Ejecutivo</h2>
+                <small>Infraestructura</small>
+            </div>
             <i class="fa-solid fa-map text-slate-400"></i>
         </div>
+
         <div class="sidebar-content">
+            <!-- Panel de Unidades de Negocio (del primer código) -->
             <div class="control-card">
                 <div class="card-header" onclick="toggleCard(this)">
                     <span><i class="fa-solid fa-layer-group text-blue-600 mr-2"></i> Unidades de Negocio</span>
-                    <i class="fa-solid fa-chevron-down text-slate-400"></i>
+                    <i class="fa-solid fa-chevron-down text-slate-400 transition-transform"></i>
                 </div>
-                <div class="card-body p-2" id="dynamic-panels">
+                <div class="card-body hidden" id="dynamic-panels">
+                    <!-- Se llenará dinámicamente con los dispositivos -->
+                </div>
+            </div>
+            
+            <!-- Nuevos controles del segundo código -->
+            <div class="control-card" style="border-left: 3px solid #2563eb;">
+                <div class="card-header">
+                    <span><i class="fa-solid fa-layer-group text-blue-600 mr-2"></i> Capas de Análisis</span>
+                </div>
+                <div class="card-body">
+                    <div class="layer-toggle">
+                        <div class="layer-info"><span class="color-dot" style="background:#2563eb;"></span> Red Internet</div>
+                        <label class="switch"><input type="radio" name="exclusive-mode" checked onchange="activateExclusiveMode('red')"><span class="slider"></span></label>
                     </div>
+                    <div class="layer-toggle">
+                        <div class="layer-info"><span class="color-dot" style="background:#ef4444;"></span> Calor: Afluencia</div>
+                        <label class="switch"><input type="radio" name="exclusive-mode" onchange="activateExclusiveMode('afluencia')"><span class="slider"></span></label>
+                    </div>
+                    <div class="layer-toggle">
+                        <div class="layer-info"><span class="color-dot" style="background:#0f172a;"></span> Calor: Fallas</div>
+                        <label class="switch"><input type="radio" name="exclusive-mode" onchange="activateExclusiveMode('fallas')"><span class="slider"></span></label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-card">
+                <div class="card-header" onclick="toggleCard(this)">
+                    <span><i class="fa-solid fa-clock mr-2"></i> Filtro de Hora (Afluencia)</span>
+                    <i class="fa-solid fa-chevron-down text-slate-400 transition-transform"></i>
+                </div>
+                <div class="card-body hidden">
+                    <div style="padding: 15px;">
+                        <select id="heatmap-time-selector" class="w-full p-2 border border-slate-300 rounded text-sm bg-white" onchange="updateAfluenciaHeatmap(this.value)">
+                            <option value="off">Desactivado</option>
+                            <option value="6">06:00 AM - Inicio Jornada</option>
+                            <option value="9" selected>09:00 AM - Hora Pico</option>
+                            <option value="12">12:00 PM - Mediodía</option>
+                            <option value="15">03:00 PM - Tarde</option>
+                            <option value="18">06:00 PM - Salida Laboral</option>
+                            <option value="21">09:00 PM - Noche</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-card">
+                <div class="card-header" onclick="toggleCard(this)">
+                    <span><i class="fa-solid fa-building mr-2"></i> Puntos de Referencia</span>
+                    <i class="fa-solid fa-chevron-down text-slate-400 transition-transform"></i>
+                </div>
+                <div class="card-body hidden">
+                    <div class="layer-toggle">
+                        <div class="layer-info"><span class="color-dot" style="background:#800080;"></span> Sitios de Interés (POI)</div>
+                        <label class="switch"><input type="checkbox" checked onchange="toggleLayer('poi', this.checked)"><span class="slider"></span></label>
+                    </div>
+                    <div class="layer-toggle">
+                        <div class="layer-info"><span class="color-dot" style="background:#0000ff;"></span> Metro CDMX</div>
+                        <label class="switch"><input type="checkbox" checked onchange="toggleLayer('metro', this.checked)"><span class="slider"></span></label>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+
     <button id="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="{{ url_for('static', filename='js/datos_speedtest.js') }}"></script> 
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="{{ url_for('static', filename='js/datos_speedtest.js') }}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     let map = null;
-    const layers = { 'BioBox': L.layerGroup(), 'ViaVerde': L.layerGroup(), 'Ecovallas': L.layerGroup(), 'General': L.layerGroup() };
+    const layers = { 
+        // Capas del primer código
+        'BioBox': L.layerGroup(), 
+        'ViaVerde': L.layerGroup(), 
+        'Ecovallas': L.layerGroup(), 
+        'General': L.layerGroup(),
+        // Capas del segundo código
+        'high': L.layerGroup(), 
+        'mid': L.layerGroup(), 
+        'low': L.layerGroup(),
+        'metro': L.layerGroup(), 
+        'poi': L.layerGroup(),
+        'afluencia': L.layerGroup(), 
+        'fallas_electricas': L.layerGroup()
+    };
     const markers = {};
+    let afluenciaHeatmapLayers = {};
+
+    // Datos del segundo código
+    const DATA_INTERMITENCIAS = [
+        [19.357, -99.299, 1.0], [19.388, -99.193, 0.9], [19.288, -99.167, 0.8], [19.278, -99.102, 0.75],
+        [19.309, -99.123, 0.7], [19.296, -99.192, 0.7], [19.160, -99.000, 0.9], [19.400, -99.100, 0.85],
+        [19.417, -99.114, 0.9], [19.443, -99.145, 1.0]
+    ];
+
+    const DATA_POI = [
+        [19.4678, -99.2132, "Tecamachalco", "house", "purple"], [19.4687, -99.2155, "Parque de los Venados", "tree", "purple"],
+        [19.4326, -99.1332, "Zócalo CDMX", "landmark", "purple"], [19.4385, -99.1764, "Monumento Revolución", "monument", "purple"],
+        [19.4380, -99.1687, "Ángel Independencia", "star", "purple"], [19.4449, -99.1820, "Museo Soumaya", "building", "purple"]
+    ];
+
+    const PUNTOS_BASE_AFLUENCIA = [
+        [19.4326, -99.1332, 0.9], [19.4353, -99.1411, 0.85], [19.4290, -99.1380, 0.8],
+        [19.4240, -99.1650, 0.75], [19.4220, -99.1700, 0.7], [19.4330, -99.2000, 0.65], 
+        [19.4350, -99.2050, 0.6], [19.4110, -99.1800, 0.7], [19.4090, -99.1850, 0.65]
+    ];
 
     function init() {
-        map = L.map('map', { zoomControl: false }).setView([19.4326, -99.1332], 12);
+        // Inicializar mapa como en el primer código
+        map = L.map('map', { zoomControl: false, renderer: L.canvas() }).setView([19.4326, -99.1332], 12);
         L.control.zoom({ position: 'topleft' }).addTo(map);
         
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
             attribution: 'Argos Analytics', maxZoom: 19
         }).addTo(map);
 
+        // Crear panes como en ambos códigos
         map.createPane('nucPane').style.zIndex = 700;
+        map.createPane('redPane').style.zIndex = 400;
+        map.createPane('heatmapPane').style.zIndex = 450;
+        map.createPane('markerPane').style.zIndex = 600;
 
-        // Añadir capas al mapa
-        Object.values(layers).forEach(layer => layer.addTo(map));
+        // Inicializar capas adicionales del segundo código
+        initRedData();
+        initAfluenciaData();
+        initFallasElectricas();
+        initInfraestructura();
 
+        // Añadir capas de NUCs (del primer código)
+        ['BioBox', 'ViaVerde', 'Ecovallas', 'General'].forEach(layer => {
+            if (layers[layer]) layers[layer].addTo(map);
+        });
+
+        // Activar capa por defecto (Red Internet)
+        activateExclusiveMode('red');
+
+        // Cargar datos en vivo
         fetchLiveNucs();
         setInterval(fetchLiveNucs, 3000);
     }
 
+    // --- FUNCIONES DEL PRIMER CÓDIGO (modificadas) ---
     async function fetchLiveNucs() {
         try {
-            // URL CORRECTA
+            // URL CORRECTA del primer código
             const response = await fetch('/api/data');
             const rawData = await response.json();
             const devices = Object.values(rawData);
@@ -112,6 +342,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateMap(devices) {
+        // Limpiar capas anteriores
+        ['BioBox', 'ViaVerde', 'Ecovallas', 'General'].forEach(key => {
+            if (layers[key]) layers[key].clearLayers();
+        });
+
         devices.forEach(dev => {
             // Validar Coordenadas (Si no vienen, no se pinta)
             if (!dev.lat || !dev.lng) return;
@@ -119,62 +354,255 @@ document.addEventListener('DOMContentLoaded', () => {
             const unit = dev.unit || 'General';
             const layer = layers[unit] || layers['General'];
             
-            // Icono
+            // Icono - Mezcla de ambos códigos
             let statusClass = 'nuc-online';
             let iconName = 'desktop';
-            if (dev.status === 'offline') { statusClass = 'nuc-offline'; iconName = 'power-off'; }
-            if (dev.cpu_load_percent > 90) { statusClass = 'nuc-critical'; iconName = 'triangle-exclamation'; }
+            let tooltipStatus = 'ONLINE';
+            
+            if (dev.status === 'offline') { 
+                statusClass = 'nuc-offline'; 
+                iconName = 'power-off'; 
+                tooltipStatus = 'OFFLINE';
+            }
+            if (dev.cpu_load_percent > 90 || dev.status === 'critical') { 
+                statusClass = 'nuc-critical'; 
+                iconName = 'triangle-exclamation'; 
+                tooltipStatus = 'CRÍTICO';
+            }
 
             const icon = L.divIcon({
                 className: 'custom-div-icon',
                 html: `<div class="nuc-marker ${statusClass}"><i class="fa-solid fa-${iconName}"></i></div>`,
-                iconSize: [24, 24], iconAnchor: [12, 12]
+                iconSize: [24, 24], 
+                iconAnchor: [12, 12]
             });
 
             if (markers[dev.pc_name]) {
                 markers[dev.pc_name].setLatLng([dev.lat, dev.lng]).setIcon(icon);
             } else {
-                markers[dev.pc_name] = L.marker([dev.lat, dev.lng], { icon: icon, pane: 'nucPane' })
-                    .bindPopup(`<b>${dev.pc_name}</b><br>${unit}<br>CPU: ${Math.round(dev.cpu_load_percent||0)}%`)
-                    .addTo(layer);
+                markers[dev.pc_name] = L.marker([dev.lat, dev.lng], { 
+                    icon: icon, 
+                    pane: 'nucPane' 
+                })
+                .bindPopup(`<b>${dev.pc_name}</b><br>${unit}<br>CPU: ${Math.round(dev.cpu_load_percent||0)}%`)
+                .addTo(layer);
             }
         });
     }
 
     function updateSidebarList(devices) {
         const container = document.getElementById('dynamic-panels');
-        let html = '';
+        if (!container) return;
+        
+        // Agrupar por unidad
+        const groups = {};
         devices.forEach(d => {
-            const color = d.status === 'online' ? 'bg-emerald-500' : 'bg-red-500';
-            html += `
-                <div class="flex items-center justify-between p-2 border-b border-slate-50 hover:bg-slate-50 cursor-pointer" onclick="zoomTo('${d.pc_name}')">
-                    <div class="flex items-center gap-2">
-                        <div class="w-2 h-2 rounded-full ${color}"></div>
-                        <span class="text-sm font-medium text-slate-700">${d.pc_name}</span>
-                    </div>
-                    <span class="text-xs text-slate-400">${d.unit || '-'}</span>
-                </div>
-            `;
+            const unit = d.unit || 'General';
+            if (!groups[unit]) groups[unit] = [];
+            groups[unit].push(d);
         });
-        container.innerHTML = html;
-    }
 
-    window.zoomTo = (name) => {
-        const m = markers[name];
-        if (m) { map.flyTo(m.getLatLng(), 16); m.openPopup(); }
-    };
+        // Limpiar y recrear paneles si es la primera vez
+        if (!container.querySelector('.marker-list')) {
+            container.innerHTML = '';
+            
+            Object.entries(groups).forEach(([unitName, devs]) => {
+                if (devs.length > 0) {
+                    const panelHtml = `
+                        <div class="marker-row" style="padding: 8px 15px; border-bottom: 1px solid #f1f5f9; font-size: 0.8rem; background: #f8fafc; font-weight: 600; color: #334155;">
+                            ${unitName} <small>(${devs.length})</small>
+                        </div>
+                        ${devs.map(d => `
+                            <div class="marker-row" onclick="zoomTo('${d.pc_name}')">
+                                <div class="status-dot ${d.status === 'online' ? 'dot-green' : 'dot-red'}"></div>
+                                <span class="text-sm font-medium text-slate-700" style="flex: 1;">${d.pc_name}</span>
+                                <span class="text-xs text-slate-400">${Math.round(d.cpu_load_percent||0)}%</span>
+                            </div>
+                        `).join('')}
+                    `;
+                    
+                    const unitDiv = document.createElement('div');
+                    unitDiv.innerHTML = panelHtml;
+                    container.appendChild(unitDiv);
+                }
+            });
+        } else {
+            // Actualizar puntos de estado existentes
+            devices.forEach(d => {
+                const dot = document.querySelector(`[onclick*="${d.pc_name}"] .status-dot`);
+                if (dot) {
+                    dot.className = `status-dot ${d.status === 'online' ? 'dot-green' : 'dot-red'}`;
+                }
+            });
+        }
+    }
 
     function updateKPIs(devices) {
         const online = devices.filter(d => d.status === 'online').length;
-        const issues = devices.filter(d => d.status === 'critical' || d.status === 'offline').length;
+        const issues = devices.filter(d => d.status === 'critical' || d.cpu_load_percent > 90 || d.status === 'offline').length;
         document.getElementById('kpi-online').innerText = online;
         document.getElementById('kpi-issues').innerText = issues;
     }
 
-    // UI Helpers
-    window.toggleSidebar = () => document.getElementById('sidebar').classList.toggle('collapsed');
-    window.toggleCard = (h) => { h.nextElementSibling.classList.toggle('hidden'); };
+    // --- FUNCIONES DEL SEGUNDO CÓDIGO (adaptadas) ---
+    function initRedData() {
+        if (typeof SPEEDTEST_DATA === 'undefined') {
+            return;
+        }
+        
+        const feats = { high: [], mid: [], low: [] };
+        
+        SPEEDTEST_DATA.features.forEach(f => {
+            const d = f.properties.download;
+            if(d > 50) feats.high.push(f); 
+            else if(d > 10) feats.mid.push(f); 
+            else feats.low.push(f);
+        });
 
+        const style = (c) => ({ weight: 1, color: c, fillOpacity: 0.4, fillColor: c });
+        const onEach = (f, l) => { 
+            if(f.properties) l.bindPopup(`<b>Zona: ${Math.round(f.properties.download)} Mbps</b>`); 
+        };
+
+        layers.high.addLayer(L.geoJson(feats.high, { 
+            pane: 'redPane', 
+            style: style('#16a34a'), 
+            onEachFeature: onEach 
+        }));
+        layers.mid.addLayer(L.geoJson(feats.mid, { 
+            pane: 'redPane', 
+            style: style('#eab308'), 
+            onEachFeature: onEach 
+        }));
+        layers.low.addLayer(L.geoJson(feats.low, { 
+            pane: 'redPane', 
+            style: style('#ef4444'), 
+            onEachFeature: onEach 
+        }));
+    }
+
+    function initAfluenciaData() {
+        const horarios = [6, 9, 12, 15, 18, 21];
+        
+        horarios.forEach(hora => {
+            let factor = 0.5;
+            if(hora === 9 || hora === 18) factor = 1.0;
+            else if(hora === 6 || hora === 21) factor = 0.6;
+            else factor = 0.8;
+
+            const heatData = [];
+            PUNTOS_BASE_AFLUENCIA.forEach(punto => {
+                let intensidad = punto[2] * factor;
+                heatData.push([punto[0], punto[1], intensidad]);
+                // Generar nube alrededor
+                for (let i = 0; i < 20; i++) {
+                    const nLat = punto[0] + (Math.random() - 0.5) * 0.02;
+                    const nLon = punto[1] + (Math.random() - 0.5) * 0.02;
+                    heatData.push([nLat, nLon, intensidad * 0.7]);
+                }
+            });
+
+            afluenciaHeatmapLayers[hora] = L.heatLayer(heatData, {
+                radius: 35, blur: 25, minOpacity: 0.4, pane: 'heatmapPane',
+                gradient: {0.4: 'blue', 0.7: 'yellow', 1.0: 'red'}
+            });
+        });
+    }
+
+    function initFallasElectricas() {
+        const heatData = [];
+        DATA_INTERMITENCIAS.forEach(punto => {
+            heatData.push([punto[0], punto[1], punto[2]]);
+            for (let i = 0; i < 30; i++) {
+                const nLat = punto[0] + (Math.random() - 0.5) * 0.04;
+                const nLon = punto[1] + (Math.random() - 0.5) * 0.04;
+                heatData.push([nLat, nLon, punto[2] * 0.6]);
+            }
+        });
+        L.heatLayer(heatData, {
+            radius: 40, blur: 30, minOpacity: 0.5, pane: 'heatmapPane',
+            gradient: {0.0: 'orange', 0.5: 'red', 1.0: '#3f0000'}
+        }).addTo(layers.fallas_electricas);
+    }
+
+    function initInfraestructura() {
+        // POIs
+        DATA_POI.forEach(p => {
+            const icon = L.divIcon({ 
+                html: `<i class="fa-solid fa-${p[3]}" style="color:${p[4]}; font-size:14px;"></i>`, 
+                className: 'custom-fa-icon', 
+                iconSize: [26, 26] 
+            });
+            L.marker([p[0], p[1]], {icon: icon, pane: 'markerPane'})
+                .bindPopup(`<b>${p[2]}</b>`)
+                .addTo(layers.poi);
+        });
+        
+        // Líneas de metro
+        const lines = [
+            {c:'#f06292', p:[[19.42,-99.12],[19.43,-99.14],[19.44,-99.15]]},
+            {c:'#fbbf24', p:[[19.45,-99.10],[19.44,-99.12],[19.41,-99.13]]}
+        ];
+        lines.forEach(l => L.polyline(l.p, {color: l.c, weight: 4, pane:'markerPane'}).addTo(layers.metro));
+    }
+
+    // --- FUNCIONES UI COMPARTIDAS ---
+    window.zoomTo = (name) => {
+        const m = markers[name];
+        if (m) { 
+            map.flyTo(m.getLatLng(), 16); 
+            m.openPopup(); 
+        }
+    };
+
+    window.toggleSidebar = () => {
+        const sidebar = document.getElementById('sidebar');
+        sidebar.classList.toggle('collapsed');
+    };
+
+    window.toggleCard = (h) => { 
+        h.nextElementSibling.classList.toggle('hidden'); 
+        const icon = h.querySelector('i.fa-chevron-down');
+        if (icon) icon.classList.toggle('fa-rotate-180');
+    };
+
+    window.activateExclusiveMode = (mode) => {
+        // Remover capas de análisis
+        ['high', 'mid', 'low', 'afluencia', 'fallas_electricas'].forEach(k => {
+            if (layers[k]) map.removeLayer(layers[k]);
+        });
+        
+        if (mode === 'red') {
+            // Activar capa de red
+            map.addLayer(layers.high); 
+            map.addLayer(layers.mid); 
+            map.addLayer(layers.low);
+        } else if (mode === 'afluencia') {
+            // Activar capa de afluencia
+            map.addLayer(layers.afluencia); 
+            updateAfluenciaHeatmap(document.getElementById('heatmap-time-selector').value);
+        } else if (mode === 'fallas') {
+            // Activar capa de fallas
+            map.addLayer(layers.fallas_electricas);
+        }
+    };
+
+    window.updateAfluenciaHeatmap = (h) => {
+        layers.afluencia.clearLayers();
+        if (h !== 'off' && afluenciaHeatmapLayers[h]) {
+            layers.afluencia.addLayer(afluenciaHeatmapLayers[h]);
+        }
+    };
+
+    window.toggleLayer = (lid, ch) => {
+        if (ch) {
+            map.addLayer(layers[lid]);
+        } else {
+            map.removeLayer(layers[lid]);
+        }
+    };
+
+    // Inicializar
     init();
 });
 </script>
