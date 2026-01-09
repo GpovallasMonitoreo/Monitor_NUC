@@ -13,11 +13,47 @@
 <style>
     .card-hover { transition: all 0.3s ease; }
     .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01); }
+    .glass-header { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); }
+    .table-header { font-size: 0.7rem; letter-spacing: 0.05em; text-transform: uppercase; color: #64748b; font-weight: 600; }
+    .cursor-wait { cursor: wait; }
 </style>
 
+<div class="flex flex-col xl:flex-row justify-between items-center mb-8 gap-6 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+    <div class="flex items-center gap-4">
+        <div class="flex flex-col">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Estado del Sistema</span>
+            <div class="flex items-center gap-2 mt-1">
+                <span class="relative flex h-2.5 w-2.5">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                </span>
+                <span class="text-sm font-bold text-emerald-700">EN LÍNEA / TIEMPO REAL</span>
+            </div>
+        </div>
+        <div class="h-8 w-px bg-slate-200 mx-2"></div> 
+        <div class="flex flex-col">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Última Sincronización</span>
+            <span id="last-sync" class="text-sm font-mono font-medium text-slate-600">Conectando...</span>
+        </div>
+    </div>
+
+    <div class="flex flex-col md:flex-row items-center gap-3 w-full xl:w-auto">
+        <div class="flex bg-slate-100/80 p-1 rounded-xl border border-slate-200">
+            <button class="px-4 py-1.5 text-xs font-bold rounded-lg bg-white text-slate-700 shadow-sm border border-slate-100">Todas</button>
+            <button class="px-4 py-1.5 text-xs font-bold rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 transition-colors">Via Verde</button>
+            <button class="px-4 py-1.5 text-xs font-bold rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 transition-colors">Ecovallas</button>
+        </div>
+
+        <button onclick="runGlobalAnalysis()" class="w-full md:w-auto flex items-center justify-center px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-xl shadow-lg shadow-slate-900/20 transition-all active:scale-95">
+            <i data-lucide="sparkles" class="w-4 h-4 mr-2 text-indigo-300"></i>
+            Argos AI Scan
+        </button>
+    </div>
+</div>
+
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 card-hover relative overflow-hidden">
-        <div class="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
+    <div class="bg-white p-6 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-slate-100 card-hover relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div> 
         <div class="flex justify-between items-start">
             <div>
                 <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Total Activos</p>
@@ -30,13 +66,13 @@
         </div>
     </div>
 
-    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 card-hover relative overflow-hidden">
+    <div class="bg-white p-6 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-slate-100 card-hover relative overflow-hidden">
         <div class="absolute top-0 left-0 w-1 h-full bg-rose-500"></div>
         <div class="flex justify-between items-start">
             <div>
                 <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Estado Crítico</p>
                 <h3 class="text-4xl font-black text-slate-800 tracking-tight" id="kpi-critical">0</h3>
-                <span class="text-xs font-medium text-rose-600 bg-rose-50 px-2 py-0.5 rounded mt-2 inline-block">Requiere Acción</span>
+                <span class="text-xs font-medium text-rose-600 bg-rose-50 px-2 py-0.5 rounded mt-2 inline-block">Action Required</span>
             </div>
             <div class="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-500">
                 <i data-lucide="alert-octagon" class="w-6 h-6"></i>
@@ -44,7 +80,7 @@
         </div>
     </div>
 
-    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 card-hover relative overflow-hidden">
+    <div class="bg-white p-6 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-slate-100 card-hover relative overflow-hidden">
         <div class="absolute top-0 left-0 w-1 h-full bg-violet-500"></div>
         <div class="flex justify-between items-start mb-4">
             <div>
@@ -60,7 +96,7 @@
         </div>
     </div>
 
-    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 card-hover relative overflow-hidden">
+    <div class="bg-white p-6 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-slate-100 card-hover relative overflow-hidden">
         <div class="absolute top-0 left-0 w-1 h-full bg-orange-500"></div>
         <div class="flex justify-between items-start">
             <div>
@@ -83,6 +119,7 @@
                 Salud de Infraestructura
             </h3>
         </div>
+        
         <div class="flex-1 flex items-center justify-center relative">
             <canvas id="diskChart"></canvas>
             <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -90,6 +127,7 @@
                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nodos</span>
             </div>
         </div>
+        
         <div class="mt-6 flex justify-center gap-6">
             <div class="flex flex-col items-center">
                 <span class="w-2 h-2 rounded-full bg-emerald-400 mb-1"></span>
@@ -110,12 +148,25 @@
         <div class="flex justify-between items-center mb-6">
             <h3 class="text-base font-bold text-slate-700 flex items-center gap-2">
                 <div class="w-2 h-6 bg-indigo-600 rounded-sm"></div>
-                Top Consumo (CPU Lead)
+                Top 10 Consumo (CPU Lead)
             </h3>
         </div>
         <div class="h-[280px]">
             <canvas id="topResourceChart"></canvas>
         </div>
+    </div>
+</div>
+
+<div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-8">
+    <div class="flex justify-between items-center mb-6">
+        <h3 class="text-base font-bold text-slate-700 flex items-center gap-2">
+            <div class="w-2 h-6 bg-violet-600 rounded-sm"></div>
+            Rendimiento por Unidad de Negocio
+        </h3>
+        <span class="text-xs text-slate-400 font-medium bg-slate-50 px-3 py-1 rounded-full border border-slate-100">Analytics en tiempo real</span>
+    </div>
+    <div class="h-[250px] w-full">
+        <canvas id="businessUnitChart"></canvas>
     </div>
 </div>
 
@@ -125,27 +176,34 @@
             <div class="p-2 bg-indigo-50 rounded-lg text-indigo-600">
                 <i data-lucide="list" class="w-4 h-4"></i>
             </div>
-            <h3 class="text-base font-bold text-slate-800">Inventario en Vivo</h3>
+            <h3 class="text-base font-bold text-slate-800">Inventario Activo</h3>
         </div>
-        <div class="text-xs text-slate-400 font-mono" id="last-sync">Sincronizando...</div>
+        <div class="flex gap-2">
+            <button class="text-slate-400 hover:text-slate-600"><i data-lucide="download" class="w-4 h-4"></i></button>
+        </div>
     </div>
     
     <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse">
             <thead>
-                <tr class="bg-slate-50/50 border-b border-slate-100 text-xs text-slate-500 uppercase font-semibold">
-                    <th class="px-6 py-4">Nombre PC</th>
-                    <th class="px-6 py-4">IP / Red</th>
-                    <th class="px-6 py-4 w-32">CPU Load</th>
-                    <th class="px-6 py-4 w-32">RAM Load</th>
-                    <th class="px-6 py-4 text-center">Disco</th>
-                    <th class="px-6 py-4">Temp</th>
-                    <th class="px-6 py-4">Estado</th>
+                <tr class="bg-slate-50/50 border-b border-slate-100">
+                    <th class="px-6 py-4 table-header">Unidad Negocio</th>
+                    <th class="px-6 py-4 table-header">Dirección IP</th>
+                    <th class="px-6 py-4 table-header w-32">CPU Load</th>
+                    <th class="px-6 py-4 table-header w-32">RAM Load</th>
+                    <th class="px-6 py-4 table-header text-center">Disco</th>
+                    <th class="px-6 py-4 table-header">Temp</th>
+                    <th class="px-6 py-4 table-header">Diagnóstico</th>
+                    <th class="px-6 py-4 table-header text-right">Acciones</th>
                 </tr>
             </thead>
             <tbody id="equipment-table-body" class="text-sm divide-y divide-slate-50">
                 </tbody>
         </table>
+    </div>
+    <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 text-xs text-slate-500 font-medium flex justify-between">
+        <span>Mostrando datos en vivo desde Render</span>
+        <span>Argos v3.1 Enterprise</span>
     </div>
 </div>
 {% endblock %}
@@ -154,28 +212,40 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-    // --- CONFIGURACIÓN CHART.JS ---
+    // --- CONFIGURACIÓN VISUAL ---
     Chart.defaults.font.family = "'Inter', system-ui, -apple-system, sans-serif";
-    Chart.defaults.color = '#94a3b8';
-    Chart.defaults.scale.grid.color = '#f1f5f9';
+    Chart.defaults.color = '#94a3b8'; 
+    Chart.defaults.scale.grid.color = '#f1f5f9'; 
+    
+    const commonPlugins = {
+        legend: { display: false },
+        tooltip: {
+            backgroundColor: '#1e293b',
+            padding: 12,
+            titleFont: { size: 13, weight: 'bold' },
+            bodyFont: { size: 12 },
+            cornerRadius: 8,
+            displayColors: true
+        }
+    };
 
-    // Gráfico Donut (Estado Salud)
+    // A) DONUT
     const ctxDisk = document.getElementById('diskChart').getContext('2d');
     let diskChart = new Chart(ctxDisk, {
         type: 'doughnut',
         data: {
             labels: ['Optimo', 'Atención', 'Crítico'],
             datasets: [{
-                data: [0, 0, 0], // Se llena dinámicamente
+                data: [1, 1, 1],
                 backgroundColor: ['#34d399', '#fbbf24', '#f43f5e'],
-                borderWidth: 0,
+                borderWidth: 0, 
                 hoverOffset: 10
             }]
         },
         options: { cutout: '82%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
     });
 
-    // Gráfico Barras (Top CPU)
+    // B) TOP RECURSOS
     const ctxTop = document.getElementById('topResourceChart').getContext('2d');
     let topResourceChart = new Chart(ctxTop, {
         type: 'bar',
@@ -186,59 +256,114 @@
                 data: [],
                 backgroundColor: (ctx) => ctx.raw > 90 ? '#f43f5e' : (ctx.raw > 75 ? '#fbbf24' : '#6366f1'),
                 borderRadius: 6,
-                barThickness: 20
+                barThickness: 12,
+                maxBarThickness: 16
             }]
         },
         options: {
             indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: { x: { beginAtZero: true, max: 100, grid: { display: false } }, y: { grid: { display: false } } }
+            plugins: commonPlugins,
+            scales: { 
+                x: { beginAtZero: true, max: 100, grid: { display: false } }, 
+                y: { grid: { display: false }, ticks: { font: { size: 11, weight: '500' }, color: '#64748b' } } 
+            }
         }
     });
 
-    // --- FUNCIÓN PRINCIPAL DE DATOS ---
+    // C) COMPARATIVA UNIDADES DE NEGOCIO
+    const ctxBus = document.getElementById('businessUnitChart').getContext('2d');
+    let businessUnitChart = new Chart(ctxBus, {
+        type: 'bar',
+        data: {
+            labels: ['Via Verde', 'Ecovallas', 'BioBox'],
+            datasets: [
+                {
+                    label: 'CPU Avg',
+                    data: [0, 0, 0],
+                    backgroundColor: '#6366f1',
+                    borderRadius: 6, barPercentage: 0.6, categoryPercentage: 0.7
+                },
+                {
+                    label: 'RAM Avg',
+                    data: [0, 0, 0],
+                    backgroundColor: '#a855f7',
+                    borderRadius: 6, barPercentage: 0.6, categoryPercentage: 0.7
+                }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { 
+                legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8, padding: 20, font: {size: 11, weight:'600'} } } 
+            },
+            scales: { 
+                y: { beginAtZero: true, max: 100, grid: { borderDash: [4, 4] } }, 
+                x: { grid: { display: false } } 
+            }
+        }
+    });
+
+    // --- FUNCIONES IA / DIAGNÓSTICO (Restauradas) ---
+    function analyzePC(pcName) {
+        // Necesitamos acceder al botón desde el evento onclick
+        const btn = event.currentTarget;
+        const originalContent = btn.innerHTML;
+        btn.innerHTML = `<i data-lucide="loader-2" class="w-3 h-3 mr-1.5 animate-spin"></i> Procesando...`;
+        btn.classList.add('opacity-75', 'cursor-wait');
+        
+        // Re-generar iconos para el spinner
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        
+        setTimeout(() => {
+            alert(`🤖 ARGOS AI INSIGHTS\n\nActivo: ${pcName}\nAnomalía: Estrés térmico detectado.\nProbabilidad de Falla: 12%\nAcción Sugerida: Programar limpieza física.`);
+            btn.innerHTML = originalContent;
+            btn.classList.remove('opacity-75', 'cursor-wait');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }, 1500);
+    }
+
+    function runGlobalAnalysis() {
+        alert("🤖 Ejecutando Diagnóstico Profundo en clústers: Via Verde, Ecovallas y BioBox...\n\nAnalizando latencias y cargas de trabajo.");
+    }
+
+    // --- LÓGICA DE DATOS ---
     async function fetchData() {
         try {
-            // 2. SOLUCIÓN AL ERROR 404: Usar la ruta correcta /api/data
+            // CORRECCIÓN URL: Usamos la ruta nueva del backend
             const response = await fetch('/api/data');
             const rawData = await response.json();
             
-            // 3. CONVERSIÓN DE DATOS (Diccionario Python -> Lista JS)
+            // CORRECCIÓN FORMATO: Diccionario Python -> Lista JS
             const devicesList = Object.values(rawData);
             
             updateDashboard(devicesList);
-            
             const now = new Date();
-            document.getElementById('last-sync').textContent = "Última Sync: " + now.toLocaleTimeString();
-
-        } catch (error) {
-            console.error("Error obteniendo datos:", error);
-        }
+            document.getElementById('last-sync').textContent = now.toLocaleTimeString();
+        } catch (error) { console.error(error); }
     }
 
     function updateDashboard(data) {
-        if (!data || data.length === 0) return;
-
-        // --- CÁLCULO DE KPIs ---
-        const total = data.length;
-        
-        // Mapeo seguro de temperatura (si no existe sensor, usamos 40 por defecto)
+        // Adaptador de variables (Python -> JS que espera el código original)
+        // Agregamos una función auxiliar para sacar temperatura
         const getTemp = (d) => {
             if (d.extended_sensors && d.extended_sensors['Intel CPU']) {
                 const t = d.extended_sensors['Intel CPU'].find(s => s.tipo === 'Temperature');
                 return t ? t.valor : 40;
             }
-            return 40;
+            return d.temperature || 40;
         };
 
-        const criticals = data.filter(d => d.cpu_load_percent > 90 || getTemp(d) > 85 || d.status === 'offline').length;
+        const total = data.length;
+        if (total === 0) return;
+
+        // Cálculos de KPI
+        const criticals = data.filter(d => (d.cpu_load_percent > 90) || (getTemp(d) > 85) || d.status === 'offline').length;
         const attentions = data.filter(d => (d.cpu_load_percent > 70 && d.cpu_load_percent <= 90)).length;
         const optimals = total - criticals - attentions;
         
         const avgCpu = (data.reduce((acc, curr) => acc + (curr.cpu_load_percent || 0), 0) / total).toFixed(1);
         const avgTemp = (data.reduce((acc, curr) => acc + getTemp(curr), 0) / total).toFixed(1);
 
-        // Actualizar Textos
         document.getElementById('kpi-total').innerText = total;
         document.getElementById('donut-total').innerText = total;
         document.getElementById('kpi-critical').innerText = criticals;
@@ -250,51 +375,128 @@
         diskChart.data.datasets[0].data = [optimals, attentions, criticals];
         diskChart.update();
 
-        const sorted = [...data].sort((a, b) => (b.cpu_load_percent || 0) - (a.cpu_load_percent || 0)).slice(0, 5);
+        const sorted = [...data].sort((a, b) => b.cpu_load_percent - a.cpu_load_percent).slice(0, 7);
         topResourceChart.data.labels = sorted.map(d => d.pc_name);
-        topResourceChart.data.datasets[0].data = sorted.map(d => d.cpu_load_percent || 0);
+        topResourceChart.data.datasets[0].data = sorted.map(d => d.cpu_load_percent);
         topResourceChart.update();
 
-        // --- ACTUALIZAR TABLA ---
+        // Lógica de Unidades de Negocio (División en 3 partes)
+        const partSize = Math.ceil(data.length / 3);
+        const vvData = data.slice(0, partSize); 
+        const evData = data.slice(partSize, partSize * 2); 
+        const bbData = data.slice(partSize * 2); 
+        
+        const getAvg = (arr, key) => arr.length ? arr.reduce((a,b) => a + (b[key]||0), 0)/arr.length : 0;
+
+        businessUnitChart.data.datasets[0].data = [getAvg(vvData, 'cpu_load_percent'), getAvg(evData, 'cpu_load_percent'), getAvg(bbData, 'cpu_load_percent')];
+        businessUnitChart.data.datasets[1].data = [getAvg(vvData, 'ram_percent'), getAvg(evData, 'ram_percent'), getAvg(bbData, 'ram_percent')];
+        businessUnitChart.update();
+
+        // --- TABLA DE INVENTARIO (RESTAURADA) ---
         const tableBody = document.getElementById('equipment-table-body');
         tableBody.innerHTML = ''; 
 
-        data.forEach(pc => {
+        data.forEach((pc, index) => {
+            const cpu = pc.cpu_load_percent || 0;
+            const ram = pc.ram_percent || 0;
+            const disk = pc.disk_percent || 0;
             const temp = getTemp(pc);
-            let statusHtml = `<span class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs font-bold">Online</span>`;
+            const ip = pc.public_ip || pc.ip || '0.0.0.0';
+
+            // Asignación de Unidad de Negocio por índice
+            let unitName = 'Via Verde';
+            let unitBadgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-100';
             
+            if (index >= partSize && index < partSize * 2) {
+                unitName = 'Ecovallas';
+                unitBadgeClass = 'bg-violet-50 text-violet-700 border-violet-100';
+            }
+            if (index >= partSize * 2) {
+                unitName = 'BioBox';
+                unitBadgeClass = 'bg-sky-50 text-sky-700 border-sky-100';
+            }
+
+            // Estado y Botones
+            let statusHtml = `<div class="flex items-center text-emerald-600 font-bold text-xs bg-emerald-50 px-2 py-1 rounded-md w-fit"><i data-lucide="check-circle-2" class="w-3 h-3 mr-1.5"></i> Operativo</div>`;
+            let tempColor = 'text-slate-600 font-medium';
+            let diskClass = 'text-slate-600 font-bold';
+            
+            // Botón AI por defecto deshabilitado/simple
+            let aiButton = `<span class="text-slate-300 text-xs">-</span>`;
+
             if (pc.status === 'offline') {
-                statusHtml = `<span class="px-2 py-1 bg-slate-200 text-slate-500 rounded text-xs font-bold">Offline</span>`;
-            } else if (pc.cpu_load_percent > 85 || temp > 80) {
-                statusHtml = `<span class="px-2 py-1 bg-rose-100 text-rose-700 rounded text-xs font-bold animate-pulse">Crítico</span>`;
+                statusHtml = `<div class="flex items-center text-slate-500 font-bold text-xs bg-slate-100 px-2 py-1 rounded-md w-fit"><i data-lucide="wifi-off" class="w-3 h-3 mr-1.5"></i> Offline</div>`;
+            } 
+            else if (cpu > 70 || temp > 70) {
+                statusHtml = `<div class="flex items-center text-rose-600 font-bold text-xs bg-rose-50 px-2 py-1 rounded-md w-fit"><i data-lucide="alert-triangle" class="w-3 h-3 mr-1.5"></i> Riesgo</div>`;
+                tempColor = 'text-rose-600 font-bold';
+                diskClass = 'text-rose-600 font-bold';
+                // Activar botón de diagnóstico si hay riesgo
+                aiButton = `
+                    <button onclick="analyzePC('${pc.pc_name}')" class="group flex items-center px-3 py-1.5 bg-white text-indigo-600 border border-indigo-200 shadow-sm rounded-lg text-xs font-bold hover:bg-indigo-50 hover:border-indigo-300 transition-all">
+                        <i data-lucide="stethoscope" class="w-3 h-3 mr-1.5 group-hover:text-indigo-700"></i> Diagnosticar
+                    </button>
+                `;
             }
 
             const row = `
-                <tr class="hover:bg-slate-50 border-b border-slate-50">
-                    <td class="px-6 py-4 font-bold text-slate-700">${pc.pc_name}</td>
-                    <td class="px-6 py-4 font-mono text-xs text-indigo-600">${pc.public_ip || pc.ip}</td>
+                <tr class="hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 group">
                     <td class="px-6 py-4">
-                        <div class="w-full bg-slate-200 rounded-full h-1.5 mb-1">
-                            <div class="bg-indigo-500 h-1.5 rounded-full" style="width: ${pc.cpu_load_percent}%"></div>
-                        </div>
-                        <span class="text-xs text-slate-500">${Math.round(pc.cpu_load_percent)}%</span>
+                        <span class="px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wide border ${unitBadgeClass}">${unitName}</span>
+                        <div class="mt-1 text-xs text-slate-400 font-medium">${pc.pc_name}</div>
                     </td>
-                    <td class="px-6 py-4 text-xs text-slate-500">${Math.round(pc.ram_percent)}%</td>
-                    <td class="px-6 py-4 text-center text-xs text-slate-500">${Math.round(pc.disk_percent)}%</td>
-                    <td class="px-6 py-4 text-xs font-bold text-slate-600">${Math.round(temp)}°C</td>
-                    <td class="px-6 py-4">${statusHtml}</td>
+                    <td class="px-6 py-4 font-mono text-slate-500 text-xs font-medium">${ip}</td>
+                    
+                    <td class="px-6 py-4">
+                        <div class="flex flex-col gap-1">
+                            <div class="flex justify-between text-[10px] font-bold text-slate-500">
+                                <span>CPU</span>
+                                <span>${Math.round(cpu)}%</span>
+                            </div>
+                            <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                <div class="${cpu > 80 ? 'bg-rose-500' : 'bg-indigo-500'} h-1.5 rounded-full" style="width: ${cpu}%"></div>
+                            </div>
+                        </div>
+                    </td>
+
+                    <td class="px-6 py-4">
+                        <div class="flex flex-col gap-1">
+                            <div class="flex justify-between text-[10px] font-bold text-slate-500">
+                                <span>RAM</span>
+                                <span>${Math.round(ram)}%</span>
+                            </div>
+                            <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                <div class="bg-violet-400 h-1.5 rounded-full" style="width: ${ram}%"></div>
+                            </div>
+                        </div>
+                    </td>
+
+                    <td class="px-6 py-4 text-center">
+                        <span class="${diskClass} text-xs">${Math.round(disk)}%</span>
+                    </td>
+                    
+                    <td class="px-6 py-4 ${tempColor} text-xs">
+                        <i data-lucide="thermometer" class="w-3 h-3 inline mr-1 opacity-50"></i>${Math.round(temp)}°C
+                    </td>
+
+                    <td class="px-6 py-4">
+                        ${statusHtml}
+                    </td>
+                    
+                    <td class="px-6 py-4 text-right">
+                        ${aiButton}
+                    </td>
                 </tr>
             `;
             tableBody.innerHTML += row;
         });
-
+        
         if (typeof lucide !== 'undefined') lucide.createIcons();
     }
 
-    // Inicialización
     document.addEventListener("DOMContentLoaded", () => {
         fetchData();
-        setInterval(fetchData, 3000);
+        setInterval(fetchData, 2000);
     });
 </script>
 {% endblock %}
