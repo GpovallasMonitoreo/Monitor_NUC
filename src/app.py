@@ -3,59 +3,70 @@ import sys
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from flask_cors import CORS
 
-# --- CONFIGURACIÓN DE RUTAS ---
+# 1. CONFIGURACIÓN DE RUTAS ABSOLUTAS
 base_dir = os.path.abspath(os.path.dirname(__file__))
+sys.path.append(base_dir) # Crucial para que Python encuentre 'src'
+
 template_dir = os.path.join(base_dir, 'src', 'templates')
 static_dir = os.path.join(base_dir, 'src', 'static')
 
-# Añadir la raíz al path para importaciones
-sys.path.append(base_dir)
-
 app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 
-# --- CONFIGURACIÓN ---
+# 2. CONFIGURACIÓN BÁSICA
 app.secret_key = os.environ.get('SECRET_KEY', 'argos_secret_key_dev_mode')
 CORS(app)
 
-# --- CARGA DE DOTENV ---
+# Cargar variables de entorno
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
     pass
 
-# --- REGISTRO DE BLUEPRINTS (AQUÍ ESTÁ LA SOLUCIÓN) ---
+# 3. INICIALIZACIÓN DE SERVICIOS (SOLUCIÓN AL ERROR 500)
+# Importamos las clases de servicios
+from src.services.storage_service import StorageService
+from src.services.alert_service import AlertService
+# Importamos el módulo src para inyectarle las variables
+import src 
 
-# 1. API Blueprint
-try:
-    from src.routes.api import bp as api_bp
-    app.register_blueprint(api_bp)
-except Exception as e:
-    print(f"⚠️ Error cargando API: {e}")
+# Definir ruta de la DB
+data_dir = os.path.join(base_dir, 'data')
+os.makedirs(data_dir, exist_ok=True)
+db_path = os.path.join(data_dir, 'inventory_db.json')
 
-# 2. Views Blueprint (¡ESTO FALTABA!)
-# Esto conecta tus rutas /monitor, /latency, etc.
-try:
-    from src.routes.views import bp as views_bp
-    app.register_blueprint(views_bp)
-except Exception as e:
-    print(f"⚠️ Error cargando Vistas: {e}")
+# Inicializar y asignar a las variables globales de src
+# Esto hace que cuando api.py haga "from src import storage", ya tenga datos.
+src.alerts = AlertService(app)
+src.storage = StorageService(db_path, alert_service=src.alerts)
+
+print(f"✅ ARGOS: Storage inicializado en {db_path}")
+
+# 4. REGISTRO DE BLUEPRINTS (SOLUCIÓN AL ERROR 404)
+# Quitamos el try/except para ver errores reales si existen
+
+from src.routes.api import bp as api_bp
+app.register_blueprint(api_bp)
+print("✅ ARGOS: API Blueprint registrado")
+
+from src.routes.views import bp as views_bp
+app.register_blueprint(views_bp)
+print("✅ ARGOS: Views Blueprint registrado")
 
 
-# --- RUTAS GLOBALES / AUTENTICACIÓN ---
-# Mantenemos Login/Logout aquí porque son globales, 
-# pero la ruta '/' la hemos delegado a views.py (home)
+# 5. RUTAS GLOBALES DE SISTEMA (Login/Logout)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # Si ya está logueado, ir al home (manejado por views.py)
     if 'username' in session:
-        return redirect(url_for('views.home')) # Nota: ahora redirige al blueprint 'views'
+        return redirect(url_for('views.home'))
 
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
         
-        # TODO: Conectar a DB real
+        # TODO: Lógica real de usuarios
         if username == 'gpovallas' and password == 'admin': 
             session['username'] = username
             return redirect(url_for('views.home'))
@@ -71,12 +82,9 @@ def logout():
 
 @app.route('/health')
 def health():
-    return jsonify({"status": "Argos Online"})
-
-# Manejador de error 404 para depuración
-@app.errorhandler(404)
-def page_not_found(e):
-    return render_template('404.html'), 404 # Si no tienes 404.html, devuelve texto simple
+    # Verificación de salud del sistema
+    status_db = "OK" if src.storage else "ERROR"
+    return jsonify({"status": "Argos Online", "database": status_db})
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
