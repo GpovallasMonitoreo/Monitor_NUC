@@ -1,502 +1,219 @@
-{% extends "base.html" %}
-
-{% block title %}Monitor Enterprise - Argos{% endblock %}
-
-{% block header_title %}
-<div class="flex items-center gap-2">
-    <i data-lucide="layout-dashboard" class="text-slate-400 w-5 h-5"></i>
-    <span class="tracking-tight">Centro de Comando Unificado</span>
-</div>
-{% endblock %}
-
-{% block content %}
-<style>
-    .card-hover { transition: all 0.3s ease; }
-    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01); }
-    .glass-header { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); }
-    .table-header { font-size: 0.7rem; letter-spacing: 0.05em; text-transform: uppercase; color: #64748b; font-weight: 600; }
-    .cursor-wait { cursor: wait; }
-</style>
-
-<div class="flex flex-col xl:flex-row justify-between items-center mb-8 gap-6 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-    <div class="flex items-center gap-4">
-        <div class="flex flex-col">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Estado del Sistema</span>
-            <div class="flex items-center gap-2 mt-1">
-                <span class="relative flex h-2.5 w-2.5">
-                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                </span>
-                <span class="text-sm font-bold text-emerald-700">EN LÍNEA / TIEMPO REAL</span>
-            </div>
-        </div>
-        <div class="h-8 w-px bg-slate-200 mx-2"></div> 
-        <div class="flex flex-col">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Última Sincronización</span>
-            <span id="last-sync" class="text-sm font-mono font-medium text-slate-600">Conectando...</span>
-        </div>
-    </div>
-
-    <div class="flex flex-col md:flex-row items-center gap-3 w-full xl:w-auto">
-        <div class="flex bg-slate-100/80 p-1 rounded-xl border border-slate-200">
-            <button class="px-4 py-1.5 text-xs font-bold rounded-lg bg-white text-slate-700 shadow-sm border border-slate-100">Todas</button>
-            <button class="px-4 py-1.5 text-xs font-bold rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 transition-colors">Via Verde</button>
-            <button class="px-4 py-1.5 text-xs font-bold rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 transition-colors">Ecovallas</button>
-        </div>
-
-        <button onclick="runGlobalAnalysis()" class="w-full md:w-auto flex items-center justify-center px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-xl shadow-lg shadow-slate-900/20 transition-all active:scale-95">
-            <i data-lucide="sparkles" class="w-4 h-4 mr-2 text-indigo-300"></i>
-            Argos AI Scan
-        </button>
-    </div>
-</div>
-
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-    <div class="bg-white p-6 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-slate-100 card-hover relative overflow-hidden">
-        <div class="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div> 
-        <div class="flex justify-between items-start">
-            <div>
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Total Activos</p>
-                <h3 class="text-4xl font-black text-slate-800 tracking-tight" id="kpi-total">0</h3>
-                <span class="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded mt-2 inline-block">● Red Global</span>
-            </div>
-            <div class="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-                <i data-lucide="server" class="w-6 h-6"></i>
-            </div>
-        </div>
-    </div>
-
-    <div class="bg-white p-6 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-slate-100 card-hover relative overflow-hidden">
-        <div class="absolute top-0 left-0 w-1 h-full bg-rose-500"></div>
-        <div class="flex justify-between items-start">
-            <div>
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Estado Crítico</p>
-                <h3 class="text-4xl font-black text-slate-800 tracking-tight" id="kpi-critical">0</h3>
-                <span class="text-xs font-medium text-rose-600 bg-rose-50 px-2 py-0.5 rounded mt-2 inline-block">Action Required</span>
-            </div>
-            <div class="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-500">
-                <i data-lucide="alert-octagon" class="w-6 h-6"></i>
-            </div>
-        </div>
-    </div>
-
-    <div class="bg-white p-6 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-slate-100 card-hover relative overflow-hidden">
-        <div class="absolute top-0 left-0 w-1 h-full bg-violet-500"></div>
-        <div class="flex justify-between items-start mb-4">
-            <div>
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Carga CPU (Avg)</p>
-                <h3 class="text-4xl font-black text-slate-800 tracking-tight" id="kpi-cpu">0%</h3>
-            </div>
-            <div class="w-12 h-12 rounded-2xl bg-violet-50 flex items-center justify-center text-violet-600">
-                <i data-lucide="cpu" class="w-6 h-6"></i>
-            </div>
-        </div>
-        <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-            <div id="kpi-cpu-bar" class="bg-gradient-to-r from-violet-500 to-indigo-500 h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
-        </div>
-    </div>
-
-    <div class="bg-white p-6 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-slate-100 card-hover relative overflow-hidden">
-        <div class="absolute top-0 left-0 w-1 h-full bg-orange-500"></div>
-        <div class="flex justify-between items-start">
-            <div>
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Temperatura (Avg)</p>
-                <h3 class="text-4xl font-black text-slate-800 tracking-tight" id="kpi-temp">0°C</h3>
-                 <span class="text-xs font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded mt-2 inline-block">Termometría</span>
-            </div>
-            <div class="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-500">
-                <i data-lucide="thermometer-sun" class="w-6 h-6"></i>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-[380px]">
-        <div class="flex items-center justify-between mb-6">
-            <h3 class="text-base font-bold text-slate-700 flex items-center gap-2">
-                <div class="w-2 h-6 bg-slate-800 rounded-sm"></div>
-                Salud de Infraestructura
-            </h3>
-        </div>
-        
-        <div class="flex-1 flex items-center justify-center relative">
-            <canvas id="diskChart"></canvas>
-            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span class="block text-4xl font-black text-slate-800 tracking-tighter" id="donut-total">0</span>
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nodos</span>
-            </div>
-        </div>
-        
-        <div class="mt-6 flex justify-center gap-6">
-            <div class="flex flex-col items-center">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 mb-1"></span>
-                <span class="text-[10px] font-bold text-slate-500">OPTIMAL</span>
-            </div>
-            <div class="flex flex-col items-center">
-                <span class="w-2 h-2 rounded-full bg-amber-400 mb-1"></span>
-                <span class="text-[10px] font-bold text-slate-500">WARNING</span>
-            </div>
-            <div class="flex flex-col items-center">
-                <span class="w-2 h-2 rounded-full bg-rose-400 mb-1"></span>
-                <span class="text-[10px] font-bold text-slate-500">CRITICAL</span>
-            </div>
-        </div>
-    </div>
-
-    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 lg:col-span-2 h-[380px]">
-        <div class="flex justify-between items-center mb-6">
-            <h3 class="text-base font-bold text-slate-700 flex items-center gap-2">
-                <div class="w-2 h-6 bg-indigo-600 rounded-sm"></div>
-                Top 10 Consumo (CPU Lead)
-            </h3>
-        </div>
-        <div class="h-[280px]">
-            <canvas id="topResourceChart"></canvas>
-        </div>
-    </div>
-</div>
-
-<div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-8">
-    <div class="flex justify-between items-center mb-6">
-        <h3 class="text-base font-bold text-slate-700 flex items-center gap-2">
-            <div class="w-2 h-6 bg-violet-600 rounded-sm"></div>
-            Rendimiento por Unidad de Negocio
-        </h3>
-        <span class="text-xs text-slate-400 font-medium bg-slate-50 px-3 py-1 rounded-full border border-slate-100">Analytics en tiempo real</span>
-    </div>
-    <div class="h-[250px] w-full">
-        <canvas id="businessUnitChart"></canvas>
-    </div>
-</div>
-
-<div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-12">
-    <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white">
-        <div class="flex items-center gap-3">
-            <div class="p-2 bg-indigo-50 rounded-lg text-indigo-600">
-                <i data-lucide="list" class="w-4 h-4"></i>
-            </div>
-            <h3 class="text-base font-bold text-slate-800">Inventario Activo</h3>
-        </div>
-        <div class="flex gap-2">
-            <button class="text-slate-400 hover:text-slate-600"><i data-lucide="download" class="w-4 h-4"></i></button>
-        </div>
-    </div>
-    
-    <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-            <thead>
-                <tr class="bg-slate-50/50 border-b border-slate-100">
-                    <th class="px-6 py-4 table-header">Unidad Negocio</th>
-                    <th class="px-6 py-4 table-header">Dirección IP</th>
-                    <th class="px-6 py-4 table-header w-32">CPU Load</th>
-                    <th class="px-6 py-4 table-header w-32">RAM Load</th>
-                    <th class="px-6 py-4 table-header text-center">Disco</th>
-                    <th class="px-6 py-4 table-header">Temp</th>
-                    <th class="px-6 py-4 table-header">Diagnóstico</th>
-                    <th class="px-6 py-4 table-header text-right">Acciones</th>
-                </tr>
-            </thead>
-            <tbody id="equipment-table-body" class="text-sm divide-y divide-slate-50">
-                </tbody>
-        </table>
-    </div>
-    <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 text-xs text-slate-500 font-medium flex justify-between">
-        <span>Mostrando datos en vivo desde Render</span>
-        <span>Argos v3.1 Enterprise</span>
-    </div>
-</div>
-{% endblock %}
-
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <script>
-    // --- CONFIGURACIÓN VISUAL ---
-    Chart.defaults.font.family = "'Inter', system-ui, -apple-system, sans-serif";
-    Chart.defaults.color = '#94a3b8'; 
-    Chart.defaults.scale.grid.color = '#f1f5f9'; 
-    
-    const commonPlugins = {
-        legend: { display: false },
-        tooltip: {
-            backgroundColor: '#1e293b',
-            padding: 12,
-            titleFont: { size: 13, weight: 'bold' },
-            bodyFont: { size: 12 },
-            cornerRadius: 8,
-            displayColors: true
+    document.addEventListener('DOMContentLoaded', () => {
+        // 1. URL CORRECTA
+        const API_URL = '/api/data'; 
+        let pcDataStore = {};
+        let latencyHistory = {};
+        let currentPc = null;
+        let charts = { latency: null };
+
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+
+        // --- Sincronización ---
+        async function updateData() {
+            try {
+                const res = await fetch(API_URL);
+                if (!res.ok) throw new Error("Error API");
+                const rawData = await res.json();
+                
+                // 2. CONVERTIR DICCIONARIO A LISTA
+                const devices = Object.values(rawData);
+                
+                devices.forEach(dev => {
+                    // 3. NORMALIZAR VARIABLES (Backend -> Frontend)
+                    // El backend manda cpu_load_percent, el frontend usa cpu_percent
+                    dev.cpu_percent = dev.cpu_load_percent || 0;
+                    dev.latency = dev.latency_ms || 0;
+                    if (!dev.unit) dev.unit = "General";
+
+                    pcDataStore[dev.pc_name] = dev;
+                    
+                    if (!latencyHistory[dev.pc_name]) latencyHistory[dev.pc_name] = [];
+                    latencyHistory[dev.pc_name].push({ x: new Date(), y: dev.latency });
+                    if (latencyHistory[dev.pc_name].length > 20) latencyHistory[dev.pc_name].shift();
+                });
+
+                renderGrid();
+                updateUnitFilter(devices);
+                if (currentPc && pcDataStore[currentPc]) refreshModalData();
+                document.getElementById('loading-indicator').style.display = 'none';
+            } catch (e) { console.error(e); }
         }
-    };
 
-    // A) DONUT
-    const ctxDisk = document.getElementById('diskChart').getContext('2d');
-    let diskChart = new Chart(ctxDisk, {
-        type: 'doughnut',
-        data: {
-            labels: ['Optimo', 'Atención', 'Crítico'],
-            datasets: [{
-                data: [1, 1, 1],
-                backgroundColor: ['#34d399', '#fbbf24', '#f43f5e'],
-                borderWidth: 0, 
-                hoverOffset: 10
-            }]
-        },
-        options: { cutout: '82%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-    });
+        function renderGrid() {
+            const container = document.getElementById('pc-cards-container');
+            const search = document.getElementById('search-bar').value.toLowerCase();
+            const unitFilter = document.getElementById('unit-filter').value;
+            container.innerHTML = '';
+            
+            Object.values(pcDataStore).forEach(pc => {
+                if (unitFilter !== 'all' && pc.unit !== unitFilter) return;
+                // Búsqueda segura (valida que existan los campos)
+                const searchStr = (pc.pc_name + (pc.ip || '')).toLowerCase();
+                if (!searchStr.includes(search)) return;
 
-    // B) TOP RECURSOS
-    const ctxTop = document.getElementById('topResourceChart').getContext('2d');
-    let topResourceChart = new Chart(ctxTop, {
-        type: 'bar',
-        data: {
-            labels: [],
-            datasets: [{
-                label: 'CPU %',
-                data: [],
-                backgroundColor: (ctx) => ctx.raw > 90 ? '#f43f5e' : (ctx.raw > 75 ? '#fbbf24' : '#6366f1'),
-                borderRadius: 6,
-                barThickness: 12,
-                maxBarThickness: 16
-            }]
-        },
-        options: {
-            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-            plugins: commonPlugins,
-            scales: { 
-                x: { beginAtZero: true, max: 100, grid: { display: false } }, 
-                y: { grid: { display: false }, ticks: { font: { size: 11, weight: '500' }, color: '#64748b' } } 
-            }
-        }
-    });
-
-    // C) COMPARATIVA UNIDADES DE NEGOCIO
-    const ctxBus = document.getElementById('businessUnitChart').getContext('2d');
-    let businessUnitChart = new Chart(ctxBus, {
-        type: 'bar',
-        data: {
-            labels: ['Via Verde', 'Ecovallas', 'BioBox'],
-            datasets: [
-                {
-                    label: 'CPU Avg',
-                    data: [0, 0, 0],
-                    backgroundColor: '#6366f1',
-                    borderRadius: 6, barPercentage: 0.6, categoryPercentage: 0.7
-                },
-                {
-                    label: 'RAM Avg',
-                    data: [0, 0, 0],
-                    backgroundColor: '#a855f7',
-                    borderRadius: 6, barPercentage: 0.6, categoryPercentage: 0.7
+                let latencyColor = pc.latency > 100 ? "text-red-600" : (pc.latency > 50 ? "text-amber-500" : "text-slate-900");
+                
+                // Obtener temperatura segura
+                let temp = 40;
+                if(pc.extended_sensors && pc.extended_sensors['Intel CPU']) {
+                    const t = pc.extended_sensors['Intel CPU'].find(s => s.tipo === 'Temperature');
+                    if(t) temp = t.valor;
                 }
-            ]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { 
-                legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8, padding: 20, font: {size: 11, weight:'600'} } } 
-            },
-            scales: { 
-                y: { beginAtZero: true, max: 100, grid: { borderDash: [4, 4] } }, 
-                x: { grid: { display: false } } 
-            }
-        }
-    });
 
-    // --- FUNCIONES IA / DIAGNÓSTICO (Restauradas) ---
-    function analyzePC(pcName) {
-        // Necesitamos acceder al botón desde el evento onclick
-        const btn = event.currentTarget;
-        const originalContent = btn.innerHTML;
-        btn.innerHTML = `<i data-lucide="loader-2" class="w-3 h-3 mr-1.5 animate-spin"></i> Procesando...`;
-        btn.classList.add('opacity-75', 'cursor-wait');
-        
-        // Re-generar iconos para el spinner
-        if (typeof lucide !== 'undefined') lucide.createIcons();
-        
-        setTimeout(() => {
-            alert(`🤖 ARGOS AI INSIGHTS\n\nActivo: ${pcName}\nAnomalía: Estrés térmico detectado.\nProbabilidad de Falla: 12%\nAcción Sugerida: Programar limpieza física.`);
-            btn.innerHTML = originalContent;
-            btn.classList.remove('opacity-75', 'cursor-wait');
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-        }, 1500);
-    }
-
-    function runGlobalAnalysis() {
-        alert("🤖 Ejecutando Diagnóstico Profundo en clústers: Via Verde, Ecovallas y BioBox...\n\nAnalizando latencias y cargas de trabajo.");
-    }
-
-    // --- LÓGICA DE DATOS ---
-    async function fetchData() {
-        try {
-            // CORRECCIÓN URL: Usamos la ruta nueva del backend
-            const response = await fetch('/api/data');
-            const rawData = await response.json();
-            
-            // CORRECCIÓN FORMATO: Diccionario Python -> Lista JS
-            const devicesList = Object.values(rawData);
-            
-            updateDashboard(devicesList);
-            const now = new Date();
-            document.getElementById('last-sync').textContent = now.toLocaleTimeString();
-        } catch (error) { console.error(error); }
-    }
-
-    function updateDashboard(data) {
-        // Adaptador de variables (Python -> JS que espera el código original)
-        // Agregamos una función auxiliar para sacar temperatura
-        const getTemp = (d) => {
-            if (d.extended_sensors && d.extended_sensors['Intel CPU']) {
-                const t = d.extended_sensors['Intel CPU'].find(s => s.tipo === 'Temperature');
-                return t ? t.valor : 40;
-            }
-            return d.temperature || 40;
-        };
-
-        const total = data.length;
-        if (total === 0) return;
-
-        // Cálculos de KPI
-        const criticals = data.filter(d => (d.cpu_load_percent > 90) || (getTemp(d) > 85) || d.status === 'offline').length;
-        const attentions = data.filter(d => (d.cpu_load_percent > 70 && d.cpu_load_percent <= 90)).length;
-        const optimals = total - criticals - attentions;
-        
-        const avgCpu = (data.reduce((acc, curr) => acc + (curr.cpu_load_percent || 0), 0) / total).toFixed(1);
-        const avgTemp = (data.reduce((acc, curr) => acc + getTemp(curr), 0) / total).toFixed(1);
-
-        document.getElementById('kpi-total').innerText = total;
-        document.getElementById('donut-total').innerText = total;
-        document.getElementById('kpi-critical').innerText = criticals;
-        document.getElementById('kpi-cpu').innerText = avgCpu + '%';
-        document.getElementById('kpi-cpu-bar').style.width = avgCpu + '%';
-        document.getElementById('kpi-temp').innerText = avgTemp + '°C';
-
-        // Actualizar Gráficos
-        diskChart.data.datasets[0].data = [optimals, attentions, criticals];
-        diskChart.update();
-
-        const sorted = [...data].sort((a, b) => b.cpu_load_percent - a.cpu_load_percent).slice(0, 7);
-        topResourceChart.data.labels = sorted.map(d => d.pc_name);
-        topResourceChart.data.datasets[0].data = sorted.map(d => d.cpu_load_percent);
-        topResourceChart.update();
-
-        // Lógica de Unidades de Negocio (División en 3 partes)
-        const partSize = Math.ceil(data.length / 3);
-        const vvData = data.slice(0, partSize); 
-        const evData = data.slice(partSize, partSize * 2); 
-        const bbData = data.slice(partSize * 2); 
-        
-        const getAvg = (arr, key) => arr.length ? arr.reduce((a,b) => a + (b[key]||0), 0)/arr.length : 0;
-
-        businessUnitChart.data.datasets[0].data = [getAvg(vvData, 'cpu_load_percent'), getAvg(evData, 'cpu_load_percent'), getAvg(bbData, 'cpu_load_percent')];
-        businessUnitChart.data.datasets[1].data = [getAvg(vvData, 'ram_percent'), getAvg(evData, 'ram_percent'), getAvg(bbData, 'ram_percent')];
-        businessUnitChart.update();
-
-        // --- TABLA DE INVENTARIO (RESTAURADA) ---
-        const tableBody = document.getElementById('equipment-table-body');
-        tableBody.innerHTML = ''; 
-
-        data.forEach((pc, index) => {
-            const cpu = pc.cpu_load_percent || 0;
-            const ram = pc.ram_percent || 0;
-            const disk = pc.disk_percent || 0;
-            const temp = getTemp(pc);
-            const ip = pc.public_ip || pc.ip || '0.0.0.0';
-
-            // Asignación de Unidad de Negocio por índice
-            let unitName = 'Via Verde';
-            let unitBadgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-100';
-            
-            if (index >= partSize && index < partSize * 2) {
-                unitName = 'Ecovallas';
-                unitBadgeClass = 'bg-violet-50 text-violet-700 border-violet-100';
-            }
-            if (index >= partSize * 2) {
-                unitName = 'BioBox';
-                unitBadgeClass = 'bg-sky-50 text-sky-700 border-sky-100';
-            }
-
-            // Estado y Botones
-            let statusHtml = `<div class="flex items-center text-emerald-600 font-bold text-xs bg-emerald-50 px-2 py-1 rounded-md w-fit"><i data-lucide="check-circle-2" class="w-3 h-3 mr-1.5"></i> Operativo</div>`;
-            let tempColor = 'text-slate-600 font-medium';
-            let diskClass = 'text-slate-600 font-bold';
-            
-            // Botón AI por defecto deshabilitado/simple
-            let aiButton = `<span class="text-slate-300 text-xs">-</span>`;
-
-            if (pc.status === 'offline') {
-                statusHtml = `<div class="flex items-center text-slate-500 font-bold text-xs bg-slate-100 px-2 py-1 rounded-md w-fit"><i data-lucide="wifi-off" class="w-3 h-3 mr-1.5"></i> Offline</div>`;
-            } 
-            else if (cpu > 70 || temp > 70) {
-                statusHtml = `<div class="flex items-center text-rose-600 font-bold text-xs bg-rose-50 px-2 py-1 rounded-md w-fit"><i data-lucide="alert-triangle" class="w-3 h-3 mr-1.5"></i> Riesgo</div>`;
-                tempColor = 'text-rose-600 font-bold';
-                diskClass = 'text-rose-600 font-bold';
-                // Activar botón de diagnóstico si hay riesgo
-                aiButton = `
-                    <button onclick="analyzePC('${pc.pc_name}')" class="group flex items-center px-3 py-1.5 bg-white text-indigo-600 border border-indigo-200 shadow-sm rounded-lg text-xs font-bold hover:bg-indigo-50 hover:border-indigo-300 transition-all">
-                        <i data-lucide="stethoscope" class="w-3 h-3 mr-1.5 group-hover:text-indigo-700"></i> Diagnosticar
-                    </button>
+                const card = document.createElement('div');
+                card.className = 'card cursor-pointer group hover:border-indigo-300';
+                card.onclick = () => openModal(pc.pc_name);
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="font-bold text-slate-800 leading-tight group-hover:text-indigo-600 transition">${pc.pc_name}</h3>
+                            <span class="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded">${pc.unit}</span>
+                        </div>
+                        <div class="status-dot ${pc.status === 'online' ? 'status-online' : 'status-offline'}"></div>
+                    </div>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-4xl font-black ${latencyColor}">${pc.latency}</span>
+                        <span class="text-sm font-bold text-slate-400">ms</span>
+                    </div>
+                    <div class="mt-6 pt-4 border-t border-slate-100 grid grid-cols-2 gap-4">
+                        <div class="text-center">
+                            <span class="block text-[9px] font-bold text-slate-400 uppercase">CPU</span>
+                            <div class="w-full bg-slate-100 rounded-full h-1.5 mt-1 mb-1">
+                                <div class="bg-indigo-500 h-1.5 rounded-full" style="width: ${pc.cpu_percent}%"></div>
+                            </div>
+                            <span class="text-sm font-bold text-slate-700">${Math.round(pc.cpu_percent)}%</span>
+                        </div>
+                        <div class="text-center">
+                            <span class="block text-[9px] font-bold text-slate-400 uppercase">Temp</span>
+                            <span class="text-sm font-bold ${temp > 70 ? 'text-red-500' : 'text-slate-700'}">${Math.round(temp)}°C</span>
+                        </div>
+                    </div>
                 `;
+                container.appendChild(card);
+            });
+        }
+
+        function openModal(pcName) {
+            currentPc = pcName;
+            document.getElementById('modal-pc-name').textContent = pcName;
+            document.getElementById('pc-modal-overlay').classList.replace('hidden', 'flex');
+            switchTab('general');
+            refreshModalData();
+        }
+
+        function refreshModalData() {
+            if(!currentPc || !pcDataStore[currentPc]) return;
+            const pc = pcDataStore[currentPc];
+            
+            let temp = 0;
+            if(pc.extended_sensors && pc.extended_sensors['Intel CPU']) {
+               const t = pc.extended_sensors['Intel CPU'].find(s => s.tipo === 'Temperature');
+               if(t) temp = t.valor;
             }
 
-            const row = `
-                <tr class="hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 group">
-                    <td class="px-6 py-4">
-                        <span class="px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wide border ${unitBadgeClass}">${unitName}</span>
-                        <div class="mt-1 text-xs text-slate-400 font-medium">${pc.pc_name}</div>
-                    </td>
-                    <td class="px-6 py-4 font-mono text-slate-500 text-xs font-medium">${ip}</td>
-                    
-                    <td class="px-6 py-4">
-                        <div class="flex flex-col gap-1">
-                            <div class="flex justify-between text-[10px] font-bold text-slate-500">
-                                <span>CPU</span>
-                                <span>${Math.round(cpu)}%</span>
-                            </div>
-                            <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                                <div class="${cpu > 80 ? 'bg-rose-500' : 'bg-indigo-500'} h-1.5 rounded-full" style="width: ${cpu}%"></div>
-                            </div>
-                        </div>
-                    </td>
-
-                    <td class="px-6 py-4">
-                        <div class="flex flex-col gap-1">
-                            <div class="flex justify-between text-[10px] font-bold text-slate-500">
-                                <span>RAM</span>
-                                <span>${Math.round(ram)}%</span>
-                            </div>
-                            <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                                <div class="bg-violet-400 h-1.5 rounded-full" style="width: ${ram}%"></div>
-                            </div>
-                        </div>
-                    </td>
-
-                    <td class="px-6 py-4 text-center">
-                        <span class="${diskClass} text-xs">${Math.round(disk)}%</span>
-                    </td>
-                    
-                    <td class="px-6 py-4 ${tempColor} text-xs">
-                        <i data-lucide="thermometer" class="w-3 h-3 inline mr-1 opacity-50"></i>${Math.round(temp)}°C
-                    </td>
-
-                    <td class="px-6 py-4">
-                        ${statusHtml}
-                    </td>
-                    
-                    <td class="px-6 py-4 text-right">
-                        ${aiButton}
-                    </td>
-                </tr>
+            document.getElementById('modal-status-line').innerHTML = `
+                <span class="font-bold ${pc.status === 'online' ? 'text-emerald-500' : 'text-red-500'}">● ${pc.status.toUpperCase()}</span>
+                <span class="mx-2 text-slate-300">|</span>
+                <span class="text-slate-500 font-mono">IP: ${pc.ip || '0.0.0.0'}</span>
             `;
-            tableBody.innerHTML += row;
-        });
-        
-        if (typeof lucide !== 'undefined') lucide.createIcons();
-    }
 
-    document.addEventListener("DOMContentLoaded", () => {
-        fetchData();
-        setInterval(fetchData, 2000);
+            document.getElementById('info-panel').innerHTML = `
+                <div class="flex justify-between py-2 border-b border-slate-50"><span>Unidad:</span> <b class="text-indigo-600">${pc.unit}</b></div>
+                <div class="flex justify-between py-2 border-b border-slate-50"><span>Latencia:</span> <b>${pc.latency} ms</b></div>
+                <div class="flex justify-between py-2 border-b border-slate-50"><span>CPU:</span> <b>${pc.cpu_percent.toFixed(1)}%</b></div>
+                <div class="flex justify-between py-2 border-b border-slate-50"><span>RAM:</span> <b>${pc.ram_percent.toFixed(1)}%</b></div>
+                <div class="flex justify-between py-2"><span>Temp:</span> <b>${temp.toFixed(1)}°C</b></div>
+            `;
+
+            updateLatencyChart();
+            updateHardwareGrid(pc);
+            updateSpecsTab(pc);
+        }
+
+        function updateSpecsTab(pc) {
+            const specsHtml = `
+                <div><p class="text-slate-500 text-xs uppercase font-bold mb-1">Nombre Equipo</p><p class="font-semibold text-slate-800">${pc.pc_name}</p></div>
+                <div><p class="text-slate-500 text-xs uppercase font-bold mb-1">IP Pública</p><p class="font-semibold text-slate-800">${pc.public_ip || 'N/A'}</p></div>
+                <div><p class="text-slate-500 text-xs uppercase font-bold mb-1">IP Local</p><p class="font-semibold text-slate-800">${pc.ip}</p></div>
+                <div><p class="text-slate-500 text-xs uppercase font-bold mb-1">Última Conexión</p><p class="font-mono text-slate-600 text-xs bg-slate-100 p-1 rounded inline-block">${new Date(pc.timestamp).toLocaleString()}</p></div>
+            `;
+            document.getElementById('specs-current').innerHTML = specsHtml;
+            document.getElementById('specs-history').innerHTML = `<div class="p-4 text-sm text-slate-500">Historial no disponible en versión demo.</div>`;
+        }
+
+        function updateLatencyChart() {
+            const ctx = document.getElementById('latency-chart').getContext('2d');
+            const dataPoints = latencyHistory[currentPc] || [];
+            
+            if (charts.latency) charts.latency.destroy();
+            
+            charts.latency = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'Latencia (ms)',
+                        data: dataPoints,
+                        borderColor: '#4f46e5',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        fill: true, tension: 0.4, pointRadius: 2
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, animation: false,
+                    plugins: { legend: {display: false} },
+                    scales: { 
+                        x: { type: 'time', time: { unit: 'second' }, grid: { display: false } }, 
+                        y: { beginAtZero: true, suggestedMax: 100 } 
+                    }
+                }
+            });
+        }
+
+        function updateHardwareGrid(pc) {
+            document.getElementById('hardware-grid').innerHTML = `
+                <div class="p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
+                    <span class="block text-[10px] font-bold text-slate-400 uppercase">Estado</span>
+                    <span class="text-md font-bold ${pc.status==='online'?'text-emerald-600':'text-red-600'}">${pc.status.toUpperCase()}</span>
+                </div>
+                <div class="p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
+                    <span class="block text-[10px] font-bold text-slate-400 uppercase">Carga CPU</span>
+                    <span class="text-md font-bold text-slate-700">${pc.cpu_percent}%</span>
+                </div>
+                <div class="p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
+                    <span class="block text-[10px] font-bold text-slate-400 uppercase">Disco Libre</span>
+                    <span class="text-md font-bold text-emerald-600">${pc.disk_free_gb || 0} GB</span>
+                </div>
+            `;
+        }
+
+        function switchTab(id) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+            document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab-' + id).classList.remove('hidden');
+            document.querySelector(`[data-tab="${id}"]`).classList.add('active');
+        }
+
+        function updateUnitFilter(devices) {
+            const select = document.getElementById('unit-filter');
+            if (select.options.length > 1) return;
+            const units = [...new Set(devices.map(d => d.unit))];
+            units.forEach(u => {
+                const opt = document.createElement('option');
+                opt.value = u; opt.textContent = u;
+                select.appendChild(opt);
+            });
+        }
+
+        document.getElementById('modal-tabs').onclick = (e) => { if(e.target.classList.contains('modal-tab')) switchTab(e.target.dataset.tab); };
+        document.getElementById('modal-close-button').onclick = () => { document.getElementById('pc-modal-overlay').classList.replace('flex', 'hidden'); currentPc = null; };
+        document.getElementById('search-bar').oninput = renderGrid;
+        document.getElementById('unit-filter').onchange = renderGrid;
+
+        setInterval(updateData, 2000);
+        updateData();
     });
 </script>
 {% endblock %}
