@@ -1,85 +1,91 @@
+{% extends 'base.html' %}
+
+{% block header_title %}Monitor de Latencia{% endblock %}
+
+{% block content %}
+<div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+    <div class="h-80 w-full">
+        <canvas id="latencyChart"></canvas>
+    </div>
+</div>
+
+<div class="mt-6 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <table class="w-full text-sm text-left text-slate-600">
+        <thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b">
+            <tr>
+                <th class="px-6 py-3">Dispositivo</th>
+                <th class="px-6 py-3">IP</th>
+                <th class="px-6 py-3">Latencia (ms)</th>
+                <th class="px-6 py-3">Estado</th>
+            </tr>
+        </thead>
+        <tbody id="latency-table-body"></tbody>
+    </table>
+</div>
+{% endblock %}
+
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    document.addEventListener("DOMContentLoaded", () => {
-        // CONFIGURACIÓN CHART
-        Chart.defaults.font.family = "'Inter', sans-serif";
-        Chart.defaults.color = '#64748b';
-        
-        let latencyChart = null;
+    let chartInstance = null;
 
-        async function fetchLatencyData() {
-            try {
-                // 1. URL CORRECTA
-                const response = await fetch('/api/data');
-                const rawData = await response.json();
-                
-                // 2. CONVERTIR Y ORDENAR
-                const devices = Object.values(rawData).sort((a,b) => (b.latency_ms || 0) - (a.latency_ms || 0)); // Ordenar por mayor latencia
+    async function fetchLatency() {
+        try {
+            const res = await fetch('/api/data');
+            const rawData = await res.json();
+            const devices = Object.values(rawData); // Corrección Dict -> List
 
-                updateTable(devices);
-                updateChart(devices);
+            updateChart(devices);
+            updateTable(devices);
+        } catch(e) { console.error(e); }
+    }
 
-            } catch (error) { console.error(error); }
-        }
+    function updateChart(devices) {
+        const ctx = document.getElementById('latencyChart').getContext('2d');
+        const labels = devices.map(d => d.pc_name);
+        const data = devices.map(d => d.latency_ms || 0);
 
-        function updateTable(devices) {
-            const tbody = document.querySelector('tbody'); 
-            // Si tu latency.html tiene una tabla, asegúrate de que tenga <tbody> o ajusta este selector
-            if(!tbody) return;
-
-            tbody.innerHTML = '';
-            devices.forEach(dev => {
-                const lat = dev.latency_ms || 0;
-                let color = lat < 50 ? 'text-emerald-600' : (lat < 100 ? 'text-amber-500' : 'text-red-600');
-                
-                const row = `
-                    <tr class="border-b border-slate-50 hover:bg-slate-50">
-                        <td class="px-6 py-4 font-bold text-slate-700">${dev.pc_name}</td>
-                        <td class="px-6 py-4 font-mono text-xs">${dev.ip}</td>
-                        <td class="px-6 py-4 font-bold ${color}">${lat} ms</td>
-                        <td class="px-6 py-4 text-xs text-slate-400">${new Date(dev.timestamp).toLocaleTimeString()}</td>
-                    </tr>
-                `;
-                tbody.innerHTML += row;
+        if (chartInstance) {
+            chartInstance.data.labels = labels;
+            chartInstance.data.datasets[0].data = data;
+            chartInstance.update();
+        } else {
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Ping (ms)',
+                        data: data,
+                        backgroundColor: '#6366f1',
+                        borderRadius: 4
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
             });
         }
+    }
 
-        function updateChart(devices) {
-            // Tomamos el Top 10 para el gráfico
-            const topDevices = devices.slice(0, 10);
-            const labels = topDevices.map(d => d.pc_name);
-            const data = topDevices.map(d => d.latency_ms || 0);
+    function updateTable(devices) {
+        const tbody = document.getElementById('latency-table-body');
+        tbody.innerHTML = '';
+        devices.forEach(d => {
+            const lat = d.latency_ms || 0;
+            const color = lat > 100 ? 'text-red-600' : 'text-emerald-600';
+            tbody.innerHTML += `
+                <tr class="border-b">
+                    <td class="px-6 py-4 font-bold">${d.pc_name}</td>
+                    <td class="px-6 py-4 font-mono text-xs">${d.ip}</td>
+                    <td class="px-6 py-4 font-bold ${color}">${lat} ms</td>
+                    <td class="px-6 py-4 text-xs">${d.status}</td>
+                </tr>
+            `;
+        });
+    }
 
-            const ctx = document.getElementById('latencyChart'); // Asegúrate que tu HTML tenga un <canvas id="latencyChart">
-            if(!ctx) return; 
-
-            if (latencyChart) {
-                latencyChart.data.labels = labels;
-                latencyChart.data.datasets[0].data = data;
-                latencyChart.update();
-            } else {
-                latencyChart = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Latencia (ms)',
-                            data: data,
-                            backgroundColor: '#6366f1',
-                            borderRadius: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        scales: { y: { beginAtZero: true } }
-                    }
-                });
-            }
-        }
-
-        setInterval(fetchLatencyData, 2000);
-        fetchLatencyData();
+    document.addEventListener("DOMContentLoaded", () => {
+        fetchLatency();
+        setInterval(fetchLatency, 2000);
     });
 </script>
 {% endblock %}
