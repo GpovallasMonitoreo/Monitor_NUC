@@ -87,5 +87,6 @@ def health():
     return jsonify({"status": "Argos Online", "database": status_db})
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 10000))
-    app.run(host='0.0.0.0', port=port)
+    port = int(os.environ.get('PORT', 8000))
+    app.run(host='0.0.0.0', port=port)rt)
+
