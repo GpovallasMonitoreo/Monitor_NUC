@@ -16,18 +16,18 @@ app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 app.secret_key = os.environ.get('SECRET_KEY', 'argos_secret_key_dev_mode')
 CORS(app)
 
-# Cargar variables de entorno
+# Cargar variables de entorno (Local)
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
     pass
 
-# 3. INICIALIZACIÓN DE SERVICIOS (SOLUCIÓN AL ERROR 500)
+# 3. INICIALIZACIÓN DE SERVICIOS
 # Importamos las clases de servicios
 from src.services.storage_service import StorageService
 from src.services.alert_service import AlertService
-# Importamos el módulo src para inyectarle las variables
+# Importamos el módulo src para inyectarle las variables globales
 import src 
 
 # Definir ruta de la DB
@@ -42,23 +42,19 @@ src.storage = StorageService(db_path, alert_service=src.alerts)
 
 print(f"✅ ARGOS: Storage inicializado en {db_path}")
 
-# 4. REGISTRO DE BLUEPRINTS (SOLUCIÓN AL ERROR 404)
-# Quitamos el try/except para ver errores reales si existen
-
+# 4. REGISTRO DE BLUEPRINTS
+# Registramos API y Vistas
 from src.routes.api import bp as api_bp
 app.register_blueprint(api_bp)
-print("✅ ARGOS: API Blueprint registrado")
 
 from src.routes.views import bp as views_bp
 app.register_blueprint(views_bp)
-print("✅ ARGOS: Views Blueprint registrado")
 
-
-# 5. RUTAS GLOBALES DE SISTEMA (Login/Logout)
+# 5. RUTAS GLOBALES DE SISTEMA (Login/Logout/Health)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # Si ya está logueado, ir al home (manejado por views.py)
+    # Si ya está logueado, ir al home
     if 'username' in session:
         return redirect(url_for('views.home'))
 
@@ -66,7 +62,8 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         
-        # TODO: Lógica real de usuarios
+        # Validación de usuario
+        # TODO: Conectar con DB real si es necesario
         if username == 'gpovallas' and password == 'admin': 
             session['username'] = username
             return redirect(url_for('views.home'))
@@ -82,10 +79,13 @@ def logout():
 
 @app.route('/health')
 def health():
-    # Verificación de salud del sistema
+    # Verificación de salud del sistema para Render
     status_db = "OK" if src.storage else "ERROR"
     return jsonify({"status": "Argos Online", "database": status_db})
 
+# 6. INICIO DEL SERVIDOR
 if __name__ == '__main__':
+    # Render asigna el puerto en la variable de entorno PORT.
+    # Si esa variable no existe (local), usamos 8000 como solicitaste.
     port = int(os.environ.get('PORT', 8000))
-    app.run(host='0.0.0.0', port=port)rt)
+    app.run(host='0.0.0.0', port=port)
