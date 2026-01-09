@@ -3,78 +3,65 @@ import sys
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from flask_cors import CORS
 
-# ---------------------------------------------------------
-# 1. CONFIGURACIÓN DE RUTAS ABSOLUTAS (La Solución al Error)
-# ---------------------------------------------------------
-# Obtenemos la ruta donde está este archivo app.py (La raíz del proyecto)
+# --- CONFIGURACIÓN DE RUTAS ---
 base_dir = os.path.abspath(os.path.dirname(__file__))
-
-# Definimos explícitamente dónde están los templates y static dentro de 'src'
 template_dir = os.path.join(base_dir, 'src', 'templates')
 static_dir = os.path.join(base_dir, 'src', 'static')
 
-# ---------------------------------------------------------
-# 2. INICIALIZACIÓN DE FLASK
-# ---------------------------------------------------------
-# Le decimos a Flask: "No busques aquí, busca en src/templates"
+# Añadir la raíz al path para importaciones
+sys.path.append(base_dir)
+
 app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 
-# Configuración básica
+# --- CONFIGURACIÓN ---
 app.secret_key = os.environ.get('SECRET_KEY', 'argos_secret_key_dev_mode')
 CORS(app)
 
-# ---------------------------------------------------------
-# 3. IMPORTACIÓN DE TU LÓGICA (BLUEPRINTS)
-# ---------------------------------------------------------
-# Agregamos la raíz al path para poder importar 'src' sin problemas
-sys.path.append(base_dir)
-
+# --- CARGA DE DOTENV ---
 try:
-    # Intenta cargar dotenv si existe (local), si no, sigue (producción)
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
     pass
 
-# Importamos el Blueprint de la API que arreglamos antes
-# Asegúrate de que src/routes/api.py tenga: bp = Blueprint('api', __name__, url_prefix='/api')
+# --- REGISTRO DE BLUEPRINTS (AQUÍ ESTÁ LA SOLUCIÓN) ---
+
+# 1. API Blueprint
 try:
     from src.routes.api import bp as api_bp
     app.register_blueprint(api_bp)
 except Exception as e:
-    print(f"⚠️ Advertencia: No se pudo cargar la API: {e}")
+    print(f"⚠️ Error cargando API: {e}")
 
-# ---------------------------------------------------------
-# 4. RUTAS VISUALES (FRONTEND)
-# ---------------------------------------------------------
+# 2. Views Blueprint (¡ESTO FALTABA!)
+# Esto conecta tus rutas /monitor, /latency, etc.
+try:
+    from src.routes.views import bp as views_bp
+    app.register_blueprint(views_bp)
+except Exception as e:
+    print(f"⚠️ Error cargando Vistas: {e}")
 
-@app.route('/')
-def index():
-    if 'username' not in session:
-        return redirect(url_for('login'))
-    # Si tienes un dashboard.html en src/templates/inventory/ o src/templates/
-    # Ajusta la ruta del template según corresponda. 
-    # Viendo tu estructura, parece que tienes 'dashboard.html' directo en templates.
-    return render_template('dashboard.html', user=session['username'])
+
+# --- RUTAS GLOBALES / AUTENTICACIÓN ---
+# Mantenemos Login/Logout aquí porque son globales, 
+# pero la ruta '/' la hemos delegado a views.py (home)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if 'username' in session:
-        return redirect(url_for('index'))
+        return redirect(url_for('views.home')) # Nota: ahora redirige al blueprint 'views'
 
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
         
-        # --- LÓGICA DE VALIDACIÓN ---
-        # TODO: Conectar esto con tu base de datos real
+        # TODO: Conectar a DB real
         if username == 'gpovallas' and password == 'admin': 
             session['username'] = username
-            return redirect(url_for('index'))
+            return redirect(url_for('views.home'))
         else:
             return render_template('login.html', error="Credenciales inválidas")
 
-    # Flask ahora buscará esto en MONITOR-ENTERPRISE-MAIN/src/templates/login.html
     return render_template('login.html')
 
 @app.route('/logout')
@@ -84,7 +71,12 @@ def logout():
 
 @app.route('/health')
 def health():
-    return jsonify({"status": "Argos Online", "template_path": template_dir})
+    return jsonify({"status": "Argos Online"})
+
+# Manejador de error 404 para depuración
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404 # Si no tienes 404.html, devuelve texto simple
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
