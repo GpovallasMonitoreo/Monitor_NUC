@@ -1,13 +1,15 @@
 {% extends 'base.html' %}
 
-{% block header_title %}Mapa de Infraestructura y Riesgos{% endblock %}
+{% block header_title %}Centro de Monitoreo de Latencia y Hardware{% endblock %}
 
 {% block content %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 
 <style>
-    /* --- CONTENEDOR PRINCIPAL --- */
+    /* --- ESTILOS MAPA --- */
     #app-container { 
         position: relative; 
         height: calc(100vh - 5rem); 
@@ -20,7 +22,7 @@
     
     #map { height: 100%; width: 100%; z-index: 1; background: #e2e8f0; }
 
-    /* --- SIDEBAR DERECHO (ESTILO EJECUTIVO) --- */
+    /* --- SIDEBAR DERECHO --- */
     #sidebar {
         position: absolute; top: 0; bottom: 0; right: 0;
         width: 350px; 
@@ -34,7 +36,6 @@
     }
     #sidebar.collapsed { transform: translateX(100%); }
 
-    /* Botón Toggle */
     #sidebar-toggle {
         position: absolute; top: 20px; right: 365px; z-index: 2001;
         background: #334155; color: white; border: none;
@@ -46,7 +47,6 @@
     #sidebar-toggle:hover { background: #1e293b; }
     #sidebar.collapsed + #sidebar-toggle { right: 20px; }
 
-    /* --- ESTILOS INTERNOS --- */
     .sidebar-header { 
         padding: 18px 20px; 
         background: #f8fafc; 
@@ -59,7 +59,6 @@
 
     .sidebar-content { flex: 1; overflow-y: auto; padding: 15px; background: #ffffff; }
     
-    /* Tarjetas de Control */
     .control-card { 
         background: #ffffff; 
         border: 1px solid #e2e8f0; 
@@ -84,7 +83,6 @@
     .layer-info { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; color: #475569; }
     .color-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 
-    /* Switch Estándar */
     .switch { position: relative; display: inline-block; width: 32px; height: 18px; }
     .switch input { opacity: 0; width: 0; height: 0; }
     .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .3s; border-radius: 34px; }
@@ -102,7 +100,7 @@
     .kpi-title { font-size: 0.65rem; color: #64748b; font-weight: 700; text-transform: uppercase; }
     .kpi-value { font-size: 1.1rem; font-weight: 700; color: #0f172a; display: block; margin-top: 2px; }
 
-    /* --- ICONOS DE NUC (Estilo Profesional) --- */
+    /* --- ICONOS DE NUC --- */
     .nuc-marker {
         display: flex; justify-content: center; align-items: center;
         background: white;
@@ -114,7 +112,6 @@
         transition: all 0.3s;
     }
     
-    /* Estados */
     .nuc-online { border-color: #16a34a; color: #16a34a; background: #f0fdf4; }
     .nuc-offline { border-color: #94a3b8; color: #94a3b8; background: #f8fafc; }
     .nuc-critical { 
@@ -141,111 +138,266 @@
     .dot-green { background: #16a34a; }
     .dot-red { background: #dc2626; }
     
-    /* Iconos FontAwesome Custom (POI) */
     .custom-fa-icon { 
         display: flex !important; justify-content: center; align-items: center; 
         background: white; border-radius: 50%; border: 1px solid #94a3b8; 
         box-shadow: 0 2px 4px rgba(0,0,0,0.15); 
     }
+
+    /* --- ESTILOS TARJETAS DE PC --- */
+    .card { background-color: white; border-radius: 0.75rem; border: 1px solid #e2e8f0; padding: 1.25rem; transition: all 0.2s; display: flex; flex-direction: column; }
+    .card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+    .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 24px; height: 24px; border-radius: 50%; border-left-color: #4f46e5; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .modal-tab { padding: 0.75rem 1rem; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 500; color: #64748b; }
+    .modal-tab.active { color: #4f46e5; border-color: #4f46e5; }
+    
+    .timeline-item { position: relative; padding-left: 2rem; padding-bottom: 2rem; border-left: 2px solid #e2e8f0; }
+    .timeline-item:last-child { border-left: 2px solid transparent; }
+    .timeline-dot { position: absolute; left: -9px; top: 0; width: 16px; height: 16px; border-radius: 50%; background: #cbd5e1; border: 2px solid white; box-shadow: 0 0 0 2px #f1f5f9; }
+    .timeline-dot.active { background: #4f46e5; box-shadow: 0 0 0 4px #e0e7ff; }
+
+    /* --- CONTENEDOR PRINCIPAL FLEXIBLE --- */
+    .main-container { display: flex; flex-direction: column; gap: 1.5rem; padding: 1.5rem; }
+    
+    .section-header { 
+        background: white; 
+        border-radius: 0.75rem; 
+        border: 1px solid #e2e8f0; 
+        padding: 1.5rem; 
+        display: flex; 
+        flex-direction: column; 
+        gap: 1rem; 
+    }
+    
+    .grid-section { 
+        display: grid; 
+        grid-template-columns: 1fr 400px; 
+        gap: 1.5rem; 
+        height: 600px; 
+    }
+    
+    .map-section { 
+        background: white; 
+        border-radius: 0.75rem; 
+        border: 1px solid #e2e8f0; 
+        overflow: hidden; 
+        position: relative; 
+    }
+    
+    .cards-section { 
+        background: white; 
+        border-radius: 0.75rem; 
+        border: 1px solid #e2e8f0; 
+        padding: 1.5rem; 
+        overflow-y: auto; 
+    }
+    
+    /* Responsive */
+    @media (max-width: 1200px) {
+        .grid-section { grid-template-columns: 1fr; height: auto; }
+        .cards-section { height: 500px; }
+        .map-section { height: 500px; }
+    }
 </style>
 
-<div id="app-container">
-    
-    <div class="kpi-dashboard">
-        <div class="kpi-card">
-            <span class="kpi-title">Equipos Activos</span>
-            <span class="kpi-value text-emerald-600" id="kpi-online">0</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-title">Alertas</span>
-            <span class="kpi-value text-red-600" id="kpi-issues">0</span>
-        </div>
-    </div>
-
-    <div id="map"></div>
-
-    <div id="sidebar">
-        <div class="sidebar-header">
+<div class="main-container">
+    <!-- Cabecera con controles -->
+    <div class="section-header">
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
-                <h2>Panel Ejecutivo</h2>
-                <small>Infraestructura</small>
-            </div>
-            <i class="fa-solid fa-map text-slate-400"></i>
-        </div>
-
-        <div class="sidebar-content">
-            <!-- Panel de Unidades de Negocio (del primer código) -->
-            <div class="control-card">
-                <div class="card-header" onclick="toggleCard(this)">
-                    <span><i class="fa-solid fa-layer-group text-blue-600 mr-2"></i> Unidades de Negocio</span>
-                    <i class="fa-solid fa-chevron-down text-slate-400 transition-transform"></i>
-                </div>
-                <div class="card-body hidden" id="dynamic-panels">
-                    <!-- Se llenará dinámicamente con los dispositivos -->
-                </div>
+                <h2 class="text-3xl font-extrabold text-slate-800">Estado de Activos</h2>
+                <p class="text-slate-500 text-sm">Latencia y Telemetría en Tiempo Real</p>
             </div>
             
-            <!-- Nuevos controles del segundo código -->
-            <div class="control-card" style="border-left: 3px solid #2563eb;">
-                <div class="card-header">
-                    <span><i class="fa-solid fa-layer-group text-blue-600 mr-2"></i> Capas de Análisis</span>
-                </div>
-                <div class="card-body">
-                    <div class="layer-toggle">
-                        <div class="layer-info"><span class="color-dot" style="background:#2563eb;"></span> Red Internet</div>
-                        <label class="switch"><input type="radio" name="exclusive-mode" checked onchange="activateExclusiveMode('red')"><span class="slider"></span></label>
-                    </div>
-                    <div class="layer-toggle">
-                        <div class="layer-info"><span class="color-dot" style="background:#ef4444;"></span> Calor: Afluencia</div>
-                        <label class="switch"><input type="radio" name="exclusive-mode" onchange="activateExclusiveMode('afluencia')"><span class="slider"></span></label>
-                    </div>
-                    <div class="layer-toggle">
-                        <div class="layer-info"><span class="color-dot" style="background:#0f172a;"></span> Calor: Fallas</div>
-                        <label class="switch"><input type="radio" name="exclusive-mode" onchange="activateExclusiveMode('fallas')"><span class="slider"></span></label>
-                    </div>
-                </div>
+            <div class="flex items-center gap-3 w-full md:w-auto">
+                <select id="unit-filter" class="rounded-lg border border-slate-300 py-2 px-4 text-sm bg-white focus:ring-2 focus:ring-indigo-500">
+                    <option value="all">Todas las Unidades</option>
+                </select>
+                <input type="search" id="search-bar" placeholder="Buscar por nombre o IP..." class="block w-full md:w-64 px-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500">
             </div>
-
-            <div class="control-card">
-                <div class="card-header" onclick="toggleCard(this)">
-                    <span><i class="fa-solid fa-clock mr-2"></i> Filtro de Hora (Afluencia)</span>
-                    <i class="fa-solid fa-chevron-down text-slate-400 transition-transform"></i>
-                </div>
-                <div class="card-body hidden">
-                    <div style="padding: 15px;">
-                        <select id="heatmap-time-selector" class="w-full p-2 border border-slate-300 rounded text-sm bg-white" onchange="updateAfluenciaHeatmap(this.value)">
-                            <option value="off">Desactivado</option>
-                            <option value="6">06:00 AM - Inicio Jornada</option>
-                            <option value="9" selected>09:00 AM - Hora Pico</option>
-                            <option value="12">12:00 PM - Mediodía</option>
-                            <option value="15">03:00 PM - Tarde</option>
-                            <option value="18">06:00 PM - Salida Laboral</option>
-                            <option value="21">09:00 PM - Noche</option>
-                        </select>
-                    </div>
-                </div>
+        </div>
+        
+        <!-- KPIs en línea -->
+        <div class="flex gap-4">
+            <div class="kpi-card">
+                <span class="kpi-title">Equipos Activos</span>
+                <span class="kpi-value text-emerald-600" id="kpi-online">0</span>
             </div>
-
-            <div class="control-card">
-                <div class="card-header" onclick="toggleCard(this)">
-                    <span><i class="fa-solid fa-building mr-2"></i> Puntos de Referencia</span>
-                    <i class="fa-solid fa-chevron-down text-slate-400 transition-transform"></i>
-                </div>
-                <div class="card-body hidden">
-                    <div class="layer-toggle">
-                        <div class="layer-info"><span class="color-dot" style="background:#800080;"></span> Sitios de Interés (POI)</div>
-                        <label class="switch"><input type="checkbox" checked onchange="toggleLayer('poi', this.checked)"><span class="slider"></span></label>
-                    </div>
-                    <div class="layer-toggle">
-                        <div class="layer-info"><span class="color-dot" style="background:#0000ff;"></span> Metro CDMX</div>
-                        <label class="switch"><input type="checkbox" checked onchange="toggleLayer('metro', this.checked)"><span class="slider"></span></label>
-                    </div>
-                </div>
+            <div class="kpi-card">
+                <span class="kpi-title">Alertas</span>
+                <span class="kpi-value text-red-600" id="kpi-issues">0</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-title">Promedio CPU</span>
+                <span class="kpi-value text-indigo-600" id="kpi-cpu-avg">0%</span>
             </div>
         </div>
     </div>
 
-    <button id="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+    <!-- Sección principal con mapa y tarjetas -->
+    <div class="grid-section">
+        <!-- Mapa a la izquierda -->
+        <div class="map-section">
+            <div id="map"></div>
+            
+            <div id="sidebar">
+                <div class="sidebar-header">
+                    <div>
+                        <h2>Panel Ejecutivo</h2>
+                        <small>Infraestructura</small>
+                    </div>
+                    <i class="fa-solid fa-map text-slate-400"></i>
+                </div>
+
+                <div class="sidebar-content">
+                    <div class="control-card">
+                        <div class="card-header" onclick="toggleCard(this)">
+                            <span><i class="fa-solid fa-layer-group text-blue-600 mr-2"></i> Unidades de Negocio</span>
+                            <i class="fa-solid fa-chevron-down text-slate-400 transition-transform"></i>
+                        </div>
+                        <div class="card-body hidden" id="dynamic-panels">
+                        </div>
+                    </div>
+                    
+                    <div class="control-card" style="border-left: 3px solid #2563eb;">
+                        <div class="card-header">
+                            <span><i class="fa-solid fa-layer-group text-blue-600 mr-2"></i> Capas de Análisis</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="layer-toggle">
+                                <div class="layer-info"><span class="color-dot" style="background:#2563eb;"></span> Red Internet</div>
+                                <label class="switch"><input type="radio" name="exclusive-mode" checked onchange="activateExclusiveMode('red')"><span class="slider"></span></label>
+                            </div>
+                            <div class="layer-toggle">
+                                <div class="layer-info"><span class="color-dot" style="background:#ef4444;"></span> Calor: Afluencia</div>
+                                <label class="switch"><input type="radio" name="exclusive-mode" onchange="activateExclusiveMode('afluencia')"><span class="slider"></span></label>
+                            </div>
+                            <div class="layer-toggle">
+                                <div class="layer-info"><span class="color-dot" style="background:#0f172a;"></span> Calor: Fallas</div>
+                                <label class="switch"><input type="radio" name="exclusive-mode" onchange="activateExclusiveMode('fallas')"><span class="slider"></span></label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-card">
+                        <div class="card-header" onclick="toggleCard(this)">
+                            <span><i class="fa-solid fa-clock mr-2"></i> Filtro de Hora (Afluencia)</span>
+                            <i class="fa-solid fa-chevron-down text-slate-400 transition-transform"></i>
+                        </div>
+                        <div class="card-body hidden">
+                            <div style="padding: 15px;">
+                                <select id="heatmap-time-selector" class="w-full p-2 border border-slate-300 rounded text-sm bg-white" onchange="updateAfluenciaHeatmap(this.value)">
+                                    <option value="off">Desactivado</option>
+                                    <option value="6">06:00 AM - Inicio Jornada</option>
+                                    <option value="9" selected>09:00 AM - Hora Pico</option>
+                                    <option value="12">12:00 PM - Mediodía</option>
+                                    <option value="15">03:00 PM - Tarde</option>
+                                    <option value="18">06:00 PM - Salida Laboral</option>
+                                    <option value="21">09:00 PM - Noche</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button id="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+        </div>
+
+        <!-- Tarjetas de PC a la derecha -->
+        <div class="cards-section">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-bold text-slate-800">Activos Detectados</h3>
+                <span class="text-xs text-slate-500" id="devices-count">0 dispositivos</span>
+            </div>
+            
+            <div id="loading-indicator" class="flex flex-col items-center justify-center h-48">
+                <div class="spinner"></div>
+                <p class="mt-4 text-slate-500 font-medium">Sincronizando con Argos Network...</p>
+            </div>
+
+            <div id="pc-cards-container" class="grid grid-cols-1 gap-4 max-h-[450px] overflow-y-auto pr-2"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Detalles (del segundo código) -->
+<div id="pc-modal-overlay" class="fixed inset-0 bg-slate-900/70 hidden items-center justify-center p-4 backdrop-blur-sm z-50">
+    <div id="pc-modal-container" class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden animate-fade-in-up">
+        
+        <div class="flex justify-between items-center p-6 border-b bg-slate-50">
+            <div>
+                <h2 id="modal-pc-name" class="text-2xl font-bold text-slate-800"></h2>
+                <div id="modal-status-line" class="mt-1"></div>
+            </div>
+            <div class="flex gap-2">
+                <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 transition flex items-center gap-2">
+                    <i data-lucide="file-down" class="w-4 h-4"></i> Exportar
+                </button>
+                <button id="modal-close-button" class="text-slate-400 hover:text-slate-600 transition">
+                    <i data-lucide="x-circle" class="w-8 h-8"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="border-b bg-white px-6">
+            <nav class="flex space-x-6" id="modal-tabs">
+                <button data-tab="general" class="modal-tab active">General</button>
+                <button data-tab="hardware" class="modal-tab">Hardware</button>
+                <button data-tab="predictive" class="modal-tab">Diagnóstico IA</button>
+                <button data-tab="specs" class="modal-tab">Ficha Técnica & Historial</button>
+            </nav>
+        </div>
+
+        <div class="p-8 flex-1 overflow-y-auto bg-slate-50">
+            
+            <div id="tab-general" class="tab-content">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="card shadow-sm">
+                        <h3 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2">Métricas de Red</h3>
+                        <div id="info-panel" class="space-y-4 text-sm"></div>
+                    </div>
+                    <div class="card shadow-sm h-[400px]">
+                        <h3 class="text-lg font-bold text-slate-700 mb-4">Historial de Latencia (ms)</h3>
+                        <canvas id="latency-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-hardware" class="tab-content hidden">
+                <div id="hardware-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+            </div>
+
+            <div id="tab-predictive" class="tab-content hidden">
+                <div class="p-6 bg-indigo-50 rounded-xl border border-indigo-100">
+                    <h3 class="text-indigo-900 font-bold mb-2">Análisis Predictivo Argos</h3>
+                    <p class="text-indigo-700 text-sm" id="predictive-analysis">Cargando análisis...</p>
+                </div>
+            </div>
+
+            <div id="tab-specs" class="tab-content hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="bg-white p-6 rounded-xl border border-indigo-100 shadow-sm relative overflow-hidden">
+                            <div class="absolute top-0 right-0 bg-indigo-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg">EQUIPO ACTUAL</div>
+                            <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
+                                <i data-lucide="cpu" class="w-5 h-5 mr-2 text-indigo-500"></i> Especificaciones Técnicas
+                            </h3>
+                            <div id="specs-current" class="grid grid-cols-2 gap-6 text-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-fit">
+                        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-6">Historial de Activos</h3>
+                        <div id="specs-history" class="pl-2">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -254,14 +406,13 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // Variables globales
     let map = null;
     const layers = { 
-        // Capas del primer código
         'BioBox': L.layerGroup(), 
         'ViaVerde': L.layerGroup(), 
         'Ecovallas': L.layerGroup(), 
         'General': L.layerGroup(),
-        // Capas del segundo código
         'high': L.layerGroup(), 
         'mid': L.layerGroup(), 
         'low': L.layerGroup(),
@@ -272,8 +423,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const markers = {};
     let afluenciaHeatmapLayers = {};
+    let pcDataStore = {};
+    let latencyHistory = {};
+    let currentPc = null;
+    let charts = { latency: null };
 
-    // Datos del segundo código
+    // Datos estáticos del mapa
     const DATA_INTERMITENCIAS = [
         [19.357, -99.299, 1.0], [19.388, -99.193, 0.9], [19.288, -99.167, 0.8], [19.278, -99.102, 0.75],
         [19.309, -99.123, 0.7], [19.296, -99.192, 0.7], [19.160, -99.000, 0.9], [19.400, -99.100, 0.85],
@@ -292,8 +447,8 @@ document.addEventListener('DOMContentLoaded', () => {
         [19.4350, -99.2050, 0.6], [19.4110, -99.1800, 0.7], [19.4090, -99.1850, 0.65]
     ];
 
-    function init() {
-        // Inicializar mapa como en el primer código
+    // --- INICIALIZACIÓN DEL MAPA ---
+    function initMap() {
         map = L.map('map', { zoomControl: false, renderer: L.canvas() }).setView([19.4326, -99.1332], 12);
         L.control.zoom({ position: 'topleft' }).addTo(map);
         
@@ -301,154 +456,30 @@ document.addEventListener('DOMContentLoaded', () => {
             attribution: 'Argos Analytics', maxZoom: 19
         }).addTo(map);
 
-        // Crear panes como en ambos códigos
+        // Crear panes
         map.createPane('nucPane').style.zIndex = 700;
         map.createPane('redPane').style.zIndex = 400;
         map.createPane('heatmapPane').style.zIndex = 450;
         map.createPane('markerPane').style.zIndex = 600;
 
-        // Inicializar capas adicionales del segundo código
+        // Inicializar capas del mapa
         initRedData();
         initAfluenciaData();
         initFallasElectricas();
         initInfraestructura();
 
-        // Añadir capas de NUCs (del primer código)
+        // Añadir capas de unidades
         ['BioBox', 'ViaVerde', 'Ecovallas', 'General'].forEach(layer => {
             if (layers[layer]) layers[layer].addTo(map);
         });
 
-        // Activar capa por defecto (Red Internet)
+        // Activar capa por defecto
         activateExclusiveMode('red');
-
-        // Cargar datos en vivo
-        fetchLiveNucs();
-        setInterval(fetchLiveNucs, 3000);
     }
 
-    // --- FUNCIONES DEL PRIMER CÓDIGO (modificadas) ---
-    async function fetchLiveNucs() {
-        try {
-            // URL CORRECTA del primer código
-            const response = await fetch('/api/data');
-            const rawData = await response.json();
-            const devices = Object.values(rawData);
-            
-            updateMap(devices);
-            updateKPIs(devices);
-            updateSidebarList(devices);
-            
-        } catch (e) { console.error("Error API:", e); }
-    }
-
-    function updateMap(devices) {
-        // Limpiar capas anteriores
-        ['BioBox', 'ViaVerde', 'Ecovallas', 'General'].forEach(key => {
-            if (layers[key]) layers[key].clearLayers();
-        });
-
-        devices.forEach(dev => {
-            // Validar Coordenadas (Si no vienen, no se pinta)
-            if (!dev.lat || !dev.lng) return;
-
-            const unit = dev.unit || 'General';
-            const layer = layers[unit] || layers['General'];
-            
-            // Icono - Mezcla de ambos códigos
-            let statusClass = 'nuc-online';
-            let iconName = 'desktop';
-            let tooltipStatus = 'ONLINE';
-            
-            if (dev.status === 'offline') { 
-                statusClass = 'nuc-offline'; 
-                iconName = 'power-off'; 
-                tooltipStatus = 'OFFLINE';
-            }
-            if (dev.cpu_load_percent > 90 || dev.status === 'critical') { 
-                statusClass = 'nuc-critical'; 
-                iconName = 'triangle-exclamation'; 
-                tooltipStatus = 'CRÍTICO';
-            }
-
-            const icon = L.divIcon({
-                className: 'custom-div-icon',
-                html: `<div class="nuc-marker ${statusClass}"><i class="fa-solid fa-${iconName}"></i></div>`,
-                iconSize: [24, 24], 
-                iconAnchor: [12, 12]
-            });
-
-            if (markers[dev.pc_name]) {
-                markers[dev.pc_name].setLatLng([dev.lat, dev.lng]).setIcon(icon);
-            } else {
-                markers[dev.pc_name] = L.marker([dev.lat, dev.lng], { 
-                    icon: icon, 
-                    pane: 'nucPane' 
-                })
-                .bindPopup(`<b>${dev.pc_name}</b><br>${unit}<br>CPU: ${Math.round(dev.cpu_load_percent||0)}%`)
-                .addTo(layer);
-            }
-        });
-    }
-
-    function updateSidebarList(devices) {
-        const container = document.getElementById('dynamic-panels');
-        if (!container) return;
-        
-        // Agrupar por unidad
-        const groups = {};
-        devices.forEach(d => {
-            const unit = d.unit || 'General';
-            if (!groups[unit]) groups[unit] = [];
-            groups[unit].push(d);
-        });
-
-        // Limpiar y recrear paneles si es la primera vez
-        if (!container.querySelector('.marker-list')) {
-            container.innerHTML = '';
-            
-            Object.entries(groups).forEach(([unitName, devs]) => {
-                if (devs.length > 0) {
-                    const panelHtml = `
-                        <div class="marker-row" style="padding: 8px 15px; border-bottom: 1px solid #f1f5f9; font-size: 0.8rem; background: #f8fafc; font-weight: 600; color: #334155;">
-                            ${unitName} <small>(${devs.length})</small>
-                        </div>
-                        ${devs.map(d => `
-                            <div class="marker-row" onclick="zoomTo('${d.pc_name}')">
-                                <div class="status-dot ${d.status === 'online' ? 'dot-green' : 'dot-red'}"></div>
-                                <span class="text-sm font-medium text-slate-700" style="flex: 1;">${d.pc_name}</span>
-                                <span class="text-xs text-slate-400">${Math.round(d.cpu_load_percent||0)}%</span>
-                            </div>
-                        `).join('')}
-                    `;
-                    
-                    const unitDiv = document.createElement('div');
-                    unitDiv.innerHTML = panelHtml;
-                    container.appendChild(unitDiv);
-                }
-            });
-        } else {
-            // Actualizar puntos de estado existentes
-            devices.forEach(d => {
-                const dot = document.querySelector(`[onclick*="${d.pc_name}"] .status-dot`);
-                if (dot) {
-                    dot.className = `status-dot ${d.status === 'online' ? 'dot-green' : 'dot-red'}`;
-                }
-            });
-        }
-    }
-
-    function updateKPIs(devices) {
-        const online = devices.filter(d => d.status === 'online').length;
-        const issues = devices.filter(d => d.status === 'critical' || d.cpu_load_percent > 90 || d.status === 'offline').length;
-        document.getElementById('kpi-online').innerText = online;
-        document.getElementById('kpi-issues').innerText = issues;
-    }
-
-    // --- FUNCIONES DEL SEGUNDO CÓDIGO (adaptadas) ---
+    // --- FUNCIONES DEL MAPA ---
     function initRedData() {
-        if (typeof SPEEDTEST_DATA === 'undefined') {
-            return;
-        }
+        if (typeof SPEEDTEST_DATA === 'undefined') return;
         
         const feats = { high: [], mid: [], low: [] };
         
@@ -494,7 +525,6 @@ document.addEventListener('DOMContentLoaded', () => {
             PUNTOS_BASE_AFLUENCIA.forEach(punto => {
                 let intensidad = punto[2] * factor;
                 heatData.push([punto[0], punto[1], intensidad]);
-                // Generar nube alrededor
                 for (let i = 0; i < 20; i++) {
                     const nLat = punto[0] + (Math.random() - 0.5) * 0.02;
                     const nLon = punto[1] + (Math.random() - 0.5) * 0.02;
@@ -526,7 +556,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function initInfraestructura() {
-        // POIs
         DATA_POI.forEach(p => {
             const icon = L.divIcon({ 
                 html: `<i class="fa-solid fa-${p[3]}" style="color:${p[4]}; font-size:14px;"></i>`, 
@@ -538,7 +567,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 .addTo(layers.poi);
         });
         
-        // Líneas de metro
         const lines = [
             {c:'#f06292', p:[[19.42,-99.12],[19.43,-99.14],[19.44,-99.15]]},
             {c:'#fbbf24', p:[[19.45,-99.10],[19.44,-99.12],[19.41,-99.13]]}
@@ -546,12 +574,353 @@ document.addEventListener('DOMContentLoaded', () => {
         lines.forEach(l => L.polyline(l.p, {color: l.c, weight: 4, pane:'markerPane'}).addTo(layers.metro));
     }
 
-    // --- FUNCIONES UI COMPARTIDAS ---
-    window.zoomTo = (name) => {
+    // --- SINCROZINACIÓN DE DATOS ---
+    async function fetchLiveData() {
+        try {
+            const res = await fetch('/api/data');
+            if (!res.ok) throw new Error("Error API");
+            const rawData = await res.json();
+            const devices = Object.values(rawData);
+            
+            devices.forEach(dev => {
+                // Establecer valores por defecto si no existen
+                if (!dev.latency) dev.latency = Math.floor(Math.random() * (40 - 10 + 1) + 10);
+                if (!dev.unit) dev.unit = "Sin Asignar";
+                if (!dev.cpu_load_percent) dev.cpu_load_percent = dev.cpu_percent || 0;
+                if (!dev.ram_percent) dev.ram_percent = dev.ram_percent || 0;
+                if (!dev.temperature) dev.temperature = dev.temperature || 40;
+
+                pcDataStore[dev.pc_name] = dev;
+                
+                // Historial de latencia
+                if (!latencyHistory[dev.pc_name]) latencyHistory[dev.pc_name] = [];
+                latencyHistory[dev.pc_name].push({ x: new Date(), y: dev.latency });
+                if (latencyHistory[dev.pc_name].length > 20) latencyHistory[dev.pc_name].shift();
+            });
+
+            updateMapMarkers(devices);
+            renderPCCards();
+            updateKPIs(devices);
+            updateUnitFilter(devices);
+            if (currentPc && pcDataStore[currentPc]) refreshModalData();
+            
+            document.getElementById('loading-indicator').style.display = 'none';
+        } catch (e) { 
+            console.error("Error fetching data:", e); 
+        }
+    }
+
+    function updateMapMarkers(devices) {
+        // Limpiar capas anteriores
+        ['BioBox', 'ViaVerde', 'Ecovallas', 'General'].forEach(key => {
+            if (layers[key]) layers[key].clearLayers();
+        });
+
+        devices.forEach(dev => {
+            if (!dev.lat || !dev.lng) return;
+
+            const unit = dev.unit || 'General';
+            const layer = layers[unit] || layers['General'];
+            
+            let statusClass = 'nuc-online';
+            let iconName = 'desktop';
+            
+            if (dev.status === 'offline') { 
+                statusClass = 'nuc-offline'; 
+                iconName = 'power-off'; 
+            }
+            if (dev.cpu_load_percent > 90 || dev.status === 'critical') { 
+                statusClass = 'nuc-critical'; 
+                iconName = 'triangle-exclamation'; 
+            }
+
+            const icon = L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div class="nuc-marker ${statusClass}"><i class="fa-solid fa-${iconName}"></i></div>`,
+                iconSize: [24, 24], 
+                iconAnchor: [12, 12]
+            });
+
+            if (markers[dev.pc_name]) {
+                markers[dev.pc_name].setLatLng([dev.lat, dev.lng]).setIcon(icon);
+            } else {
+                markers[dev.pc_name] = L.marker([dev.lat, dev.lng], { 
+                    icon: icon, 
+                    pane: 'nucPane' 
+                })
+                .bindPopup(`<b>${dev.pc_name}</b><br>${unit}<br>CPU: ${Math.round(dev.cpu_load_percent||0)}%`)
+                .addTo(layer);
+                
+                // Agregar evento de clic para abrir modal
+                markers[dev.pc_name].on('click', () => {
+                    openModal(dev.pc_name);
+                });
+            }
+        });
+    }
+
+    function updateSidebarList(devices) {
+        const container = document.getElementById('dynamic-panels');
+        if (!container) return;
+        
+        const groups = {};
+        devices.forEach(d => {
+            const unit = d.unit || 'General';
+            if (!groups[unit]) groups[unit] = [];
+            groups[unit].push(d);
+        });
+
+        if (!container.querySelector('.marker-list')) {
+            container.innerHTML = '';
+            
+            Object.entries(groups).forEach(([unitName, devs]) => {
+                if (devs.length > 0) {
+                    const panelHtml = `
+                        <div class="marker-row" style="padding: 8px 15px; border-bottom: 1px solid #f1f5f9; font-size: 0.8rem; background: #f8fafc; font-weight: 600; color: #334155;">
+                            ${unitName} <small>(${devs.length})</small>
+                        </div>
+                        ${devs.map(d => `
+                            <div class="marker-row" onclick="zoomToMarker('${d.pc_name}')">
+                                <div class="status-dot ${d.status === 'online' ? 'dot-green' : 'dot-red'}"></div>
+                                <span class="text-sm font-medium text-slate-700" style="flex: 1;">${d.pc_name}</span>
+                                <span class="text-xs text-slate-400">${Math.round(d.cpu_load_percent||0)}%</span>
+                            </div>
+                        `).join('')}
+                    `;
+                    
+                    const unitDiv = document.createElement('div');
+                    unitDiv.innerHTML = panelHtml;
+                    container.appendChild(unitDiv);
+                }
+            });
+        } else {
+            devices.forEach(d => {
+                const dot = document.querySelector(`[onclick*="${d.pc_name}"] .status-dot`);
+                if (dot) {
+                    dot.className = `status-dot ${d.status === 'online' ? 'dot-green' : 'dot-red'}`;
+                }
+            });
+        }
+    }
+
+    // --- FUNCIONES DE LAS TARJETAS DE PC ---
+    function renderPCCards() {
+        const container = document.getElementById('pc-cards-container');
+        const search = document.getElementById('search-bar').value.toLowerCase();
+        const unitFilter = document.getElementById('unit-filter').value;
+        container.innerHTML = '';
+        
+        const devices = Object.values(pcDataStore);
+        let filteredDevices = devices.filter(pc => {
+            if (unitFilter !== 'all' && pc.unit !== unitFilter) return false;
+            if (!pc.pc_name.toLowerCase().includes(search) && 
+                !(pc.public_ip || pc.ip || '').includes(search)) return false;
+            return true;
+        });
+
+        document.getElementById('devices-count').textContent = `${filteredDevices.length} dispositivos`;
+
+        filteredDevices.forEach(pc => {
+            let latencyColor = pc.latency > 100 ? "text-red-600" : (pc.latency > 50 ? "text-amber-500" : "text-slate-900");
+
+            const card = document.createElement('div');
+            card.className = 'card cursor-pointer group hover:border-indigo-300';
+            card.onclick = () => openModal(pc.pc_name);
+            
+            card.innerHTML = `
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="font-bold text-slate-800 leading-tight group-hover:text-indigo-600 transition">${pc.pc_name}</h3>
+                        <span class="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded">${pc.unit || 'General'}</span>
+                    </div>
+                    <div class="status-dot ${pc.status === 'online' ? 'status-online' : 'status-offline'}"></div>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-4xl font-black ${latencyColor}">${pc.latency || 0}</span>
+                    <span class="text-sm font-bold text-slate-400">ms</span>
+                </div>
+                <div class="mt-6 pt-4 border-t border-slate-100 grid grid-cols-2 gap-4">
+                    <div class="text-center">
+                        <span class="block text-[9px] font-bold text-slate-400 uppercase">CPU</span>
+                        <div class="w-full bg-slate-100 rounded-full h-1.5 mt-1 mb-1">
+                            <div class="bg-indigo-500 h-1.5 rounded-full" style="width: ${pc.cpu_load_percent || 0}%"></div>
+                        </div>
+                        <span class="text-sm font-bold text-slate-700">${Math.round(pc.cpu_load_percent || 0)}%</span>
+                    </div>
+                    <div class="text-center">
+                        <span class="block text-[9px] font-bold text-slate-400 uppercase">Temp</span>
+                        <span class="text-sm font-bold ${(pc.temperature || 0) > 70 ? 'text-red-500' : 'text-slate-700'}">${Math.round(pc.temperature || 0)}°C</span>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    // --- MODAL FUNCTIONS ---
+    function openModal(pcName) {
+        currentPc = pcName;
+        document.getElementById('modal-pc-name').textContent = pcName;
+        document.getElementById('pc-modal-overlay').classList.replace('hidden', 'flex');
+        switchTab('general');
+        refreshModalData();
+    }
+
+    function refreshModalData() {
+        if(!currentPc || !pcDataStore[currentPc]) return;
+        const pc = pcDataStore[currentPc];
+        
+        document.getElementById('modal-status-line').innerHTML = `
+            <span class="font-bold ${pc.status === 'online' ? 'text-emerald-500' : 'text-red-500'}">● ${pc.status.toUpperCase()}</span>
+            <span class="mx-2 text-slate-300">|</span>
+            <span class="text-slate-500 font-mono">IP: ${pc.public_ip || pc.ip || 'No disponible'}</span>
+        `;
+
+        // Datos Generales
+        document.getElementById('info-panel').innerHTML = `
+            <div class="flex justify-between py-2 border-b border-slate-50"><span>Unidad:</span> <b class="text-indigo-600">${pc.unit || 'General'}</b></div>
+            <div class="flex justify-between py-2 border-b border-slate-50"><span>Latencia:</span> <b>${pc.latency || 0} ms</b></div>
+            <div class="flex justify-between py-2 border-b border-slate-50"><span>CPU:</span> <b>${(pc.cpu_load_percent || 0).toFixed(1)}%</b></div>
+            <div class="flex justify-between py-2 border-b border-slate-50"><span>RAM:</span> <b>${(pc.ram_percent || 0).toFixed(1)}%</b></div>
+            <div class="flex justify-between py-2"><span>Temp:</span> <b>${(pc.temperature || 0).toFixed(1)}°C</b></div>
+        `;
+
+        updateLatencyChart();
+        updateHardwareGrid(pc);
+        updatePredictiveAnalysis(pc);
+        updateSpecsTab(pc);
+    }
+
+    function updateLatencyChart() {
+        const ctx = document.getElementById('latency-chart').getContext('2d');
+        const dataPoints = latencyHistory[currentPc] || [];
+        if (charts.latency) charts.latency.destroy();
+        charts.latency = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'Latencia (ms)',
+                    data: dataPoints,
+                    borderColor: '#4f46e5',
+                    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                    fill: true, tension: 0.4, pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, animation: false,
+                plugins: { legend: {display: false} },
+                scales: { x: { type: 'time', time: { unit: 'second' }, grid: { display: false } }, y: { beginAtZero: true } }
+            }
+        });
+    }
+
+    function updateHardwareGrid(pc) {
+        document.getElementById('hardware-grid').innerHTML = `
+            <div class="p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
+                <span class="block text-[10px] font-bold text-slate-400 uppercase">Estado</span>
+                <span class="text-md font-bold ${pc.status === 'online' ? 'text-emerald-600' : 'text-red-600'}">${pc.status.toUpperCase()}</span>
+            </div>
+            <div class="p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
+                <span class="block text-[10px] font-bold text-slate-400 uppercase">Disco Libre</span>
+                <span class="text-md font-bold text-emerald-600">${Math.round(100 - (pc.disk_percent || 0))}%</span>
+            </div>
+            <div class="p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
+                <span class="block text-[10px] font-bold text-slate-400 uppercase">Carga CPU</span>
+                <span class="text-md font-bold ${(pc.cpu_load_percent || 0) > 80 ? 'text-red-600' : 'text-slate-700'}">${Math.round(pc.cpu_load_percent || 0)}%</span>
+            </div>
+        `;
+    }
+
+    function updatePredictiveAnalysis(pc) {
+        let analysis = "El comportamiento de latencia es estable. No se detectan anomalías en el patrón de red en los últimos 60 minutos.";
+        
+        if (pc.status === 'critical' || (pc.cpu_load_percent || 0) > 90) {
+            analysis = "⚠️ <strong>ALERTA:</strong> Se detecta alto consumo de CPU. Se recomienda revisar procesos activos y considerar un reinicio programado.";
+        } else if ((pc.temperature || 0) > 70) {
+            analysis = "🌡️ <strong>ATENCIÓN:</strong> Temperatura elevada detectada. Verificar ventilación y limpieza del equipo.";
+        } else if ((pc.latency || 0) > 100) {
+            analysis = "📶 <strong>ADVERTENCIA:</strong> Latencia elevada en red. Verificar conexión y router del sitio.";
+        }
+        
+        document.getElementById('predictive-analysis').innerHTML = analysis;
+    }
+
+    function updateSpecsTab(pc) {
+        const specsHtml = `
+            <div><p class="text-slate-500 text-xs uppercase font-bold mb-1">Procesador</p><p class="font-semibold text-slate-800">Intel Core i5-1135G7</p></div>
+            <div><p class="text-slate-500 text-xs uppercase font-bold mb-1">Memoria RAM</p><p class="font-semibold text-slate-800">8 GB DDR4</p></div>
+            <div><p class="text-slate-500 text-xs uppercase font-bold mb-1">Almacenamiento</p><p class="font-semibold text-slate-800">256 GB NVMe SSD</p></div>
+            <div><p class="text-slate-500 text-xs uppercase font-bold mb-1">Dirección MAC</p><p class="font-mono text-slate-600 text-xs bg-slate-100 p-1 rounded inline-block">00:1B:44:11:3A:B7</p></div>
+            <div><p class="text-slate-500 text-xs uppercase font-bold mb-1">Sistema Operativo</p><p class="font-semibold text-slate-800">Windows 10 Pro IoT</p></div>
+            <div><p class="text-slate-500 text-xs uppercase font-bold mb-1">Versión de Agente</p><p class="font-semibold text-indigo-600">Argos v2.4.1</p></div>
+        `;
+        document.getElementById('specs-current').innerHTML = specsHtml;
+
+        const historyHtml = `
+            <div class="timeline-item">
+                <div class="timeline-dot active"></div>
+                <p class="text-xs font-bold text-indigo-600 mb-1">HOY</p>
+                <p class="text-sm font-semibold text-slate-800">Operando con NUC Serie: SN12345ABC</p>
+                <p class="text-xs text-slate-500">Estado: ${pc.status} - CPU: ${Math.round(pc.cpu_load_percent || 0)}%</p>
+            </div>
+            
+            <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <p class="text-xs font-bold text-slate-500 mb-1">15 NOV 2025</p>
+                <p class="text-sm font-medium text-slate-600">Reemplazo de Hardware</p>
+                <p class="text-xs text-slate-500 mt-1 bg-slate-100 p-2 rounded">
+                    <span class="font-bold">Saliente:</span> NUC Serie SN98765XYZ<br>
+                    <span class="font-bold">Motivo:</span> Falla en ventilador / Sobrecalentamiento.
+                </p>
+            </div>
+
+            <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <p class="text-xs font-bold text-slate-500 mb-1">01 ENE 2024</p>
+                <p class="text-sm font-medium text-slate-600">Instalación Inicial</p>
+                <p class="text-xs text-slate-500">Despliegue original en sitio.</p>
+            </div>
+        `;
+        document.getElementById('specs-history').innerHTML = historyHtml;
+    }
+
+    function switchTab(id) {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+        document.getElementById('tab-' + id).classList.remove('hidden');
+        document.querySelector(`[data-tab="${id}"]`).classList.add('active');
+    }
+
+    // --- FUNCIONES AUXILIARES ---
+    function updateKPIs(devices) {
+        const online = devices.filter(d => d.status === 'online').length;
+        const issues = devices.filter(d => d.status === 'critical' || (d.cpu_load_percent || 0) > 90 || d.status === 'offline').length;
+        const avgCpu = devices.length > 0 ? 
+            devices.reduce((acc, curr) => acc + (curr.cpu_load_percent || 0), 0) / devices.length : 0;
+        
+        document.getElementById('kpi-online').innerText = online;
+        document.getElementById('kpi-issues').innerText = issues;
+        document.getElementById('kpi-cpu-avg').innerText = Math.round(avgCpu) + '%';
+    }
+
+    function updateUnitFilter(devices) {
+        const select = document.getElementById('unit-filter');
+        if (select.options.length > 1) return;
+        const units = [...new Set(devices.map(d => d.unit || 'General'))];
+        units.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u; opt.textContent = u;
+            select.appendChild(opt);
+        });
+    }
+
+    // --- FUNCIONES UI GLOBALES ---
+    window.zoomToMarker = (name) => {
         const m = markers[name];
         if (m) { 
             map.flyTo(m.getLatLng(), 16); 
             m.openPopup(); 
+            openModal(name);
         }
     };
 
@@ -567,22 +936,18 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.activateExclusiveMode = (mode) => {
-        // Remover capas de análisis
         ['high', 'mid', 'low', 'afluencia', 'fallas_electricas'].forEach(k => {
             if (layers[k]) map.removeLayer(layers[k]);
         });
         
         if (mode === 'red') {
-            // Activar capa de red
             map.addLayer(layers.high); 
             map.addLayer(layers.mid); 
             map.addLayer(layers.low);
         } else if (mode === 'afluencia') {
-            // Activar capa de afluencia
             map.addLayer(layers.afluencia); 
             updateAfluenciaHeatmap(document.getElementById('heatmap-time-selector').value);
         } else if (mode === 'fallas') {
-            // Activar capa de fallas
             map.addLayer(layers.fallas_electricas);
         }
     };
@@ -602,8 +967,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Inicializar
-    init();
+    // --- EVENT LISTENERS ---
+    document.getElementById('modal-tabs').onclick = (e) => { 
+        if(e.target.classList.contains('modal-tab')) switchTab(e.target.dataset.tab); 
+    };
+    
+    document.getElementById('modal-close-button').onclick = () => { 
+        document.getElementById('pc-modal-overlay').classList.replace('flex', 'hidden'); 
+        currentPc = null; 
+    };
+    
+    document.getElementById('search-bar').oninput = renderPCCards;
+    document.getElementById('unit-filter').onchange = renderPCCards;
+
+    // --- INICIALIZACIÓN ---
+    lucide.createIcons();
+    initMap();
+    fetchLiveData();
+    setInterval(fetchLiveData, 3000);
 });
 </script>
 {% endblock %}
