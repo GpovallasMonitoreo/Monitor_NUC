@@ -1,351 +1,85 @@
-{% extends 'base.html' %}
-
-{% block header_title %}Centro de Monitoreo de Latencia y Hardware{% endblock %}
-
-{% block content %}
+{% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-<style>
-    .card { background-color: white; border-radius: 0.75rem; border: 1px solid #e2e8f0; padding: 1.25rem; transition: all 0.2s; display: flex; flex-direction: column; }
-    .card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
-    .status-dot { width: 10px; height: 10px; border-radius: 50%; }
-    .status-online { background-color: #10b981; box-shadow: 0 0 8px #10b981; }
-    .status-offline { background-color: #ef4444; box-shadow: 0 0 8px #ef4444; }
-    .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 24px; height: 24px; border-radius: 50%; border-left-color: #4f46e5; animation: spin 1s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .modal-tab { padding: 0.75rem 1rem; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 500; color: #64748b; }
-    .modal-tab.active { color: #4f46e5; border-color: #4f46e5; }
-    
-    /* Estilos para Línea de Tiempo (Historial) */
-    .timeline-item { position: relative; padding-left: 2rem; padding-bottom: 2rem; border-left: 2px solid #e2e8f0; }
-    .timeline-item:last-child { border-left: 2px solid transparent; }
-    .timeline-dot { position: absolute; left: -9px; top: 0; width: 16px; height: 16px; border-radius: 50%; background: #cbd5e1; border: 2px solid white; box-shadow: 0 0 0 2px #f1f5f9; }
-    .timeline-dot.active { background: #4f46e5; box-shadow: 0 0 0 4px #e0e7ff; }
-</style>
-
-<div class="p-6">
-    <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-        <div>
-            <h2 class="text-3xl font-extrabold text-slate-800">Estado de Activos</h2>
-            <p class="text-slate-500 text-sm">Latencia y Telemetría en Tiempo Real</p>
-        </div>
-        
-        <div class="flex items-center gap-3 w-full md:w-auto">
-            <select id="unit-filter" class="rounded-lg border border-slate-300 py-2 px-4 text-sm bg-white focus:ring-2 focus:ring-indigo-500">
-                <option value="all">Todas las Unidades</option>
-            </select>
-            <input type="search" id="search-bar" placeholder="Buscar por nombre o IP..." class="block w-full md:w-64 px-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500">
-        </div>
-    </div>
-
-    <div id="loading-indicator" class="flex flex-col items-center justify-center h-64">
-        <div class="spinner"></div>
-        <p class="mt-4 text-slate-500 font-medium">Sincronizando con Argos Network...</p>
-    </div>
-
-    <div id="pc-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
-</div>
-
-<div id="pc-modal-overlay" class="fixed inset-0 bg-slate-900/70 hidden items-center justify-center p-4 backdrop-blur-sm z-50">
-    <div id="pc-modal-container" class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden animate-fade-in-up">
-        
-        <div class="flex justify-between items-center p-6 border-b bg-slate-50">
-            <div>
-                <h2 id="modal-pc-name" class="text-2xl font-bold text-slate-800"></h2>
-                <div id="modal-status-line" class="mt-1"></div>
-            </div>
-            <div class="flex gap-2">
-                <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 transition flex items-center gap-2">
-                    <i data-lucide="file-down" class="w-4 h-4"></i> Exportar
-                </button>
-                <button id="modal-close-button" class="text-slate-400 hover:text-slate-600 transition">
-                    <i data-lucide="x-circle" class="w-8 h-8"></i>
-                </button>
-            </div>
-        </div>
-
-        <div class="border-b bg-white px-6">
-            <nav class="flex space-x-6" id="modal-tabs">
-                <button data-tab="general" class="modal-tab active">General</button>
-                <button data-tab="hardware" class="modal-tab">Hardware</button>
-                <button data-tab="predictive" class="modal-tab">Diagnóstico IA</button>
-                <button data-tab="specs" class="modal-tab">Ficha Técnica & Historial</button>
-            </nav>
-        </div>
-
-        <div class="p-8 flex-1 overflow-y-auto bg-slate-50">
-            
-            <div id="tab-general" class="tab-content">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div class="card shadow-sm">
-                        <h3 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2">Métricas de Red</h3>
-                        <div id="info-panel" class="space-y-4 text-sm"></div>
-                    </div>
-                    <div class="card shadow-sm h-[400px]">
-                        <h3 class="text-lg font-bold text-slate-700 mb-4">Historial de Latencia (ms)</h3>
-                        <canvas id="latency-chart"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <div id="tab-hardware" class="tab-content hidden">
-                <div id="hardware-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
-            </div>
-
-            <div id="tab-predictive" class="tab-content hidden">
-                <div class="p-6 bg-indigo-50 rounded-xl border border-indigo-100">
-                    <h3 class="text-indigo-900 font-bold mb-2">Análisis Predictivo Argos</h3>
-                    <p class="text-indigo-700 text-sm">El comportamiento de latencia es estable. No se detectan anomalías en el patrón de red en los últimos 60 minutos.</p>
-                </div>
-            </div>
-
-            <div id="tab-specs" class="tab-content hidden">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="lg:col-span-2 space-y-6">
-                        <div class="bg-white p-6 rounded-xl border border-indigo-100 shadow-sm relative overflow-hidden">
-                            <div class="absolute top-0 right-0 bg-indigo-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg">EQUIPO ACTUAL</div>
-                            <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
-                                <i data-lucide="cpu" class="w-5 h-5 mr-2 text-indigo-500"></i> Especificaciones Técnicas
-                            </h3>
-                            <div id="specs-current" class="grid grid-cols-2 gap-6 text-sm">
-                                </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-fit">
-                        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-6">Historial de Activos</h3>
-                        <div id="specs-history" class="pl-2">
-                            </div>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-    </div>
-</div>
-
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    const API_URL = '/api/live-data'; 
-    let pcDataStore = {};
-    let latencyHistory = {};
-    let currentPc = null;
-    let charts = { latency: null };
+    document.addEventListener("DOMContentLoaded", () => {
+        // CONFIGURACIÓN CHART
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.color = '#64748b';
+        
+        let latencyChart = null;
 
-    lucide.createIcons();
-
-    // --- Sincronización ---
-    async function updateData() {
-        try {
-            const res = await fetch(API_URL);
-            if (!res.ok) throw new Error("Error API");
-            const devices = await res.json();
-            
-            devices.forEach(dev => {
-                if (!dev.latency) dev.latency = Math.floor(Math.random() * (40 - 10 + 1) + 10);
-                if (!dev.unit) dev.unit = "Sin Asignar";
-
-                pcDataStore[dev.pc_name] = dev;
+        async function fetchLatencyData() {
+            try {
+                // 1. URL CORRECTA
+                const response = await fetch('/api/data');
+                const rawData = await response.json();
                 
-                if (!latencyHistory[dev.pc_name]) latencyHistory[dev.pc_name] = [];
-                latencyHistory[dev.pc_name].push({ x: new Date(), y: dev.latency });
-                if (latencyHistory[dev.pc_name].length > 20) latencyHistory[dev.pc_name].shift();
+                // 2. CONVERTIR Y ORDENAR
+                const devices = Object.values(rawData).sort((a,b) => (b.latency_ms || 0) - (a.latency_ms || 0)); // Ordenar por mayor latencia
+
+                updateTable(devices);
+                updateChart(devices);
+
+            } catch (error) { console.error(error); }
+        }
+
+        function updateTable(devices) {
+            const tbody = document.querySelector('tbody'); 
+            // Si tu latency.html tiene una tabla, asegúrate de que tenga <tbody> o ajusta este selector
+            if(!tbody) return;
+
+            tbody.innerHTML = '';
+            devices.forEach(dev => {
+                const lat = dev.latency_ms || 0;
+                let color = lat < 50 ? 'text-emerald-600' : (lat < 100 ? 'text-amber-500' : 'text-red-600');
+                
+                const row = `
+                    <tr class="border-b border-slate-50 hover:bg-slate-50">
+                        <td class="px-6 py-4 font-bold text-slate-700">${dev.pc_name}</td>
+                        <td class="px-6 py-4 font-mono text-xs">${dev.ip}</td>
+                        <td class="px-6 py-4 font-bold ${color}">${lat} ms</td>
+                        <td class="px-6 py-4 text-xs text-slate-400">${new Date(dev.timestamp).toLocaleTimeString()}</td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
             });
+        }
 
-            renderGrid();
-            updateUnitFilter(devices);
-            if (currentPc && pcDataStore[currentPc]) refreshModalData();
-            document.getElementById('loading-indicator').style.display = 'none';
-        } catch (e) { console.error(e); }
-    }
+        function updateChart(devices) {
+            // Tomamos el Top 10 para el gráfico
+            const topDevices = devices.slice(0, 10);
+            const labels = topDevices.map(d => d.pc_name);
+            const data = topDevices.map(d => d.latency_ms || 0);
 
-    function renderGrid() {
-        const container = document.getElementById('pc-cards-container');
-        const search = document.getElementById('search-bar').value.toLowerCase();
-        const unitFilter = document.getElementById('unit-filter').value;
-        container.innerHTML = '';
-        
-        Object.values(pcDataStore).forEach(pc => {
-            if (unitFilter !== 'all' && pc.unit !== unitFilter) return;
-            if (!pc.pc_name.toLowerCase().includes(search) && !pc.ip_address.includes(search)) return;
+            const ctx = document.getElementById('latencyChart'); // Asegúrate que tu HTML tenga un <canvas id="latencyChart">
+            if(!ctx) return; 
 
-            let latencyColor = pc.latency > 100 ? "text-red-600" : (pc.latency > 50 ? "text-amber-500" : "text-slate-900");
-
-            const card = document.createElement('div');
-            card.className = 'card cursor-pointer group hover:border-indigo-300';
-            card.onclick = () => openModal(pc.pc_name);
-            
-            card.innerHTML = `
-                <div class="flex justify-between items-start mb-4">
-                    <div>
-                        <h3 class="font-bold text-slate-800 leading-tight group-hover:text-indigo-600 transition">${pc.pc_name}</h3>
-                        <span class="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded">${pc.unit}</span>
-                    </div>
-                    <div class="status-dot status-online"></div>
-                </div>
-                <div class="flex items-baseline gap-2">
-                    <span class="text-4xl font-black ${latencyColor}">${pc.latency}</span>
-                    <span class="text-sm font-bold text-slate-400">ms</span>
-                </div>
-                <div class="mt-6 pt-4 border-t border-slate-100 grid grid-cols-2 gap-4">
-                    <div class="text-center">
-                        <span class="block text-[9px] font-bold text-slate-400 uppercase">CPU</span>
-                        <div class="w-full bg-slate-100 rounded-full h-1.5 mt-1 mb-1">
-                            <div class="bg-indigo-500 h-1.5 rounded-full" style="width: ${pc.cpu_percent}%"></div>
-                        </div>
-                        <span class="text-sm font-bold text-slate-700">${Math.round(pc.cpu_percent)}%</span>
-                    </div>
-                    <div class="text-center">
-                        <span class="block text-[9px] font-bold text-slate-400 uppercase">Temp</span>
-                        <span class="text-sm font-bold ${pc.temperature > 70 ? 'text-red-500' : 'text-slate-700'}">${Math.round(pc.temperature)}°C</span>
-                    </div>
-                </div>
-            `;
-            container.appendChild(card);
-        });
-    }
-
-    function openModal(pcName) {
-        currentPc = pcName;
-        document.getElementById('modal-pc-name').textContent = pcName;
-        document.getElementById('pc-modal-overlay').classList.replace('hidden', 'flex');
-        switchTab('general');
-        refreshModalData();
-    }
-
-    function refreshModalData() {
-        if(!currentPc || !pcDataStore[currentPc]) return;
-        const pc = pcDataStore[currentPc];
-        
-        document.getElementById('modal-status-line').innerHTML = `
-            <span class="font-bold text-emerald-500">● ONLINE</span>
-            <span class="mx-2 text-slate-300">|</span>
-            <span class="text-slate-500 font-mono">IP: ${pc.ip_address}</span>
-        `;
-
-        // Datos Generales
-        document.getElementById('info-panel').innerHTML = `
-            <div class="flex justify-between py-2 border-b border-slate-50"><span>Unidad:</span> <b class="text-indigo-600">${pc.unit}</b></div>
-            <div class="flex justify-between py-2 border-b border-slate-50"><span>Latencia:</span> <b>${pc.latency} ms</b></div>
-            <div class="flex justify-between py-2 border-b border-slate-50"><span>CPU:</span> <b>${pc.cpu_percent.toFixed(1)}%</b></div>
-            <div class="flex justify-between py-2 border-b border-slate-50"><span>RAM:</span> <b>${pc.ram_percent.toFixed(1)}%</b></div>
-            <div class="flex justify-between py-2"><span>Temp:</span> <b>${pc.temperature.toFixed(1)}°C</b></div>
-        `;
-
-        updateLatencyChart();
-        updateHardwareGrid();
-        updateSpecsTab(pc); // Nueva función para la ficha técnica
-    }
-
-    function updateSpecsTab(pc) {
-        // 1. Ficha Técnica Actual (Simulada o real si viene del backend)
-        const specsHtml = `
-            <div><p class="text-slate-500 text-xs uppercase font-bold mb-1">Procesador</p><p class="font-semibold text-slate-800">Intel Core i5-1135G7</p></div>
-            <div><p class="text-slate-500 text-xs uppercase font-bold mb-1">Memoria RAM</p><p class="font-semibold text-slate-800">8 GB DDR4</p></div>
-            <div><p class="text-slate-500 text-xs uppercase font-bold mb-1">Almacenamiento</p><p class="font-semibold text-slate-800">256 GB NVMe SSD</p></div>
-            <div><p class="text-slate-500 text-xs uppercase font-bold mb-1">Dirección MAC</p><p class="font-mono text-slate-600 text-xs bg-slate-100 p-1 rounded inline-block">00:1B:44:11:3A:B7</p></div>
-            <div><p class="text-slate-500 text-xs uppercase font-bold mb-1">Sistema Operativo</p><p class="font-semibold text-slate-800">Windows 10 Pro IoT</p></div>
-            <div><p class="text-slate-500 text-xs uppercase font-bold mb-1">Versión de Agente</p><p class="font-semibold text-indigo-600">Argos v2.4.1</p></div>
-        `;
-        document.getElementById('specs-current').innerHTML = specsHtml;
-
-        // 2. Historial de Cambios (Simulación de Bitácora)
-        // En producción, esto vendría de un array pc.history del backend
-        const historyHtml = `
-            <div class="timeline-item">
-                <div class="timeline-dot active"></div>
-                <p class="text-xs font-bold text-indigo-600 mb-1">HOY</p>
-                <p class="text-sm font-semibold text-slate-800">Operando con NUC Serie: SN12345ABC</p>
-                <p class="text-xs text-slate-500">Estado: Activo - Sin reportes</p>
-            </div>
-            
-            <div class="timeline-item">
-                <div class="timeline-dot"></div>
-                <p class="text-xs font-bold text-slate-500 mb-1">15 NOV 2025</p>
-                <p class="text-sm font-medium text-slate-600">Reemplazo de Hardware</p>
-                <p class="text-xs text-slate-500 mt-1 bg-slate-100 p-2 rounded">
-                    <span class="font-bold">Saliente:</span> NUC Serie SN98765XYZ<br>
-                    <span class="font-bold">Motivo:</span> Falla en ventilador / Sobrecalentamiento.
-                </p>
-            </div>
-
-            <div class="timeline-item">
-                <div class="timeline-dot"></div>
-                <p class="text-xs font-bold text-slate-500 mb-1">01 ENE 2024</p>
-                <p class="text-sm font-medium text-slate-600">Instalación Inicial</p>
-                <p class="text-xs text-slate-500">Despliegue original en sitio.</p>
-            </div>
-        `;
-        document.getElementById('specs-history').innerHTML = historyHtml;
-    }
-
-    function updateLatencyChart() {
-        const ctx = document.getElementById('latency-chart').getContext('2d');
-        const dataPoints = latencyHistory[currentPc] || [];
-        if (charts.latency) charts.latency.destroy();
-        charts.latency = new Chart(ctx, {
-            type: 'line',
-            data: {
-                datasets: [{
-                    label: 'Latencia (ms)',
-                    data: dataPoints,
-                    borderColor: '#4f46e5',
-                    backgroundColor: 'rgba(79, 70, 229, 0.1)',
-                    fill: true, tension: 0.4, pointRadius: 0
-                }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false, animation: false,
-                plugins: { legend: {display: false} },
-                scales: { x: { type: 'time', time: { unit: 'second' }, grid: { display: false } }, y: { beginAtZero: true } }
+            if (latencyChart) {
+                latencyChart.data.labels = labels;
+                latencyChart.data.datasets[0].data = data;
+                latencyChart.update();
+            } else {
+                latencyChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Latencia (ms)',
+                            data: data,
+                            backgroundColor: '#6366f1',
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: { y: { beginAtZero: true } }
+                    }
+                });
             }
-        });
-    }
+        }
 
-    function updateHardwareGrid() {
-        document.getElementById('hardware-grid').innerHTML = `
-            <div class="p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
-                <span class="block text-[10px] font-bold text-slate-400 uppercase">Uptime</span>
-                <span class="text-md font-bold text-slate-700">14d 2h 15m</span>
-            </div>
-            <div class="p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
-                <span class="block text-[10px] font-bold text-slate-400 uppercase">Carga Promedio</span>
-                <span class="text-md font-bold text-slate-700">0.45</span>
-            </div>
-            <div class="p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
-                <span class="block text-[10px] font-bold text-slate-400 uppercase">Disco Libre</span>
-                <span class="text-md font-bold text-emerald-600">182 GB</span>
-            </div>
-        `;
-    }
-
-    function switchTab(id) {
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-        document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
-        document.getElementById('tab-' + id).classList.remove('hidden');
-        document.querySelector(`[data-tab="${id}"]`).classList.add('active');
-    }
-
-    function updateUnitFilter(devices) {
-        const select = document.getElementById('unit-filter');
-        if (select.options.length > 1) return;
-        const units = [...new Set(devices.map(d => d.unit))];
-        units.forEach(u => {
-            const opt = document.createElement('option');
-            opt.value = u; opt.textContent = u;
-            select.appendChild(opt);
-        });
-    }
-
-    document.getElementById('modal-tabs').onclick = (e) => { if(e.target.classList.contains('modal-tab')) switchTab(e.target.dataset.tab); };
-    document.getElementById('modal-close-button').onclick = () => { document.getElementById('pc-modal-overlay').classList.replace('flex', 'hidden'); currentPc = null; };
-    document.getElementById('search-bar').oninput = renderGrid;
-    document.getElementById('unit-filter').onchange = renderGrid;
-
-    setInterval(updateData, 2000);
-    updateData();
-});
+        setInterval(fetchLatencyData, 2000);
+        fetchLatencyData();
+    });
 </script>
 {% endblock %}
