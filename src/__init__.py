@@ -1,6 +1,10 @@
 import os
 from flask import Flask
 
+
+storage = None
+alerts = None
+
 # --- BLOQUE DE SEGURIDAD PARA DOTENV ---
 # Intentamos cargar dotenv, pero si no está instalado (o estamos en producción sin archivo .env),
 # el sistema no debe colapsar. Simplemente seguimos adelante.
@@ -59,3 +63,4 @@ def create_app():
     app.register_blueprint(views_bp)
 
     return app
+
