@@ -1,91 +1,255 @@
 {% extends 'base.html' %}
 
-{% block header_title %}Monitor de Latencia{% endblock %}
+{% block title %}Monitor de Latencia - Argos{% endblock %}
+
+{% block header_title %}
+<div class="flex items-center gap-2">
+    <i data-lucide="activity" class="text-slate-400 w-5 h-5"></i>
+    <span class="tracking-tight">Análisis de Red y Latencia</span>
+</div>
+{% endblock %}
 
 {% block content %}
-<div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-    <div class="h-80 w-full">
+<style>
+    .card-hover { transition: all 0.3s ease; }
+    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); }
+</style>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 card-hover">
+        <div class="flex justify-between items-start">
+            <div>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Latencia Promedio Global</p>
+                <h3 class="text-4xl font-black text-slate-800 tracking-tight" id="kpi-avg">-- ms</h3>
+            </div>
+            <div class="p-3 bg-indigo-50 rounded-xl text-indigo-600">
+                <i data-lucide="globe" class="w-6 h-6"></i>
+            </div>
+        </div>
+        <div class="mt-4 w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+            <div id="bar-avg" class="bg-indigo-500 h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 card-hover">
+        <div class="flex justify-between items-start">
+            <div>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Pico Más Alto (Max)</p>
+                <h3 class="text-4xl font-black text-slate-800 tracking-tight" id="kpi-max">-- ms</h3>
+            </div>
+            <div class="p-3 bg-amber-50 rounded-xl text-amber-600">
+                <i data-lucide="bar-chart-2" class="w-6 h-6"></i>
+            </div>
+        </div>
+        <p class="text-xs text-slate-400 mt-4" id="kpi-max-name">Detectando dispositivo...</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 card-hover">
+        <div class="flex justify-between items-start">
+            <div>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Estado de la Red</p>
+                <h3 class="text-4xl font-black text-emerald-600 tracking-tight" id="kpi-status">Estable</h3>
+            </div>
+            <div class="p-3 bg-emerald-50 rounded-xl text-emerald-600">
+                <i data-lucide="wifi" class="w-6 h-6"></i>
+            </div>
+        </div>
+        <p class="text-xs text-slate-400 mt-4">Análisis en tiempo real</p>
+    </div>
+</div>
+
+<div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-8">
+    <div class="flex justify-between items-center mb-6">
+        <h3 class="text-base font-bold text-slate-700 flex items-center gap-2">
+            <div class="w-2 h-6 bg-indigo-600 rounded-sm"></div>
+            Ping por Dispositivo (ms)
+        </h3>
+        <span class="text-xs font-mono text-slate-400" id="last-update">Sincronizando...</span>
+    </div>
+    <div class="h-[350px] w-full">
         <canvas id="latencyChart"></canvas>
     </div>
 </div>
 
-<div class="mt-6 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-    <table class="w-full text-sm text-left text-slate-600">
-        <thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b">
-            <tr>
-                <th class="px-6 py-3">Dispositivo</th>
-                <th class="px-6 py-3">IP</th>
-                <th class="px-6 py-3">Latencia (ms)</th>
-                <th class="px-6 py-3">Estado</th>
-            </tr>
-        </thead>
-        <tbody id="latency-table-body"></tbody>
-    </table>
+<div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-12">
+    <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                <i data-lucide="list" class="w-4 h-4"></i>
+            </div>
+            <h3 class="text-base font-bold text-slate-800">Detalle de Conexión</h3>
+        </div>
+        <button class="text-slate-400 hover:text-slate-600"><i data-lucide="download" class="w-4 h-4"></i></button>
+    </div>
+    
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-slate-50/50 border-b border-slate-100 text-xs text-slate-500 uppercase font-semibold">
+                    <th class="px-6 py-4">Dispositivo</th>
+                    <th class="px-6 py-4">Unidad</th>
+                    <th class="px-6 py-4">IP Local</th>
+                    <th class="px-6 py-4">Latencia</th>
+                    <th class="px-6 py-4">Calidad</th>
+                    <th class="px-6 py-4 text-right">Último Reporte</th>
+                </tr>
+            </thead>
+            <tbody id="latency-table-body" class="text-sm divide-y divide-slate-50">
+                </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    let chartInstance = null;
-
-    async function fetchLatency() {
-        try {
-            const res = await fetch('/api/data');
-            const rawData = await res.json();
-            const devices = Object.values(rawData); // Corrección Dict -> List
-
-            updateChart(devices);
-            updateTable(devices);
-        } catch(e) { console.error(e); }
-    }
-
-    function updateChart(devices) {
-        const ctx = document.getElementById('latencyChart').getContext('2d');
-        const labels = devices.map(d => d.pc_name);
-        const data = devices.map(d => d.latency_ms || 0);
-
-        if (chartInstance) {
-            chartInstance.data.labels = labels;
-            chartInstance.data.datasets[0].data = data;
-            chartInstance.update();
-        } else {
-            chartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Ping (ms)',
-                        data: data,
-                        backgroundColor: '#6366f1',
-                        borderRadius: 4
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-        }
-    }
-
-    function updateTable(devices) {
-        const tbody = document.getElementById('latency-table-body');
-        tbody.innerHTML = '';
-        devices.forEach(d => {
-            const lat = d.latency_ms || 0;
-            const color = lat > 100 ? 'text-red-600' : 'text-emerald-600';
-            tbody.innerHTML += `
-                <tr class="border-b">
-                    <td class="px-6 py-4 font-bold">${d.pc_name}</td>
-                    <td class="px-6 py-4 font-mono text-xs">${d.ip}</td>
-                    <td class="px-6 py-4 font-bold ${color}">${lat} ms</td>
-                    <td class="px-6 py-4 text-xs">${d.status}</td>
-                </tr>
-            `;
-        });
-    }
-
     document.addEventListener("DOMContentLoaded", () => {
-        fetchLatency();
-        setInterval(fetchLatency, 2000);
+        // --- CONFIGURACIÓN VISUAL ---
+        Chart.defaults.font.family = "'Inter', system-ui, -apple-system, sans-serif";
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.scale.grid.color = '#f1f5f9';
+
+        let chartInstance = null;
+        
+        // Inicializar Iconos
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+
+        // --- FUNCIÓN PRINCIPAL ---
+        async function fetchLatencyData() {
+            try {
+                // 1. URL CORRECTA
+                const response = await fetch('/api/data');
+                const rawData = await response.json();
+                
+                // 2. CONVERTIR DICCIONARIO A LISTA
+                // Filtramos solo los que tienen latencia válida para no ensuciar la gráfica
+                const devices = Object.values(rawData).sort((a,b) => (b.latency_ms || 0) - (a.latency_ms || 0));
+
+                updateKPIs(devices);
+                updateChart(devices);
+                updateTable(devices);
+                
+                document.getElementById('last-update').innerText = "Actualizado: " + new Date().toLocaleTimeString();
+
+            } catch (error) { console.error("Error Latency API:", error); }
+        }
+
+        function updateKPIs(devices) {
+            if(devices.length === 0) return;
+
+            const totalLat = devices.reduce((sum, d) => sum + (d.latency_ms || 0), 0);
+            const avg = Math.round(totalLat / devices.length);
+            
+            // Encontrar el peor dispositivo
+            const maxDev = devices[0]; // Ya viene ordenado descendente
+            const maxVal = maxDev.latency_ms || 0;
+
+            document.getElementById('kpi-avg').innerText = avg + " ms";
+            document.getElementById('bar-avg').style.width = Math.min(avg, 100) + "%";
+            
+            document.getElementById('kpi-max').innerText = maxVal + " ms";
+            document.getElementById('kpi-max-name').innerText = "En: " + maxDev.pc_name;
+
+            // Estado Global
+            const statusEl = document.getElementById('kpi-status');
+            if (avg > 150) {
+                statusEl.innerText = "Crítico";
+                statusEl.className = "text-4xl font-black text-rose-600 tracking-tight animate-pulse";
+            } else if (avg > 80) {
+                statusEl.innerText = "Degradado";
+                statusEl.className = "text-4xl font-black text-amber-500 tracking-tight";
+            } else {
+                statusEl.innerText = "Estable";
+                statusEl.className = "text-4xl font-black text-emerald-600 tracking-tight";
+            }
+        }
+
+        function updateChart(devices) {
+            const ctx = document.getElementById('latencyChart').getContext('2d');
+            const labels = devices.map(d => d.pc_name);
+            const data = devices.map(d => d.latency_ms || 0);
+            
+            // Colores dinámicos según latencia
+            const bgColors = data.map(val => val > 100 ? '#f43f5e' : (val > 50 ? '#fbbf24' : '#6366f1'));
+
+            if (chartInstance) {
+                chartInstance.data.labels = labels;
+                chartInstance.data.datasets[0].data = data;
+                chartInstance.data.datasets[0].backgroundColor = bgColors;
+                chartInstance.update();
+            } else {
+                chartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Latencia (ms)',
+                            data: data,
+                            backgroundColor: bgColors,
+                            borderRadius: 6,
+                            barThickness: 30,
+                            maxBarThickness: 50
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: { 
+                            y: { beginAtZero: true, grid: { borderDash: [4, 4] } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
+        }
+
+        function updateTable(devices) {
+            const tbody = document.getElementById('latency-table-body');
+            tbody.innerHTML = '';
+            
+            devices.forEach(dev => {
+                const lat = dev.latency_ms || 0;
+                let badgeClass = 'bg-emerald-100 text-emerald-700';
+                let badgeText = 'Excelente';
+                let latColor = 'text-emerald-600';
+
+                if (lat > 150) {
+                    badgeClass = 'bg-rose-100 text-rose-700'; badgeText = 'Mala'; latColor = 'text-rose-600';
+                } else if (lat > 80) {
+                    badgeClass = 'bg-amber-100 text-amber-700'; badgeText = 'Regular'; latColor = 'text-amber-600';
+                }
+
+                // Tiempo relativo
+                const lastSeen = new Date(dev.timestamp);
+                const now = new Date();
+                const diff = Math.floor((now - lastSeen)/1000);
+                const timeText = diff < 60 ? `${diff}s` : `${Math.floor(diff/60)}m`;
+
+                const row = `
+                    <tr class="hover:bg-slate-50 border-b border-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-bold text-slate-700">${dev.pc_name}</td>
+                        <td class="px-6 py-4 text-xs text-slate-500 uppercase font-bold">${dev.unit || 'General'}</td>
+                        <td class="px-6 py-4 font-mono text-xs text-indigo-600 bg-indigo-50 rounded px-2 py-1 w-fit">${dev.ip}</td>
+                        <td class="px-6 py-4 font-bold ${latColor}">${lat} ms</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide border border-transparent ${badgeClass}">
+                                ${badgeText}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-right text-xs text-slate-400 font-mono">Hace ${timeText}</td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+            
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // Loop de actualización
+        setInterval(fetchLatencyData, 2000);
+        fetchLatencyData();
     });
 </script>
 {% endblock %}
