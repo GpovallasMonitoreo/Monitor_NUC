@@ -10,6 +10,75 @@
         <p class="text-slate-500">Seleccione un módulo para comenzar la gestión.</p>
     </div>
 
+    <!-- PANEL APPSHEET - NUEVO -->
+    <div id="appsheet-panel" class="mb-6 bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-lg">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex-1">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="p-2 bg-slate-700 rounded-lg">
+                        <i data-lucide="cloud" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-xl font-bold">Sincronización con AppSheet</h3>
+                </div>
+                <p class="text-slate-300 text-sm mb-3">Conecte su base de datos en la nube para respaldo y análisis histórico.</p>
+                
+                <!-- Estado de conexión -->
+                <div class="flex items-center gap-2 text-sm">
+                    <span id="appsheet-status" class="px-2 py-1 rounded-full bg-slate-700 text-slate-300">Verificando...</span>
+                    <span id="last-sync-time" class="text-slate-400 text-xs"></span>
+                </div>
+            </div>
+            
+            <div class="flex flex-col sm:flex-row gap-3">
+                <!-- Botón de Sincronización Manual -->
+                <button id="sync-button" onclick="syncToAppSheet()" 
+                    class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                    <span>Sincronizar Ahora</span>
+                </button>
+                
+                <!-- Configuración -->
+                <button onclick="showAppSheetConfig()"
+                    class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors">
+                    <i data-lucide="settings" class="w-4 h-4"></i>
+                    <span>Configurar</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Progreso de Sincronización (oculto por defecto) -->
+        <div id="sync-progress" class="mt-4 hidden">
+            <div class="flex justify-between text-sm mb-1">
+                <span class="text-slate-300">Progreso de sincronización</span>
+                <span id="sync-percentage" class="font-medium">0%</span>
+            </div>
+            <div class="w-full bg-slate-700 rounded-full h-2">
+                <div id="sync-progress-bar" class="bg-emerald-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <div id="sync-details" class="mt-2 text-xs text-slate-400"></div>
+        </div>
+        
+        <!-- Estadísticas rápidas -->
+        <div id="appsheet-stats" class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 hidden">
+            <div class="bg-slate-800/50 rounded-lg p-3">
+                <div class="text-slate-400 text-xs">Dispositivos Sinc.</div>
+                <div id="stat-devices" class="text-lg font-bold">--</div>
+            </div>
+            <div class="bg-slate-800/50 rounded-lg p-3">
+                <div class="text-slate-400 text-xs">Registros Hoy</div>
+                <div id="stat-records" class="text-lg font-bold">--</div>
+            </div>
+            <div class="bg-slate-800/50 rounded-lg p-3">
+                <div class="text-slate-400 text-xs">Alertas Activas</div>
+                <div id="stat-alerts" class="text-lg font-bold">--</div>
+            </div>
+            <div class="bg-slate-800/50 rounded-lg p-3">
+                <div class="text-slate-400 text-xs">Última Sinc.</div>
+                <div id="stat-last-sync" class="text-lg font-bold">--</div>
+            </div>
+        </div>
+    </div>
+
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
 
         <a href="/monitor" class="group bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-lg hover:border-indigo-300 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden">
@@ -87,23 +156,78 @@
             </div>
         </div>
         
-        <div class="bg-white rounded-2xl p-6 border border-slate-200 flex items-center justify-between">
+        <!-- Estado AppSheet - NUEVO -->
+        <div id="appsheet-status-card" class="bg-slate-800 rounded-2xl p-6 text-white flex items-center justify-between">
             <div>
-                <h4 class="font-bold text-lg text-slate-800">Documentación</h4>
-                <p class="text-slate-500 text-sm">Guías de instalación y manuales.</p>
+                <h4 class="font-bold text-lg">Estado AppSheet</h4>
+                <p id="appsheet-connection-text" class="text-slate-300 text-sm">Conectando...</p>
+                <div id="appsheet-connection-stats" class="mt-2 text-xs text-slate-400 hidden">
+                    <span id="appsheet-devices">--</span> dispositivos • 
+                    <span id="appsheet-uptime">--</span>% uptime • 
+                    <span id="appsheet-latency">--</span>ms avg
+                </div>
             </div>
-            <button class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 text-sm font-medium transition-colors">
-                Ver Docs
-            </button>
+            <div id="appsheet-connection-icon" class="bg-slate-700 p-3 rounded-full">
+                <i data-lucide="cloud-off" class="text-slate-400"></i>
+            </div>
         </div>
     </div>
 
+</div>
+
+<!-- Modal de Configuración AppSheet -->
+<div id="appsheet-config-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-slate-800">Configuración AppSheet</h3>
+            <button onclick="hideAppSheetConfig()" class="p-2 hover:bg-slate-100 rounded-lg">
+                <i data-lucide="x" class="w-5 h-5 text-slate-500"></i>
+            </button>
+        </div>
+        
+        <div class="space-y-4">
+            <div class="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                <div class="flex items-center gap-2 text-amber-800 mb-2">
+                    <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                    <span class="font-medium">Configuración Requerida</span>
+                </div>
+                <p class="text-sm text-amber-700">
+                    Para habilitar AppSheet, configúrelo en el archivo <code class="bg-amber-100 px-1 rounded">.env</code> o variables de entorno.
+                </p>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">Variables necesarias:</label>
+                <div class="space-y-2">
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <code class="text-sm">APPSHEET_ENABLED=true</code>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <code class="text-sm">APPSHEET_API_KEY=tu_api_key_aquí</code>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <code class="text-sm">APPSHEET_APP_ID=tu_app_id_aquí</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="pt-4 border-t border-slate-200">
+                <button onclick="hideAppSheetConfig()" 
+                    class="w-full px-4 py-2 bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-700 transition-colors">
+                    Entendido
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     // Crear iconos de Lucide
     lucide.createIcons();
+    
+    // Inicializar estado de AppSheet
+    updateAppSheetStatus();
     
     // Función para actualizar el estado del sistema
     async function updateSystemStatus() {
@@ -200,7 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 statsDiv.classList.add('hidden');
             }
             
-            // Volver a crear iconos (necesario después de cambiar dinámicamente)
+            // Volver a crear iconos
             lucide.createIcons();
             
         } catch (error) {
@@ -222,16 +346,240 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // Actualizar inmediatamente y luego cada 5 segundos
-    updateSystemStatus();
-    setInterval(updateSystemStatus, 5000);
+    // Función para actualizar estado de AppSheet
+    async function updateAppSheetStatus() {
+        try {
+            const response = await fetch('/api/appsheet/status');
+            const data = await response.json();
+            
+            const statusEl = document.getElementById('appsheet-status');
+            const iconEl = document.getElementById('appsheet-connection-icon');
+            const textEl = document.getElementById('appsheet-connection-text');
+            const statsEl = document.getElementById('appsheet-connection-stats');
+            const cardEl = document.getElementById('appsheet-status-card');
+            const syncButton = document.getElementById('sync-button');
+            const panel = document.getElementById('appsheet-panel');
+            
+            if (data.status === 'enabled' && data.available) {
+                // AppSheet habilitado y disponible
+                statusEl.innerHTML = '<span class="bg-emerald-500/20 text-emerald-300 px-2 py-1 rounded-full">CONECTADO</span>';
+                textEl.innerHTML = '<span class="font-bold text-emerald-400">CONECTADO</span> • Sincronización activa';
+                iconEl.innerHTML = '<i data-lucide="cloud" class="text-emerald-400"></i>';
+                cardEl.className = 'bg-emerald-900 rounded-2xl p-6 text-white flex items-center justify-between';
+                syncButton.disabled = false;
+                panel.className = 'mb-6 bg-gradient-to-r from-emerald-800 to-emerald-900 rounded-2xl p-6 text-white shadow-lg';
+                
+                // Actualizar última sincronización
+                if (data.last_sync) {
+                    const lastSync = new Date(data.last_sync);
+                    const timeDiff = Math.floor((Date.now() - lastSync.getTime()) / 1000);
+                    
+                    let timeText = '';
+                    if (timeDiff < 60) timeText = 'hace unos segundos';
+                    else if (timeDiff < 3600) timeText = `hace ${Math.floor(timeDiff/60)} min`;
+                    else if (timeDiff < 86400) timeText = `hace ${Math.floor(timeDiff/3600)} horas`;
+                    else timeText = `hace ${Math.floor(timeDiff/86400)} días`;
+                    
+                    document.getElementById('last-sync-time').textContent = `Última sinc: ${timeText}`;
+                }
+                
+                // Cargar estadísticas
+                loadAppSheetStats();
+                
+            } else if (data.status === 'disabled') {
+                // AppSheet no configurado
+                statusEl.innerHTML = '<span class="bg-slate-500/20 text-slate-300 px-2 py-1 rounded-full">NO CONFIGURADO</span>';
+                textEl.innerHTML = '<span class="font-bold text-slate-400">NO CONFIGURADO</span> • Configure las variables de entorno';
+                iconEl.innerHTML = '<i data-lucide="cloud-off" class="text-slate-400"></i>';
+                cardEl.className = 'bg-slate-800 rounded-2xl p-6 text-white flex items-center justify-between';
+                syncButton.disabled = true;
+                panel.className = 'mb-6 bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-lg';
+                
+            } else {
+                // Error o no disponible
+                statusEl.innerHTML = '<span class="bg-red-500/20 text-red-300 px-2 py-1 rounded-full">ERROR</span>';
+                textEl.innerHTML = `<span class="font-bold text-red-400">ERROR</span> • ${data.message || 'No disponible'}`;
+                iconEl.innerHTML = '<i data-lucide="cloud-off" class="text-red-400"></i>';
+                cardEl.className = 'bg-red-900 rounded-2xl p-6 text-white flex items-center justify-between';
+                syncButton.disabled = true;
+                panel.className = 'mb-6 bg-gradient-to-r from-red-800 to-red-900 rounded-2xl p-6 text-white shadow-lg';
+            }
+            
+            lucide.createIcons();
+            
+        } catch (error) {
+            console.error('Error al verificar estado de AppSheet:', error);
+            
+            // Mostrar estado de error
+            document.getElementById('appsheet-status').innerHTML = 
+                '<span class="bg-red-500/20 text-red-300 px-2 py-1 rounded-full">ERROR</span>';
+            
+            document.getElementById('appsheet-connection-text').innerHTML = 
+                '<span class="font-bold text-red-400">ERROR</span> • No se pudo conectar al servicio';
+            
+            document.getElementById('appsheet-connection-icon').innerHTML = 
+                '<i data-lucide="cloud-off" class="text-red-400"></i>';
+            
+            document.getElementById('appsheet-status-card').className = 
+                'bg-red-900 rounded-2xl p-6 text-white flex items-center justify-between';
+            
+            lucide.createIcons();
+        }
+    }
     
-    // También actualizar cuando la ventana vuelve a tener foco
+    // Función para cargar estadísticas de AppSheet
+    async function loadAppSheetStats() {
+        try {
+            const response = await fetch('/api/appsheet/stats');
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                const stats = data.stats;
+                
+                // Mostrar panel de estadísticas
+                document.getElementById('appsheet-stats').classList.remove('hidden');
+                
+                // Actualizar valores
+                document.getElementById('stat-devices').textContent = 
+                    data.count || '--';
+                
+                document.getElementById('stat-records').textContent = 
+                    stats.total_records?.toLocaleString() || '0';
+                
+                document.getElementById('stat-alerts').textContent = 
+                    stats.active_alerts?.toLocaleString() || '0';
+                
+                document.getElementById('stat-last-sync').textContent = 
+                    stats.last_sync ? new Date(stats.last_sync).toLocaleTimeString() : '--';
+                
+                // Actualizar card de estado
+                document.getElementById('appsheet-devices').textContent = 
+                    data.count || '--';
+                
+                document.getElementById('appsheet-uptime').textContent = 
+                    stats.uptime_percent || '--';
+                
+                document.getElementById('appsheet-latency').textContent = 
+                    stats.avg_latency ? Math.round(stats.avg_latency) : '--';
+                
+                document.getElementById('appsheet-connection-stats').classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('Error cargando estadísticas de AppSheet:', error);
+        }
+    }
+    
+    // Actualizar estados
+    updateSystemStatus();
+    updateAppSheetStatus();
+    
+    // Actualizar cada 30 segundos
+    setInterval(() => {
+        updateSystemStatus();
+        updateAppSheetStatus();
+    }, 30000);
+    
+    // Actualizar cuando la ventana vuelve a tener foco
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
             updateSystemStatus();
+            updateAppSheetStatus();
         }
     });
 });
+
+// Función para sincronizar con AppSheet
+async function syncToAppSheet() {
+    const syncButton = document.getElementById('sync-button');
+    const progressDiv = document.getElementById('sync-progress');
+    const progressBar = document.getElementById('sync-progress-bar');
+    const percentageSpan = document.getElementById('sync-percentage');
+    const detailsDiv = document.getElementById('sync-details');
+    
+    // Deshabilitar botón y mostrar progreso
+    syncButton.disabled = true;
+    syncButton.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i><span>Sincronizando...</span>';
+    progressDiv.classList.remove('hidden');
+    
+    try {
+        const response = await fetch('/api/appsheet/sync', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            // Mostrar progreso simulado (mejoraría con WebSockets)
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 10;
+                progressBar.style.width = `${progress}%`;
+                percentageSpan.textContent = `${progress}%`;
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    
+                    // Mostrar resultados
+                    detailsDiv.innerHTML = `
+                        <div class="text-emerald-400">
+                            <i data-lucide="check-circle" class="w-4 h-4 inline mr-1"></i>
+                            Sincronización completada: ${data.summary.successful_syncs} exitosos, ${data.summary.failed_syncs} fallidos
+                        </div>
+                    `;
+                    
+                    // Restablecer botón después de 3 segundos
+                    setTimeout(() => {
+                        syncButton.disabled = false;
+                        syncButton.innerHTML = '<i data-lucide="refresh-cw" class="w-4 h-4"></i><span>Sincronizar Ahora</span>';
+                        lucide.createIcons();
+                        
+                        // Ocultar progreso después de 5 segundos
+                        setTimeout(() => {
+                            progressDiv.classList.add('hidden');
+                            progressBar.style.width = '0%';
+                            percentageSpan.textContent = '0%';
+                            detailsDiv.innerHTML = '';
+                        }, 5000);
+                    }, 3000);
+                    
+                    // Actualizar estado
+                    updateAppSheetStatus();
+                }
+            }, 100);
+            
+        } else {
+            throw new Error(data.message || 'Error desconocido');
+        }
+        
+    } catch (error) {
+        console.error('Error en sincronización:', error);
+        
+        detailsDiv.innerHTML = `
+            <div class="text-red-400">
+                <i data-lucide="x-circle" class="w-4 h-4 inline mr-1"></i>
+                Error: ${error.message}
+            </div>
+        `;
+        
+        // Restablecer botón después de 3 segundos
+        setTimeout(() => {
+            syncButton.disabled = false;
+            syncButton.innerHTML = '<i data-lucide="refresh-cw" class="w-4 h-4"></i><span>Sincronizar Ahora</span>';
+            lucide.createIcons();
+        }, 3000);
+    }
+}
+
+// Funciones para modal de configuración
+function showAppSheetConfig() {
+    document.getElementById('appsheet-config-modal').classList.remove('hidden');
+}
+
+function hideAppSheetConfig() {
+    document.getElementById('appsheet-config-modal').classList.add('hidden');
+}
 </script>
 {% endblock %}
