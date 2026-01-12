@@ -50,6 +50,21 @@
     .notification-success { background-color: #10b981; color: white; border-left: 4px solid #059669; }
     .notification-error { background-color: #ef4444; color: white; border-left: 4px solid #dc2626; }
     .notification-warning { background-color: #f59e0b; color: white; border-left: 4px solid #d97706; }
+    .notification-info { background-color: #3b82f6; color: white; border-left: 4px solid #1d4ed8; }
+    
+    /* Loader */
+    .loader {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid #f3f3f3;
+        border-radius: 50%;
+        border-top-color: #3498db;
+        animation: spin 1s ease-in-out infinite;
+    }
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
 </style>
 
 <!-- Notificación flotante -->
@@ -143,6 +158,10 @@
                                         class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
                                     <i data-lucide="wifi" class="w-4 h-4"></i> Probar Conexión
                                 </button>
+                                <button onclick="testHistoryInsert()"
+                                        class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                                    <i data-lucide="test-tube" class="w-4 h-4"></i> Probar Inserción
+                                </button>
                                 <button onclick="toggleForm()" 
                                         class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
                                     <i data-lucide="plus" class="w-4 h-4"></i> Nueva Entrada
@@ -208,8 +227,8 @@
                         <!-- Estado de guardado -->
                         <div id="save-status" class="hidden p-4 rounded-lg mb-4 text-center">
                             <div class="flex items-center justify-center gap-2">
-                                <i data-lucide="loader-2" class="animate-spin w-4 h-4"></i>
-                                <span id="save-status-text"></span>
+                                <div class="loader"></div>
+                                <span id="save-status-text" class="text-sm"></span>
                             </div>
                         </div>
                         
@@ -229,15 +248,15 @@
                             <div class="mt-6 pt-4 border-t border-slate-100">
                                 <h4 class="font-bold text-slate-700 mb-3 text-xs uppercase">Acciones Rápidas</h4>
                                 <div class="space-y-2">
-                                    <button onclick="addQuickLog('Mantenimiento preventivo')" class="w-full text-left text-xs p-2 hover:bg-slate-50 rounded flex items-center gap-2">
+                                    <button onclick="addQuickLog('Mantenimiento preventivo programado')" class="w-full text-left text-xs p-2 hover:bg-slate-50 rounded flex items-center gap-2">
                                         <i data-lucide="shield" class="w-3 h-3 text-blue-500"></i>
                                         <span>Mantenimiento Preventivo</span>
                                     </button>
-                                    <button onclick="addQuickLog('Limpieza física')" class="w-full text-left text-xs p-2 hover:bg-slate-50 rounded flex items-center gap-2">
+                                    <button onclick="addQuickLog('Limpieza física del equipo')" class="w-full text-left text-xs p-2 hover:bg-slate-50 rounded flex items-center gap-2">
                                         <i data-lucide="brush" class="w-3 h-3 text-green-500"></i>
                                         <span>Limpieza Física</span>
                                     </button>
-                                    <button onclick="addQuickLog('Actualización de software')" class="w-full text-left text-xs p-2 hover:bg-slate-50 rounded flex items-center gap-2">
+                                    <button onclick="addQuickLog('Actualización de software y parches de seguridad')" class="w-full text-left text-xs p-2 hover:bg-slate-50 rounded flex items-center gap-2">
                                         <i data-lucide="refresh-cw" class="w-3 h-3 text-purple-500"></i>
                                         <span>Actualización Software</span>
                                     </button>
@@ -267,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const notification = document.getElementById('global-notification');
         notification.className = `notification notification-${type}`;
         notification.innerHTML = `
-            <i data-lucide="${type === 'success' ? 'check-circle' : type === 'error' ? 'alert-circle' : 'alert-triangle'}" class="w-5 h-5"></i>
+            <i data-lucide="${type === 'success' ? 'check-circle' : type === 'error' ? 'alert-circle' : type === 'warning' ? 'alert-triangle' : 'info'}" class="w-5 h-5"></i>
             <span>${message}</span>
         `;
         notification.classList.remove('hidden');
@@ -287,7 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
             statusText.textContent = message;
             statusDiv.classList.remove('hidden');
             saveBtn.disabled = true;
-            saveBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Guardando...';
+            saveBtn.innerHTML = '<div class="loader mr-2"></div> Guardando...';
         } else {
             statusDiv.classList.add('hidden');
             saveBtn.disabled = false;
@@ -304,12 +323,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const textDiv = document.getElementById('appsheet-status-text');
         
         indicator.classList.remove('hidden');
-        iconDiv.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 animate-spin text-blue-500"></i>';
+        iconDiv.innerHTML = '<div class="loader"></div>';
         textDiv.textContent = 'Probando conexión con AppSheet...';
         
         try {
             const response = await fetch('/api/appsheet/diagnose');
             const data = await response.json();
+            console.log('🔍 Diagnóstico AppSheet:', data);
             
             if (data.status === 'success') {
                 const tables = data.diagnosis.tables;
@@ -328,12 +348,45 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(data.message || 'Error en la conexión');
             }
         } catch (error) {
+            console.error('Error probando conexión AppSheet:', error);
             iconDiv.innerHTML = '<i data-lucide="alert-circle" class="w-5 h-5 text-red-500"></i>';
             textDiv.textContent = `❌ Error de conexión: ${error.message}`;
             indicator.className = 'bg-red-50 border border-red-200 rounded-lg p-3 mb-4';
         }
         
         lucide.createIcons();
+    }
+
+    window.testHistoryInsert = async () => {
+        if (!currentPc) {
+            showNotification('Seleccione un dispositivo primero', 'warning');
+            return;
+        }
+        
+        showNotification('🧪 Probando inserción en AppSheet...', 'info');
+        
+        try {
+            const response = await fetch('/api/appsheet/test-history', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const result = await response.json();
+            console.log('🧪 Resultado prueba inserción:', result);
+            
+            if (result.status === 'success') {
+                showNotification('✅ Prueba de inserción exitosa', 'success');
+                // Actualizar historial después de 2 segundos
+                setTimeout(() => {
+                    const pc = pcDataStore[currentPc];
+                    updateHistoryTab(pc);
+                }, 2000);
+            } else {
+                showNotification(`❌ Prueba fallida: ${result.message}`, 'error');
+            }
+        } catch (error) {
+            showNotification(`❌ Error en prueba: ${error.message}`, 'error');
+        }
     }
 
     // ============================================
@@ -426,7 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
         refreshModalData(true);
         setTimeout(() => runManualAnalysis(), 500);
         
-        // Probar conexión automáticamente
+        // Probar conexión automáticamente después de 1 segundo
         setTimeout(() => testAppSheetConnection(), 1000);
     }
 
@@ -540,21 +593,56 @@ document.addEventListener('DOMContentLoaded', () => {
         timeline.innerHTML = '<div class="text-center py-8 text-slate-400"><i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i><p>Cargando historial...</p></div>';
         
         try {
+            console.log(`📊 Solicitando historial para: ${pc.pc_name}`);
             const res = await fetch('/api/history/all');
+            
             if (!res.ok) {
                 throw new Error(`HTTP ${res.status}: ${res.statusText}`);
             }
             
             const allLogs = await res.json();
+            console.log(`📊 Historial recibido: ${allLogs.length} registros totales`);
             
-            // Filtrar logs para este dispositivo
+            if (allLogs.length > 0) {
+                console.log('📊 Primeros registros:', allLogs.slice(0, 3));
+            }
+            
+            // Filtrar logs para este dispositivo usando diferentes estrategias
             const logs = allLogs.filter(l => {
-                return l.device_id && pc.pc_name && (
-                    l.device_id.includes(pc.pc_name.split(' ')[0]) || 
-                    l.location_snapshot === pc.pc_name ||
-                    (l.device_id && pc.pc_name.includes(l.device_id))
-                );
+                const logDeviceId = (l.device_id || '').toString().toUpperCase().trim();
+                const pcName = (pc.pc_name || '').toString().toUpperCase().trim();
+                
+                // Estrategia 1: Coincidencia exacta (si el device_id está contenido en el pc_name)
+                if (pcName && logDeviceId && pcName.includes(logDeviceId)) {
+                    console.log(`✅ Coincidencia 1: ${logDeviceId} en ${pcName}`);
+                    return true;
+                }
+                
+                // Estrategia 2: El pc_name está contenido en el device_id
+                if (pcName && logDeviceId && logDeviceId.includes(pcName.split(' ')[0])) {
+                    console.log(`✅ Coincidencia 2: ${pcName} en ${logDeviceId}`);
+                    return true;
+                }
+                
+                // Estrategia 3: Extraer prefijo MX_ del pc_name
+                const mxMatch = pcName.match(/MX_[A-Z0-9_]+/);
+                if (mxMatch) {
+                    const mxPrefix = mxMatch[0];
+                    if (logDeviceId.includes(mxPrefix) || mxPrefix.includes(logDeviceId)) {
+                        console.log(`✅ Coincidencia 3: MX prefix ${mxPrefix} vs ${logDeviceId}`);
+                        return true;
+                    }
+                }
+                
+                // Estrategia 4: Para debugging, mostrar todos si hay pocos registros
+                if (allLogs.length <= 5) {
+                    console.log(`🔍 Log no coincide: device_id=${logDeviceId}, pc_name=${pcName}`);
+                }
+                
+                return false;
             });
+            
+            console.log(`📈 Encontrados ${logs.length} registros para ${pc.pc_name}`);
             
             timeline.innerHTML = '';
             
@@ -564,6 +652,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2"></i>
                         <p class="text-sm">No hay registros históricos para este dispositivo</p>
                         <p class="text-xs mt-1">Cree la primera entrada en la bitácora</p>
+                        <div class="mt-4 p-3 bg-blue-50 rounded-lg text-left max-w-md mx-auto">
+                            <p class="text-xs text-blue-700 font-bold mb-1">Información para debugging:</p>
+                            <p class="text-xs text-blue-600">Nombre del PC: <code>${pc.pc_name}</code></p>
+                            <p class="text-xs text-blue-600">Device ID generado: <code>${generateDeviceId(pc.pc_name)}</code></p>
+                            <p class="text-xs text-blue-600">Total logs en sistema: ${allLogs.length}</p>
+                            ${allLogs.length > 0 ? `
+                                <div class="mt-2">
+                                    <p class="text-xs text-blue-700 font-bold">Últimos device_ids:</p>
+                                    ${allLogs.slice(0, 3).map(log => `
+                                        <p class="text-xs text-blue-600">• ${log.device_id || 'Sin ID'} - ${log.action_type || 'Sin acción'}</p>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
                     </div>
                 `;
                 return;
@@ -572,7 +674,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Ordenar por fecha (más reciente primero)
             logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             
-            logs.forEach(log => {
+            logs.forEach((log, index) => {
                 const date = new Date(log.timestamp);
                 const timeAgo = Math.floor((new Date() - date) / (1000 * 60 * 60 * 24));
                 const dateStr = date.toLocaleDateString('es-MX', { 
@@ -583,7 +685,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     minute: '2-digit'
                 });
                 
-                const isResolved = log.is_resolved === true || log.is_resolved === 'true';
+                const isResolved = log.is_resolved === true || log.is_resolved === 'true' || log.is_resolved === 'TRUE';
                 
                 timeline.innerHTML += `
                     <div class="timeline-item">
@@ -598,11 +700,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="flex gap-4 text-[10px] text-slate-400 mt-2">
                             <span><i data-lucide="user" class="w-3 h-3 inline mr-1"></i><b>${log.requester || 'Sistema'}</b></span>
                             <span><i data-lucide="wrench" class="w-3 h-3 inline mr-1"></i><b>${log.executor || 'Pendiente'}</b></span>
+                            <span class="px-2 py-0.5 rounded text-[10px] ${log.unit_snapshot === 'ECOVALLAS' ? 'bg-indigo-100 text-indigo-700' : log.unit_snapshot === 'VIAVERDE' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}">
+                                ${log.unit_snapshot || 'General'}
+                            </span>
                             ${isResolved ? 
                                 '<span class="text-emerald-600 font-bold ml-auto flex items-center gap-1"><i data-lucide="check-circle" class="w-3 h-3"></i>Resuelto</span>' : 
                                 '<span class="text-amber-600 font-bold ml-auto flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i>Pendiente</span>'
                             }
                         </div>
+                        ${index === 0 ? `<div class="text-[9px] text-slate-400 mt-1">Device ID: ${log.device_id || 'N/A'}</div>` : ''}
                     </div>
                 `;
             });
@@ -614,11 +720,43 @@ document.addEventListener('DOMContentLoaded', () => {
                     <i data-lucide="alert-circle" class="w-8 h-8 mx-auto mb-2"></i>
                     <p class="text-sm">Error cargando historial</p>
                     <p class="text-xs mt-1">${e.message || 'Verifique la conexión con AppSheet'}</p>
+                    <button onclick="updateHistoryTab(pcDataStore['${pc.pc_name}'])" class="mt-3 text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 mx-auto">
+                        <i data-lucide="refresh-cw" class="w-3 h-3"></i> Reintentar
+                    </button>
                 </div>
             `;
         }
         
         lucide.createIcons();
+    }
+
+    // Función auxiliar para generar device_id (igual que en Python)
+    function generateDeviceId(pcName) {
+        if (!pcName) return "UNKNOWN_ID";
+        pcName = pcName.trim();
+        
+        // Si ya comienza con MX_, usar esa parte
+        if (pcName.toUpperCase().startsWith("MX_")) {
+            const parts = pcName.split(' ');
+            if (parts.length > 0) {
+                return parts[0].trim().toUpperCase();
+            }
+        }
+        
+        // Generar hash MD5 (simplificado para JS)
+        return md5(pcName).slice(0, 16).toUpperCase();
+    }
+    
+    // Función MD5 simplificada para JavaScript
+    function md5(input) {
+        // Esta es una implementación simplificada - en producción usa una librería
+        let hash = 0;
+        for (let i = 0; i < input.length; i++) {
+            const char = input.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        return Math.abs(hash).toString(16);
     }
 
     window.toggleForm = () => {
@@ -633,7 +771,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const pc = pcDataStore[currentPc];
             if (pc) {
                 document.getElementById('log-req').value = 'Administrador';
-                document.getElementById('log-exec').value = 'Técnico';
+                document.getElementById('log-exec').value = 'Técnico de Soporte';
+                document.getElementById('log-solved').checked = true;
                 document.getElementById('log-desc').focus();
             }
         }
@@ -673,23 +812,21 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        // Preparar datos
+        // Preparar datos para AppSheet
         const newLog = {
             device_name: pc.pc_name,
             pc_name: pc.pc_name, // Campo adicional para compatibilidad
+            unit: pc.unit,
             req: requester,
             exec: executor,
             action: document.getElementById('log-action').value,
             what: document.getElementById('log-what').value,
             desc: description,
             solved: document.getElementById('log-solved').checked,
-            locName: pc.pc_name,
-            unit: pc.unit,
-            status_snapshot: document.getElementById('log-action').value === 'Baja' ? 'inactive' : 'active',
-            timestamp: new Date().toISOString()
+            unit_snapshot: pc.unit  // Este campo sí existe en tu tabla
         };
         
-        console.log('Enviando ficha a AppSheet:', newLog);
+        console.log('📤 Enviando ficha a AppSheet:', newLog);
         
         // Mostrar estado de guardado
         showSaveStatus('Enviando a AppSheet...', true);
@@ -705,6 +842,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             const result = await response.json();
+            console.log('📥 Respuesta del servidor:', result);
             
             if (response.ok && result.status === 'success') {
                 showNotification('✅ Ficha guardada exitosamente en AppSheet', 'success');
@@ -713,26 +851,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('new-log-form').reset();
                 toggleForm();
                 
-                // Actualizar historial
-                updateHistoryTab(pc);
+                // Esperar 2 segundos y actualizar historial
+                setTimeout(() => {
+                    updateHistoryTab(pc);
+                }, 2000);
                 
                 // Si es una baja, actualizar estado del dispositivo
                 if (newLog.action === 'Baja') {
                     pc.status = 'offline';
                     refreshModalData(false);
+                    showNotification('⚠️ Dispositivo marcado como INACTIVO por baja', 'warning');
                 }
             } else {
                 throw new Error(result.message || 'Error en la respuesta del servidor');
             }
             
         } catch (error) {
-            console.error('Error guardando ficha:', error);
+            console.error('❌ Error guardando ficha:', error);
             showNotification(`❌ Error: ${error.message || 'No se pudo conectar con el servidor'}`, 'error');
-            
-            // Mostrar más detalles en consola
-            if (error.response) {
-                console.error('Respuesta del servidor:', error.response);
-            }
         } finally {
             showSaveStatus('', false);
         }
