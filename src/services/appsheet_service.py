@@ -172,6 +172,7 @@ class AppSheetService:
                 try: 
                     result = response.json()
                     logger.info(f"✅ AppSheet {action} exitoso en {table}")
+                    logger.debug(f"📋 Respuesta: {json.dumps(result, indent=2)}")
                     return result
                 except Exception as e:
                     logger.warning(f"AppSheet no devolvió JSON: {e}, pero status es 200")
@@ -357,6 +358,7 @@ class AppSheetService:
     def add_history_entry(self, log_data: Dict) -> bool:
         """
         Guarda ficha en device_history asegurando integridad referencial.
+        Versión actualizada para coincidir con la estructura de tu tabla AppSheet.
         """
         try:
             if not self.enabled: 
@@ -364,9 +366,8 @@ class AppSheetService:
                 return False
             
             # Log detallado de entrada
-            logger.info(f"📝 Recibiendo ficha para bitácora")
+            logger.info(f"📝 Recibiendo ficha para bitácora: {log_data}")
             
-            # Obtener nombre del dispositivo (flexible)
             device_name = log_data.get('device_name') or log_data.get('pc_name')
             if not device_name:
                 logger.error("❌ Error Bitácora: Falta nombre del dispositivo")
@@ -396,34 +397,41 @@ class AppSheetService:
             if not timestamp:
                 timestamp = datetime.now(TZ_MX).isoformat()
             
-            # Preparar fila para AppSheet con nombres de campo flexibles
+            # IMPORTANTE: Solo enviar las columnas que existen en tu tabla AppSheet
+            # Tu tabla tiene: device_id, timestamp, requester, executor, action_type, 
+            # component, description, is_resolved, unit_snapshot
+            
             history_row = {
                 "device_id": device_id,
                 "timestamp": timestamp,
                 "requester": log_data.get('req', log_data.get('requester', 'Sistema')),
                 "executor": log_data.get('exec', log_data.get('executor', 'Pendiente')),
                 "action_type": log_data.get('action', log_data.get('action_type', 'Mantenimiento')),
-                "component": log_data.get('what', log_data.get('component', '-')),
+                "component": log_data.get('what', log_data.get('component', 'General')),
                 "description": log_data.get('desc', log_data.get('description', '')),
-                "is_resolved": str(log_data.get('solved', log_data.get('is_resolved', False))).lower(),
-                "location_snapshot": log_data.get('locName', log_data.get('location_snapshot', '')),
-                "unit_snapshot": log_data.get('unit', log_data.get('unit_snapshot', 'General')),
-                "status_snapshot": log_data.get('status_snapshot', 'active')
+                "is_resolved": log_data.get('solved', log_data.get('is_resolved', False)),
+                "unit_snapshot": log_data.get('unit', log_data.get('unit_snapshot', 'General'))
             }
             
-            # Limpiar valores None
-            history_row = {k: v if v is not None else '' for k, v in history_row.items()}
+            # NOTA: No incluir location_snapshot ni status_snapshot porque no existen en tu tabla
+            
+            # Convertir booleanos a strings "TRUE"/"FALSE" para AppSheet Yes/No
+            if isinstance(history_row["is_resolved"], bool):
+                history_row["is_resolved"] = "TRUE" if history_row["is_resolved"] else "FALSE"
+            elif isinstance(history_row["is_resolved"], str):
+                history_row["is_resolved"] = "TRUE" if history_row["is_resolved"].lower() == "true" else "FALSE"
             
             logger.info(f"💾 Guardando Ficha para {device_name}...")
-            logger.debug(f"📋 Datos a guardar: {json.dumps(history_row, indent=2)}")
+            logger.info(f"📋 Datos a guardar (formateados para AppSheet): {json.dumps(history_row, indent=2)}")
             
             # 2. Guardar en Historial
             res_hist = self._make_safe_request("device_history", "Add", [history_row])
             
             if res_hist is not None:
                 logger.info(f"✅ Ficha guardada exitosamente en device_history")
+                logger.info(f"📤 Respuesta AppSheet: {res_hist}")
                 
-                # 3. Lógica de Baja/Reactivación
+                # 3. Lógica de Baja/Reactivación (actualizar tabla devices)
                 action = log_data.get('action', '').lower()
                 if 'baja' in action or 'retiro' in action:
                     logger.info(f"📉 Marcando dispositivo {device_id} como offline por baja")
@@ -438,7 +446,7 @@ class AppSheetService:
                 # Intentar diagnóstico adicional
                 self.test_history_connection()
                 return False
-                
+                    
         except Exception as e:
             logger.error(f"🔥 Error crítico en add_history_entry: {e}", exc_info=True)
             return False
@@ -472,31 +480,82 @@ class AppSheetService:
             
             logger.info("📋 Solicitando historial completo...")
             
-            data = self._make_safe_request("device_history", "Find", [])
+            # Hacer una petición con Top para limitar resultados
+            payload = {
+                "Action": "Find",
+                "Properties": {
+                    "Locale": "es-MX",
+                    "Top": 100  # Limitar a 100 registros para pruebas
+                }
+            }
             
-            if isinstance(data, list):
-                logger.info(f"✅ Historial obtenido: {len(data)} registros")
+            response = requests.post(
+                f"{self.base_url}/apps/{self.app_id}/tables/device_history/Action",
+                headers=self.headers,
+                json=payload,
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                logger.info(f"✅ Historial obtenido. Respuesta: {data}")
                 
-                # Ordenar por timestamp descendente
-                def get_sort_key(item):
-                    ts = item.get('timestamp', '')
-                    try:
-                        return datetime.fromisoformat(ts.replace('Z', '+00:00'))
-                    except:
-                        return datetime.min
+                # AppSheet puede devolver diferentes formatos
+                rows = []
+                if isinstance(data, list):
+                    rows = data
+                    logger.info(f"✅ Historial obtenido (formato lista): {len(rows)} registros")
+                elif isinstance(data, dict):
+                    if 'Rows' in data:
+                        rows = data['Rows']
+                        logger.info(f"✅ Historial obtenido (formato Rows): {len(rows)} registros")
+                    elif 'data' in data:
+                        rows = data['data']
+                        logger.info(f"✅ Historial obtenido (formato data): {len(rows)} registros")
+                    else:
+                        # Intentar extraer cualquier lista del diccionario
+                        for key, value in data.items():
+                            if isinstance(value, list):
+                                rows = value
+                                logger.info(f"✅ Historial obtenido (clave '{key}'): {len(rows)} registros")
+                                break
                 
-                sorted_data = sorted(data, key=get_sort_key, reverse=True)
-                return sorted_data
-                
-            elif isinstance(data, dict) and 'Rows' in data:
-                logger.info(f"✅ Historial obtenido (formato Rows): {len(data['Rows'])} registros")
-                return sorted(data['Rows'], 
-                             key=lambda x: x.get('timestamp', ''), 
-                             reverse=True)
+                if rows:
+                    # Ordenar por timestamp descendente
+                    def get_sort_key(item):
+                        ts = item.get('timestamp', '')
+                        try:
+                            # Intentar parsear diferentes formatos de fecha
+                            if 'T' in ts:
+                                return datetime.fromisoformat(ts.replace('Z', '+00:00'))
+                            else:
+                                # Intentar otros formatos comunes
+                                for fmt in ['%Y-%m-%d %H:%M:%S', '%Y/%m/%d %H:%M:%S', '%d/%m/%Y %H:%M:%S']:
+                                    try:
+                                        return datetime.strptime(ts, fmt)
+                                    except:
+                                        continue
+                                return datetime.min
+                        except Exception as e:
+                            logger.warning(f"Error parseando timestamp '{ts}': {e}")
+                            return datetime.min
+                    
+                    sorted_data = sorted(rows, key=get_sort_key, reverse=True)
+                    
+                    # Log para debugging
+                    if sorted_data:
+                        logger.info(f"📊 Primer registro: device_id={sorted_data[0].get('device_id')}, action={sorted_data[0].get('action_type')}")
+                        logger.info(f"📊 Total registros ordenados: {len(sorted_data)}")
+                    
+                    return sorted_data
+                else:
+                    logger.warning("⚠️  No se encontraron registros en la respuesta")
+                    return []
+                    
             else:
-                logger.warning("⚠️  Formato de respuesta inesperado")
+                logger.error(f"❌ Error HTTP {response.status_code}: {response.text}")
                 return []
                 
         except Exception as e:
-            logger.error(f"Error en get_full_history: {e}")
+            logger.error(f"Error en get_full_history: {e}", exc_info=True)
             return []
