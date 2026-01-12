@@ -31,8 +31,21 @@ def report():
 def get_data():
     if not src.storage: return jsonify({})
     raw = src.storage.get_all_devices()
-    # Tu lógica de offline/online se mantiene igual aquí...
-    return jsonify(raw)
+    processed_data = {}
+    now = datetime.now(TZ_MX)
+    for pc_name, info in raw.items():
+        device_info = info.copy()
+        # Lógica offline simple
+        last = info.get('timestamp')
+        if last:
+            try:
+                if (now - datetime.fromisoformat(last)).total_seconds() > EMAIL_TIMEOUT_SECONDS:
+                    device_info['status'] = 'offline'
+                else:
+                    device_info['status'] = 'online'
+            except: pass
+        processed_data[pc_name] = device_info
+    return jsonify(processed_data)
 
 # --- RUTAS APPSHEET ---
 @bp.route('/appsheet/status', methods=['GET'])
@@ -52,7 +65,7 @@ def appsheet_sync_trigger():
         return jsonify({"status": "success"})
     return jsonify({"status": "error"}), 500
 
-# --- RUTAS BITÁCORA (CRÍTICAS PARA QUE FUNCIONE EL GUARDADO) ---
+# --- RUTAS BITÁCORA ---
 @bp.route('/history/all', methods=['GET'])
 def get_history():
     try:
@@ -64,11 +77,11 @@ def get_history():
 def add_history():
     try:
         data = request.get_json()
-        # Verificar que venga el device_name
-        if 'device_name' not in data:
-            return jsonify({"status": "error", "message": "Falta device_name"}), 400
+        # Validación flexible para aceptar device_name o pc_name
+        if 'device_name' not in data and 'pc_name' not in data:
+            return jsonify({"status": "error", "message": "Falta nombre del dispositivo"}), 400
             
         if src.appsheet and src.appsheet.add_history_entry(data):
             return jsonify({"status": "success"})
-        return jsonify({"status": "error", "message": "Fallo al guardar"}), 500
+        return jsonify({"status": "error", "message": "No se pudo guardar en AppSheet"}), 500
     except Exception as e: return jsonify({"status": "error", "message": str(e)}), 500
