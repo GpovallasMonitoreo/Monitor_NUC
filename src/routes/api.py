@@ -12,13 +12,14 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(os.path.dirname(current_dir))
 sys.path.append(parent_dir)
 
-from src import storage, alerts # Variables globales de __init__.py
+# Importamos 'src' completo para acceder a las variables inyectadas (storage, alerts, monitor)
+import src 
 
 bp = Blueprint('api', __name__, url_prefix='/api')
 
 # Configuración de tiempos
 TZ_CDMX = ZoneInfo("America/Mexico_City")
-EMAIL_TIMEOUT_SECONDS = 45 # Aumenté un poco para evitar falsos positivos por latencia de red
+EMAIL_TIMEOUT_SECONDS = 45 
 
 @bp.route('/report', methods=['POST'])
 def report():
@@ -34,11 +35,21 @@ def report():
         now = datetime.now(TZ_CDMX)
         data['timestamp'] = now.isoformat()
         
-        # Guardar (Storage maneja la lógica de Reconexión/Email Verde)
-        if storage:
-            storage.save_device_report(data)
+        # 1. Guardar en Storage Local (Tu lógica original de correos y JSON)
+        if hasattr(src, 'storage') and src.storage:
+            src.storage.save_device_report(data)
+        
+        # 2. Alimentar al Monitor de AppSheet (NUEVO) 
+
+[Image of data ingestion flow]
+
+        # Esto permite detectar cambios bruscos al instante y actualizar memoria
+        if hasattr(src, 'monitor') and src.monitor:
+            # Enviamos una copia para evitar conflictos de modificación
+            src.monitor.ingest_data(data.copy())
         
         return jsonify({"status": "OK"})
+
     except Exception as e:
         print(f"Error en /report: {e}")
         return jsonify({"error": str(e)}), 500
@@ -47,13 +58,13 @@ def report():
 def get_data():
     """
     Endpoint consumido por el Dashboard.
-    Aquí calculamos quién está OFFLINE y disparamos alertas rojas.
+    Aquí calculamos quién está OFFLINE y disparamos alertas rojas de CORREO.
     """
     try:
-        if not storage:
+        if not hasattr(src, 'storage') or not src.storage:
             return jsonify({})
 
-        raw_data = storage.get_all_devices()
+        raw_data = src.storage.get_all_devices()
         processed_data = {}
         now = datetime.now(TZ_CDMX)
 
@@ -76,22 +87,21 @@ def get_data():
                 except ValueError:
                     pass # Error de fecha, se queda como offline
             
-            # LÓGICA DE ALERTA ROJA (OFFLINE)
+            # LÓGICA DE ALERTA ROJA (OFFLINE - CORREO)
             if is_offline:
                 device_info['status'] = 'offline'
                 
                 # Verificamos si ya alertamos para no hacer spam
-                alert_state = storage.alert_states.get(pc_name, {})
+                alert_state = src.storage.alert_states.get(pc_name, {})
                 if not alert_state.get('email_sent', False):
                     print(f"🔥 DESCONEXIÓN DETECTADA: {pc_name}")
-                    if alerts:
-                        alerts.send_offline_alert(pc_name, info)
+                    if hasattr(src, 'alerts') and src.alerts:
+                        src.alerts.send_offline_alert(pc_name, info)
                     
                     # Marcar como alertado
-                    storage.alert_states[pc_name] = {'status': 'offline', 'email_sent': True}
+                    src.storage.alert_states[pc_name] = {'status': 'offline', 'email_sent': True}
             else:
                 device_info['status'] = 'online'
-                # (La reconexión/alert_state se maneja en el endpoint /report cuando vuelven a hablar)
 
             processed_data[pc_name] = device_info
 
@@ -99,4 +109,20 @@ def get_data():
 
     except Exception as e:
         print(f"Error en /data: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# --- NUEVO ENDPOINT: Sincronización Manual ---
+@bp.route('/sync/manual', methods=['POST'])
+def manual_sync():
+    """
+    Endpoint para forzar la sincronización con AppSheet desde un botón.
+    """
+    try:
+        if hasattr(src, 'monitor') and src.monitor:
+            # Ejecuta la sincronización en el hilo del monitor
+            src.monitor.force_manual_sync()
+            return jsonify({"status": "OK", "message": "Sincronización iniciada"}), 200
+        else:
+            return jsonify({"status": "error", "message": "Monitor no activo"}), 503
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
