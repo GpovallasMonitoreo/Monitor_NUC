@@ -140,7 +140,7 @@ class DeviceMonitorManager:
         
         count = 0
         for pc_name, data in devices.items():
-            # 1. Siempre actualizamos la tabla 'dispositivos' (Last Seen, IP, etc)
+            # 1. Siempre actualizamos la tabla 'devices' (Last Seen, IP, etc)
             self.service.upsert_device(data)  # Usa el método de compatibilidad
             
             # 2. Si es manual, FORZAMOS historial
