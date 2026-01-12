@@ -15,7 +15,6 @@ TZ_MX = ZoneInfo("America/Mexico_City")
 logger = logging.getLogger(__name__)
 
 class AppSheetService:
-    """Servicio para interactuar con AppSheet Database"""
     
     def __init__(self):
         self.api_key = os.getenv('APPSHEET_API_KEY', '')
@@ -42,6 +41,7 @@ class AppSheetService:
             self._test_table_connection('devices')
         except: pass
     
+    # --- MÉTODOS AUXILIARES ---
     def _test_table_connection(self, table_name: str) -> bool:
         try:
             if not self.enabled: return False
@@ -61,7 +61,9 @@ class AppSheetService:
     def _make_safe_request(self, table: str, action: str, rows: List[Dict] = None) -> Optional[Any]:
         try:
             if not self.enabled: return None
-            payload = {"Action": action, "Properties": {"Locale": "en-US", "Timezone": "Central Standard Time"}} # Forzamos Timezone
+            
+            # Ajuste: Timezone explícito para evitar conflictos de fecha
+            payload = {"Action": action, "Properties": {"Locale": "es-MX", "Timezone": "Central Standard Time"}}
             if rows: payload["Rows"] = rows
             
             response = requests.post(
@@ -73,7 +75,8 @@ class AppSheetService:
                 try: return response.json()
                 except: return {"success": True}
             
-            logger.error(f"AppSheet Error {response.status_code}: {response.text}")
+            # LOG CRÍTICO PARA DEBUG DEL ERROR 400
+            logger.error(f"AppSheet Error {response.status_code} en tabla '{table}': {response.text}")
             return None
         except Exception as e:
             logger.error(f"AppSheet request error: {e}")
@@ -86,21 +89,15 @@ class AppSheetService:
             if not self.enabled: return False
             device_id = self.generate_device_id(device_data['pc_name'])
             
-            # Asegurar datos mínimos
-            unit = device_data.get('unit', 'General')
-            ip = device_data.get('public_ip', device_data.get('ip', ''))
-            
             row = {
                 "device_id": device_id,
                 "pc_name": device_data['pc_name'],
-                "unit": unit,
-                "public_ip": ip,
+                "unit": device_data.get('unit', 'General'),
+                "public_ip": device_data.get('public_ip', device_data.get('ip', '')),
                 "status": device_data.get('status', 'online'),
-                "updated_at": datetime.now(TZ_MX).isoformat()
+                "updated_at": datetime.now(TZ_MX).strftime('%Y-%m-%d %H:%M:%S') # Formato string simple
             }
-            # Intentar Edit primero (más eficiente si ya existe), luego Add
-            # Nota: AppSheet API a veces prefiere Add como Upsert dependiendo del datasource
-            self._make_safe_request("devices", "Add", [row])
+            self._make_safe_request("devices", "Add", [row]) 
             self.last_sync_time = datetime.now(TZ_MX)
             return True
         except: return False
@@ -121,7 +118,7 @@ class AppSheetService:
 
             row = {
                 "device_id": device_id,
-                "timestamp": datetime.now(TZ_MX).isoformat(),
+                "timestamp": datetime.now(TZ_MX).strftime('%Y-%m-%d %H:%M:%S'),
                 "latency_ms": float(device_data.get('latency', 0)),
                 "cpu_percent": float(device_data.get('cpu_load_percent', 0)),
                 "ram_percent": float(device_data.get('ram_percent', 0)),
@@ -129,6 +126,23 @@ class AppSheetService:
                 "status": str(device_data.get('status', 'online'))
             }
             self._make_safe_request("latency_history", "Add", [row])
+            return True
+        except: return False
+
+    def add_alert(self, device_data: Dict, alert_type: str, message: str, severity: str = "medium") -> bool:
+        try:
+            if not self.enabled: return False
+            device_id = self.generate_device_id(device_data['pc_name'])
+            row = {
+                "device_id": device_id,
+                "alert_type": alert_type,
+                "severity": severity,
+                "message": message,
+                "timestamp": datetime.now(TZ_MX).strftime('%Y-%m-%d %H:%M:%S'),
+                "resolved": False,
+                "pc_name": device_data.get('pc_name', 'Unknown')
+            }
+            self._make_safe_request("alerts", "Add", [row])
             return True
         except: return False
 
@@ -147,7 +161,6 @@ class AppSheetService:
             lat_data = self._make_safe_request("latency_history", "Get") or []
             if not isinstance(lat_data, list): lat_data = []
             
-            # Para total devices, hacemos una consulta ligera a devices
             devs = self._make_safe_request("devices", "Find", [])
             total_devs = len(devs) if isinstance(devs, list) else 0
             
@@ -163,7 +176,7 @@ class AppSheetService:
         except: return {'avg_latency': 0, 'total_devices': 0}
 
     # ==========================================
-    # MÉTODOS CRÍTICOS: BITÁCORA Y FICHAS
+    # MÉTODOS DE BITÁCORA Y FICHAS (CORREGIDOS)
     # ==========================================
 
     def add_history_entry(self, log_data: Dict) -> bool:
@@ -173,53 +186,52 @@ class AppSheetService:
         try:
             if not self.enabled: return False
             
+            # Nombre del dispositivo (Manejo robusto de keys)
             device_name = log_data.get('device_name') or log_data.get('pc_name')
             if not device_name:
                 logger.error("❌ Error Bitácora: Falta nombre del dispositivo")
                 return False
 
-            # 1. IMPORTANTE: Asegurar que el dispositivo existe en la tabla padre (Upsert ligero)
-            # Esto evita el error de "Reference does not exist" en AppSheet
+            # 1. Asegurar que el dispositivo existe en la tabla PADRE 'devices'
+            # Esto evita el error de Referencia Rota en AppSheet
             self.upsert_device({
                 "pc_name": device_name,
                 "unit": log_data.get('unit', 'General'),
-                "status": 'online' # Asumimos online a menos que sea baja
+                "status": 'online'
             })
             
             # Generar ID
             device_id = self.generate_device_id(device_name)
             
+            # JSON PAYLOAD - IMPORTANTE: Los nombres de las keys deben coincidir con COLUMNAS AppSheet
             history_row = {
                 "device_id": device_id,
-                "timestamp": datetime.now(TZ_MX).isoformat(),
+                "timestamp": datetime.now(TZ_MX).strftime('%Y-%m-%d %H:%M:%S'),
                 "requester": log_data.get('req', 'Sistema'),
                 "executor": log_data.get('exec', 'Pendiente'),
                 "action_type": log_data.get('action', 'Mantenimiento'),
                 "component": log_data.get('what', '-'),
                 "description": log_data.get('desc', ''),
-                "is_resolved": str(log_data.get('solved', False)).lower(),
+                "is_resolved": "YES" if log_data.get('solved') else "NO", # AppSheet prefiere Yes/No o true/false strings
                 "location_snapshot": log_data.get('locName', ''),
                 "unit_snapshot": log_data.get('unit', 'General'),
                 "status_snapshot": log_data.get('status_snapshot', 'active')
             }
             
-            logger.info(f"💾 Guardando Ficha para {device_name}...")
+            logger.info(f"💾 Enviando Ficha a AppSheet: {history_row}")
             
             # 2. Guardar en Historial
             res_hist = self._make_safe_request("device_history", "Add", [history_row])
             
-            # 3. Lógica de Baja/Reactivación
+            # 3. Actualizar estado si es Baja
             action = log_data.get('action', '')
             if action == 'Baja':
                 self.update_device_status(device_id, 'offline')
-            elif action == 'Instalación' or action == 'Renovación':
-                self.update_device_status(device_id, 'online')
             
             if res_hist is not None:
-                logger.info("✅ Ficha guardada exitosamente.")
                 return True
             else:
-                logger.error("❌ AppSheet rechazó la ficha.")
+                logger.error("❌ AppSheet rechazó la ficha (Posible error 400). Verifica nombres de columnas.")
                 return False
             
         except Exception as e:
@@ -228,7 +240,7 @@ class AppSheetService:
 
     def update_device_status(self, device_id: str, status: str):
         try:
-            row = {"device_id": device_id, "status": status, "updated_at": datetime.now(TZ_MX).isoformat()}
+            row = {"device_id": device_id, "status": status, "updated_at": datetime.now(TZ_MX).strftime('%Y-%m-%d %H:%M:%S')}
             self._make_safe_request("devices", "Edit", [row])
         except: pass
 
