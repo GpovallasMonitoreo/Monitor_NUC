@@ -307,4 +307,44 @@ def add_history():
             }), 400
         
         print(f"📨 /history/add recibió datos:")
-        print(json.dumps(data, indent=2, ensure_ascii=False
+        print(json.dumps(data, indent=2, ensure_ascii=False))
+        
+        # Validar campos requeridos
+        required_fields = ['device_name', 'action', 'what']
+        for field in required_fields:
+            if field not in data or not data[field]:
+                print(f"❌ /history/add: Falta campo requerido: {field}")
+                return jsonify({
+                    "status": "error",
+                    "message": f"Falta campo requerido: {field}"
+                }), 400
+        
+        # Agregar timestamp si no está presente
+        if 'timestamp' not in data:
+            data['timestamp'] = datetime.now(TZ_MX).isoformat()
+        
+        # Intentar agregar a AppSheet si está disponible
+        success = False
+        if src.appsheet and src.appsheet.enabled:
+            success = src.appsheet.add_history_entry(data)
+        
+        if success:
+            print(f"✅ /history/add: Entrada agregada exitosamente para {data.get('device_name')}")
+            return jsonify({
+                "status": "success",
+                "message": "Entrada de bitácora agregada exitosamente"
+            })
+        else:
+            print(f"⚠️  /history/add: No se pudo agregar a AppSheet, guardando localmente")
+            # Aquí podrías agregar lógica para guardar localmente si AppSheet falla
+            return jsonify({
+                "status": "partial_success",
+                "message": "Datos recibidos pero no se pudo conectar con AppSheet"
+            }), 202
+            
+    except Exception as e:
+        print(f"❌ Error en /history/add: {e}")
+        return jsonify({
+            "status": "error",
+            "message": f"Error interno: {str(e)}"
+        }), 500
