@@ -197,8 +197,15 @@
                                         <option value="Revisión">Revisión</option>
                                     </select>
                                 </div>
-                                <div><label class="text-xs font-bold text-slate-500">Componente</label>
-                                    <select id="log-what" class="w-full mt-1 p-2 border rounded text-sm bg-white">
+                                <div><label class="text-xs font-bold text-slate-500">Componente <span class="text-red-500">*</span></label>
+                                    <select id="log-what" class="w-full mt-1 p-2 border rounded text-sm bg-white" required>
+                                        <option value="">Seleccione un componente</option>
+                                        <option value="NUC">NUC</option>
+                                        <option value="SD300">SD300</option>
+                                        <option value="UPS">UPS</option>
+                                        <option value="MODULO">MÓDULO</option>
+                                        <option value="COMPONENTES">COMPONENTES</option>
+                                        <option value="TELTONIKA">TELTONIKA</option>
                                         <option value="General">General</option>
                                         <option value="CPU">CPU</option>
                                         <option value="RAM">RAM</option>
@@ -248,17 +255,21 @@
                             <div class="mt-6 pt-4 border-t border-slate-100">
                                 <h4 class="font-bold text-slate-700 mb-3 text-xs uppercase">Acciones Rápidas</h4>
                                 <div class="space-y-2">
-                                    <button onclick="addQuickLog('Mantenimiento preventivo programado')" class="w-full text-left text-xs p-2 hover:bg-slate-50 rounded flex items-center gap-2">
-                                        <i data-lucide="shield" class="w-3 h-3 text-blue-500"></i>
-                                        <span>Mantenimiento Preventivo</span>
+                                    <button onclick="addQuickLog('Mantenimiento preventivo programado', 'NUC')" class="w-full text-left text-xs p-2 hover:bg-slate-50 rounded flex items-center gap-2">
+                                        <i data-lucide="cpu" class="w-3 h-3 text-blue-500"></i>
+                                        <span>Mantenimiento NUC</span>
                                     </button>
-                                    <button onclick="addQuickLog('Limpieza física del equipo')" class="w-full text-left text-xs p-2 hover:bg-slate-50 rounded flex items-center gap-2">
-                                        <i data-lucide="brush" class="w-3 h-3 text-green-500"></i>
-                                        <span>Limpieza Física</span>
+                                    <button onclick="addQuickLog('Revisión y limpieza del sistema UPS', 'UPS')" class="w-full text-left text-xs p-2 hover:bg-slate-50 rounded flex items-center gap-2">
+                                        <i data-lucide="battery" class="w-3 h-3 text-green-500"></i>
+                                        <span>Revisión UPS</span>
                                     </button>
-                                    <button onclick="addQuickLog('Actualización de software y parches de seguridad')" class="w-full text-left text-xs p-2 hover:bg-slate-50 rounded flex items-center gap-2">
+                                    <button onclick="addQuickLog('Actualización de firmware módulo', 'MODULO')" class="w-full text-left text-xs p-2 hover:bg-slate-50 rounded flex items-center gap-2">
                                         <i data-lucide="refresh-cw" class="w-3 h-3 text-purple-500"></i>
-                                        <span>Actualización Software</span>
+                                        <span>Actualización Módulo</span>
+                                    </button>
+                                    <button onclick="addQuickLog('Configuración dispositivo Teltonika', 'TELTONIKA')" class="w-full text-left text-xs p-2 hover:bg-slate-50 rounded flex items-center gap-2">
+                                        <i data-lucide="wifi" class="w-3 h-3 text-orange-500"></i>
+                                        <span>Configuración Teltonika</span>
                                     </button>
                                 </div>
                             </div>
@@ -655,13 +666,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="mt-4 p-3 bg-blue-50 rounded-lg text-left max-w-md mx-auto">
                             <p class="text-xs text-blue-700 font-bold mb-1">Información para debugging:</p>
                             <p class="text-xs text-blue-600">Nombre del PC: <code>${pc.pc_name}</code></p>
-                            <p class="text-xs text-blue-600">Device ID generado: <code>${generateDeviceId(pc.pc_name)}</code></p>
                             <p class="text-xs text-blue-600">Total logs en sistema: ${allLogs.length}</p>
                             ${allLogs.length > 0 ? `
                                 <div class="mt-2">
                                     <p class="text-xs text-blue-700 font-bold">Últimos device_ids:</p>
                                     ${allLogs.slice(0, 3).map(log => `
-                                        <p class="text-xs text-blue-600">• ${log.device_id || 'Sin ID'} - ${log.action_type || 'Sin acción'}</p>
+                                        <p class="text-xs text-blue-600">• ${log.device_id || 'Sin ID'} - ${log.action_type || 'Sin acción'} - ${log.component || 'Sin componente'}</p>
                                     `).join('')}
                                 </div>
                             ` : ''}
@@ -730,35 +740,6 @@ document.addEventListener('DOMContentLoaded', () => {
         lucide.createIcons();
     }
 
-    // Función auxiliar para generar device_id (igual que en Python)
-    function generateDeviceId(pcName) {
-        if (!pcName) return "UNKNOWN_ID";
-        pcName = pcName.trim();
-        
-        // Si ya comienza con MX_, usar esa parte
-        if (pcName.toUpperCase().startsWith("MX_")) {
-            const parts = pcName.split(' ');
-            if (parts.length > 0) {
-                return parts[0].trim().toUpperCase();
-            }
-        }
-        
-        // Generar hash MD5 (simplificado para JS)
-        return md5(pcName).slice(0, 16).toUpperCase();
-    }
-    
-    // Función MD5 simplificada para JavaScript
-    function md5(input) {
-        // Esta es una implementación simplificada - en producción usa una librería
-        let hash = 0;
-        for (let i = 0; i < input.length; i++) {
-            const char = input.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash;
-        }
-        return Math.abs(hash).toString(16);
-    }
-
     window.toggleForm = () => {
         const formContainer = document.getElementById('log-form-container');
         formContainer.classList.toggle('hidden');
@@ -773,12 +754,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('log-req').value = 'Administrador';
                 document.getElementById('log-exec').value = 'Técnico de Soporte';
                 document.getElementById('log-solved').checked = true;
+                // Seleccionar componente por defecto
+                document.getElementById('log-what').value = 'NUC';
                 document.getElementById('log-desc').focus();
             }
         }
     }
 
-    window.addQuickLog = (description) => {
+    window.addQuickLog = (description, component) => {
         const formContainer = document.getElementById('log-form-container');
         if (formContainer.classList.contains('hidden')) {
             toggleForm();
@@ -786,7 +769,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.getElementById('log-desc').value = description;
         document.getElementById('log-action').value = 'Mantenimiento';
-        document.getElementById('log-what').value = 'General';
+        document.getElementById('log-what').value = component;
         document.getElementById('log-solved').checked = true;
     }
 
@@ -806,9 +789,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const requester = document.getElementById('log-req').value.trim();
         const executor = document.getElementById('log-exec').value.trim();
         const description = document.getElementById('log-desc').value.trim();
+        const component = document.getElementById('log-what').value;
         
-        if (!requester || !executor || !description) {
+        if (!requester || !executor || !description || !component) {
             showNotification('Complete todos los campos obligatorios (*)', 'warning');
+            return;
+        }
+        
+        // Validar que el componente sea válido
+        const validComponents = ['NUC', 'SD300', 'UPS', 'MODULO', 'COMPONENTES', 'TELTONIKA', 'General', 'CPU', 'RAM', 'Disco', 'Red', 'Software', 'Hardware', 'Alimentación', 'Otro'];
+        if (!validComponents.includes(component)) {
+            showNotification('Seleccione un componente válido de la lista', 'warning');
             return;
         }
         
@@ -820,7 +811,7 @@ document.addEventListener('DOMContentLoaded', () => {
             req: requester,
             exec: executor,
             action: document.getElementById('log-action').value,
-            what: document.getElementById('log-what').value,
+            what: component, // Usar el componente seleccionado
             desc: description,
             solved: document.getElementById('log-solved').checked,
             unit_snapshot: pc.unit  // Este campo sí existe en tu tabla
