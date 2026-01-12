@@ -152,3 +152,29 @@ def appsheet_sync_trigger():
 @bp.route('/appsheet/config', methods=['POST'])
 def appsheet_config():
     return jsonify({"success": False, "message": "Configure via Variables de Entorno"}), 403
+
+# ================= RUTAS DE BITÁCORA (NUEVAS) =================
+
+@bp.route('/history/all', methods=['GET'])
+def get_history():
+    """Devuelve toda la bitácora real desde AppSheet"""
+    try:
+        if src.appsheet and src.appsheet.enabled:
+            logs = src.appsheet.get_full_history()
+            return jsonify(logs), 200
+        return jsonify([]), 200 # Retorna lista vacía si no hay conexión
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@bp.route('/history/add', methods=['POST'])
+def add_history():
+    """Guarda nuevo registro en AppSheet"""
+    try:
+        data = request.get_json()
+        if src.appsheet and src.appsheet.enabled:
+            success = src.appsheet.add_history_entry(data)
+            if success: return jsonify({"status": "success"}), 200
+            else: return jsonify({"status": "error", "message": "Fallo en AppSheet"}), 500
+        return jsonify({"status": "error", "message": "AppSheet desconectado"}), 503
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
