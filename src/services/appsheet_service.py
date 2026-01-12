@@ -6,6 +6,16 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any
 import logging
 
+# --- CORRECCIÓN DE ZONA HORARIA ---
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    from backports.zoneinfo import ZoneInfo
+
+# Definimos la zona horaria fija para todo el servicio
+TZ_MX = ZoneInfo("America/Mexico_City")
+# ----------------------------------
+
 logger = logging.getLogger(__name__)
 
 class AppSheetService:
@@ -88,6 +98,9 @@ class AppSheetService:
             device_id = self.generate_device_id(device_data['pc_name'])
             location = f"{device_data.get('lat','')},{device_data.get('lng','')}" if device_data.get('lat') else ""
 
+            # Usamos TZ_MX para la fecha
+            now_mx = datetime.now(TZ_MX).isoformat()
+
             device_row = {
                 "device_id": device_id,
                 "pc_name": device_data['pc_name'],
@@ -96,12 +109,14 @@ class AppSheetService:
                 "last_known_location": location,
                 "is_active": device_data.get('status', 'online') != 'offline',
                 "status": device_data.get('status', 'online'),
-                "updated_at": datetime.now().isoformat()
+                "updated_at": now_mx
             }
             # Add y Edit para asegurar
             self._make_safe_request("devices", "Add", [device_row])
             self._make_safe_request("devices", "Edit", [device_row])
-            self.last_sync_time = datetime.now()
+            
+            # Guardamos la fecha local de la última sinc
+            self.last_sync_time = datetime.now(TZ_MX)
             return True
         except Exception: return False
 
@@ -109,9 +124,13 @@ class AppSheetService:
         try:
             if not self.enabled: return False
             device_id = self.generate_device_id(device_data['pc_name'])
+            
+            # Usamos TZ_MX para la fecha
+            now_mx = datetime.now(TZ_MX).isoformat()
+
             latency_row = {
                 "device_id": device_id,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": now_mx,
                 "latency_ms": float(device_data.get('latency', 0)),
                 "cpu_percent": float(device_data.get('cpu_load_percent', 0)),
                 "ram_percent": float(device_data.get('ram_percent', 0)),
@@ -126,12 +145,16 @@ class AppSheetService:
         try:
             if not self.enabled: return False
             device_id = self.generate_device_id(device_data['pc_name'])
+            
+            # Usamos TZ_MX para la fecha
+            now_mx = datetime.now(TZ_MX).isoformat()
+
             alert_row = {
                 "device_id": device_id,
                 "alert_type": alert_type,
                 "severity": severity,
                 "message": message,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": now_mx,
                 "resolved": False,
                 "pc_name": device_data.get('pc_name', 'Unknown')
             }
@@ -157,19 +180,18 @@ class AppSheetService:
         }
 
     def get_system_stats(self, days: int = 1) -> Dict[str, Any]:
-        """Calcula estadísticas leyendo Devices (para el total) y Latency (para el historial)"""
+        """Calcula estadísticas con fechas corregidas a CDMX"""
         try:
             if not self.enabled: return self._get_default_stats()
             
             stats = self._get_default_stats()
 
-            # 1. Obtener TOTAL de dispositivos registrados (Tabla devices)
-            # Esto corrige el "--" en Dispositivos Sincronizados
-            devices_response = self._make_safe_request("devices", "Find", []) # Find vacío trae todo
+            # 1. Total dispositivos
+            devices_response = self._make_safe_request("devices", "Find", [])
             if isinstance(devices_response, list):
                 stats['total_devices'] = len(devices_response)
             
-            # 2. Obtener historial reciente (Tabla latency_history)
+            # 2. Historial
             latency_data = self._make_safe_request("latency_history", "Get") or []
             if not isinstance(latency_data, list): latency_data = []
             
@@ -178,27 +200,46 @@ class AppSheetService:
                 cpus = []
                 online_count = 0
                 
-                # Filtrar solo registros de HOY para "Registros Hoy"
-                today_str = datetime.now().strftime('%Y-%m-%d')
+                # --- CORRECCIÓN FECHA PARA "REGISTROS HOY" ---
+                # Obtenemos la fecha de hoy en CDMX
+                today_mx = datetime.now(TZ_MX).date()
                 records_today = 0
 
                 for row in latency_data:
                     try:
-                        # Contar registros de hoy
-                        if row.get('timestamp') and str(row['timestamp']).startswith(today_str):
+                        # Parseo robusto de fecha
+                        ts_str = str(row.get('timestamp', ''))
+                        row_date = None
+                        
+                        # AppSheet puede devolver con T o espacio
+                        if 'T' in ts_str:
+                            # Formato ISO: 2025-01-01T14:00:00
+                            row_date = datetime.fromisoformat(ts_str.replace('Z', '')).date()
+                        elif ' ' in ts_str:
+                            # Formato Simple: 2025-01-01 14:00:00
+                            row_date = datetime.strptime(ts_str.split('.')[0], '%Y-%m-%d %H:%M:%S').date()
+                        elif '/' in ts_str:
+                             # Formato MM/DD/YYYY que a veces usa AppSheet
+                            row_date = datetime.strptime(ts_str.split(' ')[0], '%m/%d/%Y').date()
+
+                        # Comparación de fechas
+                        if row_date and row_date == today_mx:
                             records_today += 1
 
+                        # Stats generales
                         if row.get('latency_ms'): latencies.append(float(row['latency_ms']))
                         if row.get('cpu_percent'): cpus.append(float(row['cpu_percent']))
                         if row.get('status') == 'online': online_count += 1
-                    except: continue
+                    except Exception: 
+                        continue
                 
                 if latencies: stats['avg_latency'] = round(sum(latencies) / len(latencies), 2)
                 if cpus: stats['avg_cpu'] = round(sum(cpus) / len(cpus), 2)
                 
-                stats['total_records'] = records_today # Mostrar registros de hoy en el dashboard
+                stats['total_records'] = records_today
                 stats['uptime_percent'] = round((online_count / len(latency_data) * 100), 1) if latency_data else 0
             
+            # --- CORRECCIÓN FECHA ÚLTIMA SINC ---
             if self.last_sync_time:
                 stats['last_sync'] = self.last_sync_time.isoformat()
                 
