@@ -35,7 +35,6 @@ def get_data():
     now = datetime.now(TZ_MX)
     for pc_name, info in raw.items():
         device_info = info.copy()
-        # Lógica offline simple
         last = info.get('timestamp')
         if last:
             try:
@@ -77,11 +76,13 @@ def get_history():
 def add_history():
     try:
         data = request.get_json()
-        # Validación flexible para aceptar device_name o pc_name
+        # Aseguramos que tenemos al menos un nombre
         if 'device_name' not in data and 'pc_name' not in data:
             return jsonify({"status": "error", "message": "Falta nombre del dispositivo"}), 400
             
         if src.appsheet and src.appsheet.add_history_entry(data):
             return jsonify({"status": "success"})
-        return jsonify({"status": "error", "message": "No se pudo guardar en AppSheet"}), 500
+        
+        # Si falla en el servicio, devolvemos error 500 para que el frontend lo sepa
+        return jsonify({"status": "error", "message": "Fallo al guardar en AppSheet (Verificar logs)"}), 500
     except Exception as e: return jsonify({"status": "error", "message": str(e)}), 500
