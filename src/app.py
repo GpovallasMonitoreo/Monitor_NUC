@@ -5,7 +5,7 @@ from flask_cors import CORS
 
 # 1. CONFIGURACIÓN DE RUTAS ABSOLUTAS
 base_dir = os.path.abspath(os.path.dirname(__file__))
-sys.path.append(base_dir) # Crucial para que Python encuentre 'src'
+sys.path.append(base_dir)
 
 template_dir = os.path.join(base_dir, 'src', 'templates')
 static_dir = os.path.join(base_dir, 'src', 'static')
@@ -24,10 +24,12 @@ except ImportError:
     pass
 
 # 3. INICIALIZACIÓN DE SERVICIOS
-# Importamos las clases de servicios
 from src.services.storage_service import StorageService
 from src.services.alert_service import AlertService
-# Importamos el módulo src para inyectarle las variables globales
+# --- NUEVOS IMPORTS ---
+from src.services.appsheet_service import AppSheetService
+from src.services.monitor_service import DeviceMonitorManager
+# ----------------------
 import src 
 
 # Definir ruta de la DB
@@ -36,25 +38,38 @@ os.makedirs(data_dir, exist_ok=True)
 db_path = os.path.join(data_dir, 'inventory_db.json')
 
 # Inicializar y asignar a las variables globales de src
-# Esto hace que cuando api.py haga "from src import storage", ya tenga datos.
+print("⚙️ Inicializando servicios centrales...")
+
 src.alerts = AlertService(app)
 src.storage = StorageService(db_path, alert_service=src.alerts)
 
+# --- INICIALIZACIÓN DE APPSHEET Y MONITOR ---
+# 1. Servicio base de conexión
+src.appsheet = AppSheetService()
+
+# 2. Gestor de monitoreo (Watchdog + Lógica de 15min)
+# Le pasamos el servicio de appsheet
+src.monitor = DeviceMonitorManager(src.appsheet)
+
+# 3. ARRANCAR EL HILO DE FONDO
+# Esto ejecutará el bucle de 15 min y el watchdog de 10 min en paralelo a Flask
+src.monitor.start()
+# ---------------------------------------------
+
 print(f"✅ ARGOS: Storage inicializado en {db_path}")
+print(f"✅ ARGOS: Monitor AppSheet iniciado en segundo plano")
 
 # 4. REGISTRO DE BLUEPRINTS
-# Registramos API y Vistas
 from src.routes.api import bp as api_bp
 app.register_blueprint(api_bp)
 
 from src.routes.views import bp as views_bp
 app.register_blueprint(views_bp)
 
-# 5. RUTAS GLOBALES DE SISTEMA (Login/Logout/Health)
+# 5. RUTAS GLOBALES DE SISTEMA
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # Si ya está logueado, ir al home
     if 'username' in session:
         return redirect(url_for('views.home'))
 
@@ -62,7 +77,6 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         
-        # Validación de usuario
         # TODO: Conectar con DB real si es necesario
         if username == 'gpovallas' and password == 'admin': 
             session['username'] = username
@@ -79,13 +93,24 @@ def logout():
 
 @app.route('/health')
 def health():
-    # Verificación de salud del sistema para Render
-    status_db = "OK" if src.storage else "ERROR"
-    return jsonify({"status": "Argos Online", "database": status_db})
+    # Incluimos el estado del monitor en el health check
+    monitor_status = "RUNNING" if src.monitor.running else "STOPPED"
+    appsheet_status = "CONNECTED" if src.appsheet.is_available() else "DISCONNECTED"
+    
+    return jsonify({
+        "status": "Argos Online", 
+        "database": "OK" if src.storage else "ERROR",
+        "monitor": monitor_status,
+        "appsheet": appsheet_status
+    })
 
 # 6. INICIO DEL SERVIDOR
 if __name__ == '__main__':
-    # Render asigna el puerto en la variable de entorno PORT.
-    # Si esa variable no existe (local), usamos 8000 como solicitaste.
     port = int(os.environ.get('PORT', 8000))
-    app.run(host='0.0.0.0', port=port)
+    try:
+        # use_reloader=False es importante en desarrollo para evitar
+        # que el hilo del monitor se duplique al recargar código.
+        app.run(host='0.0.0.0', port=port, use_reloader=False)
+    except KeyboardInterrupt:
+        print("🛑 Deteniendo servicios...")
+        src.monitor.stop()
