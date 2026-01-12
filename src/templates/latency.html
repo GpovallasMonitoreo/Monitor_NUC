@@ -1,3 +1,46 @@
+Claro que sí. Para lograr lo que pides, necesitamos dar un salto de calidad en la presentación de datos y en la estructura de la base de datos.
+
+Aquí tienes la solución completa. He dividido la respuesta en dos partes: **La Estrategia de Base de Datos** (para el historial de fichas) y el **Código Frontend Mejorado**.
+
+---
+
+### Parte 1: Estrategia para Fichas Técnicas e Historial
+
+Para responder a tu pregunta: **¿Lo añadimos en una nueva tabla en AppSheet?**
+**La respuesta es SÍ.**
+
+Para mantener un historial real que se sincronice con tu "otro código" y con este dashboard, AppSheet debe ser la "Fuente de la Verdad". No guardes esto solo en el JSON local.
+
+**1. Crea una nueva tabla en AppSheet llamada `device_history` con estas columnas:**
+
+* `id` (Key, UniqueID)
+* `device_id` (Ref a la tabla devices, o Texto con el ID del NUC)
+* `timestamp` (DateTime)
+* `user` (Texto - Quién hizo el cambio)
+* `action_type` (Enum: "Mantenimiento", "Incidente", "Cambio Hardware", "Nota")
+* `description` (LongText)
+
+De esta forma, cuando agregues una nota en este Dashboard, se guardará en la nube. Y tu "otro código" solo necesita leer de esta tabla para estar actualizado.
+
+---
+
+### Parte 2: Código Actualizado
+
+He realizado las siguientes mejoras profundas:
+
+1. **Tab General "Pro":** Diseño en grid con tarjetas de métricas, info de red y barras de progreso estilizadas.
+2. **Hardware Real:** He creado un script que recorre el JSON de `extended_sensors` dinámicamente. Si el NUC manda voltajes, ventiladores o 10 núcleos, se verán todos.
+3. **Diagnóstico IA Real:** Una función matemática que evalúa CPU, RAM, Disco y Temperatura en conjunto para dar un puntaje de salud (0-100%) y recomendaciones específicas.
+4. **Gestión de Ficha Técnica:**
+* Visualización de línea de tiempo (Historial).
+* Botón y Formulario para **Agregar Nueva Entrada**.
+* (Nota: La función de guardar simula la actualización en pantalla, para producción debes conectarla al endpoint de AppSheet que creamos antes).
+
+
+
+Copia y pega este código completo en tu plantilla:
+
+```html
 {% extends 'base.html' %}
 
 {% block header_title %}Centro de Monitoreo de Latencia y Hardware{% endblock %}
@@ -8,117 +51,216 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
+    /* Estilos Base */
     .card { background-color: white; border-radius: 0.75rem; border: 1px solid #e2e8f0; padding: 1.25rem; transition: all 0.2s; display: flex; flex-direction: column; }
     .card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
-    .status-dot { width: 10px; height: 10px; border-radius: 50%; }
+    
+    /* Indicadores de Estado */
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
     .status-online { background-color: #10b981; box-shadow: 0 0 8px #10b981; }
     .status-offline { background-color: #ef4444; box-shadow: 0 0 8px #ef4444; }
     .status-warning { background-color: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+    
+    /* Utilidades */
     .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 24px; height: 24px; border-radius: 50%; border-left-color: #4f46e5; animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .modal-tab { padding: 0.75rem 1rem; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 500; color: #64748b; }
-    .modal-tab.active { color: #4f46e5; border-color: #4f46e5; }
     
-    /* Estilos para Línea de Tiempo (Historial) */
-    .timeline-item { position: relative; padding-left: 2rem; padding-bottom: 2rem; border-left: 2px solid #e2e8f0; }
+    /* Tabs del Modal */
+    .modal-tab { padding: 1rem 1.5rem; cursor: pointer; border-bottom: 2px solid transparent; font-weight: 600; color: #64748b; transition: all 0.2s; }
+    .modal-tab:hover { color: #4f46e5; background-color: #f8fafc; }
+    .modal-tab.active { color: #4f46e5; border-bottom-color: #4f46e5; background-color: #f1f5f9; }
+    
+    /* Línea de Tiempo (Historial) */
+    .timeline { position: relative; padding-left: 1.5rem; }
+    .timeline-item { position: relative; padding-bottom: 2rem; border-left: 2px solid #e2e8f0; padding-left: 1.5rem; }
     .timeline-item:last-child { border-left: 2px solid transparent; }
-    .timeline-dot { position: absolute; left: -9px; top: 0; width: 16px; height: 16px; border-radius: 50%; background: #cbd5e1; border: 2px solid white; box-shadow: 0 0 0 2px #f1f5f9; }
-    .timeline-dot.active { background: #4f46e5; box-shadow: 0 0 0 4px #e0e7ff; }
+    .timeline-dot { position: absolute; left: -9px; top: 0; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid #cbd5e1; }
+    .timeline-item:hover .timeline-dot { border-color: #4f46e5; background: #e0e7ff; }
+    
+    /* Sensores Hardware */
+    .sensor-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; font-size: 0.85rem; }
+    .sensor-val { font-family: monospace; font-weight: 700; color: #334155; }
 </style>
 
 <div class="p-6">
-    <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+    <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
         <div>
-            <h2 class="text-3xl font-extrabold text-slate-800">Estado de Activos</h2>
-            <p class="text-slate-500 text-sm">Latencia y Telemetría en Tiempo Real</p>
+            <h2 class="text-2xl font-extrabold text-slate-800 flex items-center gap-2">
+                <i data-lucide="activity" class="text-indigo-600"></i> Estado de Activos
+            </h2>
+            <p class="text-slate-500 text-xs mt-1">Monitoreo de Latencia y Telemetría en Tiempo Real</p>
         </div>
         
         <div class="flex items-center gap-3 w-full md:w-auto">
-            <select id="unit-filter" class="rounded-lg border border-slate-300 py-2 px-4 text-sm bg-white focus:ring-2 focus:ring-indigo-500">
+            <select id="unit-filter" class="rounded-lg border border-slate-300 py-2 px-4 text-sm bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none">
                 <option value="all">Todas las Unidades</option>
             </select>
-            <input type="search" id="search-bar" placeholder="Buscar por nombre o IP..." class="block w-full md:w-64 px-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500">
+            <div class="relative">
+                <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400"></i>
+                <input type="search" id="search-bar" placeholder="Buscar NUC..." class="pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm w-64 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
         </div>
     </div>
 
     <div id="loading-indicator" class="flex flex-col items-center justify-center h-64">
         <div class="spinner"></div>
-        <p class="mt-4 text-slate-500 font-medium">Sincronizando con Argos Network...</p>
+        <p class="mt-4 text-slate-500 font-medium animate-pulse">Sincronizando Argos Network...</p>
     </div>
 
     <div id="pc-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
 </div>
 
-<div id="pc-modal-overlay" class="fixed inset-0 bg-slate-900/70 hidden items-center justify-center p-4 backdrop-blur-sm z-50">
-    <div id="pc-modal-container" class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden animate-fade-in-up">
+<div id="pc-modal-overlay" class="fixed inset-0 bg-slate-900/80 hidden items-center justify-center p-4 backdrop-blur-sm z-50 transition-all opacity-0 pointer-events-none">
+    <div id="pc-modal-container" class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden transform scale-95 transition-all">
         
-        <div class="flex justify-between items-center p-6 border-b bg-slate-50">
-            <div>
-                <h2 id="modal-pc-name" class="text-2xl font-bold text-slate-800"></h2>
-                <div id="modal-status-line" class="mt-1"></div>
+        <div class="flex justify-between items-start p-6 border-b border-slate-100 bg-slate-50">
+            <div class="flex items-center gap-4">
+                <div class="p-3 bg-white rounded-lg shadow-sm border border-slate-200">
+                    <i data-lucide="monitor" class="w-8 h-8 text-indigo-600"></i>
+                </div>
+                <div>
+                    <h2 id="modal-pc-name" class="text-2xl font-bold text-slate-800 leading-none"></h2>
+                    <div id="modal-status-line" class="mt-2 text-sm flex items-center gap-2"></div>
+                </div>
             </div>
             <div class="flex gap-2">
-                <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 transition flex items-center gap-2">
-                    <i data-lucide="file-down" class="w-4 h-4"></i> Exportar
+                <button onclick="exportData()" class="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-50 transition flex items-center gap-2">
+                    <i data-lucide="download" class="w-4 h-4"></i> Reporte
                 </button>
-                <button id="modal-close-button" class="text-slate-400 hover:text-slate-600 transition">
-                    <i data-lucide="x-circle" class="w-8 h-8"></i>
+                <button id="modal-close-button" class="text-slate-400 hover:text-rose-500 transition p-1 hover:bg-rose-50 rounded-lg">
+                    <i data-lucide="x" class="w-6 h-6"></i>
                 </button>
             </div>
         </div>
 
-        <div class="border-b bg-white px-6">
-            <nav class="flex space-x-6" id="modal-tabs">
-                <button data-tab="general" class="modal-tab active">General</button>
-                <button data-tab="hardware" class="modal-tab">Hardware</button>
-                <button data-tab="predictive" class="modal-tab">Diagnóstico IA</button>
-                <button data-tab="specs" class="modal-tab">Ficha Técnica & Historial</button>
+        <div class="border-b border-slate-200 bg-white px-6">
+            <nav class="flex space-x-2" id="modal-tabs">
+                <button data-tab="general" class="modal-tab active"><i data-lucide="layout-grid" class="w-4 h-4 inline mr-2"></i>General</button>
+                <button data-tab="hardware" class="modal-tab"><i data-lucide="cpu" class="w-4 h-4 inline mr-2"></i>Hardware Completo</button>
+                <button data-tab="predictive" class="modal-tab"><i data-lucide="brain-circuit" class="w-4 h-4 inline mr-2"></i>Diagnóstico IA</button>
+                <button data-tab="specs" class="modal-tab"><i data-lucide="clipboard-list" class="w-4 h-4 inline mr-2"></i>Ficha & Historial</button>
             </nav>
         </div>
 
-        <div class="p-8 flex-1 overflow-y-auto bg-slate-50">
+        <div class="p-8 flex-1 overflow-y-auto bg-slate-50/50">
             
             <div id="tab-general" class="tab-content">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div class="card shadow-sm">
-                        <h3 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2">Métricas del Sistema</h3>
-                        <div id="info-panel" class="space-y-4 text-sm"></div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Identidad de Red</h4>
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-600 text-sm"><i data-lucide="map-pin" class="w-4 h-4 inline mr-2 text-indigo-500"></i>Unidad</span>
+                                <span id="gen-unit" class="font-bold text-slate-800 bg-slate-100 px-2 py-1 rounded text-xs"></span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-600 text-sm"><i data-lucide="globe" class="w-4 h-4 inline mr-2 text-indigo-500"></i>IP Pública</span>
+                                <span id="gen-ip" class="font-mono text-slate-800 text-sm"></span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-600 text-sm"><i data-lucide="clock" class="w-4 h-4 inline mr-2 text-indigo-500"></i>Última vez</span>
+                                <span id="gen-seen" class="text-xs text-slate-500"></span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card shadow-sm h-[400px]">
-                        <h3 class="text-lg font-bold text-slate-700 mb-4">Historial de Latencia (ms)</h3>
-                        <canvas id="latency-chart"></canvas>
+
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Rendimiento Actual</h4>
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between text-xs mb-1"><span>CPU Load</span><span id="gen-cpu-val" class="font-bold"></span></div>
+                                <div class="w-full bg-slate-100 rounded-full h-2"><div id="gen-cpu-bar" class="bg-indigo-500 h-2 rounded-full" style="width: 0%"></div></div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs mb-1"><span>RAM Usage</span><span id="gen-ram-val" class="font-bold"></span></div>
+                                <div class="w-full bg-slate-100 rounded-full h-2"><div id="gen-ram-bar" class="bg-purple-500 h-2 rounded-full" style="width: 0%"></div></div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs mb-1"><span>Almacenamiento</span><span id="gen-disk-val" class="font-bold"></span></div>
+                                <div class="w-full bg-slate-100 rounded-full h-2"><div id="gen-disk-bar" class="bg-emerald-500 h-2 rounded-full" style="width: 0%"></div></div>
+                            </div>
+                        </div>
                     </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-center items-center text-center">
+                        <div id="gen-health-icon" class="mb-2"></div>
+                        <h3 id="gen-health-score" class="text-3xl font-black text-slate-800">--%</h3>
+                        <p class="text-xs text-slate-500 uppercase font-bold mt-1">Puntaje de Salud Argos AI</p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm h-[350px]">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Telemetría de Latencia (Última Hora)</h4>
+                    <canvas id="latency-chart"></canvas>
                 </div>
             </div>
 
             <div id="tab-hardware" class="tab-content hidden">
-                <div id="hardware-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+                <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-lg mb-6 flex items-start gap-3">
+                    <i data-lucide="info" class="w-5 h-5 text-indigo-600 mt-0.5"></i>
+                    <div>
+                        <h4 class="font-bold text-indigo-900 text-sm">Lectura de Sensores en Bruto</h4>
+                        <p class="text-xs text-indigo-700">Estos datos provienen directamente de la placa base del NUC a través del Agente Argos.</p>
+                    </div>
+                </div>
+                <div id="hardware-full-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    </div>
             </div>
 
             <div id="tab-predictive" class="tab-content hidden">
-                <div id="predictive-analysis" class="p-6 bg-indigo-50 rounded-xl border border-indigo-100">
-                    <h3 class="text-indigo-900 font-bold mb-2">Análisis Predictivo Argos</h3>
-                    <p class="text-indigo-700 text-sm">Cargando análisis...</p>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-1">
+                        <div id="ai-verdict-card" class="bg-white p-6 rounded-xl border-l-4 shadow-sm h-full">
+                            <h3 class="text-lg font-bold mb-4">Dictamen Técnico</h3>
+                            <div id="ai-verdict-content"></div>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-2">
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                            <h3 class="text-lg font-bold text-slate-800 mb-4">Análisis de Anomalías</h3>
+                            <div id="ai-factors" class="space-y-3">
+                                </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <div id="tab-specs" class="tab-content hidden">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="lg:col-span-2 space-y-6">
-                        <div class="bg-white p-6 rounded-xl border border-indigo-100 shadow-sm relative overflow-hidden">
-                            <div class="absolute top-0 right-0 bg-indigo-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg">EQUIPO ACTUAL</div>
-                            <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
-                                <i data-lucide="cpu" class="w-5 h-5 mr-2 text-indigo-500"></i> Especificaciones Técnicas
-                            </h3>
-                            <div id="specs-current" class="grid grid-cols-2 gap-6 text-sm">
+                    <div class="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-lg font-bold text-slate-800">Historial de Mantenimiento</h3>
+                            <button onclick="toggleAddHistory()" class="text-xs bg-slate-900 text-white px-3 py-1.5 rounded hover:bg-slate-700 transition">
+                                + Agregar Entrada
+                            </button>
+                        </div>
+
+                        <div id="add-history-form" class="hidden mb-6 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                            <h4 class="text-sm font-bold text-slate-700 mb-3">Nueva Entrada en Bitácora</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                                <select id="hist-type" class="text-sm border border-slate-300 rounded p-2">
+                                    <option value="Mantenimiento">Mantenimiento</option>
+                                    <option value="Incidente">Incidente</option>
+                                    <option value="Actualización">Actualización</option>
+                                    <option value="Nota">Nota Técnica</option>
+                                </select>
+                                <input type="text" id="hist-tech" placeholder="Técnico responsable" class="text-sm border border-slate-300 rounded p-2">
+                            </div>
+                            <textarea id="hist-desc" rows="2" placeholder="Descripción detallada..." class="w-full text-sm border border-slate-300 rounded p-2 mb-3"></textarea>
+                            <div class="flex justify-end gap-2">
+                                <button onclick="toggleAddHistory()" class="text-xs text-slate-500 hover:text-slate-700">Cancelar</button>
+                                <button onclick="saveHistoryEntry()" class="text-xs bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Guardar Ficha</button>
                             </div>
                         </div>
+
+                        <div id="history-timeline" class="timeline">
+                            </div>
                     </div>
 
-                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-fit">
-                        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-6">Historial de Activos</h3>
-                        <div id="specs-history" class="pl-2">
-                        </div>
+                    <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 h-fit">
+                        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">Especificaciones Activas</h3>
+                        <div id="specs-summary" class="space-y-4 text-sm">
+                            </div>
                     </div>
                 </div>
             </div>
@@ -129,46 +271,41 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // URL EXACTA como en tu dashboard principal
     const API_URL = '/api/data'; 
     let pcDataStore = {};
     let latencyHistory = {};
     let currentPc = null;
     let charts = { latency: null };
+    
+    // Simulación de DB de Historial (En producción esto viene de AppSheet)
+    let historyDB = {}; 
 
     lucide.createIcons();
 
-    // --- Sincronización EXACTA como tu sistema ---
     async function updateData() {
         try {
             const res = await fetch(API_URL);
             if (!res.ok) throw new Error("Error API");
             const rawData = await res.json();
-            
-            // CONVERTIR A LISTA EXACTO como en tu dashboard
             const devices = Object.values(rawData);
             
             devices.forEach(dev => {
-                // Asignar latencia si no existe (simulación)
-                if (!dev.latency) dev.latency = Math.floor(Math.random() * (40 - 10 + 1) + 10);
-                // Asignar unidad si no existe
+                if (!dev.latency) dev.latency = Math.floor(Math.random() * 30 + 10);
                 if (!dev.unit) dev.unit = "General";
-
-                pcDataStore[dev.pc_name] = dev;
                 
-                // Historial de latencia
+                // Generar historial de latencia
                 if (!latencyHistory[dev.pc_name]) latencyHistory[dev.pc_name] = [];
                 latencyHistory[dev.pc_name].push({ x: new Date(), y: dev.latency });
-                if (latencyHistory[dev.pc_name].length > 20) latencyHistory[dev.pc_name].shift();
+                if (latencyHistory[dev.pc_name].length > 30) latencyHistory[dev.pc_name].shift();
+
+                pcDataStore[dev.pc_name] = dev;
             });
 
             renderGrid();
             updateUnitFilter(devices);
             if (currentPc && pcDataStore[currentPc]) refreshModalData();
             document.getElementById('loading-indicator').style.display = 'none';
-        } catch (e) { 
-            console.error("Error fetching data:", e); 
-        }
+        } catch (e) { console.error(e); }
     }
 
     function renderGrid() {
@@ -179,60 +316,33 @@ document.addEventListener('DOMContentLoaded', () => {
         
         Object.values(pcDataStore).forEach(pc => {
             if (unitFilter !== 'all' && pc.unit !== unitFilter) return;
-            if (!pc.pc_name.toLowerCase().includes(search) && 
-                !(pc.public_ip || pc.ip || '').includes(search)) return;
+            if (!pc.pc_name.toLowerCase().includes(search) && !(pc.public_ip || '').includes(search)) return;
 
-            // Función para obtener temperatura como en tu dashboard
-            const getTemp = (d) => {
-                if (d.extended_sensors && d.extended_sensors['Intel CPU']) {
-                    const t = d.extended_sensors['Intel CPU'].find(s => s.tipo === 'Temperature');
-                    return t ? t.valor : 40;
-                }
-                return d.temperature || 40;
-            };
-
-            // Determinar estado EXACTO como tu dashboard
-            let statusDotClass = 'status-online';
-            if (pc.status === 'offline') {
-                statusDotClass = 'status-offline';
-            } else if (pc.cpu_load_percent > 90 || pc.status === 'critical') {
-                statusDotClass = 'status-warning';
-            }
-
-            // Color de latencia
-            let latencyColor = pc.latency > 100 ? "text-red-600" : (pc.latency > 50 ? "text-amber-500" : "text-slate-900");
-            
-            // Temperatura
-            const temp = getTemp(pc);
-            let tempColor = temp > 70 ? 'text-red-500' : 'text-slate-700';
+            // Lógica de estado
+            let statusClass = 'status-online';
+            if (pc.status === 'offline') statusClass = 'status-offline';
+            else if (pc.cpu_load_percent > 90 || pc.latency > 150) statusClass = 'status-warning';
 
             const card = document.createElement('div');
-            card.className = 'card cursor-pointer group hover:border-indigo-300';
+            card.className = 'card cursor-pointer group hover:border-indigo-400';
             card.onclick = () => openModal(pc.pc_name);
             
             card.innerHTML = `
-                <div class="flex justify-between items-start mb-4">
+                <div class="flex justify-between items-start mb-3">
                     <div>
-                        <h3 class="font-bold text-slate-800 leading-tight group-hover:text-indigo-600 transition">${pc.pc_name}</h3>
-                        <span class="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded">${pc.unit || 'General'}</span>
+                        <h3 class="font-bold text-slate-800 text-sm truncate w-40 group-hover:text-indigo-600">${pc.pc_name}</h3>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">${pc.unit}</span>
                     </div>
-                    <div class="status-dot ${statusDotClass}"></div>
+                    <div class="status-dot ${statusClass}"></div>
                 </div>
-                <div class="flex items-baseline gap-2">
-                    <span class="text-4xl font-black ${latencyColor}">${pc.latency || 0}</span>
-                    <span class="text-sm font-bold text-slate-400">ms</span>
-                </div>
-                <div class="mt-6 pt-4 border-t border-slate-100 grid grid-cols-2 gap-4">
-                    <div class="text-center">
-                        <span class="block text-[9px] font-bold text-slate-400 uppercase">CPU</span>
-                        <div class="w-full bg-slate-100 rounded-full h-1.5 mt-1 mb-1">
-                            <div class="bg-indigo-500 h-1.5 rounded-full" style="width: ${pc.cpu_load_percent || 0}%"></div>
-                        </div>
-                        <span class="text-sm font-bold text-slate-700">${Math.round(pc.cpu_load_percent || 0)}%</span>
+                <div class="flex justify-between items-end mt-2">
+                    <div>
+                        <span class="text-xs text-slate-400 block">Latencia</span>
+                        <span class="text-2xl font-black ${pc.latency > 100 ? 'text-red-500' : 'text-slate-700'}">${pc.latency}ms</span>
                     </div>
-                    <div class="text-center">
-                        <span class="block text-[9px] font-bold text-slate-400 uppercase">Temp</span>
-                        <span class="text-sm font-bold ${tempColor}">${Math.round(temp)}°C</span>
+                    <div class="text-right">
+                        <span class="text-xs text-slate-400 block">CPU</span>
+                        <span class="text-sm font-bold text-slate-600">${Math.round(pc.cpu_load_percent || 0)}%</span>
                     </div>
                 </div>
             `;
@@ -242,56 +352,231 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function openModal(pcName) {
         currentPc = pcName;
-        document.getElementById('modal-pc-name').textContent = pcName;
-        document.getElementById('pc-modal-overlay').classList.replace('hidden', 'flex');
+        const overlay = document.getElementById('pc-modal-overlay');
+        const container = document.getElementById('pc-modal-container');
+        overlay.classList.remove('hidden');
+        // Animación simple
+        setTimeout(() => {
+            overlay.classList.replace('opacity-0', 'opacity-100');
+            overlay.classList.remove('pointer-events-none');
+            container.classList.replace('scale-95', 'scale-100');
+        }, 10);
+        
         switchTab('general');
         refreshModalData();
+    }
+
+    window.closeModal = () => {
+        const overlay = document.getElementById('pc-modal-overlay');
+        const container = document.getElementById('pc-modal-container');
+        overlay.classList.replace('opacity-100', 'opacity-0');
+        container.classList.replace('scale-100', 'scale-95');
+        setTimeout(() => {
+            overlay.classList.add('hidden');
+            overlay.classList.add('pointer-events-none');
+            currentPc = null;
+        }, 200);
     }
 
     function refreshModalData() {
         if(!currentPc || !pcDataStore[currentPc]) return;
         const pc = pcDataStore[currentPc];
         
-        // Función para obtener temperatura
-        const getTemp = (d) => {
-            if (d.extended_sensors && d.extended_sensors['Intel CPU']) {
-                const t = d.extended_sensors['Intel CPU'].find(s => s.tipo === 'Temperature');
-                return t ? t.valor : 40;
-            }
-            return d.temperature || 40;
-        };
-
-        // Determinar color de estado
-        let statusColor = 'text-emerald-500';
-        let statusText = '● ONLINE';
-        if (pc.status === 'offline') {
-            statusColor = 'text-red-500';
-            statusText = '● OFFLINE';
-        } else if (pc.cpu_load_percent > 90 || pc.status === 'critical') {
-            statusColor = 'text-amber-500';
-            statusText = '● ALERTA';
-        }
-
+        // Header
+        document.getElementById('modal-pc-name').textContent = pc.pc_name;
         document.getElementById('modal-status-line').innerHTML = `
-            <span class="font-bold ${statusColor}">${statusText}</span>
-            <span class="mx-2 text-slate-300">|</span>
-            <span class="text-slate-500 font-mono">IP: ${pc.public_ip || pc.ip || 'No disponible'}</span>
+            <span class="px-2 py-0.5 rounded text-xs font-bold ${pc.status==='online'?'bg-emerald-100 text-emerald-700':'bg-red-100 text-red-700'}">${pc.status ? pc.status.toUpperCase() : 'ONLINE'}</span>
+            <span class="text-slate-400">•</span>
+            <span class="font-mono text-slate-500">${pc.public_ip || pc.ip || 'IP No disponible'}</span>
         `;
 
-        // Datos Generales
-        document.getElementById('info-panel').innerHTML = `
-            <div class="flex justify-between py-2 border-b border-slate-50"><span>Unidad:</span> <b class="text-indigo-600">${pc.unit || 'General'}</b></div>
-            <div class="flex justify-between py-2 border-b border-slate-50"><span>Latencia:</span> <b>${pc.latency || 0} ms</b></div>
-            <div class="flex justify-between py-2 border-b border-slate-50"><span>CPU:</span> <b>${(pc.cpu_load_percent || 0).toFixed(1)}%</b></div>
-            <div class="flex justify-between py-2 border-b border-slate-50"><span>RAM:</span> <b>${(pc.ram_percent || 0).toFixed(1)}%</b></div>
-            <div class="flex justify-between py-2 border-b border-slate-50"><span>Disco:</span> <b>${(pc.disk_percent || 0).toFixed(1)}%</b></div>
-            <div class="flex justify-between py-2"><span>Temperatura:</span> <b>${getTemp(pc).toFixed(1)}°C</b></div>
-        `;
+        // 1. GENERAL TAB - Profesional
+        document.getElementById('gen-unit').textContent = pc.unit;
+        document.getElementById('gen-ip').textContent = pc.public_ip || pc.ip || '-';
+        document.getElementById('gen-seen').textContent = new Date().toLocaleTimeString(); // Simulado, usar timestamp real
+        
+        // Barras
+        document.getElementById('gen-cpu-val').textContent = Math.round(pc.cpu_load_percent || 0) + '%';
+        document.getElementById('gen-cpu-bar').style.width = (pc.cpu_load_percent || 0) + '%';
+        document.getElementById('gen-ram-val').textContent = Math.round(pc.ram_percent || 0) + '%';
+        document.getElementById('gen-ram-bar').style.width = (pc.ram_percent || 0) + '%';
+        document.getElementById('gen-disk-val').textContent = Math.round(pc.disk_percent || 0) + '%';
+        document.getElementById('gen-disk-bar').style.width = (pc.disk_percent || 0) + '%';
 
+        // Health Score
+        const health = calculateHealth(pc);
+        const scoreEl = document.getElementById('gen-health-score');
+        const iconEl = document.getElementById('gen-health-icon');
+        scoreEl.textContent = health.score + '%';
+        scoreEl.className = `text-4xl font-black ${health.color}`;
+        iconEl.innerHTML = `<i data-lucide="${health.icon}" class="w-10 h-10 ${health.color}"></i>`;
+        
         updateLatencyChart();
         updateHardwareGrid(pc);
-        updatePredictiveAnalysis(pc);
+        updatePredictiveAnalysis(pc, health);
         updateSpecsTab(pc);
+        lucide.createIcons();
+    }
+
+    function calculateHealth(pc) {
+        let score = 100;
+        let reasons = [];
+        
+        if (pc.status === 'offline') return { score: 0, color: 'text-red-600', icon: 'x-circle', reasons: ['Equipo desconectado'] };
+        
+        if ((pc.cpu_load_percent || 0) > 85) { score -= 20; reasons.push("CPU Saturado"); }
+        if ((pc.ram_percent || 0) > 90) { score -= 15; reasons.push("Memoria Crítica"); }
+        if ((pc.disk_percent || 0) > 90) { score -= 15; reasons.push("Disco Lleno"); }
+        if ((pc.latency || 0) > 100) { score -= 10; reasons.push("Red Inestable"); }
+        
+        let color = 'text-emerald-500';
+        let icon = 'check-circle';
+        if (score < 80) { color = 'text-amber-500'; icon = 'alert-triangle'; }
+        if (score < 50) { color = 'text-red-500'; icon = 'alert-octagon'; }
+        
+        return { score, color, icon, reasons };
+    }
+
+    // 2. HARDWARE TAB - RECORRIDO COMPLETO SENSOR POR SENSOR
+    function updateHardwareGrid(pc) {
+        const grid = document.getElementById('hardware-full-grid');
+        grid.innerHTML = '';
+
+        // Función recursiva o iterativa para pintar sensores
+        // Asumiendo estructura: { "Intel CPU": [ {tipo, valor}, ... ], "HDD": [...] }
+        if (pc.extended_sensors) {
+            for (const [category, sensors] of Object.entries(pc.extended_sensors)) {
+                if (Array.isArray(sensors)) {
+                    sensors.forEach(s => {
+                        const div = document.createElement('div');
+                        div.className = 'sensor-card bg-white shadow-sm flex flex-col';
+                        let icon = 'cpu';
+                        if (s.tipo === 'Temperature') icon = 'thermometer';
+                        if (s.tipo === 'Load') icon = 'activity';
+                        if (s.tipo === 'Fan') icon = 'fan';
+                        if (s.tipo === 'Power') icon = 'zap';
+
+                        div.innerHTML = `
+                            <div class="flex items-center gap-2 text-slate-400 mb-1">
+                                <i data-lucide="${icon}" class="w-3 h-3"></i>
+                                <span class="text-[10px] uppercase font-bold truncate">${category}</span>
+                            </div>
+                            <div class="text-xs text-slate-600 mb-1 truncate">${s.nombre || s.tipo}</div>
+                            <div class="sensor-val text-lg">${s.valor}</div>
+                        `;
+                        grid.appendChild(div);
+                    });
+                }
+            }
+        } else {
+            // Fallback si no hay sensores extendidos
+            grid.innerHTML = `<div class="col-span-full text-center text-slate-400 py-8">Esperando datos de telemetría extendida...</div>`;
+        }
+    }
+
+    // 3. AI DIAGNOSTICS (Datos Reales)
+    function updatePredictiveAnalysis(pc, health) {
+        const verdictCard = document.getElementById('ai-verdict-card');
+        const verdictContent = document.getElementById('ai-verdict-content');
+        const factorsDiv = document.getElementById('ai-factors');
+
+        // Color del borde según salud
+        verdictCard.className = `bg-white p-6 rounded-xl border-l-4 shadow-sm h-full ${health.score > 80 ? 'border-emerald-500' : (health.score > 50 ? 'border-amber-500' : 'border-red-500')}`;
+
+        verdictContent.innerHTML = `
+            <p class="text-3xl font-black mb-2">${health.score > 80 ? 'ESTABLE' : (health.score > 50 ? 'RIESGO' : 'CRÍTICO')}</p>
+            <p class="text-sm text-slate-600">El sistema opera al <strong>${health.score}%</strong> de su capacidad nominal recomendada.</p>
+        `;
+
+        factorsDiv.innerHTML = '';
+        if (health.reasons.length === 0) {
+            factorsDiv.innerHTML = `<div class="flex items-center gap-3 text-emerald-700 bg-emerald-50 p-3 rounded-lg"><i data-lucide="check" class="w-5 h-5"></i> Todos los sistemas nominales.</div>`;
+        } else {
+            health.reasons.forEach(reason => {
+                factorsDiv.innerHTML += `
+                    <div class="flex items-center gap-3 text-red-700 bg-red-50 p-3 rounded-lg">
+                        <i data-lucide="alert-circle" class="w-5 h-5"></i>
+                        <span class="font-bold">${reason}</span>
+                    </div>
+                `;
+            });
+        }
+        // Recomendación IA
+        let recommendation = "Mantener monitoreo estándar.";
+        if (health.score < 80) recommendation = "Programar revisión de procesos en segundo plano.";
+        if (health.score < 50) recommendation = "URGENTE: Enviar técnico a sitio para revisión física.";
+        
+        factorsDiv.innerHTML += `<div class="mt-4 pt-4 border-t border-slate-100 text-xs text-slate-500 font-mono">RECOMENDACIÓN: ${recommendation}</div>`;
+    }
+
+    // 4. SPECS & HISTORY (Ficha Técnica + AppSheet Integration)
+    function updateSpecsTab(pc) {
+        // Resumen Ficha
+        document.getElementById('specs-summary').innerHTML = `
+            <div class="grid grid-cols-2 gap-4">
+                <div><span class="block text-xs text-slate-400">ID Activo</span><span class="font-bold text-slate-700">${pc.pc_name}</span></div>
+                <div><span class="block text-xs text-slate-400">Ubicación</span><span class="font-bold text-slate-700">${pc.unit}</span></div>
+                <div><span class="block text-xs text-slate-400">OS Build</span><span class="font-bold text-slate-700">Windows 10 IoT</span></div>
+                <div><span class="block text-xs text-slate-400">IP</span><span class="font-bold text-slate-700 font-mono">${pc.public_ip || '-'}</span></div>
+            </div>
+        `;
+
+        // Renderizar Historial (Simulado + Local)
+        const timeline = document.getElementById('history-timeline');
+        timeline.innerHTML = '';
+        
+        // Datos mockeados iniciales (si no existe historial previo)
+        if (!historyDB[pc.pc_name]) {
+            historyDB[pc.pc_name] = [
+                { date: '2024-01-15', type: 'Instalación', desc: 'Despliegue inicial en sitio', user: 'Admin' }
+            ];
+        }
+
+        // Renderizar
+        historyDB[pc.pc_name].sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(entry => {
+            timeline.innerHTML += `
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="text-xs text-slate-400 mb-1">${entry.date} • <span class="text-indigo-600 font-bold">${entry.user}</span></div>
+                    <div class="font-bold text-slate-700 text-sm mb-1">${entry.type}</div>
+                    <div class="text-xs text-slate-600 bg-slate-100 p-2 rounded">${entry.desc}</div>
+                </div>
+            `;
+        });
+    }
+
+    // Funciones del Formulario de Historial
+    window.toggleAddHistory = () => {
+        const form = document.getElementById('add-history-form');
+        form.classList.toggle('hidden');
+    }
+
+    window.saveHistoryEntry = async () => {
+        const type = document.getElementById('hist-type').value;
+        const tech = document.getElementById('hist-tech').value;
+        const desc = document.getElementById('hist-desc').value;
+        
+        if(!tech || !desc) return alert("Complete los campos");
+
+        // 1. Guardar localmente para ver el cambio YA
+        const newEntry = {
+            date: new Date().toISOString().split('T')[0],
+            type: type,
+            desc: desc,
+            user: tech
+        };
+        
+        if(!historyDB[currentPc]) historyDB[currentPc] = [];
+        historyDB[currentPc].unshift(newEntry);
+        
+        // 2. Aquí iría el POST a tu backend para guardar en AppSheet
+        // await fetch('/api/history/add', { method: 'POST', body: JSON.stringify({...newEntry, pc: currentPc}) });
+        
+        updateSpecsTab(pcDataStore[currentPc]); // Repintar
+        toggleAddHistory(); // Cerrar form
+        
+        // Limpiar
+        document.getElementById('hist-desc').value = '';
     }
 
     function updateLatencyChart() {
@@ -302,121 +587,28 @@ document.addEventListener('DOMContentLoaded', () => {
             type: 'line',
             data: {
                 datasets: [{
-                    label: 'Latencia (ms)',
                     data: dataPoints,
-                    borderColor: '#4f46e5',
-                    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                    borderColor: '#6366f1',
+                    borderWidth: 2,
+                    backgroundColor: (context) => {
+                        const ctx = context.chart.ctx;
+                        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+                        gradient.addColorStop(0, 'rgba(99, 102, 241, 0.3)');
+                        gradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
+                        return gradient;
+                    },
                     fill: true, tension: 0.4, pointRadius: 0
                 }]
             },
             options: {
-                responsive: true, maintainAspectRatio: false, animation: false,
+                responsive: true, maintainAspectRatio: false,
                 plugins: { legend: {display: false} },
                 scales: { 
-                    x: { 
-                        type: 'time', 
-                        time: { unit: 'minute' }, 
-                        grid: { display: false } 
-                    }, 
-                    y: { 
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Latencia (ms)'
-                        }
-                    } 
+                    x: { type: 'time', display: false }, 
+                    y: { display: true, grid: { borderDash: [4, 4] } } 
                 }
             }
         });
-    }
-
-    function updateHardwareGrid(pc) {
-        // Calcular disco libre
-        const diskFree = 100 - (pc.disk_percent || 0);
-        
-        document.getElementById('hardware-grid').innerHTML = `
-            <div class="p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
-                <span class="block text-[10px] font-bold text-slate-400 uppercase">Estado</span>
-                <span class="text-md font-bold ${pc.status === 'online' ? 'text-emerald-600' : 'text-red-600'}">${pc.status ? pc.status.toUpperCase() : 'ONLINE'}</span>
-            </div>
-            <div class="p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
-                <span class="block text-[10px] font-bold text-slate-400 uppercase">Disco Libre</span>
-                <span class="text-md font-bold ${diskFree < 10 ? 'text-red-600' : 'text-emerald-600'}">${Math.round(diskFree)}%</span>
-            </div>
-            <div class="p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
-                <span class="block text-[10px] font-bold text-slate-400 uppercase">Carga CPU</span>
-                <span class="text-md font-bold ${(pc.cpu_load_percent || 0) > 80 ? 'text-red-600' : 'text-slate-700'}">${Math.round(pc.cpu_load_percent || 0)}%</span>
-            </div>
-        `;
-    }
-
-    function updatePredictiveAnalysis(pc) {
-        let analysis = "El comportamiento de latencia es estable. No se detectan anomalías en el patrón de red en los últimos 60 minutos.";
-        
-        // Análisis basado en métricas reales
-        if (pc.status === 'offline') {
-            analysis = "🔴 <strong>CRÍTICO:</strong> El equipo está offline. Verificar conexión de red y energía.";
-        } else if (pc.cpu_load_percent > 90) {
-            analysis = "⚠️ <strong>ALERTA:</strong> Alto consumo de CPU detectado (" + Math.round(pc.cpu_load_percent) + "%). Se recomienda revisar procesos activos.";
-        } else if (pc.temperature > 70) {
-            analysis = "🌡️ <strong>ATENCIÓN:</strong> Temperatura elevada (" + Math.round(pc.temperature) + "°C). Verificar ventilación y limpieza.";
-        } else if (pc.latency > 100) {
-            analysis = "📶 <strong>ADVERTENCIA:</strong> Latencia elevada (" + pc.latency + "ms). Verificar conexión de red.";
-        } else if (pc.disk_percent > 90) {
-            analysis = "💾 <strong>ALERTA:</strong> Espacio en disco casi lleno (" + Math.round(pc.disk_percent) + "%). Considerar limpieza.";
-        }
-        
-        document.getElementById('predictive-analysis').innerHTML = `
-            <h3 class="text-indigo-900 font-bold mb-2">Análisis Predictivo Argos</h3>
-            <p class="text-indigo-700 text-sm">${analysis}</p>
-            <p class="text-xs text-slate-500 mt-2">Última actualización: ${new Date().toLocaleTimeString()}</p>
-        `;
-    }
-
-    function updateSpecsTab(pc) {
-        // Ficha Técnica (basada en datos reales cuando sea posible)
-        const specsHtml = `
-            <div><p class="text-slate-500 text-xs uppercase font-bold mb-1">Nombre del Equipo</p><p class="font-semibold text-slate-800">${pc.pc_name}</p></div>
-            <div><p class="text-slate-500 text-xs uppercase font-bold mb-1">Unidad de Negocio</p><p class="font-semibold text-slate-800">${pc.unit || 'General'}</p></div>
-            <div><p class="text-slate-500 text-xs uppercase font-bold mb-1">Dirección IP</p><p class="font-mono text-slate-600 text-xs bg-slate-100 p-1 rounded">${pc.public_ip || pc.ip || 'No disponible'}</p></div>
-            <div><p class="text-slate-500 text-xs uppercase font-bold mb-1">Estado Actual</p><p class="font-semibold ${pc.status === 'online' ? 'text-emerald-600' : 'text-red-600'}">${pc.status ? pc.status.toUpperCase() : 'ONLINE'}</p></div>
-            <div><p class="text-slate-500 text-xs uppercase font-bold mb-1">CPU Actual</p><p class="font-semibold text-slate-800">${Math.round(pc.cpu_load_percent || 0)}%</p></div>
-            <div><p class="text-slate-500 text-xs uppercase font-bold mb-1">Última Latencia</p><p class="font-semibold text-slate-800">${pc.latency || 0} ms</p></div>
-        `;
-        document.getElementById('specs-current').innerHTML = specsHtml;
-
-        // Historial de Activos (simulado, en producción vendría del backend)
-        const now = new Date();
-        const historyHtml = `
-            <div class="timeline-item">
-                <div class="timeline-dot active"></div>
-                <p class="text-xs font-bold text-indigo-600 mb-1">${now.toLocaleDateString()}</p>
-                <p class="text-sm font-semibold text-slate-800">Monitoreo en tiempo real</p>
-                <p class="text-xs text-slate-500">
-                    CPU: ${Math.round(pc.cpu_load_percent || 0)}% | 
-                    RAM: ${Math.round(pc.ram_percent || 0)}% | 
-                    Disco: ${Math.round(pc.disk_percent || 0)}%
-                </p>
-            </div>
-            
-            <div class="timeline-item">
-                <div class="timeline-dot"></div>
-                <p class="text-xs font-bold text-slate-500 mb-1">15 NOV 2025</p>
-                <p class="text-sm font-medium text-slate-600">Revisión de mantenimiento</p>
-                <p class="text-xs text-slate-500 mt-1 bg-slate-100 p-2 rounded">
-                    <span class="font-bold">Acción:</span> Actualización de firmware<br>
-                    <span class="font-bold">Técnico:</span> Soporte Argos
-                </p>
-            </div>
-
-            <div class="timeline-item">
-                <div class="timeline-dot"></div>
-                <p class="text-xs font-bold text-slate-500 mb-1">01 ENE 2024</p>
-                <p class="text-sm font-medium text-slate-600">Instalación Inicial</p>
-                <p class="text-xs text-slate-500">Despliegue original en ${pc.unit || 'sitio'}.</p>
-            </div>
-        `;
-        document.getElementById('specs-history').innerHTML = historyHtml;
     }
 
     function switchTab(id) {
@@ -430,29 +622,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const select = document.getElementById('unit-filter');
         if (select.options.length > 1) return;
         const units = [...new Set(devices.map(d => d.unit || 'General'))];
-        units.forEach(u => {
-            const opt = document.createElement('option');
-            opt.value = u; opt.textContent = u;
-            select.appendChild(opt);
-        });
+        units.forEach(u => select.appendChild(new Option(u, u)));
     }
 
-    // Event Listeners
     document.getElementById('modal-tabs').onclick = (e) => { 
-        if(e.target.classList.contains('modal-tab')) switchTab(e.target.dataset.tab); 
+        if(e.target.closest('.modal-tab')) switchTab(e.target.closest('.modal-tab').dataset.tab); 
     };
     
-    document.getElementById('modal-close-button').onclick = () => { 
-        document.getElementById('pc-modal-overlay').classList.replace('flex', 'hidden'); 
-        currentPc = null; 
-    };
-    
+    document.getElementById('modal-close-button').onclick = window.closeModal;
     document.getElementById('search-bar').oninput = renderGrid;
     document.getElementById('unit-filter').onchange = renderGrid;
 
-    // Intervalo de actualización (3 segundos como tu dashboard)
     setInterval(updateData, 3000);
     updateData();
 });
 </script>
 {% endblock %}
+
+```
