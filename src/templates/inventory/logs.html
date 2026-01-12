@@ -1,27 +1,120 @@
 {% extends 'base.html' %}
-{% block title %}Bitácora - Argos{% endblock %}
-{% block header_title %}Bitácora de Cambios y Mantenimiento{% endblock %}
+{% block title %}Bitácora Global - Argos{% endblock %}
+{% block header_title %}Bitácora de Operaciones Global{% endblock %}
 
 {% block content %}
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8 p-6 max-w-[1600px] mx-auto">
+    
     <div class="lg:col-span-1">
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 class="font-bold text-slate-800 mb-4">Registrar Actividad</h3>
-            <form id="log-form" class="space-y-4">
-                <input type="text" placeholder="Equipo / NUC" class="w-full p-2.5 bg-slate-50 border rounded-lg text-sm">
-                <select class="w-full p-2.5 bg-slate-50 border rounded-lg text-sm">
-                    <option>Cambio de Pantalla</option>
-                    <option>Mantenimiento</option>
-                    <option>Cambio de NUC</option>
-                </select>
-                <textarea placeholder="Notas del cambio..." class="w-full p-2.5 bg-slate-50 border rounded-lg text-sm h-24"></textarea>
-                <button class="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 transition">
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 sticky top-6">
+            <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <i data-lucide="pen-tool" class="text-indigo-600"></i> Registrar Actividad
+            </h3>
+            
+            <form id="global-log-form" class="space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase">Activo / NUC ID</label>
+                    <input type="text" id="g-nuc" placeholder="Ej: MX_CM_EV_01" class="w-full p-2.5 bg-slate-50 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase">Solicita</label>
+                        <input type="text" id="g-req" class="w-full p-2.5 bg-slate-50 border rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase">Ejecuta</label>
+                        <input type="text" id="g-exec" class="w-full p-2.5 bg-slate-50 border rounded-lg text-sm">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase">Tipo & Componente</label>
+                    <div class="flex gap-2">
+                        <select id="g-type" class="w-1/2 p-2.5 bg-slate-50 border rounded-lg text-sm">
+                            <option>Mantenimiento</option>
+                            <option>Incidente</option>
+                            <option>Renovación</option>
+                        </select>
+                        <input type="text" id="g-comp" placeholder="Ej: Disco Duro" class="w-1/2 p-2.5 bg-slate-50 border rounded-lg text-sm">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase">Descripción</label>
+                    <textarea id="g-desc" class="w-full p-2.5 bg-slate-50 border rounded-lg text-sm h-24 resize-none" placeholder="Detalles técnicos..."></textarea>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="g-resolved" class="rounded text-indigo-600 focus:ring-indigo-500">
+                    <label for="g-resolved" class="text-sm text-slate-600">Incidente Resuelto</label>
+                </div>
+
+                <button type="button" onclick="saveGlobalLog()" class="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">
                     Guardar Registro
                 </button>
             </form>
         </div>
     </div>
-    <div class="lg:col-span-2 space-y-4" id="logs-container">
+
+    <div class="lg:col-span-2">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                <h3 class="font-bold text-slate-700">Feed de Actividad Reciente</h3>
+                <div class="flex gap-2">
+                    <input type="text" placeholder="Filtrar..." class="text-xs p-2 border rounded-lg">
+                    <button class="p-2 bg-white border rounded-lg hover:bg-slate-100"><i data-lucide="filter" class="w-4 h-4 text-slate-500"></i></button>
+                </div>
+            </div>
+            
+            <div id="global-logs-container" class="divide-y divide-slate-100">
+                <div class="p-8 text-center text-slate-400">Cargando registros...</div>
+            </div>
         </div>
+    </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        lucide.createIcons();
+        // Aquí cargarías los datos de AppSheet al iniciar
+        // loadGlobalLogs();
+    });
+
+    function saveGlobalLog() {
+        const nuc = document.getElementById('g-nuc').value;
+        const desc = document.getElementById('g-desc').value;
+        
+        if(!nuc || !desc) return alert("Faltan datos");
+
+        // Simulación de agregar al feed visualmente
+        const container = document.getElementById('global-logs-container');
+        const now = new Date();
+        
+        const html = `
+            <div class="p-4 hover:bg-slate-50 transition animate-fade-in-up">
+                <div class="flex justify-between items-start mb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-xs font-bold">${document.getElementById('g-type').value}</span>
+                        <span class="font-bold text-slate-800 text-sm">${nuc}</span>
+                    </div>
+                    <span class="text-xs text-slate-400">${now.toLocaleDateString()} ${now.toLocaleTimeString()}</span>
+                </div>
+                <p class="text-sm text-slate-600 mb-3">${desc}</p>
+                <div class="flex items-center gap-4 text-xs text-slate-400 border-t pt-2 border-slate-50">
+                    <span><i data-lucide="user" class="w-3 h-3 inline mr-1"></i>${document.getElementById('g-req').value || 'Sistema'}</span>
+                    <span><i data-lucide="wrench" class="w-3 h-3 inline mr-1"></i>${document.getElementById('g-exec').value || 'Pendiente'}</span>
+                    ${document.getElementById('g-resolved').checked ? '<span class="text-emerald-600 font-bold ml-auto flex items-center"><i data-lucide="check" class="w-3 h-3 mr-1"></i>Resuelto</span>' : ''}
+                </div>
+            </div>
+        `;
+        
+        // Insertar al inicio
+        container.insertAdjacentHTML('afterbegin', html);
+        lucide.createIcons();
+        
+        // Limpiar form
+        document.getElementById('global-log-form').reset();
+    }
+</script>
 {% endblock %}
