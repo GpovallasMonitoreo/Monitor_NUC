@@ -12,16 +12,15 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(os.path.dirname(current_dir))
 sys.path.append(parent_dir)
 
-# Importamos src para acceder a las variables globales (storage, appsheet, monitor)
+# Importamos src para acceder a las variables globales
 import src 
 
-# Definimos el Blueprint PRIMERO
 bp = Blueprint('api', __name__, url_prefix='/api')
 
 TZ_CDMX = ZoneInfo("America/Mexico_City")
 EMAIL_TIMEOUT_SECONDS = 45 
 
-# ================= RUTAS CORE =================
+# ================= RUTAS CORE (NUCs y Dashboard General) =================
 
 @bp.route('/report', methods=['POST'])
 def report():
@@ -39,7 +38,7 @@ def report():
             src.storage.save_device_report(data)
         
         # 2. Monitor AppSheet (Si está activo)
-        if src.monitor and src.appsheet.enabled:
+        if src.monitor and src.appsheet and src.appsheet.enabled:
             src.monitor.ingest_data(data.copy())
         
         return jsonify({"status": "OK"})
@@ -87,19 +86,18 @@ def get_data():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# ================= RUTAS APPSHEET =================
+# ================= RUTAS APPSHEET (Corregidas) =================
 
 @bp.route('/appsheet/status', methods=['GET'])
 def appsheet_status():
     """Estado de conexión para el frontend"""
     try:
-        # Si src.appsheet es None (no se inicializó en app.py), devolvemos error controlado
         if not src.appsheet:
             return jsonify({
                 "status": "disabled",
-                "message": "Servicio no inicializado en servidor",
+                "message": "Servicio no inicializado",
                 "available": False
-            }), 200 # Retornamos 200 para que el frontend pueda leer el JSON
+            }), 200
 
         status_info = src.appsheet.get_status_info()
         
@@ -113,17 +111,43 @@ def appsheet_status():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# --- ESTA ES LA RUTA QUE FALTABA Y CAUSABA EL ERROR 404 ---
+@bp.route('/appsheet/stats', methods=['GET'])
+def appsheet_stats():
+    """Estadísticas para las gráficas del Dashboard"""
+    try:
+        if src.appsheet and src.appsheet.enabled:
+            # Obtenemos estadísticas calculadas
+            stats = src.appsheet.get_system_stats()
+            return jsonify(stats), 200
+        else:
+            # Si no está habilitado, retornamos datos vacíos pero válidos
+            return jsonify({
+                'avg_latency': 0, 'avg_cpu': 0, 
+                'total_records': 0, 'uptime_percent': 0,
+                'note': 'AppSheet deshabilitado'
+            }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @bp.route('/appsheet/sync', methods=['POST'])
 def appsheet_sync_trigger():
     """Botón de Sincronizar Ahora"""
     try:
         if src.monitor and src.monitor.running:
             src.monitor.force_manual_sync()
-            return jsonify({"success": True, "message": "Sync iniciada"}), 200
+            # Retornamos formato estándar success para evitar errores JS
+            return jsonify({
+                "status": "success", 
+                "message": "Sincronización iniciada correctamente"
+            }), 200
         else:
-            return jsonify({"success": False, "message": "Monitor no activo o AppSheet deshabilitado"}), 503
+            return jsonify({
+                "status": "error", 
+                "message": "El monitor no está activo. Verifique logs."
+            }), 503
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @bp.route('/appsheet/config', methods=['POST'])
 def appsheet_config():
