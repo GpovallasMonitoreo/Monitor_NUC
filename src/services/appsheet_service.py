@@ -2,6 +2,7 @@ import os
 import requests
 import json
 import hashlib
+import uuid  # <--- NUEVO: Para generar IDs únicos (alert_id, history_id)
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 import logging
@@ -15,6 +16,7 @@ TZ_MX = ZoneInfo("America/Mexico_City")
 logger = logging.getLogger(__name__)
 
 class AppSheetService:
+    """Servicio para interactuar con AppSheet Database"""
     
     def __init__(self):
         self.api_key = os.getenv('APPSHEET_API_KEY', '')
@@ -41,7 +43,6 @@ class AppSheetService:
             self._test_table_connection('devices')
         except: pass
     
-    # --- MÉTODOS AUXILIARES ---
     def _test_table_connection(self, table_name: str) -> bool:
         try:
             if not self.enabled: return False
@@ -62,7 +63,6 @@ class AppSheetService:
         try:
             if not self.enabled: return None
             
-            # Ajuste: Timezone explícito para evitar conflictos de fecha
             payload = {"Action": action, "Properties": {"Locale": "es-MX", "Timezone": "Central Standard Time"}}
             if rows: payload["Rows"] = rows
             
@@ -75,14 +75,13 @@ class AppSheetService:
                 try: return response.json()
                 except: return {"success": True}
             
-            # LOG CRÍTICO PARA DEBUG DEL ERROR 400
-            logger.error(f"AppSheet Error {response.status_code} en tabla '{table}': {response.text}")
+            logger.error(f"AppSheet Error {response.status_code} en '{table}': {response.text}")
             return None
         except Exception as e:
             logger.error(f"AppSheet request error: {e}")
             return None
 
-    # --- MÉTODOS CORE ---
+    # --- MÉTODOS DE DISPOSITIVOS Y LATENCIA ---
 
     def upsert_device(self, device_data: Dict) -> bool:
         try:
@@ -95,7 +94,7 @@ class AppSheetService:
                 "unit": device_data.get('unit', 'General'),
                 "public_ip": device_data.get('public_ip', device_data.get('ip', '')),
                 "status": device_data.get('status', 'online'),
-                "updated_at": datetime.now(TZ_MX).strftime('%Y-%m-%d %H:%M:%S') # Formato string simple
+                "updated_at": datetime.now(TZ_MX).strftime('%Y-%m-%d %H:%M:%S')
             }
             self._make_safe_request("devices", "Add", [row]) 
             self.last_sync_time = datetime.now(TZ_MX)
@@ -107,6 +106,9 @@ class AppSheetService:
             if not self.enabled: return False
             device_id = self.generate_device_id(device_data['pc_name'])
             
+            # Generamos un ID único para cada registro de latencia también (Buena práctica)
+            record_id = str(uuid.uuid4())
+
             def get_temp(d):
                 try:
                     if d.get('temperature'): return float(d['temperature'])
@@ -117,6 +119,7 @@ class AppSheetService:
                 return 0.0
 
             row = {
+                "record_id": record_id, # Asegúrate de tener esta columna o quitarla si usas RowNumber
                 "device_id": device_id,
                 "timestamp": datetime.now(TZ_MX).strftime('%Y-%m-%d %H:%M:%S'),
                 "latency_ms": float(device_data.get('latency', 0)),
@@ -125,6 +128,9 @@ class AppSheetService:
                 "temperature_c": get_temp(device_data),
                 "status": str(device_data.get('status', 'online'))
             }
+            # Si tu tabla latency_history no tiene record_id, comenta la línea de arriba
+            # Pero para alerts y history ES OBLIGATORIO.
+            
             self._make_safe_request("latency_history", "Add", [row])
             return True
         except: return False
@@ -133,13 +139,18 @@ class AppSheetService:
         try:
             if not self.enabled: return False
             device_id = self.generate_device_id(device_data['pc_name'])
+            
+            # --- CORRECCIÓN: Generar alert_id ---
+            alert_id = str(uuid.uuid4())
+            
             row = {
+                "alert_id": alert_id,  # <--- CAMPO FALTANTE AGREGADO
                 "device_id": device_id,
                 "alert_type": alert_type,
                 "severity": severity,
                 "message": message,
                 "timestamp": datetime.now(TZ_MX).strftime('%Y-%m-%d %H:%M:%S'),
-                "resolved": False,
+                "resolved": "NO",
                 "pc_name": device_data.get('pc_name', 'Unknown')
             }
             self._make_safe_request("alerts", "Add", [row])
@@ -157,54 +168,42 @@ class AppSheetService:
     def get_system_stats(self, days: int = 1) -> Dict[str, Any]:
         try:
             if not self.enabled: return {'avg_latency': 0, 'total_devices': 0}
-            
             lat_data = self._make_safe_request("latency_history", "Get") or []
             if not isinstance(lat_data, list): lat_data = []
-            
             devs = self._make_safe_request("devices", "Find", [])
             total_devs = len(devs) if isinstance(devs, list) else 0
-            
             stats = {'avg_latency': 0, 'avg_cpu': 0, 'total_records': 0, 'total_devices': total_devs, 'uptime_percent': 0, 'last_sync': None}
-            
             if lat_data:
                 lats = [float(r['latency_ms']) for r in lat_data if r.get('latency_ms')]
                 if lats: stats['avg_latency'] = round(sum(lats)/len(lats), 2)
                 stats['total_records'] = len(lat_data)
-                
             if self.last_sync_time: stats['last_sync'] = self.last_sync_time.isoformat()
             return stats
         except: return {'avg_latency': 0, 'total_devices': 0}
 
-    # ==========================================
-    # MÉTODOS DE BITÁCORA Y FICHAS (CORREGIDOS)
-    # ==========================================
+    # --- MÉTODOS DE BITÁCORA ---
 
     def add_history_entry(self, log_data: Dict) -> bool:
-        """
-        Guarda ficha en device_history asegurando integridad referencial.
-        """
         try:
             if not self.enabled: return False
             
-            # Nombre del dispositivo (Manejo robusto de keys)
             device_name = log_data.get('device_name') or log_data.get('pc_name')
-            if not device_name:
-                logger.error("❌ Error Bitácora: Falta nombre del dispositivo")
-                return False
+            if not device_name: return False
 
-            # 1. Asegurar que el dispositivo existe en la tabla PADRE 'devices'
-            # Esto evita el error de Referencia Rota en AppSheet
+            # Asegurar dispositivo padre
             self.upsert_device({
                 "pc_name": device_name,
                 "unit": log_data.get('unit', 'General'),
                 "status": 'online'
             })
             
-            # Generar ID
             device_id = self.generate_device_id(device_name)
             
-            # JSON PAYLOAD - IMPORTANTE: Los nombres de las keys deben coincidir con COLUMNAS AppSheet
+            # --- CORRECCIÓN: Generar history_id ---
+            history_id = str(uuid.uuid4())
+
             history_row = {
+                "history_id": history_id, # <--- ID ÚNICO PARA LA FICHA
                 "device_id": device_id,
                 "timestamp": datetime.now(TZ_MX).strftime('%Y-%m-%d %H:%M:%S'),
                 "requester": log_data.get('req', 'Sistema'),
@@ -212,30 +211,24 @@ class AppSheetService:
                 "action_type": log_data.get('action', 'Mantenimiento'),
                 "component": log_data.get('what', '-'),
                 "description": log_data.get('desc', ''),
-                "is_resolved": "YES" if log_data.get('solved') else "NO", # AppSheet prefiere Yes/No o true/false strings
+                "is_resolved": "YES" if log_data.get('solved') else "NO",
                 "location_snapshot": log_data.get('locName', ''),
                 "unit_snapshot": log_data.get('unit', 'General'),
                 "status_snapshot": log_data.get('status_snapshot', 'active')
             }
             
-            logger.info(f"💾 Enviando Ficha a AppSheet: {history_row}")
+            logger.info(f"💾 Guardando Ficha {history_id}...")
             
-            # 2. Guardar en Historial
             res_hist = self._make_safe_request("device_history", "Add", [history_row])
             
-            # 3. Actualizar estado si es Baja
             action = log_data.get('action', '')
-            if action == 'Baja':
-                self.update_device_status(device_id, 'offline')
+            if action == 'Baja': self.update_device_status(device_id, 'offline')
+            elif action in ['Instalación', 'Renovación']: self.update_device_status(device_id, 'online')
             
-            if res_hist is not None:
-                return True
-            else:
-                logger.error("❌ AppSheet rechazó la ficha (Posible error 400). Verifica nombres de columnas.")
-                return False
+            return res_hist is not None
             
         except Exception as e:
-            logger.error(f"Error crítico en add_history_entry: {e}")
+            logger.error(f"Error add_history_entry: {e}")
             return False
 
     def update_device_status(self, device_id: str, status: str):
