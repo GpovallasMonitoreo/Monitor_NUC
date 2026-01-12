@@ -158,6 +158,18 @@ class AppSheetService:
             
             url = f"{self.base_url}/apps/{self.app_id}/tables/{table}/Action"
             
+            # Log detallado del request
+            logger.debug(f"📋 Request URL: {url}")
+            safe_rows = []
+            if rows:
+                for row in rows:
+                    safe_row = row.copy()
+                    # Ocultar datos sensibles si existen
+                    if 'ApplicationAccessKey' in str(safe_row):
+                        safe_row = {k: '***REDACTED***' if 'key' in k.lower() or 'token' in k.lower() else v for k, v in safe_row.items()}
+                    safe_rows.append(safe_row)
+                logger.debug(f"📋 Request data: {json.dumps(safe_rows, indent=2, ensure_ascii=False)}")
+            
             # Hacer la petición
             response = requests.post(
                 url,
@@ -172,10 +184,11 @@ class AppSheetService:
                 try: 
                     result = response.json()
                     logger.info(f"✅ AppSheet {action} exitoso en {table}")
-                    logger.debug(f"📋 Respuesta: {json.dumps(result, indent=2)}")
+                    logger.debug(f"📋 Respuesta completa: {json.dumps(result, indent=2, ensure_ascii=False)}")
                     return result
                 except Exception as e:
                     logger.warning(f"AppSheet no devolvió JSON: {e}, pero status es 200")
+                    logger.debug(f"📋 Response text: {response.text}")
                     return {"success": True}
             
             # Log detallado del error
@@ -183,12 +196,12 @@ class AppSheetService:
             logger.error(f"URL: {url}")
             
             # Log payload truncado para seguridad
-            safe_payload = json.dumps(payload, indent=2)
+            safe_payload = json.dumps(payload, indent=2, ensure_ascii=False)
             if self.api_key in safe_payload:
                 safe_payload = safe_payload.replace(self.api_key, "***REDACTED***")
             logger.error(f"Request payload: {safe_payload}")
             
-            logger.error(f"Response text: {response.text[:500]}")
+            logger.error(f"Response text: {response.text[:1000]}")
             
             return None
             
@@ -248,113 +261,6 @@ class AppSheetService:
             logger.error(f"Error en upsert_device: {e}", exc_info=True)
             return False
 
-    def add_latency_record(self, device_data: Dict) -> bool:
-        """Agrega un registro de latencia"""
-        try:
-            if not self.enabled: 
-                return False
-            
-            device_id = self.generate_device_id(device_data.get('pc_name', ''))
-            
-            # Función auxiliar para obtener temperatura
-            def get_temp(d):
-                try:
-                    if d.get('temperature'):
-                        return float(d['temperature'])
-                    if d.get('extended_sensors') and 'Intel CPU' in d['extended_sensors']:
-                        for s in d['extended_sensors']['Intel CPU']:
-                            if s['tipo'] == 'Temperature':
-                                return float(s['valor'])
-                except:
-                    pass
-                return 0.0
-
-            row = {
-                "device_id": device_id,
-                "timestamp": datetime.now(TZ_MX).isoformat(),
-                "latency_ms": float(device_data.get('latency', 0)),
-                "cpu_percent": float(device_data.get('cpu_load_percent', 0)),
-                "ram_percent": float(device_data.get('ram_percent', 0)),
-                "temperature_c": get_temp(device_data),
-                "status": str(device_data.get('status', 'online'))
-            }
-            
-            result = self._make_safe_request("latency_history", "Add", [row])
-            return result is not None
-            
-        except Exception as e:
-            logger.error(f"Error en add_latency_record: {e}")
-            return False
-
-    def get_status_info(self) -> Dict[str, Any]:
-        """Obtiene información del estado de conexión"""
-        connection_ok = self._test_table_connection('devices') if self.enabled else False
-        
-        return {
-            "status": "enabled" if self.enabled else "disabled",
-            "available": connection_ok,
-            "last_sync": self.last_sync_time.isoformat() if self.last_sync_time else None,
-            "app_id": self.app_id[:8] + "..." if self.app_id else None
-        }
-
-    def get_system_stats(self, days: int = 1) -> Dict[str, Any]:
-        """Obtiene estadísticas del sistema"""
-        try:
-            if not self.enabled: 
-                return {
-                    'avg_latency': 0, 
-                    'total_devices': 0,
-                    'status': 'disabled'
-                }
-            
-            # Datos por defecto
-            stats = {
-                'avg_latency': 0, 
-                'avg_cpu': 0, 
-                'total_records': 0, 
-                'total_devices': 0, 
-                'uptime_percent': 0, 
-                'last_sync': None,
-                'status': 'connected'
-            }
-            
-            # Intentar obtener datos de dispositivos
-            try:
-                devs_response = self._make_safe_request("devices", "Find", [])
-                if isinstance(devs_response, list):
-                    stats['total_devices'] = len(devs_response)
-                elif devs_response and isinstance(devs_response, dict):
-                    # Intentar extraer de diferente formato
-                    if 'Rows' in devs_response:
-                        stats['total_devices'] = len(devs_response['Rows'])
-            except:
-                pass
-            
-            # Intentar obtener datos de latencia
-            try:
-                lat_response = self._make_safe_request("latency_history", "Find", [])
-                if isinstance(lat_response, list):
-                    stats['total_records'] = len(lat_response)
-                    if lat_response:
-                        lats = [float(r.get('latency_ms', 0)) for r in lat_response if r.get('latency_ms')]
-                        if lats:
-                            stats['avg_latency'] = round(sum(lats) / len(lats), 2)
-            except:
-                pass
-            
-            if self.last_sync_time: 
-                stats['last_sync'] = self.last_sync_time.isoformat()
-                
-            return stats
-            
-        except Exception as e:
-            logger.error(f"Error en get_system_stats: {e}")
-            return {'avg_latency': 0, 'total_devices': 0, 'status': 'error'}
-
-    # ==========================================
-    # MÉTODOS CRÍTICOS: BITÁCORA Y FICHAS
-    # ==========================================
-
     def add_history_entry(self, log_data: Dict) -> bool:
         """
         Guarda ficha en device_history asegurando integridad referencial.
@@ -366,7 +272,8 @@ class AppSheetService:
                 return False
             
             # Log detallado de entrada
-            logger.info(f"📝 Recibiendo ficha para bitácora: {log_data}")
+            logger.info(f"📝 Recibiendo ficha para bitácora")
+            logger.debug(f"📋 Datos recibidos: {json.dumps(log_data, indent=2, ensure_ascii=False)}")
             
             device_name = log_data.get('device_name') or log_data.get('pc_name')
             if not device_name:
@@ -401,19 +308,26 @@ class AppSheetService:
             # Tu tabla tiene: device_id, timestamp, requester, executor, action_type, 
             # component, description, is_resolved, unit_snapshot
             
+            # Obtener component - puede venir como 'what' o 'component'
+            component = log_data.get('what', log_data.get('component', 'General'))
+            
+            # Asegurar que el componente sea uno de los valores válidos
+            valid_components = ['NUC', 'SD300', 'UPS', 'MODULO', 'COMPONENTES', 'TELTONIKA', 'General', 'CPU', 'RAM', 'Disco', 'Red', 'Software', 'Hardware', 'Alimentación', 'Otro']
+            if component not in valid_components:
+                logger.warning(f"⚠️  Componente '{component}' no está en la lista de válidos, usando 'Otro'")
+                component = 'Otro'
+            
             history_row = {
                 "device_id": device_id,
                 "timestamp": timestamp,
                 "requester": log_data.get('req', log_data.get('requester', 'Sistema')),
                 "executor": log_data.get('exec', log_data.get('executor', 'Pendiente')),
                 "action_type": log_data.get('action', log_data.get('action_type', 'Mantenimiento')),
-                "component": log_data.get('what', log_data.get('component', 'General')),
+                "component": component,
                 "description": log_data.get('desc', log_data.get('description', '')),
                 "is_resolved": log_data.get('solved', log_data.get('is_resolved', False)),
                 "unit_snapshot": log_data.get('unit', log_data.get('unit_snapshot', 'General'))
             }
-            
-            # NOTA: No incluir location_snapshot ni status_snapshot porque no existen en tu tabla
             
             # Convertir booleanos a strings "TRUE"/"FALSE" para AppSheet Yes/No
             if isinstance(history_row["is_resolved"], bool):
@@ -421,15 +335,22 @@ class AppSheetService:
             elif isinstance(history_row["is_resolved"], str):
                 history_row["is_resolved"] = "TRUE" if history_row["is_resolved"].lower() == "true" else "FALSE"
             
+            # Asegurar que todos los campos sean strings
+            for key, value in history_row.items():
+                if value is None:
+                    history_row[key] = ""
+                elif not isinstance(value, str):
+                    history_row[key] = str(value)
+            
             logger.info(f"💾 Guardando Ficha para {device_name}...")
-            logger.info(f"📋 Datos a guardar (formateados para AppSheet): {json.dumps(history_row, indent=2)}")
+            logger.info(f"📋 Datos a guardar (formateados para AppSheet):")
+            logger.info(json.dumps(history_row, indent=2, ensure_ascii=False))
             
             # 2. Guardar en Historial
             res_hist = self._make_safe_request("device_history", "Add", [history_row])
             
             if res_hist is not None:
                 logger.info(f"✅ Ficha guardada exitosamente en device_history")
-                logger.info(f"📤 Respuesta AppSheet: {res_hist}")
                 
                 # 3. Lógica de Baja/Reactivación (actualizar tabla devices)
                 action = log_data.get('action', '').lower()
@@ -498,7 +419,7 @@ class AppSheetService:
             
             if response.status_code == 200:
                 data = response.json()
-                logger.info(f"✅ Historial obtenido. Respuesta: {data}")
+                logger.info(f"✅ Historial obtenido. Status: 200")
                 
                 # AppSheet puede devolver diferentes formatos
                 rows = []
@@ -530,7 +451,7 @@ class AppSheetService:
                                 return datetime.fromisoformat(ts.replace('Z', '+00:00'))
                             else:
                                 # Intentar otros formatos comunes
-                                for fmt in ['%Y-%m-%d %H:%M:%S', '%Y/%m/%d %H:%M:%S', '%d/%m/%Y %H:%M:%S']:
+                                for fmt in ['%Y-%m-%d %H:%M:%S', '%Y/%m/%d %H:%M:%S', '%d/%m/%Y %H:%M:%S', '%Y-%m-%d %H:%M:%S.%f']:
                                     try:
                                         return datetime.strptime(ts, fmt)
                                     except:
