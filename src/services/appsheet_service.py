@@ -12,13 +12,25 @@ class AppSheetService:
     """Servicio para interactuar con AppSheet Database"""
     
     def __init__(self):
+        # Lectura segura de Variables de Entorno
         self.api_key = os.getenv('APPSHEET_API_KEY', '')
         self.app_id = os.getenv('APPSHEET_APP_ID', '')
         self.base_url = os.getenv('APPSHEET_BASE_URL', 'https://api.appsheet.com/api/v2')
         
-        # Verificar configuración
-        if not self.api_key or not self.app_id or 'tu_api_key' in self.api_key:
-            logger.warning("⚠️ AppSheet no configurado o usando placeholders")
+        # Verificar flag de habilitado (maneja strings 'true', 'True', '1')
+        env_enabled = os.getenv('APPSHEET_ENABLED', 'false').lower()
+        is_config_enabled = env_enabled in ['true', '1', 'yes', 'on']
+
+        # Verificar credenciales
+        has_creds = self.api_key and self.app_id and 'tu_api_key' not in self.api_key
+
+        if not is_config_enabled:
+            logger.info("ℹ️ AppSheet deshabilitado por variable de entorno (APPSHEET_ENABLED)")
+            self.enabled = False
+            return
+
+        if not has_creds:
+            logger.warning("⚠️ AppSheet habilitado pero faltan credenciales válidas")
             self.enabled = False
             return
             
@@ -29,9 +41,9 @@ class AppSheetService:
         }
         
         self.last_sync_time = None
-        logger.info(f"✅ AppSheetService inicializado")
+        logger.info(f"✅ AppSheetService inicializado correctamente (AppID: {self.app_id[:5]}...)")
         
-        # Test rápido de conexión (silencioso para no bloquear arranque)
+        # Test rápido silencioso
         try:
             self._test_table_connection('devices')
         except:
@@ -39,6 +51,7 @@ class AppSheetService:
     
     def _test_table_connection(self, table_name: str) -> bool:
         try:
+            if not self.enabled: return False
             payload = {
                 "Action": "Find",
                 "Properties": {"Locale": "en-US", "Top": 1}
@@ -57,7 +70,7 @@ class AppSheetService:
         return hashlib.md5(pc_name.encode()).hexdigest()[:16].upper()
     
     def is_available(self) -> bool:
-        return self.enabled and self._test_table_connection('devices')
+        return self.enabled
     
     def _make_safe_request(self, table: str, action: str, rows: List[Dict] = None) -> Optional[Any]:
         try:
@@ -80,7 +93,7 @@ class AppSheetService:
                 try:
                     return response.json()
                 except:
-                    return {"success": True} # Respuesta vacía es OK en AppSheet a veces
+                    return {"success": True}
             return None
         except Exception as e:
             logger.error(f"AppSheet error {table}/{action}: {e}")
@@ -91,7 +104,6 @@ class AppSheetService:
             if not self.enabled: return False
             device_id = self.generate_device_id(device_data['pc_name'])
             
-            # Formatear ubicación si existe
             location = f"{device_data.get('lat','')},{device_data.get('lng','')}" if device_data.get('lat') else ""
 
             device_row = {
@@ -105,13 +117,13 @@ class AppSheetService:
                 "updated_at": datetime.now().isoformat()
             }
             
-            # Intentar añadir (Add), si falla AppSheet suele requerir Edit, 
-            # pero para simplificar usamos Add que en muchas configs actúa como Upsert o manejamos el error
-            # Estrategia segura: Find primero
-            find = self._make_safe_request("devices", "Find", [{"device_id": device_id}])
-            action = "Edit" if find and isinstance(find, list) and len(find) > 0 else "Add"
+            # Estrategia: Intentar Add, si falla no importa (ya existe), luego Edit si es necesario
+            # Simplificado: Usamos Add, AppSheet suele manejarlo bien si la Key coincide
+            self._make_safe_request("devices", "Add", [device_row])
             
-            self._make_safe_request("devices", action, [device_row])
+            # Actualizamos también con Edit por si acaso ya existía y Add falló silenciosamente
+            self._make_safe_request("devices", "Edit", [device_row])
+            
             self.last_sync_time = datetime.now()
             return True
         except Exception as e:
@@ -160,3 +172,25 @@ class AppSheetService:
         """Sincronización completa forzada"""
         self.upsert_device(device_data)
         self.add_latency_record(device_data)
+
+    def get_status_info(self) -> Dict[str, Any]:
+        """Información de estado para el Dashboard"""
+        if not self.enabled:
+            return {
+                "status": "disabled",
+                "message": "AppSheet deshabilitado o credenciales inválidas",
+                "available": False,
+                "last_sync": None
+            }
+        
+        # Test real al momento de pedir status
+        connection_ok = self._test_table_connection('devices')
+        
+        return {
+            "status": "enabled",
+            "available": connection_ok,
+            "last_sync": self.last_sync_time.isoformat() if self.last_sync_time else None,
+            "message": "Conectado a AppSheet" if connection_ok else "Error de conexión con AppSheet",
+            "has_api_key": bool(self.api_key),
+            "app_id_preview": f"...{self.app_id[-4:]}" if self.app_id else "N/A"
+        }
