@@ -67,10 +67,9 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchLogs();
 });
 
-// Variable Global para almacenar datos crudos
 let allLogs = [];
 
-// 1. OBTENER DATOS REALES DE APPSHEET
+// 1. OBTENER DATOS REALES
 async function fetchLogs() {
     try {
         const response = await fetch('/api/history/all');
@@ -80,12 +79,9 @@ async function fetchLogs() {
             allLogs = data;
             renderTable(allLogs);
         } else {
-            console.error("Formato de datos incorrecto", data);
             document.getElementById('bitacora-body').innerHTML = '<tr><td colspan="7" class="text-center py-4 text-red-500">Error al cargar datos. Verifique conexión.</td></tr>';
         }
-    } catch (error) {
-        console.error("Error fetch:", error);
-    }
+    } catch (error) { console.error(error); }
 }
 
 // 2. RENDERIZAR TABLA
@@ -102,24 +98,19 @@ function renderTable(logs) {
     }
 
     logs.forEach(log => {
-        // Parseo seguro de fecha
         const dateObj = new Date(log.timestamp);
         const dateStr = !isNaN(dateObj) ? dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : log.timestamp;
         
-        // Estilos condicionales
-        let unitBadge = 'bg-slate-100 text-slate-600';
+        let unitBadge = 'bg-slate-100 text-slate-700';
         const unit = (log.unit_snapshot || 'General').toUpperCase();
         if(unit.includes('VIA')) unitBadge = 'bg-emerald-50 text-emerald-700 border border-emerald-100';
         if(unit.includes('ECO')) unitBadge = 'bg-indigo-50 text-indigo-700 border border-indigo-100';
         if(unit.includes('BIO')) unitBadge = 'bg-sky-50 text-sky-700 border border-sky-100';
 
-        // Estado Activo/Inactivo (Basado en status_snapshot o lógica de negocio)
-        // Si la acción fue "Baja" o "Retiro", asumimos inactivo
+        // Lógica de Estado (Inactivo si es Baja o Status snapshot dice inactive)
         let isActive = true;
         const action = (log.action_type || '').toLowerCase();
-        if(action.includes('baja') || action.includes('retiro') || (log.status_snapshot === 'inactive')) {
-            isActive = false;
-        }
+        if(action.includes('baja') || action.includes('retiro') || (log.status_snapshot === 'inactive')) isActive = false;
 
         const statusHtml = isActive 
             ? '<span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-green-100 text-green-700"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> ACTIVO</span>'
@@ -146,9 +137,7 @@ function renderTable(logs) {
                         <span><i data-lucide="wrench" class="w-3 h-3 inline"></i> ${log.executor}</span>
                     </div>
                 </td>
-                <td class="px-6 py-4 text-center">
-                    ${statusHtml}
-                </td>
+                <td class="px-6 py-4 text-center">${statusHtml}</td>
                 <td class="px-6 py-4 text-center">
                     ${(log.is_resolved === true || log.is_resolved === 'true') 
                         ? '<i data-lucide="check-circle" class="w-5 h-5 text-emerald-500 mx-auto"></i>' 
@@ -161,51 +150,42 @@ function renderTable(logs) {
     lucide.createIcons();
 }
 
-// 3. FILTRADO INTELIGENTE
+// 3. FILTRADO
 function applyFilters() {
     const searchTerm = document.getElementById('search-input').value.toLowerCase();
     const unitFilter = document.getElementById('filter-unit').value.toUpperCase();
-    const statusFilter = document.getElementById('filter-status').value; // active, inactive, all
+    const statusFilter = document.getElementById('filter-status').value;
 
     const filtered = allLogs.filter(log => {
-        // Filtro Texto
         const textMatch = JSON.stringify(log).toLowerCase().includes(searchTerm);
         
-        // Filtro Unidad (Loose match para atrapar 'ECOVALLAS' en 'Ecovallas Norte')
         const logUnit = (log.unit_snapshot || '').toUpperCase();
         let unitMatch = true;
-        if (unitFilter !== 'ALL') {
-            unitMatch = logUnit.includes(unitFilter); 
-        }
+        if (unitFilter !== 'ALL') unitMatch = logUnit.includes(unitFilter); 
 
-        // Filtro Estado
         let statusMatch = true;
         const action = (log.action_type || '').toLowerCase();
-        const isInactiveLog = action.includes('baja') || action.includes('retiro') || log.status_snapshot === 'inactive';
+        const isInactive = action.includes('baja') || action.includes('retiro') || log.status_snapshot === 'inactive';
         
-        if (statusFilter === 'active') statusMatch = !isInactiveLog;
-        if (statusFilter === 'inactive') statusMatch = isInactiveLog;
+        if (statusFilter === 'active') statusMatch = !isInactive;
+        if (statusFilter === 'inactive') statusMatch = isInactive;
 
         return textMatch && unitMatch && statusMatch;
     });
 
     renderTable(filtered);
-    return filtered; // Retornamos para usar en exportación
+    return filtered;
 }
 
-// Event Listeners para Filtros
 document.getElementById('search-input').addEventListener('input', applyFilters);
 document.getElementById('filter-unit').addEventListener('change', applyFilters);
 document.getElementById('filter-status').addEventListener('change', applyFilters);
 
-// 4. EXPORTAR CSV FILTRADO
+// 4. EXPORTAR CSV
 function exportFilteredData() {
-    // Obtenemos los datos que actualmente se ven en pantalla (filtrados)
     const dataToExport = applyFilters();
-    
-    if (dataToExport.length === 0) return alert("No hay datos para exportar con los filtros actuales.");
+    if (dataToExport.length === 0) return alert("No hay datos para exportar.");
 
-    // Mapeamos a un formato limpio para Excel
     const formattedData = dataToExport.map(log => ({
         Fecha: log.timestamp,
         Ubicacion: log.location_snapshot,
@@ -216,16 +196,13 @@ function exportFilteredData() {
         Solicitante: log.requester,
         Ejecutor: log.executor,
         Resuelto: log.is_resolved,
-        Estado_Activo: (log.action_type || '').toLowerCase().includes('baja') ? 'INACTIVO' : 'ACTIVO'
+        Estado: (log.action_type || '').toLowerCase().includes('baja') ? 'INACTIVO' : 'ACTIVO'
     }));
 
     const ws = XLSX.utils.json_to_sheet(formattedData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Bitacora_Filtrada");
-    
-    // Nombre de archivo con fecha
-    const filename = `Bitacora_Argos_${new Date().toISOString().slice(0,10)}.xlsx`;
-    XLSX.writeFile(wb, filename);
+    XLSX.writeFile(wb, `Bitacora_Argos_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 </script>
 {% endblock %}
