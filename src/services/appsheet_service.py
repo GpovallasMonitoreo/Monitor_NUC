@@ -49,7 +49,25 @@ class AppSheetService:
         except: return False
     
     def generate_device_id(self, pc_name: str) -> str:
-        return hashlib.md5(pc_name.encode()).hexdigest()[:16].upper()
+        """
+        Genera el ID. Si viene con formato de sitio (MX_...), usa la clave.
+        Ejemplo entrada: "MX_CM_EV_MGP_17_3420 PERIFERICO SUR 1181"
+        Ejemplo salida ID: "MX_CM_EV_MGP_17_3420"
+        """
+        try:
+            if pc_name and pc_name.strip().upper().startswith("MX_"):
+                # Tomamos la primera parte antes del espacio
+                parts = pc_name.strip().split(' ')
+                if len(parts) > 0:
+                    clean_id = parts[0].strip()
+                    # Validación extra: que tenga longitud razonable
+                    if len(clean_id) > 5:
+                        return clean_id
+            
+            # Fallback: Si no tiene formato MX_, usamos Hash MD5 como antes
+            return hashlib.md5(pc_name.encode()).hexdigest()[:16].upper()
+        except Exception:
+            return hashlib.md5(pc_name.encode()).hexdigest()[:16].upper()
     
     def _make_safe_request(self, table: str, action: str, rows: List[Dict] = None) -> Optional[Any]:
         try:
@@ -78,7 +96,7 @@ class AppSheetService:
 
             device_row = {
                 "device_id": device_id,
-                "pc_name": device_data['pc_name'],
+                "pc_name": device_data['pc_name'], # Guardamos nombre completo
                 "unit": device_data.get('unit', 'General'),
                 "public_ip": device_data.get('public_ip', device_data.get('ip', '')),
                 "last_known_location": location,
@@ -144,12 +162,10 @@ class AppSheetService:
             "app_id_preview": f"...{self.app_id[-4:]}" if self.app_id else "N/A"
         }
 
-    # --- ESTE ES EL MÉTODO QUE USA LA RUTA /STATS ---
     def get_system_stats(self, days: int = 1) -> Dict[str, Any]:
         try:
             if not self.enabled: return self._get_default_stats()
             
-            # Obtener datos (Si falla retorna lista vacía)
             latency_data = self._make_safe_request("latency_history", "Get") or []
             if not isinstance(latency_data, list): latency_data = []
             
