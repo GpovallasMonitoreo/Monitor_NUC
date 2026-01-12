@@ -151,22 +151,22 @@ def appsheet_diagnose():
         history_test = False
         
         if hasattr(src.appsheet, '_make_appsheet_request'):
-            # Probar dispositivos
-            devices_result = src.appsheet._make_appsheet_request("dispositivos", "Find", properties={"Top": 1})
+            # Probar devices
+            devices_result = src.appsheet._make_appsheet_request("devices", "Find", properties={"Top": 1})
             basic_test = devices_result is not None
             
-            # Probar bitácora
-            history_result = src.appsheet._make_appsheet_request("bitacora", "Find", properties={"Top": 1})
+            # Probar device_history
+            history_result = src.appsheet._make_appsheet_request("device_history", "Find", properties={"Top": 1})
             history_test = history_result is not None
         
-        print(f"📊 /appsheet/diagnose: dispositivos={basic_test}, bitacora={history_test}")
+        print(f"📊 /appsheet/diagnose: devices={basic_test}, device_history={history_test}")
         
         return jsonify({
             "status": "success",
             "diagnosis": {
                 "tables": {
-                    "dispositivos": "connected" if basic_test else "disconnected",
-                    "bitacora": "connected" if history_test else "disconnected"
+                    "devices": "connected" if basic_test else "disconnected",
+                    "device_history": "connected" if history_test else "disconnected"
                 },
                 "appsheet_enabled": src.appsheet.enabled if src.appsheet else False,
                 "environment": {
@@ -404,7 +404,7 @@ def debug_appsheet():
         if src.appsheet.enabled:
             try:
                 # Intentar obtener algunos dispositivos
-                result = src.appsheet._make_appsheet_request("dispositivos", "Find", properties={"Top": 3})
+                result = src.appsheet._make_appsheet_request("devices", "Find", properties={"Top": 3})
                 if result:
                     if isinstance(result, list):
                         sample_devices = result[:3]
@@ -413,14 +413,14 @@ def debug_appsheet():
                             sample_devices = result['Rows'][:3]
                         elif 'data' in result:
                             sample_devices = result['data'][:3]
-                print(f"📊 Muestra dispositivos: {len(sample_devices)} registros")
+                print(f"📊 Muestra devices: {len(sample_devices)} registros")
             except Exception as e:
                 sample_devices = [f"Error: {str(e)}"]
-                print(f"❌ Error obteniendo dispositivos: {e}")
+                print(f"❌ Error obteniendo devices: {e}")
             
             try:
                 # Intentar obtener historial
-                result = src.appsheet._make_appsheet_request("bitacora", "Find", properties={"Top": 3})
+                result = src.appsheet._make_appsheet_request("device_history", "Find", properties={"Top": 3})
                 if result:
                     if isinstance(result, list):
                         sample_history = result[:3]
@@ -429,10 +429,10 @@ def debug_appsheet():
                             sample_history = result['Rows'][:3]
                         elif 'data' in result:
                             sample_history = result['data'][:3]
-                print(f"📊 Muestra bitácora: {len(sample_history)} registros")
+                print(f"📊 Muestra device_history: {len(sample_history)} registros")
             except Exception as e:
                 sample_history = [f"Error: {str(e)}"]
-                print(f"❌ Error obteniendo bitácora: {e}")
+                print(f"❌ Error obteniendo device_history: {e}")
         
         response_data = {
             "status": "success",
@@ -446,8 +446,8 @@ def debug_appsheet():
             "status_info": status_info,
             "available_tables": tables,
             "sample_data": {
-                "dispositivos": sample_devices,
-                "bitacora": sample_history
+                "devices": sample_devices,
+                "device_history": sample_history
             }
         }
         
