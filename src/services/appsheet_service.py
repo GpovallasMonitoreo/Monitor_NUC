@@ -62,6 +62,7 @@ class AppSheetService:
             url = f"{self.base_url}/apps/{self.app_id}/tables/{table}/Action"
             
             logger.debug(f"📤 AppSheet Request: {table}.{action}")
+            logger.debug(f"📤 URL: {url}")
             
             response = requests.post(
                 url,
@@ -127,7 +128,7 @@ class AppSheetService:
 
     def get_or_create_device(self, device_data: Dict) -> tuple:
         """
-        Obtiene o crea un dispositivo en la tabla dispositivos.
+        Obtiene o crea un dispositivo en la tabla devices.
         Retorna: (success, device_id, device_exists)
         """
         try:
@@ -144,10 +145,10 @@ class AppSheetService:
             logger.info(f"🆔 Device ID generado para '{pc_name}': {device_id}")
             
             # Primero, intentar buscar el dispositivo por device_id
-            logger.debug(f"🔍 Buscando dispositivo {device_id} en tabla dispositivos...")
+            logger.debug(f"🔍 Buscando dispositivo {device_id} en tabla devices...")
             
             search_result = self._make_appsheet_request(
-                "dispositivos",  # Cambiado de "devices" a "dispositivos"
+                "devices", 
                 "Find", 
                 properties={"FilterQuery": f"[device_id] = '{device_id}'"}
             )
@@ -167,7 +168,7 @@ class AppSheetService:
                         device_exists = True
                         logger.debug(f"✅ Dispositivo encontrado en formato dict con lista")
             
-            logger.info(f"📊 Dispositivo {device_id} existe en dispositivos: {device_exists}")
+            logger.info(f"📊 Dispositivo {device_id} existe en devices: {device_exists}")
             
             # Si no existe, crearlo
             if not device_exists:
@@ -184,17 +185,17 @@ class AppSheetService:
                     "updated_at": datetime.now(TZ_MX).isoformat()
                 }
                 
-                logger.info(f"🔄 Creando dispositivo en tabla dispositivos: {pc_name} (ID: {device_id})")
+                logger.info(f"🔄 Creando dispositivo en tabla devices: {pc_name} (ID: {device_id})")
                 logger.debug(f"📋 Datos dispositivo: {device_row}")
                 
-                create_result = self._make_appsheet_request("dispositivos", "Add", [device_row])
+                create_result = self._make_appsheet_request("devices", "Add", [device_row])
                 
                 if create_result is not None:
-                    logger.info(f"✅ Dispositivo {pc_name} creado exitosamente en tabla dispositivos")
+                    logger.info(f"✅ Dispositivo {pc_name} creado exitosamente en tabla devices")
                     self.last_sync_time = datetime.now(TZ_MX)
                     return True, device_id, False
                 else:
-                    logger.error(f"❌ No se pudo crear dispositivo {pc_name} en tabla dispositivos")
+                    logger.error(f"❌ No se pudo crear dispositivo {pc_name} en tabla devices")
                     return False, device_id, False
             
             return True, device_id, True
@@ -205,8 +206,8 @@ class AppSheetService:
 
     def add_history_entry(self, log_data: Dict) -> bool:
         """
-        Guarda ficha en bitacora.
-        IMPORTANTE: Primero asegura que el dispositivo exista en dispositivos.
+        Guarda ficha en device_history.
+        IMPORTANTE: Primero asegura que el dispositivo exista en devices.
         """
         try:
             if not self.enabled: 
@@ -223,8 +224,8 @@ class AppSheetService:
 
             logger.info(f"🔧 Procesando ficha para dispositivo: {device_name}")
             
-            # 1. CRÍTICO: Asegurar que el dispositivo existe en la tabla dispositivos
-            logger.info(f"🔄 Verificando/creando dispositivo en tabla dispositivos...")
+            # 1. CRÍTICO: Asegurar que el dispositivo existe en la tabla devices
+            logger.info(f"🔄 Verificando/creando dispositivo en tabla devices...")
             
             success, device_id, device_exists = self.get_or_create_device({
                 "pc_name": device_name,
@@ -234,12 +235,12 @@ class AppSheetService:
             })
             
             if not success:
-                logger.error("❌ No se pudo crear/verificar dispositivo en tabla dispositivos. Abortando.")
+                logger.error("❌ No se pudo crear/verificar dispositivo en tabla devices. Abortando.")
                 return False
             
-            logger.info(f"✅ Dispositivo verificado en dispositivos. ID: {device_id}, Ya existía: {device_exists}")
+            logger.info(f"✅ Dispositivo verificado en devices. ID: {device_id}, Ya existía: {device_exists}")
             
-            # 2. Preparar datos para bitacora
+            # 2. Preparar datos para device_history
             timestamp = log_data.get('timestamp')
             if not timestamp:
                 timestamp = datetime.now(TZ_MX).isoformat()
@@ -251,9 +252,9 @@ class AppSheetService:
                 logger.warning(f"⚠️  Componente '{component}' no válido, usando 'General'")
                 component = 'General'
             
-            # Preparar fila para bitacora
+            # Preparar fila para device_history
             history_row = {
-                "device_id": device_id,  # REFERENCIA a dispositivos.device_id
+                "device_id": device_id,  # REFERENCIA a devices.device_id
                 "timestamp": timestamp,
                 "requester": log_data.get('req', log_data.get('requester', 'Sistema')),
                 "executor": log_data.get('exec', log_data.get('executor', 'Pendiente')),
@@ -283,15 +284,15 @@ class AppSheetService:
                 elif not isinstance(history_row[key], str):
                     history_row[key] = str(history_row[key])
             
-            logger.info(f"💾 Preparando para guardar en bitacora...")
+            logger.info(f"💾 Preparando para guardar en device_history...")
             logger.debug(f"📋 Datos a guardar: {json.dumps(history_row, indent=2, ensure_ascii=False)}")
             
-            # 3. Guardar en bitacora
-            logger.info(f"📤 Enviando a bitacora...")
-            result = self._make_appsheet_request("bitacora", "Add", [history_row])  # Cambiado de "device_history" a "bitacora"
+            # 3. Guardar en device_history
+            logger.info(f"📤 Enviando a device_history...")
+            result = self._make_appsheet_request("device_history", "Add", [history_row])
             
             if result is not None:
-                logger.info(f"✅ Ficha guardada exitosamente en bitacora")
+                logger.info(f"✅ Ficha guardada exitosamente en device_history")
                 logger.debug(f"📥 Respuesta AppSheet: {result}")
                 
                 # 4. Actualizar estado del dispositivo si es necesario
@@ -305,20 +306,62 @@ class AppSheetService:
                 
                 return True
             else:
-                logger.error("❌ AppSheet rechazó la ficha en bitacora")
+                logger.error("❌ AppSheet rechazó la ficha en device_history")
                 logger.error("⚠️  Posibles causas:")
-                logger.error(f"   1. device_id '{device_id}' no existe en tabla dispositivos o no es referencia válida")
+                logger.error(f"   1. device_id '{device_id}' no existe en tabla devices o no es referencia válida")
                 logger.error(f"   2. Error en formato de datos (columnas faltantes o incorrectas)")
-                logger.error(f"   3. bitacora necesita configuración especial (Primary Key, etc.)")
-                logger.error(f"   4. Permisos insuficientes para escribir en bitacora")
+                logger.error(f"   3. device_history necesita configuración especial (Primary Key, etc.)")
+                logger.error(f"   4. Permisos insuficientes para escribir en device_history")
                 return False
                     
         except Exception as e:
             logger.error(f"🔥 Error crítico en add_history_entry: {e}", exc_info=True)
             return False
 
+    def add_latency_to_history(self, device_data: Dict) -> bool:
+        """Agrega un registro de latencia a la tabla latency_history"""
+        try:
+            if not self.enabled: 
+                logger.warning("AppSheet deshabilitado, no se guardará latencia")
+                return False
+            
+            pc_name = device_data.get('pc_name', '')
+            if not pc_name:
+                logger.error("No se puede registrar latencia sin nombre de dispositivo")
+                return False
+            
+            # Generar device_id
+            device_id = self.generate_device_id(pc_name)
+            
+            # Preparar datos para latency_history
+            latency_record = {
+                "device_id": device_id,
+                "pc_name": pc_name,
+                "latency": device_data.get('latency', 0),
+                "cpu_load": device_data.get('cpu_load_percent', 0),
+                "temperature": device_data.get('temperature', 0),
+                "timestamp": datetime.now(TZ_MX).isoformat(),
+                "unit": device_data.get('unit', 'General'),
+                "status": device_data.get('status', 'online')
+            }
+            
+            logger.info(f"📊 Guardando latencia en latency_history para {pc_name}")
+            
+            result = self._make_appsheet_request("latency_history", "Add", [latency_record])
+            
+            if result is not None:
+                logger.info(f"✅ Latencia registrada en latency_history para {pc_name}")
+                return True
+            else:
+                logger.warning(f"⚠️  No se pudo registrar latencia en latency_history para {pc_name}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error en add_latency_to_history: {e}")
+            return False
+
     def update_device_status(self, device_id: str, status: str):
-        """Actualiza el estado de un dispositivo en la tabla dispositivos"""
+        """Actualiza el estado de un dispositivo en la tabla devices"""
         try:
             if not self.enabled or not device_id:
                 logger.warning("No se puede actualizar estado: AppSheet deshabilitado o sin device_id")
@@ -328,7 +371,7 @@ class AppSheetService:
             
             # Primero buscar el dispositivo
             search_result = self._make_appsheet_request(
-                "dispositivos",  # Cambiado de "devices" a "dispositivos"
+                "devices", 
                 "Find", 
                 properties={"FilterQuery": f"[device_id] = '{device_id}'"}
             )
@@ -351,14 +394,14 @@ class AppSheetService:
                 }
                 
                 logger.debug(f"📋 Datos de actualización: {update_row}")
-                result = self._make_appsheet_request("dispositivos", "Edit", [update_row])
+                result = self._make_appsheet_request("devices", "Edit", [update_row])
                 
                 if result is not None:
-                    logger.info(f"✅ Estado de {device_id} actualizado a '{status}' en tabla dispositivos")
+                    logger.info(f"✅ Estado de {device_id} actualizado a '{status}' en tabla devices")
                 else:
-                    logger.warning(f"⚠️  No se pudo actualizar estado de {device_id} en tabla dispositivos")
+                    logger.warning(f"⚠️  No se pudo actualizar estado de {device_id} en tabla devices")
             else:
-                logger.warning(f"⚠️  Dispositivo {device_id} no encontrado en tabla dispositivos para actualizar estado")
+                logger.warning(f"⚠️  Dispositivo {device_id} no encontrado en tabla devices para actualizar estado")
                 
         except Exception as e:
             logger.error(f"Error en update_device_status: {e}")
@@ -373,7 +416,7 @@ class AppSheetService:
             logger.info(f"📋 Solicitando historial completo (límite: {limit})...")
             
             result = self._make_appsheet_request(
-                "bitacora",  # Cambiado de "device_history" a "bitacora"
+                "device_history", 
                 "Find", 
                 properties={"Top": limit, "SortBy": "[timestamp] DESC"}
             )
@@ -477,11 +520,11 @@ class AppSheetService:
                 return {"status": "disabled", "available": False}
             
             # Probar conexión a ambas tablas
-            logger.debug("🔍 Probando conexión a tabla dispositivos...")
-            devices_test = self._make_appsheet_request("dispositivos", "Find", properties={"Top": 1})  # Cambiado
+            logger.debug("🔍 Probando conexión a tabla devices...")
+            devices_test = self._make_appsheet_request("devices", "Find", properties={"Top": 1})
             
-            logger.debug("🔍 Probando conexión a tabla bitacora...")
-            history_test = self._make_appsheet_request("bitacora", "Find", properties={"Top": 1})  # Cambiado
+            logger.debug("🔍 Probando conexión a tabla device_history...")
+            history_test = self._make_appsheet_request("device_history", "Find", properties={"Top": 1})
             
             devices_ok = devices_test is not None
             history_ok = history_test is not None
@@ -490,15 +533,15 @@ class AppSheetService:
                 "status": "enabled",
                 "available": devices_ok and history_ok,
                 "tables": {
-                    "dispositivos": "connected" if devices_ok else "disconnected",  # Cambiado
-                    "bitacora": "connected" if history_ok else "disconnected"  # Cambiado
+                    "devices": "connected" if devices_ok else "disconnected",
+                    "device_history": "connected" if history_ok else "disconnected"
                 },
                 "last_sync": self.last_sync_time.isoformat() if self.last_sync_time else None,
                 "app_id": self.app_id[:8] + "..." if self.app_id else None
             }
             
             logger.info(f"📡 Estado AppSheet: {'✅ CONECTADO' if status_info['available'] else '❌ DESCONECTADO'}")
-            logger.info(f"📊 Tablas: dispositivos={status_info['tables']['dispositivos']}, bitacora={status_info['tables']['bitacora']}")
+            logger.info(f"📊 Tablas: devices={status_info['tables']['devices']}, device_history={status_info['tables']['device_history']}")
             
             return status_info
             
@@ -526,7 +569,7 @@ class AppSheetService:
             }
             
             # Obtener conteo de dispositivos
-            devices_result = self._make_appsheet_request("dispositivos", "Find")  # Cambiado
+            devices_result = self._make_appsheet_request("devices", "Find")
             if devices_result:
                 if isinstance(devices_result, list):
                     stats['total_devices'] = len(devices_result)
@@ -537,7 +580,7 @@ class AppSheetService:
                         stats['total_devices'] = len(devices_result['data'])
             
             # Obtener conteo de historial
-            history_result = self._make_appsheet_request("bitacora", "Find", properties={"Top": 1000})  # Cambiado
+            history_result = self._make_appsheet_request("device_history", "Find", properties={"Top": 1000})
             if history_result:
                 if isinstance(history_result, list):
                     stats['total_history'] = len(history_result)
@@ -550,7 +593,7 @@ class AppSheetService:
             if self.last_sync_time: 
                 stats['last_sync'] = self.last_sync_time.isoformat()
             
-            logger.debug(f"📊 Estadísticas: dispositivos={stats['total_devices']}, bitacora={stats['total_history']}")
+            logger.debug(f"📊 Estadísticas: devices={stats['total_devices']}, device_history={stats['total_history']}")
                 
             return stats
             
@@ -564,16 +607,16 @@ class AppSheetService:
             }
 
     def test_history_connection(self) -> bool:
-        """Prueba específica para la conexión con bitacora"""
+        """Prueba específica para la conexión con device_history"""
         try:
             if not self.enabled: 
                 return False
             
-            result = self._make_appsheet_request("bitacora", "Find", properties={"Top": 1})  # Cambiado
+            result = self._make_appsheet_request("device_history", "Find", properties={"Top": 1})
             return result is not None
                 
         except Exception as e:
-            logger.error(f"Error probando bitacora: {e}")
+            logger.error(f"Error probando device_history: {e}")
             return False
 
     # ====== MÉTODOS PARA COMPATIBILIDAD CON MONITOR_SERVICE ======
@@ -584,24 +627,8 @@ class AppSheetService:
         return success
     
     def add_latency_record(self, device_data: Dict) -> bool:
-        """Método para compatibilidad con monitor_service"""
-        pc_name = device_data.get('pc_name', '')
-        latency = device_data.get('latency', 0)
-        
-        history_data = {
-            "device_name": pc_name,
-            "pc_name": pc_name,
-            "unit": device_data.get('unit', 'General'),
-            "action": "Latency Record",
-            "what": "Network",
-            "desc": f"Latencia automática: {latency}ms",
-            "req": "Sistema Automático",
-            "exec": "Monitor Argos",
-            "solved": True,
-            "timestamp": datetime.now(TZ_MX).isoformat()
-        }
-        
-        return self.add_history_entry(history_data)
+        """Método para compatibilidad con monitor_service - usa latency_history"""
+        return self.add_latency_to_history(device_data)
     
     def upsert_device(self, device_data: Dict) -> bool:
         """Método para compatibilidad con monitor_service"""
@@ -633,27 +660,34 @@ class AppSheetService:
             if not self.enabled:
                 return []
             
-            # Tablas comunes en español/inglés para probar
-            common_tables = [
-                "dispositivos", "devices", "equipos", "activos", "activos_it",
-                "bitacora", "historial", "history", "logs", "registros",
-                "alertas", "alerts", "metricas", "metrics", "estadisticas"
-            ]
-            
+            # Usar las tablas que sabemos que tienes
+            known_tables = ["devices", "device_history", "latency_history", "alerts"]
             available_tables = []
             
-            for table in common_tables:
+            for table in known_tables:
                 try:
+                    logger.info(f"🔍 Probando tabla: {table}")
                     result = self._make_appsheet_request(table, "Find", properties={"Top": 1})
+                    
                     if result is not None:
                         available_tables.append(table)
-                        logger.info(f"✅ Tabla encontrada: {table}")
+                        logger.info(f"✅ Tabla '{table}' encontrada y accesible")
+                        
+                        # Mostrar estructura de la tabla
+                        if isinstance(result, list) and len(result) > 0:
+                            columns = list(result[0].keys())
+                            logger.info(f"   📋 Columnas ({len(columns)}): {columns[:5]}{'...' if len(columns) > 5 else ''}")
+                        elif isinstance(result, dict):
+                            if 'Rows' in result and len(result['Rows']) > 0:
+                                columns = list(result['Rows'][0].keys())
+                                logger.info(f"   📋 Columnas ({len(columns)}): {columns[:5]}{'...' if len(columns) > 5 else ''}")
                     else:
-                        logger.debug(f"❌ Tabla no encontrada: {table}")
-                except:
-                    pass
+                        logger.warning(f"❌ Tabla '{table}' no encontrada o no accesible")
+                        
+                except Exception as e:
+                    logger.error(f"⚠️  Error probando tabla '{table}': {e}")
             
-            logger.info(f"📊 Tablas disponibles: {available_tables}")
+            logger.info(f"📊 Tablas disponibles confirmadas: {available_tables}")
             return available_tables
             
         except Exception as e:
