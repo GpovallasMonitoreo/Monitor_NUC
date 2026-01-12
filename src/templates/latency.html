@@ -30,7 +30,30 @@
     .timeline-item { position: relative; padding-left: 2rem; padding-bottom: 2rem; border-left: 2px solid #e2e8f0; }
     .timeline-item:last-child { border-left: 2px solid transparent; }
     .timeline-dot { position: absolute; left: -9px; top: 0; width: 16px; height: 16px; border-radius: 50%; background: white; border: 3px solid #cbd5e1; }
+    
+    /* Estilos para notificaciones */
+    .notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-weight: 500;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        max-width: 400px;
+        transition: all 0.3s ease;
+    }
+    .notification-success { background-color: #10b981; color: white; border-left: 4px solid #059669; }
+    .notification-error { background-color: #ef4444; color: white; border-left: 4px solid #dc2626; }
+    .notification-warning { background-color: #f59e0b; color: white; border-left: 4px solid #d97706; }
 </style>
+
+<!-- Notificación flotante -->
+<div id="global-notification" class="notification hidden"></div>
 
 <div class="p-6 max-w-[1800px] mx-auto">
     <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
@@ -113,25 +136,115 @@
             <div id="tab-specs" class="tab-content hidden">
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     <div class="lg:col-span-8 space-y-6">
-                        <div class="flex justify-between items-center"><h3 class="font-bold text-lg text-slate-800">Bitácora</h3><button onclick="toggleForm()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i> Nueva Entrada</button></div>
+                        <div class="flex justify-between items-center">
+                            <h3 class="font-bold text-lg text-slate-800">Bitácora</h3>
+                            <div class="flex gap-2">
+                                <button onclick="testAppSheetConnection()" 
+                                        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                                    <i data-lucide="wifi" class="w-4 h-4"></i> Probar Conexión
+                                </button>
+                                <button onclick="toggleForm()" 
+                                        class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                                    <i data-lucide="plus" class="w-4 h-4"></i> Nueva Entrada
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Indicador de conexión AppSheet -->
+                        <div id="appsheet-status-indicator" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                            <div class="flex items-center gap-3">
+                                <div id="appsheet-status-icon"></div>
+                                <div id="appsheet-status-text" class="text-sm"></div>
+                            </div>
+                        </div>
+                        
                         <div id="log-form-container" class="hidden bg-slate-50 p-6 rounded-xl border border-indigo-100">
                             <form id="new-log-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div class="md:col-span-2 bg-white p-3 rounded border border-slate-200 grid grid-cols-2 gap-4">
                                     <div><label class="text-[10px] uppercase font-bold text-slate-400">Ubicación</label><div id="form-loc" class="font-bold text-sm"></div></div>
                                     <div><label class="text-[10px] uppercase font-bold text-slate-400">Unidad</label><div id="form-unit" class="font-bold text-sm"></div></div>
                                 </div>
-                                <div><label class="text-xs font-bold text-slate-500">Solicita</label><input type="text" id="log-req" class="w-full mt-1 p-2 border rounded text-sm bg-white"></div>
-                                <div><label class="text-xs font-bold text-slate-500">Ejecuta</label><input type="text" id="log-exec" class="w-full mt-1 p-2 border rounded text-sm bg-white"></div>
-                                <div><label class="text-xs font-bold text-slate-500">Tipo</label><select id="log-action" class="w-full mt-1 p-2 border rounded text-sm bg-white"><option value="Mantenimiento">Mantenimiento</option><option value="Incidente">Incidente</option><option value="Renovación">Renovación</option><option value="Baja">Baja</option></select></div>
-                                <div><label class="text-xs font-bold text-slate-500">Componente</label><input type="text" id="log-what" class="w-full mt-1 p-2 border rounded text-sm bg-white" placeholder="Ej: Disco"></div>
-                                <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500">Descripción</label><textarea id="log-desc" rows="2" class="w-full mt-1 p-2 border rounded text-sm bg-white"></textarea></div>
-                                <div class="md:col-span-2 flex items-center gap-2"><input type="checkbox" id="log-solved" class="rounded text-indigo-600" checked><label for="log-solved" class="text-sm font-bold text-emerald-700">¿Resuelto?</label></div>
-                                <div class="md:col-span-2 flex justify-end gap-2 mt-2"><button type="button" onclick="toggleForm()" class="px-4 py-2 text-sm text-slate-500">Cancelar</button><button type="button" onclick="saveLog()" class="px-6 py-2 text-sm bg-slate-900 text-white font-bold rounded hover:bg-slate-700">Guardar</button></div>
+                                <div><label class="text-xs font-bold text-slate-500">Solicita <span class="text-red-500">*</span></label><input type="text" id="log-req" class="w-full mt-1 p-2 border rounded text-sm bg-white" placeholder="Nombre del solicitante" required></div>
+                                <div><label class="text-xs font-bold text-slate-500">Ejecuta <span class="text-red-500">*</span></label><input type="text" id="log-exec" class="w-full mt-1 p-2 border rounded text-sm bg-white" placeholder="Nombre del técnico" required></div>
+                                <div><label class="text-xs font-bold text-slate-500">Tipo de Acción</label>
+                                    <select id="log-action" class="w-full mt-1 p-2 border rounded text-sm bg-white">
+                                        <option value="Mantenimiento">Mantenimiento</option>
+                                        <option value="Instalación">Instalación</option>
+                                        <option value="Renovación">Renovación</option>
+                                        <option value="Reparación">Reparación</option>
+                                        <option value="Actualización">Actualización</option>
+                                        <option value="Baja">Baja</option>
+                                        <option value="Incidente">Incidente</option>
+                                        <option value="Revisión">Revisión</option>
+                                    </select>
+                                </div>
+                                <div><label class="text-xs font-bold text-slate-500">Componente</label>
+                                    <select id="log-what" class="w-full mt-1 p-2 border rounded text-sm bg-white">
+                                        <option value="General">General</option>
+                                        <option value="CPU">CPU</option>
+                                        <option value="RAM">RAM</option>
+                                        <option value="Disco">Disco</option>
+                                        <option value="Red">Red</option>
+                                        <option value="Software">Software</option>
+                                        <option value="Hardware">Hardware</option>
+                                        <option value="Alimentación">Alimentación</option>
+                                        <option value="Otro">Otro</option>
+                                    </select>
+                                </div>
+                                <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500">Descripción <span class="text-red-500">*</span></label><textarea id="log-desc" rows="3" class="w-full mt-1 p-2 border rounded text-sm bg-white" placeholder="Describa la acción realizada..." required></textarea></div>
+                                <div class="md:col-span-2 flex items-center gap-2">
+                                    <input type="checkbox" id="log-solved" class="rounded text-indigo-600" checked>
+                                    <label for="log-solved" class="text-sm font-bold text-emerald-700">¿Acción completada?</label>
+                                </div>
+                                <div class="md:col-span-2 flex justify-end gap-2 mt-2">
+                                    <button type="button" onclick="toggleForm()" class="px-4 py-2 text-sm text-slate-500 hover:bg-slate-100 rounded">Cancelar</button>
+                                    <button type="button" onclick="saveLog()" id="save-log-btn" class="px-6 py-2 text-sm bg-slate-900 text-white font-bold rounded hover:bg-slate-700 flex items-center gap-2">
+                                        <i data-lucide="save" class="w-4 h-4"></i> Guardar en Bitácora
+                                    </button>
+                                </div>
                             </form>
                         </div>
-                        <div id="history-timeline" class="space-y-0"></div>
+                        
+                        <!-- Estado de guardado -->
+                        <div id="save-status" class="hidden p-4 rounded-lg mb-4 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <i data-lucide="loader-2" class="animate-spin w-4 h-4"></i>
+                                <span id="save-status-text"></span>
+                            </div>
+                        </div>
+                        
+                        <!-- Historial -->
+                        <div id="history-timeline" class="space-y-0">
+                            <div class="text-center py-8 text-slate-400">
+                                <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2"></i>
+                                <p>Cargando historial...</p>
+                            </div>
+                        </div>
                     </div>
-                    <div class="lg:col-span-4"><div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm sticky top-0"><h3 class="font-bold text-slate-800 mb-4 pb-2 border-b">Ficha Técnica</h3><div class="space-y-4 text-sm" id="specs-summary"></div></div></div>
+                    <div class="lg:col-span-4">
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm sticky top-0">
+                            <h3 class="font-bold text-slate-800 mb-4 pb-2 border-b">Ficha Técnica</h3>
+                            <div class="space-y-4 text-sm" id="specs-summary"></div>
+                            
+                            <div class="mt-6 pt-4 border-t border-slate-100">
+                                <h4 class="font-bold text-slate-700 mb-3 text-xs uppercase">Acciones Rápidas</h4>
+                                <div class="space-y-2">
+                                    <button onclick="addQuickLog('Mantenimiento preventivo')" class="w-full text-left text-xs p-2 hover:bg-slate-50 rounded flex items-center gap-2">
+                                        <i data-lucide="shield" class="w-3 h-3 text-blue-500"></i>
+                                        <span>Mantenimiento Preventivo</span>
+                                    </button>
+                                    <button onclick="addQuickLog('Limpieza física')" class="w-full text-left text-xs p-2 hover:bg-slate-50 rounded flex items-center gap-2">
+                                        <i data-lucide="brush" class="w-3 h-3 text-green-500"></i>
+                                        <span>Limpieza Física</span>
+                                    </button>
+                                    <button onclick="addQuickLog('Actualización de software')" class="w-full text-left text-xs p-2 hover:bg-slate-50 rounded flex items-center gap-2">
+                                        <i data-lucide="refresh-cw" class="w-3 h-3 text-purple-500"></i>
+                                        <span>Actualización Software</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -147,7 +260,85 @@ document.addEventListener('DOMContentLoaded', () => {
 
     lucide.createIcons();
 
-    // 1. CARGA DE DATOS
+    // ============================================
+    // FUNCIONES DE NOTIFICACIÓN
+    // ============================================
+    function showNotification(message, type = 'success') {
+        const notification = document.getElementById('global-notification');
+        notification.className = `notification notification-${type}`;
+        notification.innerHTML = `
+            <i data-lucide="${type === 'success' ? 'check-circle' : type === 'error' ? 'alert-circle' : 'alert-triangle'}" class="w-5 h-5"></i>
+            <span>${message}</span>
+        `;
+        notification.classList.remove('hidden');
+        lucide.createIcons();
+        
+        setTimeout(() => {
+            notification.classList.add('hidden');
+        }, 5000);
+    }
+
+    function showSaveStatus(message, isLoading = false) {
+        const statusDiv = document.getElementById('save-status');
+        const statusText = document.getElementById('save-status-text');
+        const saveBtn = document.getElementById('save-log-btn');
+        
+        if (isLoading) {
+            statusText.textContent = message;
+            statusDiv.classList.remove('hidden');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Guardando...';
+        } else {
+            statusDiv.classList.add('hidden');
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> Guardar en Bitácora';
+        }
+    }
+
+    // ============================================
+    // FUNCIONES DE CONEXIÓN APPSHEET
+    // ============================================
+    window.testAppSheetConnection = async () => {
+        const indicator = document.getElementById('appsheet-status-indicator');
+        const iconDiv = document.getElementById('appsheet-status-icon');
+        const textDiv = document.getElementById('appsheet-status-text');
+        
+        indicator.classList.remove('hidden');
+        iconDiv.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 animate-spin text-blue-500"></i>';
+        textDiv.textContent = 'Probando conexión con AppSheet...';
+        
+        try {
+            const response = await fetch('/api/appsheet/diagnose');
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                const tables = data.diagnosis.tables;
+                const historyOk = tables.device_history === 'connected';
+                
+                if (historyOk) {
+                    iconDiv.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5 text-green-500"></i>';
+                    textDiv.textContent = '✅ AppSheet conectado. Puede guardar fichas.';
+                    indicator.className = 'bg-green-50 border border-green-200 rounded-lg p-3 mb-4';
+                } else {
+                    iconDiv.innerHTML = '<i data-lucide="alert-triangle" class="w-5 h-5 text-yellow-500"></i>';
+                    textDiv.textContent = '⚠️ AppSheet parcialmente conectado. La tabla device_history no está disponible.';
+                    indicator.className = 'bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4';
+                }
+            } else {
+                throw new Error(data.message || 'Error en la conexión');
+            }
+        } catch (error) {
+            iconDiv.innerHTML = '<i data-lucide="alert-circle" class="w-5 h-5 text-red-500"></i>';
+            textDiv.textContent = `❌ Error de conexión: ${error.message}`;
+            indicator.className = 'bg-red-50 border border-red-200 rounded-lg p-3 mb-4';
+        }
+        
+        lucide.createIcons();
+    }
+
+    // ============================================
+    // FUNCIONES PRINCIPALES
+    // ============================================
     async function updateData() {
         try {
             const res = await fetch(API_URL);
@@ -156,7 +347,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             devices.forEach(dev => {
                 if(!dev.unit) dev.unit = "General";
-                if(!dev.latency_history) { dev.latency_history = Array(12).fill(0).map(()=>Math.floor(Math.random()*40+10)); }
+                if(!dev.latency_history) { 
+                    dev.latency_history = Array(12).fill(0).map(()=>Math.floor(Math.random()*40+10)); 
+                }
                 dev.latency_history.push(dev.latency || 20);
                 if(dev.latency_history.length > 12) dev.latency_history.shift();
                 pcDataStore[dev.pc_name] = dev;
@@ -166,10 +359,11 @@ document.addEventListener('DOMContentLoaded', () => {
             updateFilters(devices);
             if(currentPc && pcDataStore[currentPc]) refreshModalData(false);
             document.getElementById('loading-indicator').style.display = 'none';
-        } catch (e) { console.error(e); }
+        } catch (e) { 
+            console.error('Error actualizando datos:', e);
+        }
     }
 
-    // 2. RENDER GRID (CON BARRA CUADRADA)
     function renderGrid() {
         const container = document.getElementById('pc-cards-container');
         const search = document.getElementById('search-bar').value.toLowerCase();
@@ -197,35 +391,70 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = document.createElement('div');
             card.className = 'card cursor-pointer group hover:border-indigo-400';
             card.onclick = () => openModal(pc.pc_name);
-            card.innerHTML = `<div class="flex justify-between items-start mb-2"><div class="truncate pr-2"><h3 class="font-bold text-slate-800 text-sm truncate group-hover:text-indigo-600">${pc.pc_name}</h3><span class="text-[10px] font-bold text-slate-400 uppercase">${pc.unit}</span></div><div class="status-dot ${statusClass} flex-shrink-0"></div></div><div class="flex justify-between items-end mt-1"><span class="text-2xl font-black text-slate-700">${pc.latency || 0}<span class="text-xs text-slate-400 font-bold ml-1">ms</span></span><span class="text-xs font-bold text-slate-500">CPU: ${Math.round(pc.cpu_load_percent||0)}%</span></div>${latencyBarHtml}`;
+            card.innerHTML = `
+                <div class="flex justify-between items-start mb-2">
+                    <div class="truncate pr-2">
+                        <h3 class="font-bold text-slate-800 text-sm truncate group-hover:text-indigo-600">${pc.pc_name}</h3>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">${pc.unit}</span>
+                    </div>
+                    <div class="status-dot ${statusClass} flex-shrink-0"></div>
+                </div>
+                <div class="flex justify-between items-end mt-1">
+                    <span class="text-2xl font-black text-slate-700">${pc.latency || 0}<span class="text-xs text-slate-400 font-bold ml-1">ms</span></span>
+                    <span class="text-xs font-bold text-slate-500">CPU: ${Math.round(pc.cpu_load_percent||0)}%</span>
+                </div>
+                ${latencyBarHtml}
+            `;
             container.appendChild(card);
         });
     }
 
-    // 3. MODAL LOGIC
+    // ============================================
+    // FUNCIONES DEL MODAL
+    // ============================================
     window.openModal = (pcName) => {
         currentPc = pcName;
         const modal = document.getElementById('pc-modal-container');
         const overlay = document.getElementById('pc-modal-overlay');
-        overlay.classList.remove('hidden'); overlay.classList.add('flex');
-        setTimeout(() => { modal.classList.remove('opacity-0', 'scale-95'); modal.classList.add('opacity-100', 'scale-100'); }, 10);
+        overlay.classList.remove('hidden'); 
+        overlay.classList.add('flex');
+        setTimeout(() => { 
+            modal.classList.remove('opacity-0', 'scale-95'); 
+            modal.classList.add('opacity-100', 'scale-100'); 
+        }, 10);
         switchTab('general');
         refreshModalData(true);
-        setTimeout(() => runManualAnalysis(), 500); 
+        setTimeout(() => runManualAnalysis(), 500);
+        
+        // Probar conexión automáticamente
+        setTimeout(() => testAppSheetConnection(), 1000);
     }
 
     window.closeModal = () => {
         const modal = document.getElementById('pc-modal-container');
         const overlay = document.getElementById('pc-modal-overlay');
-        modal.classList.replace('opacity-100', 'opacity-0'); modal.classList.replace('scale-100', 'scale-95');
-        setTimeout(() => { overlay.classList.add('hidden'); overlay.classList.remove('flex'); currentPc = null; }, 300);
+        modal.classList.replace('opacity-100', 'opacity-0'); 
+        modal.classList.replace('scale-100', 'scale-95');
+        setTimeout(() => { 
+            overlay.classList.add('hidden'); 
+            overlay.classList.remove('flex'); 
+            currentPc = null; 
+        }, 300);
     }
 
     function refreshModalData(fullUpdate) {
         if(!currentPc) return;
         const pc = pcDataStore[currentPc];
+        
+        // Actualizar información general
         document.getElementById('modal-pc-name').textContent = pc.pc_name;
-        document.getElementById('modal-status-line').innerHTML = `<span class="px-2 py-0.5 rounded text-xs font-bold ${pc.status==='online'?'bg-emerald-100 text-emerald-700':'bg-red-100 text-red-700'}">${pc.status ? pc.status.toUpperCase() : 'ONLINE'}</span> <span class="text-slate-400">|</span> <span class="font-mono text-slate-500">${pc.public_ip || '-'}</span>`;
+        document.getElementById('modal-status-line').innerHTML = `
+            <span class="px-2 py-0.5 rounded text-xs font-bold ${pc.status==='online'?'bg-emerald-100 text-emerald-700':'bg-red-100 text-red-700'}">
+                ${pc.status ? pc.status.toUpperCase() : 'ONLINE'}
+            </span> 
+            <span class="text-slate-400">|</span> 
+            <span class="font-mono text-slate-500">${pc.public_ip || '-'}</span>
+        `;
         document.getElementById('gen-unit').textContent = pc.unit;
         document.getElementById('gen-ip').textContent = pc.public_ip || '-';
         document.getElementById('gen-seen').textContent = new Date().toLocaleTimeString();
@@ -233,130 +462,471 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('gen-cpu-bar').style.width = (pc.cpu_load_percent||0)+'%';
         document.getElementById('gen-ram-val').textContent = Math.round(pc.ram_percent||0)+'%';
         document.getElementById('gen-ram-bar').style.width = (pc.ram_percent||0)+'%';
+        
         const health = calculateHealth(pc);
         document.getElementById('health-score-val').textContent = health.score + '%';
         document.getElementById('health-icon-container').innerHTML = `<i data-lucide="${health.icon}" class="w-8 h-8 ${health.color}"></i>`;
+        
+        // Actualizar campos del formulario
+        document.getElementById('form-loc').textContent = pc.pc_name;
+        document.getElementById('form-unit').textContent = pc.unit;
+        
         if(fullUpdate) {
             updateLatencyChart(pc.latency_history);
             updateHardwareGrid(pc);
             updateHistoryTab(pc);
+            updateSpecsSummary(pc);
         }
+        
         lucide.createIcons();
+    }
+
+    function updateSpecsSummary(pc) {
+        const specsDiv = document.getElementById('specs-summary');
+        specsDiv.innerHTML = `
+            <div class="space-y-3">
+                <div class="border-b pb-2">
+                    <span class="text-xs text-slate-400 block">ID Activo</span>
+                    <span class="font-bold text-slate-700">${pc.pc_name}</span>
+                </div>
+                <div class="border-b pb-2">
+                    <span class="text-xs text-slate-400 block">Unidad Operativa</span>
+                    <span class="font-bold text-slate-700">${pc.unit}</span>
+                </div>
+                <div class="border-b pb-2">
+                    <span class="text-xs text-slate-400 block">IP Address</span>
+                    <span class="font-mono text-sm text-slate-600">${pc.public_ip || '-'}</span>
+                </div>
+                <div class="border-b pb-2">
+                    <span class="text-xs text-slate-400 block">Estado Actual</span>
+                    <span class="font-bold ${pc.status === 'online' ? 'text-emerald-600' : 'text-red-600'}">
+                        ${pc.status === 'online' ? 'ACTIVO' : 'INACTIVO'}
+                    </span>
+                </div>
+                <div class="border-b pb-2">
+                    <span class="text-xs text-slate-400 block">Última Comunicación</span>
+                    <span class="font-mono text-xs text-slate-600">${new Date().toLocaleString()}</span>
+                </div>
+            </div>
+        `;
     }
 
     function updateHardwareGrid(pc) {
         const grid = document.getElementById('hardware-full-grid');
         grid.innerHTML = '';
-        if(pc.extended_sensors) {
+        
+        if(pc.extended_sensors && Object.keys(pc.extended_sensors).length > 0) {
             for(const [cat, sensors] of Object.entries(pc.extended_sensors)) {
                 sensors.forEach(s => {
-                    grid.innerHTML += `<div class="bg-white p-3 rounded border border-slate-100 shadow-sm text-xs"><span class="block text-slate-400 uppercase font-bold text-[10px]">${cat}</span><span class="block text-slate-600 truncate">${s.nombre||s.tipo}</span><span class="block text-lg font-mono font-bold text-slate-800">${s.valor}</span></div>`;
+                    grid.innerHTML += `
+                        <div class="bg-white p-3 rounded border border-slate-100 shadow-sm text-xs">
+                            <span class="block text-slate-400 uppercase font-bold text-[10px]">${cat}</span>
+                            <span class="block text-slate-600 truncate">${s.nombre||s.tipo}</span>
+                            <span class="block text-lg font-mono font-bold text-slate-800">${s.valor}</span>
+                        </div>
+                    `;
                 });
             }
-        } else { grid.innerHTML = '<div class="col-span-full text-center text-slate-400 py-4">Sin datos extendidos</div>'; }
+        } else { 
+            grid.innerHTML = '<div class="col-span-full text-center text-slate-400 py-4"><i data-lucide="cpu" class="w-8 h-8 mx-auto mb-2"></i><p>Sin datos de sensores disponibles</p></div>'; 
+        }
     }
 
+    // ============================================
+    // FUNCIONES DE BITÁCORA (CRÍTICAS)
+    // ============================================
+    async function updateHistoryTab(pc) {
+        const timeline = document.getElementById('history-timeline');
+        timeline.innerHTML = '<div class="text-center py-8 text-slate-400"><i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i><p>Cargando historial...</p></div>';
+        
+        try {
+            const res = await fetch('/api/history/all');
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+            }
+            
+            const allLogs = await res.json();
+            
+            // Filtrar logs para este dispositivo
+            const logs = allLogs.filter(l => {
+                return l.device_id && pc.pc_name && (
+                    l.device_id.includes(pc.pc_name.split(' ')[0]) || 
+                    l.location_snapshot === pc.pc_name ||
+                    (l.device_id && pc.pc_name.includes(l.device_id))
+                );
+            });
+            
+            timeline.innerHTML = '';
+            
+            if(logs.length === 0) {
+                timeline.innerHTML = `
+                    <div class="text-center py-8 text-slate-400">
+                        <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2"></i>
+                        <p class="text-sm">No hay registros históricos para este dispositivo</p>
+                        <p class="text-xs mt-1">Cree la primera entrada en la bitácora</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Ordenar por fecha (más reciente primero)
+            logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            logs.forEach(log => {
+                const date = new Date(log.timestamp);
+                const timeAgo = Math.floor((new Date() - date) / (1000 * 60 * 60 * 24));
+                const dateStr = date.toLocaleDateString('es-MX', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                const isResolved = log.is_resolved === true || log.is_resolved === 'true';
+                
+                timeline.innerHTML += `
+                    <div class="timeline-item">
+                        <div class="timeline-dot ${isResolved ? 'bg-emerald-500 border-emerald-500' : 'bg-amber-500 border-amber-500'}"></div>
+                        <div class="text-xs text-slate-400 mb-1">${dateStr} (Hace ${timeAgo} días)</div>
+                        <div class="font-bold text-slate-800 text-sm">
+                            ${log.action_type || 'Sin acción'} - ${log.component || 'General'}
+                        </div>
+                        <p class="text-xs text-slate-600 bg-slate-50 p-2 rounded mt-1 border border-slate-100">
+                            ${log.description || 'Sin descripción'}
+                        </p>
+                        <div class="flex gap-4 text-[10px] text-slate-400 mt-2">
+                            <span><i data-lucide="user" class="w-3 h-3 inline mr-1"></i><b>${log.requester || 'Sistema'}</b></span>
+                            <span><i data-lucide="wrench" class="w-3 h-3 inline mr-1"></i><b>${log.executor || 'Pendiente'}</b></span>
+                            ${isResolved ? 
+                                '<span class="text-emerald-600 font-bold ml-auto flex items-center gap-1"><i data-lucide="check-circle" class="w-3 h-3"></i>Resuelto</span>' : 
+                                '<span class="text-amber-600 font-bold ml-auto flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i>Pendiente</span>'
+                            }
+                        </div>
+                    </div>
+                `;
+            });
+            
+        } catch(e) { 
+            console.error('Error cargando historial:', e);
+            timeline.innerHTML = `
+                <div class="text-center py-8 text-red-400">
+                    <i data-lucide="alert-circle" class="w-8 h-8 mx-auto mb-2"></i>
+                    <p class="text-sm">Error cargando historial</p>
+                    <p class="text-xs mt-1">${e.message || 'Verifique la conexión con AppSheet'}</p>
+                </div>
+            `;
+        }
+        
+        lucide.createIcons();
+    }
+
+    window.toggleForm = () => {
+        const formContainer = document.getElementById('log-form-container');
+        formContainer.classList.toggle('hidden');
+        
+        if (!formContainer.classList.contains('hidden')) {
+            // Resetear formulario
+            document.getElementById('new-log-form').reset();
+            
+            // Auto-completar con valores por defecto
+            const pc = pcDataStore[currentPc];
+            if (pc) {
+                document.getElementById('log-req').value = 'Administrador';
+                document.getElementById('log-exec').value = 'Técnico';
+                document.getElementById('log-desc').focus();
+            }
+        }
+    }
+
+    window.addQuickLog = (description) => {
+        const formContainer = document.getElementById('log-form-container');
+        if (formContainer.classList.contains('hidden')) {
+            toggleForm();
+        }
+        
+        document.getElementById('log-desc').value = description;
+        document.getElementById('log-action').value = 'Mantenimiento';
+        document.getElementById('log-what').value = 'General';
+        document.getElementById('log-solved').checked = true;
+    }
+
+    window.saveLog = async () => {
+        if (!currentPc) {
+            showNotification('No hay dispositivo seleccionado', 'error');
+            return;
+        }
+        
+        const pc = pcDataStore[currentPc];
+        if (!pc) {
+            showNotification('Dispositivo no encontrado', 'error');
+            return;
+        }
+        
+        // Validar campos obligatorios
+        const requester = document.getElementById('log-req').value.trim();
+        const executor = document.getElementById('log-exec').value.trim();
+        const description = document.getElementById('log-desc').value.trim();
+        
+        if (!requester || !executor || !description) {
+            showNotification('Complete todos los campos obligatorios (*)', 'warning');
+            return;
+        }
+        
+        // Preparar datos
+        const newLog = {
+            device_name: pc.pc_name,
+            pc_name: pc.pc_name, // Campo adicional para compatibilidad
+            req: requester,
+            exec: executor,
+            action: document.getElementById('log-action').value,
+            what: document.getElementById('log-what').value,
+            desc: description,
+            solved: document.getElementById('log-solved').checked,
+            locName: pc.pc_name,
+            unit: pc.unit,
+            status_snapshot: document.getElementById('log-action').value === 'Baja' ? 'inactive' : 'active',
+            timestamp: new Date().toISOString()
+        };
+        
+        console.log('Enviando ficha a AppSheet:', newLog);
+        
+        // Mostrar estado de guardado
+        showSaveStatus('Enviando a AppSheet...', true);
+        
+        try {
+            const response = await fetch('/api/history/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(newLog)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok && result.status === 'success') {
+                showNotification('✅ Ficha guardada exitosamente en AppSheet', 'success');
+                
+                // Resetear formulario
+                document.getElementById('new-log-form').reset();
+                toggleForm();
+                
+                // Actualizar historial
+                updateHistoryTab(pc);
+                
+                // Si es una baja, actualizar estado del dispositivo
+                if (newLog.action === 'Baja') {
+                    pc.status = 'offline';
+                    refreshModalData(false);
+                }
+            } else {
+                throw new Error(result.message || 'Error en la respuesta del servidor');
+            }
+            
+        } catch (error) {
+            console.error('Error guardando ficha:', error);
+            showNotification(`❌ Error: ${error.message || 'No se pudo conectar con el servidor'}`, 'error');
+            
+            // Mostrar más detalles en consola
+            if (error.response) {
+                console.error('Respuesta del servidor:', error.response);
+            }
+        } finally {
+            showSaveStatus('', false);
+        }
+    }
+
+    // ============================================
+    // FUNCIONES AUXILIARES
+    // ============================================
     window.runManualAnalysis = () => {
         const loading = document.getElementById('ai-loading');
         const results = document.getElementById('ai-results');
-        loading.classList.remove('hidden'); results.classList.add('hidden');
+        loading.classList.remove('hidden'); 
+        results.classList.add('hidden');
+        
         setTimeout(() => {
             const pc = pcDataStore[currentPc];
             const anom = document.getElementById('ai-anomalies-list');
             const rec = document.getElementById('ai-recommendations-list');
-            anom.innerHTML = ''; rec.innerHTML = '';
+            anom.innerHTML = ''; 
+            rec.innerHTML = '';
+            
             let anomalies = [];
-            if(pc.status === 'offline') anomalies.push("Equipo fuera de línea (Ping Timeout)");
-            if(pc.cpu_load_percent > 85) anomalies.push(`CPU Saturada (${Math.round(pc.cpu_load_percent)}%)`);
-            if(pc.disk_percent > 90) anomalies.push(`Disco casi lleno (${Math.round(pc.disk_percent)}%)`);
-            if(pc.latency > 100) anomalies.push(`Latencia Crítica (${pc.latency}ms)`);
-            if(anomalies.length === 0) { anom.innerHTML = '<div class="text-emerald-600 bg-emerald-50 p-3 rounded">No se detectaron anomalías críticas.</div>'; rec.innerHTML = '<div class="text-slate-600">El equipo opera nominalmente.</div>'; } 
-            else { anomalies.forEach(a => anom.innerHTML += `<div class="text-rose-600 bg-rose-50 p-2 rounded mb-2 font-medium">• ${a}</div>`); rec.innerHTML = `<div class="text-slate-700 p-2 border-l-4 border-indigo-500 bg-slate-50">Se recomienda reinicio programado y revisión de logs.</div>`; }
-            loading.classList.add('hidden'); results.classList.remove('hidden');
-        }, 1000);
+            let recommendations = [];
+            
+            // Análisis de anomalías
+            if(pc.status === 'offline') {
+                anomalies.push("Equipo fuera de línea (Ping Timeout)");
+                recommendations.push("Verificar conexión de red y alimentación eléctrica");
+            }
+            if(pc.cpu_load_percent > 85) {
+                anomalies.push(`CPU Saturada (${Math.round(pc.cpu_load_percent)}%)`);
+                recommendations.push("Revisar procesos en segundo plano y considerar upgrade de hardware");
+            }
+            if(pc.disk_percent > 90) {
+                anomalies.push(`Disco casi lleno (${Math.round(pc.disk_percent)}%)`);
+                recommendations.push("Liberar espacio en disco y programar mantenimiento de almacenamiento");
+            }
+            if(pc.latency > 100) {
+                anomalies.push(`Latencia Crítica (${pc.latency}ms)`);
+                recommendations.push("Optimizar configuración de red y verificar ancho de banda");
+            }
+            
+            if(anomalies.length === 0) {
+                anom.innerHTML = '<div class="text-emerald-600 bg-emerald-50 p-3 rounded text-sm"><i data-lucide="check-circle" class="w-4 h-4 inline mr-2"></i>No se detectaron anomalías críticas.</div>';
+                rec.innerHTML = '<div class="text-slate-600 p-3 border-l-4 border-emerald-500 bg-slate-50"><i data-lucide="thumbs-up" class="w-4 h-4 inline mr-2"></i>El equipo opera dentro de parámetros normales.</div>';
+            } else {
+                anomalies.forEach(a => {
+                    anom.innerHTML += `<div class="text-rose-600 bg-rose-50 p-3 rounded mb-2 text-sm"><i data-lucide="alert-triangle" class="w-4 h-4 inline mr-2"></i>${a}</div>`;
+                });
+                
+                recommendations.forEach((r, i) => {
+                    rec.innerHTML += `<div class="text-slate-700 p-3 border-l-4 border-indigo-500 bg-slate-50 mb-2 text-sm"><span class="font-bold">${i+1}.</span> ${r}</div>`;
+                });
+            }
+            
+            loading.classList.add('hidden'); 
+            results.classList.remove('hidden');
+            lucide.createIcons();
+        }, 1500);
     }
 
     function calculateHealth(pc) {
         let score = 100;
-        if(pc.status==='offline') score = 0;
+        if(pc.status === 'offline') score = 0;
         else {
             if(pc.cpu_load_percent > 80) score -= 20;
             if(pc.disk_percent > 90) score -= 15;
+            if(pc.latency > 100) score -= 10;
+            if(pc.ram_percent > 85) score -= 10;
         }
+        
         let color = 'text-emerald-500', icon = 'check-circle';
-        if(score < 80) { color='text-amber-500'; icon='alert-triangle'; }
-        if(score < 50) { color='text-rose-500'; icon='alert-octagon'; }
-        return {score, color, icon};
-    }
-
-    async function updateHistoryTab(pc) {
-        document.getElementById('form-loc').textContent = pc.pc_name;
-        document.getElementById('form-unit').textContent = pc.unit;
-        document.getElementById('specs-summary').innerHTML = `<div class="grid grid-cols-1 gap-3"><div class="border-b pb-2"><span class="text-xs text-slate-400 block">ID Activo</span><span class="font-bold text-slate-700">${pc.pc_name}</span></div><div class="border-b pb-2"><span class="text-xs text-slate-400 block">Ubicación</span><span class="font-bold text-slate-700">${pc.unit}</span></div><div class="border-b pb-2"><span class="text-xs text-slate-400 block">IP Address</span><span class="font-mono text-sm text-slate-600">${pc.public_ip || '-'}</span></div></div>`;
-        const timeline = document.getElementById('history-timeline');
-        timeline.innerHTML = '<div class="text-center text-xs text-slate-400">Cargando...</div>';
-        try {
-            const res = await fetch('/api/history/all');
-            const allLogs = await res.json();
-            const logs = allLogs.filter(l => l.device_id.includes(pc.pc_name.split(' ')[0]) || l.location_snapshot === pc.pc_name);
-            timeline.innerHTML = '';
-            if(logs.length === 0) timeline.innerHTML = '<div class="text-center py-4 text-slate-400 italic">Sin registros</div>';
-            logs.forEach(log => {
-                const timeAgo = Math.floor((new Date() - new Date(log.timestamp)) / (1000 * 60 * 60 * 24));
-                timeline.innerHTML += `<div class="timeline-item"><div class="timeline-dot"></div><div class="text-xs text-slate-400 mb-1">${new Date(log.timestamp).toLocaleDateString()} (Hace ${timeAgo} días)</div><div class="font-bold text-slate-800 text-sm">${log.action_type} - ${log.component}</div><p class="text-xs text-slate-600 bg-slate-50 p-2 rounded mt-1 border border-slate-100">${log.description}</p><div class="flex gap-4 text-[10px] text-slate-400 mt-2"><span>Sol: <b>${log.requester}</b></span><span>Ejec: <b>${log.executor}</b></span>${log.is_resolved==='true'?'<span class="text-emerald-600 font-bold ml-auto">Resuelto</span>':''}</div></div>`;
-            });
-        } catch(e) { timeline.innerHTML = '<div class="text-center text-red-400 text-xs">Error</div>'; }
-    }
-
-    window.toggleForm = () => document.getElementById('log-form-container').classList.toggle('hidden');
-
-    window.saveLog = async () => {
-        const pc = pcDataStore[currentPc];
-        const newLog = {
-            device_name: pc.pc_name,
-            req: document.getElementById('log-req').value,
-            exec: document.getElementById('log-exec').value,
-            action: document.getElementById('log-action').value,
-            what: document.getElementById('log-what').value,
-            desc: document.getElementById('log-desc').value,
-            solved: document.getElementById('log-solved').checked,
-            locName: pc.pc_name,
-            unit: pc.unit,
-            status_snapshot: document.getElementById('log-action').value === 'Baja' ? 'inactive' : 'active'
-        };
-        if(!newLog.exec || !newLog.desc) return alert("Complete campos obligatorios");
-        try {
-            await fetch('/api/history/add', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(newLog) });
-            updateHistoryTab(pc);
-            toggleForm();
-            document.getElementById('new-log-form').reset();
-        } catch(e) { alert("Error guardando"); }
+        if(score < 80) { color = 'text-amber-500'; icon = 'alert-triangle'; }
+        if(score < 50) { color = 'text-rose-500'; icon = 'alert-octagon'; }
+        return {score: Math.max(0, score), color, icon};
     }
 
     window.exportToPDF = () => {
         if(!currentPc) return;
         const pc = pcDataStore[currentPc];
-        const doc = new window.jspdf.jsPDF();
-        doc.setFontSize(18); doc.text("Ficha Técnica - Argos AI", 14, 20);
-        doc.setFontSize(12); doc.text(`Activo: ${pc.pc_name}`, 14, 30);
-        const headers = [['Métrica', 'Valor']];
-        const data = [['IP', pc.public_ip||'-'], ['CPU', Math.round(pc.cpu_load_percent||0)+'%'], ['RAM', Math.round(pc.ram_percent||0)+'%']];
-        doc.autoTable({ startY: 45, head: headers, body: data });
-        doc.save(`${pc.pc_name}_ficha.pdf`);
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        doc.setFontSize(18);
+        doc.text("FICHA TÉCNICA - SISTEMA ARGOS", 14, 20);
+        doc.setFontSize(10);
+        doc.text(`Generado: ${new Date().toLocaleDateString('es-MX')}`, 14, 30);
+        
+        doc.setFontSize(14);
+        doc.text(`Activo: ${pc.pc_name}`, 14, 45);
+        doc.setFontSize(12);
+        doc.text(`Unidad: ${pc.unit} | IP: ${pc.public_ip || '-'}`, 14, 55);
+        
+        const headers = [['Métrica', 'Valor', 'Estado']];
+        const data = [
+            ['Estado', pc.status === 'online' ? 'ACTIVO' : 'INACTIVO', pc.status === 'online' ? '✅' : '❌'],
+            ['CPU', Math.round(pc.cpu_load_percent||0)+'%', pc.cpu_load_percent > 85 ? '⚠️' : '✅'],
+            ['RAM', Math.round(pc.ram_percent||0)+'%', pc.ram_percent > 85 ? '⚠️' : '✅'],
+            ['Latencia', pc.latency + 'ms', pc.latency > 100 ? '⚠️' : '✅'],
+            ['Última Com.', new Date().toLocaleTimeString(), '✅']
+        ];
+        
+        doc.autoTable({
+            startY: 65,
+            head: headers,
+            body: data,
+            theme: 'grid',
+            headStyles: { fillColor: [59, 130, 246] }
+        });
+        
+        doc.setFontSize(10);
+        doc.text("Sistema Argos - Monitoreo Inteligente de Activos", 14, doc.lastAutoTable.finalY + 10);
+        
+        doc.save(`${pc.pc_name}_ficha_${new Date().toISOString().slice(0,10)}.pdf`);
+        showNotification('Ficha PDF generada y descargada', 'success');
     }
 
     function updateLatencyChart(data) {
         if (charts.latency) charts.latency.destroy();
         const ctx = document.getElementById('latency-chart').getContext('2d');
-        charts.latency = new Chart(ctx, { type: 'line', data: { labels: Array(data.length).fill(''), datasets: [{ data: data, borderColor: '#6366f1', borderWidth: 2, tension: 0.4, pointRadius: 0, fill: true, backgroundColor: 'rgba(99,102,241,0.1)' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: {legend:false}, scales: {x:{display:false}, y:{display:true, grid:{borderDash:[4,4]}}} } });
+        charts.latency = new Chart(ctx, { 
+            type: 'line', 
+            data: { 
+                labels: Array(data.length).fill(''), 
+                datasets: [{
+                    data: data, 
+                    borderColor: '#6366f1', 
+                    borderWidth: 2, 
+                    tension: 0.4, 
+                    pointRadius: 0, 
+                    fill: true, 
+                    backgroundColor: 'rgba(99,102,241,0.1)'
+                }] 
+            }, 
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                plugins: {legend: false}, 
+                scales: {
+                    x: {display: false}, 
+                    y: {
+                        display: true, 
+                        grid: {borderDash: [4,4]},
+                        ticks: {
+                            callback: function(value) {
+                                return value + 'ms';
+                            }
+                        }
+                    }
+                }
+            } 
+        });
     }
 
-    window.switchTab = (id) => { document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden')); document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active')); document.getElementById('tab-' + id).classList.remove('hidden'); document.querySelector(`[data-tab="${id}"]`).classList.add('active'); }
-    function updateFilters(devices) { const select = document.getElementById('unit-filter'); if(select.options.length > 1) return; [...new Set(devices.map(d => d.unit))].forEach(u => select.appendChild(new Option(u, u))); }
-    document.getElementById('modal-tabs').onclick = (e) => { if(e.target.closest('.modal-tab')) switchTab(e.target.closest('.modal-tab').dataset.tab); };
-    document.getElementById('search-bar').oninput = renderGrid;
-    document.getElementById('unit-filter').onchange = renderGrid;
-    setInterval(updateData, 3000); updateData();
+    window.switchTab = (id) => {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+        document.getElementById('tab-' + id).classList.remove('hidden');
+        document.querySelector(`[data-tab="${id}"]`).classList.add('active');
+        
+        // Actualizar datos específicos de la pestaña
+        if (id === 'specs' && currentPc) {
+            const pc = pcDataStore[currentPc];
+            updateHistoryTab(pc);
+        }
+    }
+
+    function updateFilters(devices) {
+        const select = document.getElementById('unit-filter');
+        if(select.options.length > 1) return;
+        const units = [...new Set(devices.map(d => d.unit || 'General'))];
+        units.forEach(u => {
+            const option = new Option(u, u);
+            select.appendChild(option);
+        });
+    }
+
+    // ============================================
+    // EVENT LISTENERS
+    // ============================================
+    document.getElementById('modal-tabs').addEventListener('click', (e) => {
+        if(e.target.closest('.modal-tab')) {
+            switchTab(e.target.closest('.modal-tab').dataset.tab);
+        }
+    });
+    
+    document.getElementById('search-bar').addEventListener('input', renderGrid);
+    document.getElementById('unit-filter').addEventListener('change', renderGrid);
+    
+    // Auto-reload cada 5 segundos
+    setInterval(updateData, 5000);
+    
+    // Carga inicial
+    updateData();
 });
 </script>
 {% endblock %}
