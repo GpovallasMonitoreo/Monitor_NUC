@@ -51,20 +51,14 @@ class AppSheetService:
     def generate_device_id(self, pc_name: str) -> str:
         """
         Genera el ID. Si viene con formato de sitio (MX_...), usa la clave.
-        Ejemplo entrada: "MX_CM_EV_MGP_17_3420 PERIFERICO SUR 1181"
-        Ejemplo salida ID: "MX_CM_EV_MGP_17_3420"
         """
         try:
             if pc_name and pc_name.strip().upper().startswith("MX_"):
-                # Tomamos la primera parte antes del espacio
                 parts = pc_name.strip().split(' ')
                 if len(parts) > 0:
                     clean_id = parts[0].strip()
-                    # Validación extra: que tenga longitud razonable
                     if len(clean_id) > 5:
                         return clean_id
-            
-            # Fallback: Si no tiene formato MX_, usamos Hash MD5 como antes
             return hashlib.md5(pc_name.encode()).hexdigest()[:16].upper()
         except Exception:
             return hashlib.md5(pc_name.encode()).hexdigest()[:16].upper()
@@ -96,7 +90,7 @@ class AppSheetService:
 
             device_row = {
                 "device_id": device_id,
-                "pc_name": device_data['pc_name'], # Guardamos nombre completo
+                "pc_name": device_data['pc_name'],
                 "unit": device_data.get('unit', 'General'),
                 "public_ip": device_data.get('public_ip', device_data.get('ip', '')),
                 "last_known_location": location,
@@ -104,7 +98,7 @@ class AppSheetService:
                 "status": device_data.get('status', 'online'),
                 "updated_at": datetime.now().isoformat()
             }
-            # Intentar Add y luego Edit para asegurar
+            # Add y Edit para asegurar
             self._make_safe_request("devices", "Add", [device_row])
             self._make_safe_request("devices", "Edit", [device_row])
             self.last_sync_time = datetime.now()
@@ -163,21 +157,37 @@ class AppSheetService:
         }
 
     def get_system_stats(self, days: int = 1) -> Dict[str, Any]:
+        """Calcula estadísticas leyendo Devices (para el total) y Latency (para el historial)"""
         try:
             if not self.enabled: return self._get_default_stats()
             
+            stats = self._get_default_stats()
+
+            # 1. Obtener TOTAL de dispositivos registrados (Tabla devices)
+            # Esto corrige el "--" en Dispositivos Sincronizados
+            devices_response = self._make_safe_request("devices", "Find", []) # Find vacío trae todo
+            if isinstance(devices_response, list):
+                stats['total_devices'] = len(devices_response)
+            
+            # 2. Obtener historial reciente (Tabla latency_history)
             latency_data = self._make_safe_request("latency_history", "Get") or []
             if not isinstance(latency_data, list): latency_data = []
-            
-            stats = self._get_default_stats()
             
             if latency_data:
                 latencies = []
                 cpus = []
                 online_count = 0
                 
+                # Filtrar solo registros de HOY para "Registros Hoy"
+                today_str = datetime.now().strftime('%Y-%m-%d')
+                records_today = 0
+
                 for row in latency_data:
                     try:
+                        # Contar registros de hoy
+                        if row.get('timestamp') and str(row['timestamp']).startswith(today_str):
+                            records_today += 1
+
                         if row.get('latency_ms'): latencies.append(float(row['latency_ms']))
                         if row.get('cpu_percent'): cpus.append(float(row['cpu_percent']))
                         if row.get('status') == 'online': online_count += 1
@@ -186,7 +196,7 @@ class AppSheetService:
                 if latencies: stats['avg_latency'] = round(sum(latencies) / len(latencies), 2)
                 if cpus: stats['avg_cpu'] = round(sum(cpus) / len(cpus), 2)
                 
-                stats['total_records'] = len(latency_data)
+                stats['total_records'] = records_today # Mostrar registros de hoy en el dashboard
                 stats['uptime_percent'] = round((online_count / len(latency_data) * 100), 1) if latency_data else 0
             
             if self.last_sync_time:
@@ -200,6 +210,6 @@ class AppSheetService:
 
     def _get_default_stats(self) -> Dict[str, Any]:
         return {
-            'avg_latency': 0, 'avg_cpu': 0, 'total_records': 0,
+            'avg_latency': 0, 'avg_cpu': 0, 'total_records': 0, 'total_devices': 0,
             'uptime_percent': 0, 'last_sync': None
         }
