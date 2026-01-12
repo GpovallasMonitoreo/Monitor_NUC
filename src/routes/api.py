@@ -154,6 +154,53 @@ def appsheet_diagnose():
             "message": str(e)
         }), 500
 
+@bp.route('/appsheet/test-history', methods=['POST'])
+def test_history_entry():
+    """Endpoint para probar la inserción de una ficha de prueba"""
+    try:
+        if not src.appsheet:
+            return jsonify({
+                "status": "error", 
+                "message": "AppSheet no inicializado"
+            }), 500
+        
+        # Crear datos de prueba
+        test_data = {
+            "device_name": f"MX_TEST_{datetime.now().strftime('%H%M%S')}",
+            "pc_name": f"MX_TEST_{datetime.now().strftime('%H%M%S')}",
+            "unit": "ECOVALLAS",
+            "action": "Prueba de Sistema",
+            "what": "Software",
+            "desc": "Prueba automática de funcionalidad de bitácora",
+            "req": "Sistema Automático",
+            "exec": "API Test",
+            "solved": True,
+            "timestamp": datetime.now(TZ_MX).isoformat()
+        }
+        
+        # Log para debugging
+        print(f"🧪 Enviando datos de prueba: {json.dumps(test_data, indent=2)}")
+        
+        success = src.appsheet.add_history_entry(test_data)
+        
+        if success:
+            return jsonify({
+                "status": "success", 
+                "message": "Prueba de inserción exitosa",
+                "test_data": test_data
+            })
+        else:
+            return jsonify({
+                "status": "error", 
+                "message": "Prueba de inserción falló"
+            }), 500
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error", 
+            "message": f"Error en prueba: {str(e)}"
+        }), 500
+
 # --- RUTAS BITÁCORA ---
 @bp.route('/history/all', methods=['GET'])
 def get_history():
@@ -161,11 +208,15 @@ def get_history():
     try:
         if src.appsheet: 
             history = src.appsheet.get_full_history()
+            print(f"📊 API: Devolviendo {len(history)} registros de historial")
+            if history and len(history) > 0:
+                print(f"📊 Primer registro: {history[0].get('device_id')} - {history[0].get('action_type')}")
             return jsonify(history)
         
         return jsonify([])
         
     except Exception as e:
+        print(f"❌ Error en /history/all: {e}")
         return jsonify({
             "status": "error", 
             "message": str(e),
@@ -183,6 +234,8 @@ def add_history():
                 "message": "No se recibieron datos"
             }), 400
         
+        print(f"📨 API /history/add recibió: {json.dumps(data, indent=2)}")
+        
         # Validación flexible para aceptar device_name o pc_name
         if 'device_name' not in data and 'pc_name' not in data:
             return jsonify({
@@ -190,21 +243,19 @@ def add_history():
                 "message": "Falta nombre del dispositivo (device_name o pc_name)"
             }), 400
         
-        # Log para debug
-        print(f"📨 Recibiendo ficha: {json.dumps(data, indent=2)}")
-        
         if src.appsheet and src.appsheet.add_history_entry(data):
             return jsonify({
                 "status": "success", 
-                "message": "Ficha guardada exitosamente"
+                "message": "Ficha guardada exitosamente en AppSheet"
             })
         
         return jsonify({
             "status": "error", 
-            "message": "No se pudo guardar en AppSheet. Verifica la conexión."
+            "message": "No se pudo guardar en AppSheet. Verifica la conexión y formato de datos."
         }), 500
         
     except Exception as e:
+        print(f"❌ Error en /history/add: {e}")
         return jsonify({
             "status": "error", 
             "message": f"Error interno: {str(e)}"
