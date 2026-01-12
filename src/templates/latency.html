@@ -1,5 +1,4 @@
 {% extends 'base.html' %}
-
 {% block header_title %}Centro de Monitoreo de Latencia y Hardware{% endblock %}
 
 {% block content %}
@@ -9,33 +8,25 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 
 <style>
-    /* UI CARDS & GRID */
     .card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 1.25rem; transition: all 0.2s; position: relative; overflow: hidden; }
     .card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px -5px rgba(0,0,0,0.1); border-color: #6366f1; }
     
-    /* BARRA DE LATENCIA CUADRADA (Retro Style) */
-    .latency-grid { display: flex; gap: 2px; margin-top: 8px; height: 8px; }
-    .latency-block { flex: 1; border-radius: 2px; background-color: #e2e8f0; transition: background-color 0.3s; }
-    .lb-low { background-color: #10b981; } /* Verde */
-    .lb-med { background-color: #f59e0b; } /* Amarillo */
-    .lb-high { background-color: #ef4444; } /* Rojo */
+    /* BARRA LATENCIA CUADRADA */
+    .latency-grid { display: flex; gap: 2px; margin-top: 8px; height: 10px; width: 100%; }
+    .latency-block { flex: 1; background-color: #e2e8f0; border-radius: 1px; }
+    .lb-low { background-color: #10b981; }
+    .lb-med { background-color: #f59e0b; }
+    .lb-high { background-color: #ef4444; }
 
-    /* STATUS DOTS */
     .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
     .status-online { background: #10b981; box-shadow: 0 0 8px #10b981; }
     .status-offline { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
     .status-warning { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
     
-    /* MODAL CENTRADO */
-    #pc-modal-overlay { z-index: 50; } 
-    .modal-content { max-height: 90vh; display: flex; flex-direction: column; }
-    
-    /* TABS */
-    .modal-tab { padding: 1rem; border-bottom: 2px solid transparent; font-weight: 600; color: #64748b; transition: 0.2s; }
-    .modal-tab:hover { color: #4f46e5; background: #f8fafc; }
+    #pc-modal-overlay { z-index: 999; } 
+    .modal-tab { padding: 1rem; border-bottom: 2px solid transparent; font-weight: 600; color: #64748b; cursor: pointer; }
     .modal-tab.active { color: #4f46e5; border-color: #4f46e5; background: #eff6ff; }
 
-    /* TIMELINE */
     .timeline-item { position: relative; padding-left: 2rem; padding-bottom: 2rem; border-left: 2px solid #e2e8f0; }
     .timeline-item:last-child { border-left: 2px solid transparent; }
     .timeline-dot { position: absolute; left: -9px; top: 0; width: 16px; height: 16px; border-radius: 50%; background: white; border: 3px solid #cbd5e1; }
@@ -43,39 +34,26 @@
 
 <div class="p-6 max-w-[1800px] mx-auto">
     <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <div>
-            <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <i data-lucide="activity" class="text-indigo-600"></i> Estado de Activos
-            </h2>
-            <p class="text-slate-500 text-xs mt-1">Monitoreo en tiempo real</p>
-        </div>
+        <div><h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2"><i data-lucide="activity" class="text-indigo-600"></i> Estado de Activos</h2><p class="text-slate-500 text-xs mt-1">Monitoreo en tiempo real</p></div>
         <div class="flex items-center gap-3">
             <select id="unit-filter" class="p-2 text-sm border border-slate-300 rounded-lg focus:ring-indigo-500 outline-none"><option value="all">Todas las Unidades</option></select>
             <input type="search" id="search-bar" placeholder="Buscar..." class="p-2 text-sm border border-slate-300 rounded-lg w-64 focus:ring-indigo-500 outline-none">
         </div>
     </div>
 
+    <div id="loading-indicator" class="flex justify-center p-10"><i data-lucide="loader-2" class="animate-spin text-indigo-600 w-8 h-8"></i></div>
     <div id="pc-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
 </div>
 
 <div id="pc-modal-overlay" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div id="pc-modal-container" class="bg-white w-full max-w-6xl rounded-2xl shadow-2xl modal-content overflow-hidden transform scale-95 opacity-0 transition-all duration-300">
-        
+    <div id="pc-modal-container" class="bg-white w-full max-w-6xl h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden transform scale-95 opacity-0 transition-all duration-300">
         <div class="flex justify-between items-start p-6 border-b border-slate-100 bg-white sticky top-0 z-10">
-            <div>
-                <h2 id="modal-pc-name" class="text-2xl font-bold text-slate-800"></h2>
-                <div id="modal-status-line" class="mt-1 flex items-center gap-2 text-sm"></div>
-            </div>
+            <div><h2 id="modal-pc-name" class="text-2xl font-bold text-slate-800"></h2><div id="modal-status-line" class="mt-1 flex items-center gap-2 text-sm"></div></div>
             <div class="flex gap-2">
-                <button onclick="exportToPDF()" class="text-indigo-600 hover:bg-indigo-50 px-3 py-2 rounded-lg text-sm font-bold border border-indigo-200 transition flex items-center gap-2">
-                    <i data-lucide="file-down" class="w-4 h-4"></i> Descargar Ficha
-                </button>
-                <button onclick="closeModal()" class="text-slate-400 hover:text-rose-500 hover:bg-rose-50 p-2 rounded-lg transition">
-                    <i data-lucide="x" class="w-6 h-6"></i>
-                </button>
+                <button onclick="exportToPDF()" class="text-indigo-600 hover:bg-indigo-50 px-3 py-2 rounded-lg text-sm font-bold border border-indigo-200 transition flex items-center gap-2"><i data-lucide="file-down" class="w-4 h-4"></i> Ficha</button>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-rose-500 hover:bg-rose-50 p-2 rounded-lg transition"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
         </div>
-
         <div class="border-b border-slate-200 bg-white px-6">
             <nav class="flex space-x-1" id="modal-tabs">
                 <button data-tab="general" class="modal-tab active">General</button>
@@ -84,21 +62,20 @@
                 <button data-tab="specs" class="modal-tab">Ficha & Bitácora</button>
             </nav>
         </div>
-
         <div class="p-8 overflow-y-auto bg-slate-50 flex-1">
             
             <div id="tab-general" class="tab-content">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                     <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                        <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">IDENTIDAD DE RED</h4>
+                        <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">IDENTIDAD</h4>
                         <div class="space-y-3 text-sm">
                             <div class="flex justify-between"><span class="text-slate-500">Unidad</span><span id="gen-unit" class="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded"></span></div>
-                            <div class="flex justify-between"><span class="text-slate-500">IP Pública</span><span id="gen-ip" class="font-mono text-slate-700"></span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">IP</span><span id="gen-ip" class="font-mono text-slate-700"></span></div>
                             <div class="flex justify-between"><span class="text-slate-500">Conexión</span><span id="gen-seen" class="text-slate-700 font-medium"></span></div>
                         </div>
                     </div>
                     <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                        <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">MÉTRICAS CORE</h4>
+                        <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">CARGA</h4>
                         <div class="space-y-4">
                             <div><div class="flex justify-between text-xs mb-1"><span>CPU</span><span id="gen-cpu-val" class="font-bold"></span></div><div class="w-full bg-slate-100 rounded-full h-1.5"><div id="gen-cpu-bar" class="bg-indigo-500 h-1.5 rounded-full" style="width:0%"></div></div></div>
                             <div><div class="flex justify-between text-xs mb-1"><span>RAM</span><span id="gen-ram-val" class="font-bold"></span></div><div class="w-full bg-slate-100 rounded-full h-1.5"><div id="gen-ram-bar" class="bg-purple-500 h-1.5 rounded-full" style="width:0%"></div></div></div>
@@ -117,98 +94,46 @@
             </div>
 
             <div id="tab-hardware" class="tab-content hidden">
-                <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-lg mb-6">
-                    <p class="text-xs text-indigo-800 font-medium">
-                        <i data-lucide="info" class="w-4 h-4 inline mr-1"></i> 
-                        Lectura directa de sensores de placa base (Fan, Voltage, Temp, Clock).
-                    </p>
-                </div>
+                <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-lg mb-6"><p class="text-xs text-indigo-800 font-medium"><i data-lucide="info" class="w-4 h-4 inline mr-1"></i> Lectura directa de sensores.</p></div>
                 <div id="hardware-full-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
             </div>
 
             <div id="tab-predictive" class="tab-content hidden">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-lg font-bold text-slate-800">Motor de Análisis Argos AI</h3>
-                    <button onclick="runManualAnalysis()" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition">
-                        <i data-lucide="play" class="w-4 h-4"></i> Ejecutar Análisis
-                    </button>
+                    <h3 class="text-lg font-bold text-slate-800">Argos AI</h3>
+                    <button onclick="runManualAnalysis()" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition"><i data-lucide="play" class="w-4 h-4"></i> Ejecutar Análisis</button>
                 </div>
-                
-                <div id="ai-loading" class="hidden p-8 text-center text-indigo-600">
-                    <i data-lucide="loader-2" class="w-8 h-8 animate-spin mx-auto mb-2"></i>
-                    <p>Procesando telemetría...</p>
-                </div>
-
+                <div id="ai-loading" class="hidden p-8 text-center text-indigo-600"><i data-lucide="loader-2" class="w-8 h-8 animate-spin mx-auto mb-2"></i><p>Procesando...</p></div>
                 <div id="ai-results" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-full">
-                        <h4 class="font-bold text-slate-700 mb-4 flex items-center"><i data-lucide="search" class="w-4 h-4 mr-2 text-indigo-500"></i>Hallazgos</h4>
-                        <div id="ai-anomalies-list" class="space-y-3 text-sm"></div>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-full">
-                        <h4 class="font-bold text-slate-700 mb-4 flex items-center"><i data-lucide="check-circle-2" class="w-4 h-4 mr-2 text-emerald-500"></i>Recomendaciones</h4>
-                        <div id="ai-recommendations-list" class="space-y-3 text-sm"></div>
-                    </div>
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-full"><h4 class="font-bold text-slate-700 mb-4 flex items-center"><i data-lucide="search" class="w-4 h-4 mr-2 text-indigo-500"></i>Hallazgos</h4><div id="ai-anomalies-list" class="space-y-3 text-sm"></div></div>
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-full"><h4 class="font-bold text-slate-700 mb-4 flex items-center"><i data-lucide="check-circle-2" class="w-4 h-4 mr-2 text-emerald-500"></i>Recomendaciones</h4><div id="ai-recommendations-list" class="space-y-3 text-sm"></div></div>
                 </div>
             </div>
 
             <div id="tab-specs" class="tab-content hidden">
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    
                     <div class="lg:col-span-8 space-y-6">
-                        <div class="flex justify-between items-center">
-                            <h3 class="font-bold text-lg text-slate-800">Bitácora de Cambios</h3>
-                            <button onclick="toggleForm()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center gap-2">
-                                <i data-lucide="plus" class="w-4 h-4"></i> Nueva Entrada
-                            </button>
-                        </div>
-
+                        <div class="flex justify-between items-center"><h3 class="font-bold text-lg text-slate-800">Bitácora</h3><button onclick="toggleForm()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i> Nueva Entrada</button></div>
                         <div id="log-form-container" class="hidden bg-slate-50 p-6 rounded-xl border border-indigo-100">
                             <form id="new-log-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div class="md:col-span-2 bg-white p-3 rounded border border-slate-200 grid grid-cols-2 gap-4">
-                                    <div><label class="text-[10px] uppercase font-bold text-slate-400">Ubicación (Nombre/Código)</label><div id="form-loc" class="font-bold text-sm"></div></div>
-                                    <div><label class="text-[10px] uppercase font-bold text-slate-400">Unidad de Negocio</label><div id="form-unit" class="font-bold text-sm"></div></div>
+                                    <div><label class="text-[10px] uppercase font-bold text-slate-400">Ubicación</label><div id="form-loc" class="font-bold text-sm"></div></div>
+                                    <div><label class="text-[10px] uppercase font-bold text-slate-400">Unidad</label><div id="form-unit" class="font-bold text-sm"></div></div>
                                 </div>
-
-                                <div><label class="text-xs font-bold text-slate-500">¿Quién solicita?</label><input type="text" id="log-req" class="w-full mt-1 p-2 border rounded text-sm bg-white"></div>
-                                <div><label class="text-xs font-bold text-slate-500">¿Quién realiza?</label><input type="text" id="log-exec" class="w-full mt-1 p-2 border rounded text-sm bg-white"></div>
-
-                                <div>
-                                    <label class="text-xs font-bold text-slate-500">Tipo de Cambio</label>
-                                    <select id="log-action" class="w-full mt-1 p-2 border rounded text-sm bg-white">
-                                        <option value="Instalación">Instalación</option>
-                                        <option value="Cambio">Cambio de Componente</option>
-                                        <option value="Renovación">Renovación Tecnológica</option>
-                                        <option value="Mantenimiento">Mantenimiento</option>
-                                    </select>
-                                </div>
-                                <div><label class="text-xs font-bold text-slate-500">¿Qué se cambió?</label><input type="text" id="log-what" class="w-full mt-1 p-2 border rounded text-sm bg-white" placeholder="Ej: Disco Duro, Pantalla"></div>
-
-                                <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500">Descripción y Razón</label><textarea id="log-desc" rows="3" class="w-full mt-1 p-2 border rounded text-sm bg-white" placeholder="Detalles técnicos y motivo del cambio..."></textarea></div>
-
-                                <div class="md:col-span-2 flex items-center gap-2">
-                                    <input type="checkbox" id="log-solved" class="rounded text-indigo-600" checked>
-                                    <label for="log-solved" class="text-sm font-bold text-emerald-700">¿Con el cambio se resolvió el problema?</label>
-                                </div>
-
-                                <div class="md:col-span-2 flex justify-end gap-2 mt-2">
-                                    <button type="button" onclick="toggleForm()" class="px-4 py-2 text-sm text-slate-500">Cancelar</button>
-                                    <button type="button" onclick="saveLog()" class="px-6 py-2 text-sm bg-slate-900 text-white font-bold rounded hover:bg-slate-700">Guardar Registro</button>
-                                </div>
+                                <div><label class="text-xs font-bold text-slate-500">Solicita</label><input type="text" id="log-req" class="w-full mt-1 p-2 border rounded text-sm bg-white"></div>
+                                <div><label class="text-xs font-bold text-slate-500">Ejecuta</label><input type="text" id="log-exec" class="w-full mt-1 p-2 border rounded text-sm bg-white"></div>
+                                <div><label class="text-xs font-bold text-slate-500">Tipo</label><select id="log-action" class="w-full mt-1 p-2 border rounded text-sm bg-white"><option value="Mantenimiento">Mantenimiento</option><option value="Incidente">Incidente</option><option value="Renovación">Renovación</option><option value="Baja">Baja</option></select></div>
+                                <div><label class="text-xs font-bold text-slate-500">Componente</label><input type="text" id="log-what" class="w-full mt-1 p-2 border rounded text-sm bg-white" placeholder="Ej: Disco"></div>
+                                <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500">Descripción</label><textarea id="log-desc" rows="2" class="w-full mt-1 p-2 border rounded text-sm bg-white"></textarea></div>
+                                <div class="md:col-span-2 flex items-center gap-2"><input type="checkbox" id="log-solved" class="rounded text-indigo-600" checked><label for="log-solved" class="text-sm font-bold text-emerald-700">¿Resuelto?</label></div>
+                                <div class="md:col-span-2 flex justify-end gap-2 mt-2"><button type="button" onclick="toggleForm()" class="px-4 py-2 text-sm text-slate-500">Cancelar</button><button type="button" onclick="saveLog()" class="px-6 py-2 text-sm bg-slate-900 text-white font-bold rounded hover:bg-slate-700">Guardar</button></div>
                             </form>
                         </div>
-
                         <div id="history-timeline" class="space-y-0"></div>
                     </div>
-
-                    <div class="lg:col-span-4">
-                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm sticky top-0">
-                            <h3 class="font-bold text-slate-800 mb-4 pb-2 border-b">Ficha Técnica Actual</h3>
-                            <div class="space-y-4 text-sm" id="specs-summary"></div>
-                        </div>
-                    </div>
+                    <div class="lg:col-span-4"><div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm sticky top-0"><h3 class="font-bold text-slate-800 mb-4 pb-2 border-b">Ficha Técnica</h3><div class="space-y-4 text-sm" id="specs-summary"></div></div></div>
                 </div>
             </div>
-
         </div>
     </div>
 </div>
@@ -219,7 +144,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let pcDataStore = {};
     let currentPc = null;
     let charts = { latency: null };
-    let historyDB = {}; // Aquí se guardarían los logs en memoria (o fetch a API)
 
     lucide.createIcons();
 
@@ -232,24 +156,20 @@ document.addEventListener('DOMContentLoaded', () => {
             
             devices.forEach(dev => {
                 if(!dev.unit) dev.unit = "General";
-                // Simulación historial de latencia para la gráfica
-                if(!dev.latency_history) {
-                    dev.latency_history = Array(10).fill(0).map(() => Math.floor(Math.random() * 40 + 10));
-                }
+                if(!dev.latency_history) { dev.latency_history = Array(12).fill(0).map(()=>Math.floor(Math.random()*40+10)); }
                 dev.latency_history.push(dev.latency || 20);
-                if(dev.latency_history.length > 20) dev.latency_history.shift();
-                
+                if(dev.latency_history.length > 12) dev.latency_history.shift();
                 pcDataStore[dev.pc_name] = dev;
             });
 
             renderGrid();
             updateFilters(devices);
-            if(currentPc && pcDataStore[currentPc]) refreshModalData(false); // False para no reanimar
+            if(currentPc && pcDataStore[currentPc]) refreshModalData(false);
             document.getElementById('loading-indicator').style.display = 'none';
         } catch (e) { console.error(e); }
     }
 
-    // 2. RENDERIZADO DEL GRID CON BARRA DE LATENCIA
+    // 2. RENDER GRID (CON BARRA CUADRADA)
     function renderGrid() {
         const container = document.getElementById('pc-cards-container');
         const search = document.getElementById('search-bar').value.toLowerCase();
@@ -262,16 +182,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let statusClass = pc.status === 'offline' ? 'status-offline' : (pc.cpu_load_percent > 90 ? 'status-warning' : 'status-online');
             
-            // Generar Barra de Latencia Visual (Cuadrada)
+            // Barra Cuadrada
             let latencyBarHtml = '<div class="latency-grid">';
             const history = pc.latency_history || [];
-            // Tomamos los últimos 10 puntos
-            const recent = history.slice(-10); 
-            // Rellenamos si faltan
-            while(recent.length < 10) recent.push(0);
-            
+            const recent = history.slice(-12);
+            while(recent.length < 12) recent.push(0);
             recent.forEach(val => {
-                let colorClass = 'bg-slate-200';
+                let colorClass = 'bg-slate-100';
                 if(val > 0) colorClass = val > 100 ? 'lb-high' : (val > 50 ? 'lb-med' : 'lb-low');
                 latencyBarHtml += `<div class="latency-block ${colorClass}" title="${val}ms"></div>`;
             });
@@ -280,59 +197,35 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = document.createElement('div');
             card.className = 'card cursor-pointer group hover:border-indigo-400';
             card.onclick = () => openModal(pc.pc_name);
-            card.innerHTML = `
-                <div class="flex justify-between items-start mb-2">
-                    <div class="truncate pr-2">
-                        <h3 class="font-bold text-slate-800 text-sm truncate group-hover:text-indigo-600">${pc.pc_name}</h3>
-                        <span class="text-[10px] font-bold text-slate-400 uppercase">${pc.unit}</span>
-                    </div>
-                    <div class="status-dot ${statusClass} flex-shrink-0"></div>
-                </div>
-                <div class="flex justify-between items-end mt-1">
-                    <span class="text-2xl font-black text-slate-700">${pc.latency || 0}<span class="text-xs text-slate-400 font-bold ml-1">ms</span></span>
-                    <span class="text-xs font-bold text-slate-500">CPU: ${Math.round(pc.cpu_load_percent||0)}%</span>
-                </div>
-                ${latencyBarHtml}
-            `;
+            card.innerHTML = `<div class="flex justify-between items-start mb-2"><div class="truncate pr-2"><h3 class="font-bold text-slate-800 text-sm truncate group-hover:text-indigo-600">${pc.pc_name}</h3><span class="text-[10px] font-bold text-slate-400 uppercase">${pc.unit}</span></div><div class="status-dot ${statusClass} flex-shrink-0"></div></div><div class="flex justify-between items-end mt-1"><span class="text-2xl font-black text-slate-700">${pc.latency || 0}<span class="text-xs text-slate-400 font-bold ml-1">ms</span></span><span class="text-xs font-bold text-slate-500">CPU: ${Math.round(pc.cpu_load_percent||0)}%</span></div>${latencyBarHtml}`;
             container.appendChild(card);
         });
     }
 
-    // 3. LÓGICA DEL MODAL
+    // 3. MODAL LOGIC
     window.openModal = (pcName) => {
         currentPc = pcName;
         const modal = document.getElementById('pc-modal-container');
         const overlay = document.getElementById('pc-modal-overlay');
-        overlay.classList.remove('hidden');
-        overlay.classList.add('flex');
-        setTimeout(() => {
-            modal.classList.remove('opacity-0', 'scale-95');
-            modal.classList.add('opacity-100', 'scale-100');
-        }, 10);
-        
+        overlay.classList.remove('hidden'); overlay.classList.add('flex');
+        setTimeout(() => { modal.classList.remove('opacity-0', 'scale-95'); modal.classList.add('opacity-100', 'scale-100'); }, 10);
         switchTab('general');
         refreshModalData(true);
-        // Auto-run IA al abrir
         setTimeout(() => runManualAnalysis(), 500); 
     }
 
     window.closeModal = () => {
         const modal = document.getElementById('pc-modal-container');
         const overlay = document.getElementById('pc-modal-overlay');
-        modal.classList.replace('opacity-100', 'opacity-0');
-        modal.classList.replace('scale-100', 'scale-95');
+        modal.classList.replace('opacity-100', 'opacity-0'); modal.classList.replace('scale-100', 'scale-95');
         setTimeout(() => { overlay.classList.add('hidden'); overlay.classList.remove('flex'); currentPc = null; }, 300);
     }
 
     function refreshModalData(fullUpdate) {
         if(!currentPc) return;
         const pc = pcDataStore[currentPc];
-
-        // Header
         document.getElementById('modal-pc-name').textContent = pc.pc_name;
         document.getElementById('modal-status-line').innerHTML = `<span class="px-2 py-0.5 rounded text-xs font-bold ${pc.status==='online'?'bg-emerald-100 text-emerald-700':'bg-red-100 text-red-700'}">${pc.status ? pc.status.toUpperCase() : 'ONLINE'}</span> <span class="text-slate-400">|</span> <span class="font-mono text-slate-500">${pc.public_ip || '-'}</span>`;
-
-        // General Tab
         document.getElementById('gen-unit').textContent = pc.unit;
         document.getElementById('gen-ip').textContent = pc.public_ip || '-';
         document.getElementById('gen-seen').textContent = new Date().toLocaleTimeString();
@@ -340,11 +233,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('gen-cpu-bar').style.width = (pc.cpu_load_percent||0)+'%';
         document.getElementById('gen-ram-val').textContent = Math.round(pc.ram_percent||0)+'%';
         document.getElementById('gen-ram-bar').style.width = (pc.ram_percent||0)+'%';
-
         const health = calculateHealth(pc);
         document.getElementById('health-score-val').textContent = health.score + '%';
         document.getElementById('health-icon-container').innerHTML = `<i data-lucide="${health.icon}" class="w-8 h-8 ${health.color}"></i>`;
-
         if(fullUpdate) {
             updateLatencyChart(pc.latency_history);
             updateHardwareGrid(pc);
@@ -353,7 +244,6 @@ document.addEventListener('DOMContentLoaded', () => {
         lucide.createIcons();
     }
 
-    // 4. HARDWARE COMPLETO
     function updateHardwareGrid(pc) {
         const grid = document.getElementById('hardware-full-grid');
         grid.innerHTML = '';
@@ -363,42 +253,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     grid.innerHTML += `<div class="bg-white p-3 rounded border border-slate-100 shadow-sm text-xs"><span class="block text-slate-400 uppercase font-bold text-[10px]">${cat}</span><span class="block text-slate-600 truncate">${s.nombre||s.tipo}</span><span class="block text-lg font-mono font-bold text-slate-800">${s.valor}</span></div>`;
                 });
             }
-        } else {
-            grid.innerHTML = '<div class="col-span-full text-center text-slate-400 py-4">Sin datos extendidos</div>';
-        }
+        } else { grid.innerHTML = '<div class="col-span-full text-center text-slate-400 py-4">Sin datos extendidos</div>'; }
     }
 
-    // 5. DIAGNÓSTICO IA (Botón Manual)
     window.runManualAnalysis = () => {
         const loading = document.getElementById('ai-loading');
         const results = document.getElementById('ai-results');
-        
-        loading.classList.remove('hidden');
-        results.classList.add('hidden');
-
-        // Simular proceso de 1 seg
+        loading.classList.remove('hidden'); results.classList.add('hidden');
         setTimeout(() => {
             const pc = pcDataStore[currentPc];
             const anom = document.getElementById('ai-anomalies-list');
             const rec = document.getElementById('ai-recommendations-list');
             anom.innerHTML = ''; rec.innerHTML = '';
-
             let anomalies = [];
             if(pc.status === 'offline') anomalies.push("Equipo fuera de línea (Ping Timeout)");
             if(pc.cpu_load_percent > 85) anomalies.push(`CPU Saturada (${Math.round(pc.cpu_load_percent)}%)`);
             if(pc.disk_percent > 90) anomalies.push(`Disco casi lleno (${Math.round(pc.disk_percent)}%)`);
             if(pc.latency > 100) anomalies.push(`Latencia Crítica (${pc.latency}ms)`);
-
-            if(anomalies.length === 0) {
-                anom.innerHTML = '<div class="text-emerald-600 bg-emerald-50 p-3 rounded">No se detectaron anomalías críticas.</div>';
-                rec.innerHTML = '<div class="text-slate-600">El equipo opera nominalmente.</div>';
-            } else {
-                anomalies.forEach(a => anom.innerHTML += `<div class="text-rose-600 bg-rose-50 p-2 rounded mb-2 font-medium">• ${a}</div>`);
-                rec.innerHTML = `<div class="text-slate-700 p-2 border-l-4 border-indigo-500 bg-slate-50">Se recomienda reinicio programado y revisión de logs.</div>`;
-            }
-
-            loading.classList.add('hidden');
-            results.classList.remove('hidden');
+            if(anomalies.length === 0) { anom.innerHTML = '<div class="text-emerald-600 bg-emerald-50 p-3 rounded">No se detectaron anomalías críticas.</div>'; rec.innerHTML = '<div class="text-slate-600">El equipo opera nominalmente.</div>'; } 
+            else { anomalies.forEach(a => anom.innerHTML += `<div class="text-rose-600 bg-rose-50 p-2 rounded mb-2 font-medium">• ${a}</div>`); rec.innerHTML = `<div class="text-slate-700 p-2 border-l-4 border-indigo-500 bg-slate-50">Se recomienda reinicio programado y revisión de logs.</div>`; }
+            loading.classList.add('hidden'); results.classList.remove('hidden');
         }, 1000);
     }
 
@@ -415,48 +289,31 @@ document.addEventListener('DOMContentLoaded', () => {
         return {score, color, icon};
     }
 
-    // 6. BITÁCORA Y FICHA (Campos Completos)
-    function updateHistoryTab(pc) {
+    async function updateHistoryTab(pc) {
         document.getElementById('form-loc').textContent = pc.pc_name;
         document.getElementById('form-unit').textContent = pc.unit;
-        
-        // Ficha Resumen
-        document.getElementById('specs-summary').innerHTML = `
-            <div class="grid grid-cols-1 gap-3">
-                <div class="border-b pb-2"><span class="text-xs text-slate-400 block">ID Activo</span><span class="font-bold text-slate-700">${pc.pc_name}</span></div>
-                <div class="border-b pb-2"><span class="text-xs text-slate-400 block">Ubicación</span><span class="font-bold text-slate-700">${pc.unit}</span></div>
-                <div class="border-b pb-2"><span class="text-xs text-slate-400 block">IP Address</span><span class="font-mono text-sm text-slate-600">${pc.public_ip || '-'}</span></div>
-            </div>`;
-
-        // Timeline Logs
+        document.getElementById('specs-summary').innerHTML = `<div class="grid grid-cols-1 gap-3"><div class="border-b pb-2"><span class="text-xs text-slate-400 block">ID Activo</span><span class="font-bold text-slate-700">${pc.pc_name}</span></div><div class="border-b pb-2"><span class="text-xs text-slate-400 block">Ubicación</span><span class="font-bold text-slate-700">${pc.unit}</span></div><div class="border-b pb-2"><span class="text-xs text-slate-400 block">IP Address</span><span class="font-mono text-sm text-slate-600">${pc.public_ip || '-'}</span></div></div>`;
         const timeline = document.getElementById('history-timeline');
-        timeline.innerHTML = '';
-        const logs = historyDB[pc.pc_name] || [];
-        
-        if(logs.length === 0) timeline.innerHTML = '<div class="text-center py-4 text-slate-400 italic">Sin registros</div>';
-
-        logs.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(log => {
-            const timeAgo = Math.floor((new Date() - new Date(log.date)) / (1000 * 60 * 60 * 24));
-            timeline.innerHTML += `
-                <div class="timeline-item">
-                    <div class="timeline-dot"></div>
-                    <div class="text-xs text-slate-400 mb-1">${new Date(log.date).toLocaleDateString()} (Hace ${timeAgo} días)</div>
-                    <div class="font-bold text-slate-800 text-sm">${log.action} - ${log.what}</div>
-                    <p class="text-xs text-slate-600 bg-slate-50 p-2 rounded mt-1 border border-slate-100">${log.desc}</p>
-                    <div class="flex gap-4 text-[10px] text-slate-400 mt-2">
-                        <span>Sol: <b>${log.req}</b></span><span>Ejec: <b>${log.exec}</b></span>
-                        ${log.solved ? '<span class="text-emerald-600 font-bold ml-auto">Resuelto</span>' : ''}
-                    </div>
-                </div>`;
-        });
+        timeline.innerHTML = '<div class="text-center text-xs text-slate-400">Cargando...</div>';
+        try {
+            const res = await fetch('/api/history/all');
+            const allLogs = await res.json();
+            const logs = allLogs.filter(l => l.device_id.includes(pc.pc_name.split(' ')[0]) || l.location_snapshot === pc.pc_name);
+            timeline.innerHTML = '';
+            if(logs.length === 0) timeline.innerHTML = '<div class="text-center py-4 text-slate-400 italic">Sin registros</div>';
+            logs.forEach(log => {
+                const timeAgo = Math.floor((new Date() - new Date(log.timestamp)) / (1000 * 60 * 60 * 24));
+                timeline.innerHTML += `<div class="timeline-item"><div class="timeline-dot"></div><div class="text-xs text-slate-400 mb-1">${new Date(log.timestamp).toLocaleDateString()} (Hace ${timeAgo} días)</div><div class="font-bold text-slate-800 text-sm">${log.action_type} - ${log.component}</div><p class="text-xs text-slate-600 bg-slate-50 p-2 rounded mt-1 border border-slate-100">${log.description}</p><div class="flex gap-4 text-[10px] text-slate-400 mt-2"><span>Sol: <b>${log.requester}</b></span><span>Ejec: <b>${log.executor}</b></span>${log.is_resolved==='true'?'<span class="text-emerald-600 font-bold ml-auto">Resuelto</span>':''}</div></div>`;
+            });
+        } catch(e) { timeline.innerHTML = '<div class="text-center text-red-400 text-xs">Error</div>'; }
     }
 
     window.toggleForm = () => document.getElementById('log-form-container').classList.toggle('hidden');
 
-    window.saveLog = () => {
+    window.saveLog = async () => {
         const pc = pcDataStore[currentPc];
         const newLog = {
-            date: new Date().toISOString(),
+            device_name: pc.pc_name,
             req: document.getElementById('log-req').value,
             exec: document.getElementById('log-exec').value,
             action: document.getElementById('log-action').value,
@@ -464,76 +321,42 @@ document.addEventListener('DOMContentLoaded', () => {
             desc: document.getElementById('log-desc').value,
             solved: document.getElementById('log-solved').checked,
             locName: pc.pc_name,
-            unit: pc.unit
+            unit: pc.unit,
+            status_snapshot: document.getElementById('log-action').value === 'Baja' ? 'inactive' : 'active'
         };
-
         if(!newLog.exec || !newLog.desc) return alert("Complete campos obligatorios");
-
-        if(!historyDB[currentPc]) historyDB[currentPc] = [];
-        historyDB[currentPc].push(newLog);
-        
-        // Aquí enviarías a AppSheet vía fetch POST
-        updateHistoryTab(pc);
-        toggleForm();
-        document.getElementById('new-log-form').reset();
+        try {
+            await fetch('/api/history/add', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(newLog) });
+            updateHistoryTab(pc);
+            toggleForm();
+            document.getElementById('new-log-form').reset();
+        } catch(e) { alert("Error guardando"); }
     }
 
-    // 7. EXPORTAR PDF
     window.exportToPDF = () => {
         if(!currentPc) return;
         const pc = pcDataStore[currentPc];
         const doc = new window.jspdf.jsPDF();
-        
         doc.setFontSize(18); doc.text("Ficha Técnica - Argos AI", 14, 20);
         doc.setFontSize(12); doc.text(`Activo: ${pc.pc_name}`, 14, 30);
-        doc.text(`Unidad: ${pc.unit}`, 14, 36);
-        
         const headers = [['Métrica', 'Valor']];
-        const data = [
-            ['IP Pública', pc.public_ip || '-'],
-            ['CPU Load', Math.round(pc.cpu_load_percent||0) + '%'],
-            ['RAM Load', Math.round(pc.ram_percent||0) + '%'],
-            ['Disco', Math.round(pc.disk_percent||0) + '%'],
-            ['Estado', pc.status]
-        ];
-
+        const data = [['IP', pc.public_ip||'-'], ['CPU', Math.round(pc.cpu_load_percent||0)+'%'], ['RAM', Math.round(pc.ram_percent||0)+'%']];
         doc.autoTable({ startY: 45, head: headers, body: data });
         doc.save(`${pc.pc_name}_ficha.pdf`);
     }
 
-    // UTILS & CHARTS
     function updateLatencyChart(data) {
         if (charts.latency) charts.latency.destroy();
         const ctx = document.getElementById('latency-chart').getContext('2d');
-        charts.latency = new Chart(ctx, {
-            type: 'line',
-            data: { 
-                labels: Array(data.length).fill(''), 
-                datasets: [{ data: data, borderColor: '#6366f1', borderWidth: 2, tension: 0.4, pointRadius: 0, fill: true, backgroundColor: 'rgba(99,102,241,0.1)' }] 
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: {legend:false}, scales: {x:{display:false}, y:{display:true, grid:{borderDash:[4,4]}}} }
-        });
+        charts.latency = new Chart(ctx, { type: 'line', data: { labels: Array(data.length).fill(''), datasets: [{ data: data, borderColor: '#6366f1', borderWidth: 2, tension: 0.4, pointRadius: 0, fill: true, backgroundColor: 'rgba(99,102,241,0.1)' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: {legend:false}, scales: {x:{display:false}, y:{display:true, grid:{borderDash:[4,4]}}} } });
     }
 
-    window.switchTab = (id) => {
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-        document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
-        document.getElementById('tab-' + id).classList.remove('hidden');
-        document.querySelector(`[data-tab="${id}"]`).classList.add('active');
-    }
-
-    function updateFilters(devices) {
-        const select = document.getElementById('unit-filter');
-        if(select.options.length > 1) return;
-        [...new Set(devices.map(d => d.unit))].forEach(u => select.appendChild(new Option(u, u)));
-    }
-
+    window.switchTab = (id) => { document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden')); document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active')); document.getElementById('tab-' + id).classList.remove('hidden'); document.querySelector(`[data-tab="${id}"]`).classList.add('active'); }
+    function updateFilters(devices) { const select = document.getElementById('unit-filter'); if(select.options.length > 1) return; [...new Set(devices.map(d => d.unit))].forEach(u => select.appendChild(new Option(u, u))); }
     document.getElementById('modal-tabs').onclick = (e) => { if(e.target.closest('.modal-tab')) switchTab(e.target.closest('.modal-tab').dataset.tab); };
     document.getElementById('search-bar').oninput = renderGrid;
     document.getElementById('unit-filter').onchange = renderGrid;
-
-    setInterval(updateData, 3000);
-    updateData();
+    setInterval(updateData, 3000); updateData();
 });
 </script>
 {% endblock %}
