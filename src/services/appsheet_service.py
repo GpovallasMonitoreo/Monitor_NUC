@@ -3,7 +3,7 @@ import requests
 import json
 import hashlib
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 import logging
 
@@ -12,14 +12,13 @@ try:
 except ImportError:
     from backports.zoneinfo import ZoneInfo
 
-# Configuración de Zona Horaria
 TZ_MX = ZoneInfo("America/Mexico_City")
 logger = logging.getLogger(__name__)
 
 class AppSheetService:
     """
-    Servicio para AppSheet API v2 - VERSIÓN ARGOS FINAL
-    Alineado estrictamente con las capturas de pantalla de las tablas.
+    Servicio AppSheet API v2 - VERSIÓN ARGOS FULL STACK
+    Soporta Escritura (Add), Lectura (Find) y Diagnóstico.
     """
     
     def __init__(self):
@@ -42,38 +41,37 @@ class AppSheetService:
             'ApplicationAccessKey': self.api_key
         }
         self.last_sync_time = None
-        logger.info(f"✅ AppSheetService Listo (Modo DB-Strict) - App: {self.app_id[:8]}...")
+        logger.info(f"✅ AppSheetService Listo - App: {self.app_id[:8]}...")
 
-    def _make_appsheet_request(self, table: str, action: str, rows: List[Dict] = None) -> Optional[Any]:
-        """Envía petición HTTP a la API"""
+    def _make_appsheet_request(self, table: str, action: str, rows: List[Dict] = None, properties: Dict = None) -> Optional[Any]:
+        """Envía petición HTTP a la API (Soporta Add y Find)"""
         try:
             if not self.enabled: return None
             
+            # Propiedades base
+            props = {
+                "Locale": "es-MX",
+                "Timezone": "Central Standard Time"
+            }
+            # Fusionar propiedades extra (ej: Selectores, Top)
+            if properties:
+                props.update(properties)
+
             payload = {
                 "Action": action, 
-                "Properties": {
-                    "Locale": "es-MX",
-                    "Timezone": "Central Standard Time"
-                }
+                "Properties": props
             }
             if rows: payload["Rows"] = rows
             
             url = f"{self.base_url}/apps/{self.app_id}/tables/{table}/Action"
             
-            # Timeout de 30s para evitar bloqueos
             response = requests.post(url, headers=self.headers, json=payload, timeout=30)
             
             if response.status_code == 200:
                 self.last_sync_time = datetime.now(TZ_MX)
                 return response.json()
             
-            # Manejo detallado de errores
-            logger.error(f"❌ AppSheet Error {response.status_code} en tabla '{table}':")
-            try:
-                logger.error(f"   Detalle: {response.json()}")
-            except:
-                logger.error(f"   Respuesta Raw: {response.text}")
-            
+            logger.error(f"❌ AppSheet Error {response.status_code} en tabla '{table}': {response.text}")
             return None
             
         except Exception as e:
@@ -85,122 +83,81 @@ class AppSheetService:
         try:
             if not pc_name: return "UNKNOWN"
             clean_name = pc_name.strip().upper()
-            # Lógica para nombres tipo MX_
             if clean_name.startswith("MX_") and len(clean_name.split(' ')[0]) > 3:
                 return clean_name.split(' ')[0].strip()
-            # Hash genérico
             return f"HASH_{hashlib.md5(clean_name.encode()).hexdigest()[:12].upper()}"
         except: return "ERROR_ID"
 
     # ==========================================================
-    # 1. TABLA DEVICES (MAESTRA)
+    # 1. ESCRITURA (WRITE METHODS)
     # ==========================================================
+
     def get_or_create_device(self, device_data: Dict) -> tuple:
-        """
-        Sincroniza con la tabla 'devices'.
-        Columnas basadas en imagen: device_id, pc_name, unit, public_ip, last_known_location, updated_at
-        """
+        """Sincroniza con la tabla 'devices'."""
         try:
             if not self.enabled: return False, None, False
-            
             pc_name = device_data.get('pc_name', '').strip()
             if not pc_name: return False, None, False
             
             device_id = self.generate_device_id(pc_name)
             current_time = datetime.now(TZ_MX).strftime('%Y-%m-%d %H:%M:%S')
             
-            # Mapeo EXACTO a tu imagen de 'devices'
             device_row = {
                 "device_id": device_id,
                 "pc_name": pc_name,
                 "unit": str(device_data.get('unit', 'General')),
                 "public_ip": str(device_data.get('public_ip', device_data.get('ip', ''))),
-                "last_known_location": str(device_data.get('locName', pc_name)), # Mapeado a locName
+                "last_known_location": str(device_data.get('locName', pc_name)),
                 "updated_at": current_time
-                # Nota: 'created_at' generalmente lo maneja AppSheet con Initial Value, 
-                # pero si quieres forzarlo, añádelo aquí solo si es registro nuevo.
             }
-            
-            # Limpieza de Nulos (AppSheet prefiere strings vacíos a nulls en JSON)
             device_row = {k: (v if v is not None else "") for k, v in device_row.items()}
             
-            # Usamos "Add" (AppSheet suele ser inteligente con Add para upserts si hay Key, 
-            # pero lo ideal es "Edit" si ya existe. Por simplicidad usamos Add o un Action compuesto si tienes uno configurado)
-            # Si Add falla por duplicado, podrías necesitar cambiar a "Edit" o configurar la tabla para "AllowUpdates"
             result = self._make_appsheet_request("devices", "Add", [device_row])
-            
             return (result is not None), device_id, True
-                
         except Exception as e:
             logger.error(f"Error get_or_create_device: {e}")
             return False, None, False
 
-    # ==========================================================
-    # 2. TABLA DEVICE_HISTORY (BITÁCORA)
-    # ==========================================================
     def add_history_entry(self, log_data: Dict) -> bool:
-        """
-        Inserta en 'device_history'.
-        Columnas basadas en imagen: device_name, pc_name, exec, action, what, desc, solved, locName, unit, status_snapshot, timestamp
-        """
+        """Inserta en 'device_history'."""
         try:
             if not self.enabled: return False
             dev_name = log_data.get('device_name') or log_data.get('pc_name')
             if not dev_name: return False
 
-            # 1. Asegurar Padre
-            success, _, _ = self.get_or_create_device({
+            self.get_or_create_device({
                 "pc_name": dev_name,
-                "unit": log_data.get('unit', 'General'),
-                "locName": log_data.get('locName', dev_name)
+                "unit": log_data.get('unit', 'General')
             })
-            if not success:
-                # Opcional: Loguear warning pero continuar si confías en que el padre existe
-                logger.warning(f"⚠️ Padre no sincronizado para {dev_name}, intentando enviar historia de todas formas...")
 
-            # 2. Preparar Payload
-            # timestamp en formato AppSheet (YYYY-MM-DD HH:MM:SS)
             ts = datetime.now(TZ_MX).strftime('%Y-%m-%d %H:%M:%S')
-
             row = {
                 "device_name": str(dev_name),
                 "pc_name": str(dev_name),
-                "exec": str(log_data.get('exec', '')),       # Antes 'executor'
-                "action": str(log_data.get('action', 'Info')), # Antes 'action_type'
-                "what": str(log_data.get('what', 'General')),  # Antes 'component'
-                "desc": str(log_data.get('desc', '')),         # Antes 'description'
-                "solved": str(log_data.get('solved', 'true')), # AppSheet a veces prefiere string "true"/"false" o "Y"/"N"
+                "exec": str(log_data.get('exec', '')),
+                "action": str(log_data.get('action', 'Info')),
+                "what": str(log_data.get('what', 'General')),
+                "desc": str(log_data.get('desc', '')),
+                "solved": str(log_data.get('solved', 'true')),
                 "locName": str(log_data.get('locName', dev_name)),
                 "unit": str(log_data.get('unit', 'General')),
                 "status_snapshot": str(log_data.get('status_snapshot', 'active')),
                 "timestamp": ts
-                # "req": "" <-- ELIMINADO: No aparece en tus imágenes. Si existe, descomenta.
             }
-
-            logger.info(f"📝 Enviando Bitácora: {dev_name} - {row['action']}")
             result = self._make_appsheet_request("device_history", "Add", [row])
             return result is not None
-
         except Exception as e:
             logger.error(f"Error add_history_entry: {e}")
             return False
 
-    # ==========================================================
-    # 3. TABLA LATENCY_HISTORY (MONITOREO)
-    # ==========================================================
     def add_latency_to_history(self, device_data: Dict) -> bool:
-        """
-        Inserta en 'latency_history' (o Latency_history, check case sensitive)
-        Columnas imagen: record_id, device_id, timestamp, latency..., cpu..., ram..., temp..., disk..., status, extended_sensors
-        """
+        """Inserta en 'latency_history'."""
         try:
             if not self.enabled: return False
             pc_name = device_data.get('pc_name', '')
             if not pc_name: return False
             
-            # Asegurar ID del padre
             device_id = self.generate_device_id(pc_name)
-            
             record_id = str(uuid.uuid4())
             ts = datetime.now(TZ_MX).strftime('%Y-%m-%d %H:%M:%S')
             
@@ -208,37 +165,24 @@ class AppSheetService:
                 "record_id": record_id,
                 "device_id": device_id,
                 "timestamp": ts,
-                # Nombres abreviados basados en tu imagen (se cortan, asumo los standard)
-                # Ajusta si tu columna real es 'latency_ms' o solo 'latency'
                 "latency_ms": str(device_data.get('latency', 0)), 
-                "cpu_load": str(device_data.get('cpu_load_percent', 0)), # Verifica si es cpu_usage o cpu_load
+                "cpu_load": str(device_data.get('cpu_load_percent', 0)),
                 "ram_usage": str(device_data.get('ram_percent', 0)),
                 "temp_c": str(device_data.get('temperature', 0)),
                 "disk_usage": str(device_data.get('disk_percent', 0)),
                 "status": str(device_data.get('status', 'online')),
                 "extended_sensors": str(device_data.get('extended_sensors', ''))[:2000]
             }
-            
-            # Nota: Verifica en AppSheet si la tabla se llama "latency_history" o "Latency_history" (mayúscula)
             result = self._make_appsheet_request("latency_history", "Add", [row])
             return result is not None
-                
-        except Exception:
-            return False
+        except Exception: return False
 
-    # ==========================================================
-    # 4. TABLA ALERTS (NUEVA - Basada en imagen)
-    # ==========================================================
     def add_alert(self, data: Dict, type_alert: str, msg: str, sev: str) -> bool:
-        """
-        Inserta en la tabla 'alerts' (Imagen image_2ebe32.png)
-        Columnas: alert_id, device_id, alert_type, severity, message, timestamp, resolved_at
-        """
+        """Inserta en 'alerts'."""
         try:
             if not self.enabled: return False
             pc_name = data.get('pc_name', '')
             if not pc_name: return False
-
             device_id = self.generate_device_id(pc_name)
             alert_id = str(uuid.uuid4())
             ts = datetime.now(TZ_MX).strftime('%Y-%m-%d %H:%M:%S')
@@ -250,19 +194,75 @@ class AppSheetService:
                 "severity": str(sev),
                 "message": str(msg),
                 "timestamp": ts,
-                "resolved_at": "" # Vacío inicialmente
+                "resolved_at": ""
             }
-
-            logger.info(f"🚨 Enviando Alerta: {pc_name} - {type_alert}")
             result = self._make_appsheet_request("alerts", "Add", [row])
             return result is not None
+        except Exception: return False
 
+    # ==========================================================
+    # 2. LECTURA (READ METHODS) - REQUERIDOS POR API.PY
+    # ==========================================================
+
+    def get_full_history(self, limit: int = 100) -> List[Dict]:
+        """Obtiene historial reciente (Para /history/all)"""
+        try:
+            if not self.enabled: return []
+            
+            # Action: Find para leer datos
+            # OJO: AppSheet retorna una lista de filas directamente o dentro de un objeto
+            result = self._make_appsheet_request(
+                "device_history", 
+                "Find", 
+                properties={"Selector": "Filter(device_history, true)", "Top": limit} # Selector simple
+            )
+            
+            if not result: return []
+            
+            # Normalizar respuesta (A veces es lista directa, a veces dict)
+            rows = result if isinstance(result, list) else result.get('Rows', [])
+            return rows
         except Exception as e:
-            logger.error(f"Error add_alert: {e}")
+            logger.error(f"Error leyendo historial: {e}")
+            return []
+
+    def get_history_for_device(self, pc_name: str) -> List[Dict]:
+        """Obtiene historial filtrado por dispositivo"""
+        try:
+            if not self.enabled: return []
+            
+            # Selector AppSheet: [pc_name] = 'VALOR'
+            selector = f"Filter(device_history, [pc_name] = '{pc_name}')"
+            
+            result = self._make_appsheet_request(
+                "device_history", 
+                "Find", 
+                properties={"Selector": selector}
+            )
+            
+            rows = result if isinstance(result, list) else result.get('Rows', [])
+            return rows
+        except Exception as e:
+            logger.error(f"Error historial dispositivo: {e}")
+            return []
+
+    # ==========================================================
+    # 3. DIAGNÓSTICO Y COMPATIBILIDAD (REQUERIDOS POR APP.PY)
+    # ==========================================================
+
+    def _test_table_connection(self, table_name: str) -> bool:
+        """Prueba simple para ver si la tabla responde (Para app.py)"""
+        try:
+            # Intentamos leer 1 fila cualquiera
+            res = self._make_appsheet_request(table_name, "Find", properties={"Top": 1})
+            return res is not None
+        except:
             return False
 
-    # --- Métodos de Compatibilidad ---
-    
+    def test_history_connection(self) -> bool:
+        """Alias específico para device_history"""
+        return self._test_table_connection("device_history")
+
     def sync_device_complete(self, data: Dict) -> bool:
         success, _, _ = self.get_or_create_device(data)
         return success
@@ -277,4 +277,11 @@ class AppSheetService:
         return ["devices", "device_history", "latency_history", "alerts"]
 
     def get_status_info(self) -> Dict:
-        return {"status": "enabled" if self.enabled else "disabled", "last_sync": str(self.last_sync_time)}
+        return {
+            "status": "enabled" if self.enabled else "disabled", 
+            "last_sync": str(self.last_sync_time),
+            "app_id": self.app_id
+        }
+        
+    def get_system_stats(self) -> Dict:
+        return {"status": "ok", "mode": "DB-Native"}
