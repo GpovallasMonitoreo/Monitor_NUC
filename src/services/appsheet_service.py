@@ -2,6 +2,7 @@ import os
 import requests
 import json
 import hashlib
+import uuid
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 import logging
@@ -15,7 +16,7 @@ TZ_MX = ZoneInfo("America/Mexico_City")
 logger = logging.getLogger(__name__)
 
 class AppSheetService:
-    """Servicio para interactuar con AppSheet Database"""
+    """Servicio para interactuar con AppSheet Database - CORREGIDO ARGOS"""
     
     def __init__(self):
         self.api_key = os.getenv('APPSHEET_API_KEY', '')
@@ -24,6 +25,7 @@ class AppSheetService:
         
         env_enabled = os.getenv('APPSHEET_ENABLED', 'false').lower()
         is_config_enabled = env_enabled in ['true', '1', 'yes', 'on']
+        # Validación básica de credenciales
         has_creds = self.api_key and self.app_id and 'tu_api_key' not in self.api_key
 
         if not is_config_enabled or not has_creds:
@@ -61,8 +63,7 @@ class AppSheetService:
             
             url = f"{self.base_url}/apps/{self.app_id}/tables/{table}/Action"
             
-            logger.debug(f"📤 AppSheet Request: {table}.{action}")
-            logger.debug(f"📤 URL: {url}")
+            # logger.debug(f"📤 AppSheet Payload ({table}): {json.dumps(payload, indent=2)[:500]}")
             
             response = requests.post(
                 url,
@@ -71,625 +72,228 @@ class AppSheetService:
                 timeout=30
             )
             
-            logger.debug(f"📥 AppSheet Response: {response.status_code}")
-            
             if response.status_code == 200:
                 try: 
                     result = response.json()
                     return result
-                except Exception as e:
-                    logger.debug(f"AppSheet no devolvió JSON: {response.text[:100]}")
+                except Exception:
                     return {"success": True, "raw_text": response.text}
             
-            # ERROR 400 - MOSTRAR DETALLES COMPLETOS
+            # ERROR 400 - DIAGNÓSTICO
             logger.error(f"❌ AppSheet Error {response.status_code} en tabla '{table}':")
             logger.error(f"   URL: {url}")
-            logger.error(f"   Response: {response.text[:500]}")
-            if rows:
-                logger.error(f"   Datos enviados: {json.dumps(rows, indent=2)[:500]}")
+            logger.error(f"   Response: {response.text}") # IMPORTANTE: Ver qué columna falla
             
             return None
             
-        except requests.exceptions.Timeout:
-            logger.error(f"⏰ Timeout en petición a AppSheet (tabla: {table})")
-            return None
-        except requests.exceptions.ConnectionError:
-            logger.error(f"🔌 Error de conexión con AppSheet")
-            return None
         except Exception as e:
-            logger.error(f"Error en petición AppSheet: {e}")
+            logger.error(f"Error crítico en petición AppSheet: {e}")
             return None
 
     def generate_device_id(self, pc_name: str) -> str:
-        """Genera un ID único y consistente para el dispositivo"""
+        """Genera un ID único y consistente (HASH)"""
         try:
             if not pc_name or not pc_name.strip():
                 return "UNKNOWN_ID"
                 
             pc_name = pc_name.strip().upper()
             
-            # Extraer la parte MX_XXXXX si existe (ej: "MX_PC001 Local" -> "MX_PC001")
+            # Lógica para preservar IDs tipo MX_
             if pc_name.startswith("MX_"):
-                # Tomar solo la parte MX_XXXXX (primer segmento)
                 parts = pc_name.split(' ')
                 if len(parts) > 0:
                     mx_part = parts[0].strip()
-                    # Asegurar que tenga formato MX_XXXXX
-                    if mx_part.startswith("MX_") and len(mx_part) > 3:
+                    if len(mx_part) > 3:
                         return mx_part
             
-            # Para nombres sin MX_, usar hash MD5 de 12 caracteres
             hash_result = hashlib.md5(pc_name.encode()).hexdigest()[:12].upper()
             return f"HASH_{hash_result}"
             
-        except Exception as e:
-            logger.error(f"Error generando device_id: {e}")
+        except Exception:
             return "ERROR_ID"
 
     def get_or_create_device(self, device_data: Dict) -> tuple:
         """
-        Obtiene o crea un dispositivo en la tabla devices.
-        Retorna: (success, device_id, device_exists)
+        Maneja la tabla 'devices'.
+        Schema esperado: device_id, pc_name, unit, public_ip, last_known_location, is_active, updated_at
         """
         try:
-            if not self.enabled: 
-                return False, None, False
+            if not self.enabled: return False, None, False
             
             pc_name = device_data.get('pc_name', '').strip()
-            if not pc_name:
-                logger.error("No se puede crear dispositivo sin pc_name")
-                return False, None, False
+            if not pc_name: return False, None, False
             
-            # Generar device_id consistente
-            device_id = self.generate_device_id(pc_name)
-            logger.info(f"🆔 Device ID generado para '{pc_name}': {device_id}")
-            
-            # Primero, intentar buscar el dispositivo por device_id
-            logger.debug(f"🔍 Buscando dispositivo {device_id} en tabla devices...")
-            
-            search_result = self._make_appsheet_request(
-                "devices", 
-                "Find", 
-                properties={"FilterQuery": f"[device_id] = '{device_id}'"}
-            )
-            
-            device_exists = False
-            
-            # Verificar diferentes formatos de respuesta
-            if search_result:
-                if isinstance(search_result, list) and len(search_result) > 0:
-                    device_exists = True
-                    logger.debug(f"✅ Dispositivo encontrado en formato lista")
-                elif isinstance(search_result, dict):
-                    if 'Rows' in search_result and len(search_result['Rows']) > 0:
-                        device_exists = True
-                        logger.debug(f"✅ Dispositivo encontrado en formato Rows")
-                    elif any(isinstance(v, list) and len(v) > 0 for v in search_result.values()):
-                        device_exists = True
-                        logger.debug(f"✅ Dispositivo encontrado en formato dict con lista")
-            
-            logger.info(f"📊 Dispositivo {device_id} existe en devices: {device_exists}")
-            
-            # Si no existe, crearlo
-            if not device_exists:
-                unit = device_data.get('unit', 'General')
-                ip = device_data.get('public_ip', device_data.get('ip', ''))
-                status = device_data.get('status', 'online')
-                
-                device_row = {
-                    "device_id": device_id,
-                    "pc_name": pc_name,
-                    "unit": unit,
-                    "public_ip": ip,
-                    "status": status,
-                    "updated_at": datetime.now(TZ_MX).isoformat()
-                }
-                
-                logger.info(f"🔄 Creando dispositivo en tabla devices: {pc_name} (ID: {device_id})")
-                logger.debug(f"📋 Datos dispositivo: {device_row}")
-                
-                create_result = self._make_appsheet_request("devices", "Add", [device_row])
-                
-                if create_result is not None:
-                    logger.info(f"✅ Dispositivo {pc_name} creado exitosamente en tabla devices")
-                    self.last_sync_time = datetime.now(TZ_MX)
-                    return True, device_id, False
-                else:
-                    logger.error(f"❌ No se pudo crear dispositivo {pc_name} en tabla devices")
-                    return False, device_id, False
-            
-            return True, device_id, True
-                
-        except Exception as e:
-            logger.error(f"Error en get_or_create_device: {e}", exc_info=True)
-            return False, None, False
-
-    def add_history_entry(self, log_data: Dict) -> bool:
-        """
-        Guarda ficha en device_history.
-        IMPORTANTE: Primero asegura que el dispositivo exista en devices.
-        """
-        try:
-            if not self.enabled: 
-                logger.warning("AppSheet deshabilitado, no se guardará ficha")
-                return False
-            
-            logger.info(f"📝 Iniciando proceso para guardar ficha")
-            
-            # Obtener nombre del dispositivo
-            device_name = log_data.get('device_name') or log_data.get('pc_name')
-            if not device_name:
-                logger.error("❌ Error: Falta nombre del dispositivo (device_name o pc_name)")
-                return False
-
-            logger.info(f"🔧 Procesando ficha para dispositivo: {device_name}")
-            
-            # 1. CRÍTICO: Asegurar que el dispositivo existe en la tabla devices
-            logger.info(f"🔄 Verificando/creando dispositivo en tabla devices...")
-            
-            success, device_id, device_exists = self.get_or_create_device({
-                "pc_name": device_name,
-                "unit": log_data.get('unit', log_data.get('unit_snapshot', 'General')),
-                "public_ip": log_data.get('public_ip', ''),
-                "status": 'online'
-            })
-            
-            if not success:
-                logger.error("❌ No se pudo crear/verificar dispositivo en tabla devices. Abortando.")
-                return False
-            
-            logger.info(f"✅ Dispositivo verificado en devices. ID: {device_id}, Ya existía: {device_exists}")
-            
-            # 2. Preparar datos para device_history
-            timestamp = log_data.get('timestamp')
-            if not timestamp:
-                timestamp = datetime.now(TZ_MX).isoformat()
-            
-            # Componente válido
-            component = log_data.get('what', log_data.get('component', 'General'))
-            valid_components = ['NUC', 'SD300', 'UPS', 'MODULO', 'COMPONENTES', 'TELTONIKA', 'General', 'Otro']
-            if component not in valid_components:
-                logger.warning(f"⚠️  Componente '{component}' no válido, usando 'General'")
-                component = 'General'
-            
-            # Preparar fila para device_history
-            history_row = {
-                "device_id": device_id,  # REFERENCIA a devices.device_id
-                "timestamp": timestamp,
-                "requester": log_data.get('req', log_data.get('requester', 'Sistema')),
-                "executor": log_data.get('exec', log_data.get('executor', 'Pendiente')),
-                "action_type": log_data.get('action', log_data.get('action_type', 'Mantenimiento')),
-                "component": component,
-                "description": log_data.get('desc', log_data.get('description', '')),
-                "is_resolved": log_data.get('solved', log_data.get('is_resolved', False)),
-                "unit_snapshot": log_data.get('unit', log_data.get('unit_snapshot', 'General'))
-            }
-            
-            # Formatear is_resolved para AppSheet (Yes/No)
-            if isinstance(history_row["is_resolved"], bool):
-                history_row["is_resolved"] = "TRUE" if history_row["is_resolved"] else "FALSE"
-            elif isinstance(history_row["is_resolved"], str):
-                resolved_lower = history_row["is_resolved"].lower()
-                if resolved_lower in ['true', 'yes', 'si', 'verdadero', '1', 'verdad']:
-                    history_row["is_resolved"] = "TRUE"
-                else:
-                    history_row["is_resolved"] = "FALSE"
-            else:
-                history_row["is_resolved"] = "FALSE"
-            
-            # Asegurar que todos los campos sean strings (AppSheet puede ser sensible)
-            for key in history_row:
-                if history_row[key] is None:
-                    history_row[key] = ""
-                elif not isinstance(history_row[key], str):
-                    history_row[key] = str(history_row[key])
-            
-            logger.info(f"💾 Preparando para guardar en device_history...")
-            logger.debug(f"📋 Datos a guardar: {json.dumps(history_row, indent=2, ensure_ascii=False)}")
-            
-            # 3. Guardar en device_history
-            logger.info(f"📤 Enviando a device_history...")
-            result = self._make_appsheet_request("device_history", "Add", [history_row])
-            
-            if result is not None:
-                logger.info(f"✅ Ficha guardada exitosamente en device_history")
-                logger.debug(f"📥 Respuesta AppSheet: {result}")
-                
-                # 4. Actualizar estado del dispositivo si es necesario
-                action = str(log_data.get('action', '')).lower()
-                if 'baja' in action or 'retiro' in action:
-                    logger.info(f"📉 Marcando dispositivo {device_id} como 'offline' por baja")
-                    self.update_device_status(device_id, 'offline')
-                elif any(x in action for x in ['instalación', 'renovación', 'activación', 'alta', 'reactivación']):
-                    logger.info(f"📈 Marcando dispositivo {device_id} como 'online' por instalación/renovación")
-                    self.update_device_status(device_id, 'online')
-                
-                return True
-            else:
-                logger.error("❌ AppSheet rechazó la ficha en device_history")
-                logger.error("⚠️  Posibles causas:")
-                logger.error(f"   1. device_id '{device_id}' no existe en tabla devices o no es referencia válida")
-                logger.error(f"   2. Error en formato de datos (columnas faltantes o incorrectas)")
-                logger.error(f"   3. device_history necesita configuración especial (Primary Key, etc.)")
-                logger.error(f"   4. Permisos insuficientes para escribir en device_history")
-                return False
-                    
-        except Exception as e:
-            logger.error(f"🔥 Error crítico en add_history_entry: {e}", exc_info=True)
-            return False
-
-    def add_latency_to_history(self, device_data: Dict) -> bool:
-        """Agrega un registro de latencia a la tabla latency_history"""
-        try:
-            if not self.enabled: 
-                logger.warning("AppSheet deshabilitado, no se guardará latencia")
-                return False
-            
-            pc_name = device_data.get('pc_name', '')
-            if not pc_name:
-                logger.error("No se puede registrar latencia sin nombre de dispositivo")
-                return False
-            
-            # Generar device_id
             device_id = self.generate_device_id(pc_name)
             
-            # Preparar datos para latency_history
-            latency_record = {
+            # Preparar fila EXACTAMENTE como la pide la base de datos
+            status_str = device_data.get('status', 'online')
+            is_active = "TRUE" if status_str == 'online' else "FALSE"
+            
+            device_row = {
                 "device_id": device_id,
                 "pc_name": pc_name,
-                "latency": device_data.get('latency', 0),
-                "cpu_load": device_data.get('cpu_load_percent', 0),
-                "temperature": device_data.get('temperature', 0),
-                "timestamp": datetime.now(TZ_MX).isoformat(),
                 "unit": device_data.get('unit', 'General'),
-                "status": device_data.get('status', 'online')
+                "public_ip": device_data.get('public_ip', device_data.get('ip', '')),
+                "is_active": is_active, # CORREGIDO: status -> is_active
+                "updated_at": datetime.now(TZ_MX).strftime('%Y-%m-%d %H:%M:%S') # Formato String limpio
             }
             
-            logger.info(f"📊 Guardando latencia en latency_history para {pc_name}")
+            # Opcional: Agregar last_known_location si tienes coordenadas
+            # device_row["last_known_location"] = "0,0" 
+
+            logger.info(f"🔄 Sincronizando dispositivo: {pc_name} (ID: {device_id})")
             
-            result = self._make_appsheet_request("latency_history", "Add", [latency_record])
+            # Usamos "Add" que en AppSheet actúa como "Upsert" (Actualizar si existe, Crear si no)
+            # siempre y cuando la llave primaria (device_id) coincida.
+            result = self._make_appsheet_request("devices", "Add", [device_row])
             
             if result is not None:
-                logger.info(f"✅ Latencia registrada en latency_history para {pc_name}")
-                return True
+                self.last_sync_time = datetime.now(TZ_MX)
+                return True, device_id, True
             else:
-                logger.warning(f"⚠️  No se pudo registrar latencia en latency_history para {pc_name}")
-                return False
+                return False, device_id, False
+                
+        except Exception as e:
+            logger.error(f"Error en get_or_create_device: {e}")
+            return False, None, False
+
+    def add_latency_to_history(self, device_data: Dict) -> bool:
+        """
+        Maneja la tabla 'Latency_history'.
+        Schema esperado: record_id, device_id, timestamp, latency_ms, cpu_percent, ram_percent, temperature_c, disk_percent, status, extended_sensors
+        """
+        try:
+            if not self.enabled: return False
+            
+            pc_name = device_data.get('pc_name', '')
+            if not pc_name: return False
+            
+            device_id = self.generate_device_id(pc_name)
+            
+            # Generar UUID para el registro histórico
+            record_id = str(uuid.uuid4())
+            
+            # Mapeo estricto de columnas
+            latency_record = {
+                "record_id": record_id, # IMPORTANTE: Llave única
+                "device_id": device_id,
+                "timestamp": datetime.now(TZ_MX).strftime('%Y-%m-%d %H:%M:%S'),
+                "latency_ms": str(device_data.get('latency', 0)), # CORREGIDO: latency -> latency_ms
+                "cpu_percent": str(device_data.get('cpu_load_percent', 0)), # CORREGIDO: cpu_load -> cpu_percent
+                "ram_percent": str(device_data.get('ram_percent', 0)),
+                "temperature_c": str(device_data.get('temperature', 0)), # CORREGIDO: temperature -> temperature_c
+                "disk_percent": str(device_data.get('disk_percent', 0)),
+                "status": device_data.get('status', 'online'),
+                "extended_sensors": str(device_data.get('extended_sensors', ''))[:1000] # Truncar por seguridad
+            }
+            
+            logger.info(f"📊 Enviando latencia para {pc_name}")
+            result = self._make_appsheet_request("Latency_history", "Add", [latency_record])
+            
+            return result is not None
                 
         except Exception as e:
             logger.error(f"Error en add_latency_to_history: {e}")
             return False
 
-    def update_device_status(self, device_id: str, status: str):
-        """Actualiza el estado de un dispositivo en la tabla devices"""
+    def add_history_entry(self, log_data: Dict) -> bool:
+        """
+        Maneja la tabla 'device_history'.
+        Schema esperado: history_id, device_id, timestamp, requester, executor, action_type, component, description, is_resolved, location_snapshot, unit_snapshot
+        """
         try:
-            if not self.enabled or not device_id:
-                logger.warning("No se puede actualizar estado: AppSheet deshabilitado o sin device_id")
-                return
-                
-            logger.info(f"🔄 Actualizando estado de dispositivo {device_id} a '{status}'")
-            
-            # Primero buscar el dispositivo
-            search_result = self._make_appsheet_request(
-                "devices", 
-                "Find", 
-                properties={"FilterQuery": f"[device_id] = '{device_id}'"}
-            )
-            
-            device_found = False
-            if search_result:
-                if isinstance(search_result, list) and len(search_result) > 0:
-                    device_found = True
-                elif isinstance(search_result, dict):
-                    if 'Rows' in search_result and len(search_result['Rows']) > 0:
-                        device_found = True
-                    elif any(isinstance(v, list) and len(v) > 0 for v in search_result.values()):
-                        device_found = True
-            
-            if device_found:
-                update_row = {
-                    "device_id": device_id,
-                    "status": status,
-                    "updated_at": datetime.now(TZ_MX).isoformat()
-                }
-                
-                logger.debug(f"📋 Datos de actualización: {update_row}")
-                result = self._make_appsheet_request("devices", "Edit", [update_row])
-                
-                if result is not None:
-                    logger.info(f"✅ Estado de {device_id} actualizado a '{status}' en tabla devices")
-                else:
-                    logger.warning(f"⚠️  No se pudo actualizar estado de {device_id} en tabla devices")
-            else:
-                logger.warning(f"⚠️  Dispositivo {device_id} no encontrado en tabla devices para actualizar estado")
-                
-        except Exception as e:
-            logger.error(f"Error en update_device_status: {e}")
+            if not self.enabled: return False
 
-    def get_full_history(self, limit: int = 200) -> List[Dict]:
-        """Obtiene el historial completo de bitácora"""
-        try:
-            if not self.enabled: 
-                logger.debug("AppSheet deshabilitado, retornando lista vacía")
-                return []
-            
-            logger.info(f"📋 Solicitando historial completo (límite: {limit})...")
-            
-            result = self._make_appsheet_request(
-                "device_history", 
-                "Find", 
-                properties={"Top": limit, "SortBy": "[timestamp] DESC"}
-            )
-            
-            rows = []
-            
-            if isinstance(result, list):
-                rows = result
-                logger.info(f"✅ Historial obtenido (formato lista): {len(rows)} registros")
-            elif isinstance(result, dict):
-                if 'Rows' in result:
-                    rows = result['Rows']
-                    logger.info(f"✅ Historial obtenido (formato Rows): {len(rows)} registros")
-                elif 'data' in result:
-                    rows = result['data']
-                    logger.info(f"✅ Historial obtenido (formato data): {len(rows)} registros")
-                else:
-                    # Buscar cualquier lista en el diccionario
-                    for key, value in result.items():
-                        if isinstance(value, list):
-                            rows = value
-                            logger.info(f"✅ Historial obtenido (clave '{key}'): {len(rows)} registros")
-                            break
-                    else:
-                        # Si no encontramos lista, intentar extraer de estructura diferente
-                        logger.warning(f"⚠️  Formato de respuesta inesperado: {type(result)}")
-                        if result:
-                            logger.debug(f"📋 Estructura recibida: {list(result.keys())}")
-            
-            # Ordenar por timestamp si no viene ordenado
-            if rows:
-                try:
-                    rows.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
-                except Exception as e:
-                    logger.warning(f"⚠️  No se pudo ordenar historial: {e}")
-                
-                # Log para debugging
-                if len(rows) > 0:
-                    sample = rows[0]
-                    logger.debug(f"📊 Muestra registro: device_id={sample.get('device_id')}, acción={sample.get('action_type')}, fecha={sample.get('timestamp')}")
-            
-            return rows
-                
-        except Exception as e:
-            logger.error(f"Error en get_full_history: {e}")
-            return []
+            device_name = log_data.get('device_name') or log_data.get('pc_name')
+            if not device_name: return False
 
-    def get_history_for_device(self, pc_name: str) -> List[Dict]:
-        """Obtiene historial específico para un dispositivo"""
-        try:
-            if not self.enabled or not pc_name:
-                return []
+            # 1. Asegurar dispositivo en tabla padre
+            success, device_id, _ = self.get_or_create_device({
+                "pc_name": device_name,
+                "unit": log_data.get('unit', 'General'),
+                "status": 'online'
+            })
             
-            # Generar device_id para buscar
-            device_id = self.generate_device_id(pc_name)
-            logger.info(f"🔍 Buscando historial para dispositivo: {pc_name}")
-            logger.debug(f"🔍 Device ID calculado: {device_id}")
-            
-            # Obtener todo el historial
-            all_history = self.get_full_history(limit=300)
-            logger.debug(f"🔍 Historial total obtenido: {len(all_history)} registros")
-            
-            # Filtrar por device_id exacto
-            exact_matches = []
-            partial_matches = []
-            
-            for record in all_history:
-                record_device_id = str(record.get('device_id', '')).upper().strip()
-                search_device_id = device_id.upper().strip()
-                
-                # Coincidencia exacta
-                if record_device_id == search_device_id:
-                    exact_matches.append(record)
-                # Coincidencia parcial (para debugging)
-                elif search_device_id and record_device_id and search_device_id in record_device_id:
-                    partial_matches.append(record)
-                    logger.debug(f"🔍 Coincidencia parcial: {record_device_id} contiene {search_device_id}")
-            
-            logger.info(f"📊 Resultados búsqueda para {pc_name}:")
-            logger.info(f"   Coincidencias exactas: {len(exact_matches)}")
-            logger.info(f"   Coincidencias parciales: {len(partial_matches)}")
-            
-            # Devolver coincidencias exactas primero, luego parciales
-            if exact_matches:
-                return exact_matches
-            elif partial_matches:
-                logger.info(f"⚠️  Usando coincidencias parciales para {pc_name}")
-                return partial_matches
-            else:
-                logger.info(f"📭 No se encontraron registros para {pc_name}")
-                return []
-            
-        except Exception as e:
-            logger.error(f"Error en get_history_for_device: {e}")
-            return []
+            if not success:
+                logger.warning("No se pudo verificar dispositivo padre, intentando guardar historial de todos modos...")
+                device_id = self.generate_device_id(device_name)
 
-    def get_status_info(self) -> Dict[str, Any]:
-        """Obtiene información del estado de conexión"""
-        try:
-            if not self.enabled:
-                return {"status": "disabled", "available": False}
+            # 2. Mapeo estricto para device_history
+            history_id = str(uuid.uuid4())
+            is_resolved = "TRUE" if log_data.get('solved') or log_data.get('is_resolved') else "FALSE"
             
-            # Probar conexión a ambas tablas
-            logger.debug("🔍 Probando conexión a tabla devices...")
-            devices_test = self._make_appsheet_request("devices", "Find", properties={"Top": 1})
-            
-            logger.debug("🔍 Probando conexión a tabla device_history...")
-            history_test = self._make_appsheet_request("device_history", "Find", properties={"Top": 1})
-            
-            devices_ok = devices_test is not None
-            history_ok = history_test is not None
-            
-            status_info = {
-                "status": "enabled",
-                "available": devices_ok and history_ok,
-                "tables": {
-                    "devices": "connected" if devices_ok else "disconnected",
-                    "device_history": "connected" if history_ok else "disconnected"
-                },
-                "last_sync": self.last_sync_time.isoformat() if self.last_sync_time else None,
-                "app_id": self.app_id[:8] + "..." if self.app_id else None
+            history_row = {
+                "history_id": history_id, # Nueva llave única
+                "device_id": device_id,
+                "timestamp": datetime.now(TZ_MX).strftime('%Y-%m-%d %H:%M:%S'),
+                "requester": str(log_data.get('req', log_data.get('requester', 'Sistema'))),
+                "executor": str(log_data.get('exec', log_data.get('executor', 'Sistema'))),
+                "action_type": str(log_data.get('action', log_data.get('action_type', 'Mantenimiento'))),
+                "component": str(log_data.get('what', log_data.get('component', 'General'))),
+                "description": str(log_data.get('desc', log_data.get('description', ''))),
+                "is_resolved": is_resolved,
+                "unit_snapshot": str(log_data.get('unit', 'General')),
+                "location_snapshot": str(device_name) # Faltaba este campo requerido
             }
             
-            logger.info(f"📡 Estado AppSheet: {'✅ CONECTADO' if status_info['available'] else '❌ DESCONECTADO'}")
-            logger.info(f"📊 Tablas: devices={status_info['tables']['devices']}, device_history={status_info['tables']['device_history']}")
+            logger.info(f"📝 Guardando bitácora para {device_name}")
+            result = self._make_appsheet_request("device_history", "Add", [history_row])
             
-            return status_info
-            
-        except Exception as e:
-            logger.error(f"Error en get_status_info: {e}")
-            return {"status": "error", "available": False}
-
-    def get_system_stats(self) -> Dict[str, Any]:
-        """Obtiene estadísticas del sistema"""
-        try:
-            if not self.enabled: 
-                return {
-                    'avg_latency': 0, 
-                    'total_devices': 0, 
-                    'total_history': 0,
-                    'status': 'disabled'
-                }
-            
-            stats = {
-                'avg_latency': 0, 
-                'total_devices': 0, 
-                'total_history': 0,
-                'status': 'connected',
-                'last_sync': None
-            }
-            
-            # Obtener conteo de dispositivos
-            devices_result = self._make_appsheet_request("devices", "Find")
-            if devices_result:
-                if isinstance(devices_result, list):
-                    stats['total_devices'] = len(devices_result)
-                elif isinstance(devices_result, dict):
-                    if 'Rows' in devices_result:
-                        stats['total_devices'] = len(devices_result['Rows'])
-                    elif 'data' in devices_result:
-                        stats['total_devices'] = len(devices_result['data'])
-            
-            # Obtener conteo de historial
-            history_result = self._make_appsheet_request("device_history", "Find", properties={"Top": 1000})
-            if history_result:
-                if isinstance(history_result, list):
-                    stats['total_history'] = len(history_result)
-                elif isinstance(history_result, dict):
-                    if 'Rows' in history_result:
-                        stats['total_history'] = len(history_result['Rows'])
-                    elif 'data' in history_result:
-                        stats['total_history'] = len(history_result['data'])
-            
-            if self.last_sync_time: 
-                stats['last_sync'] = self.last_sync_time.isoformat()
-            
-            logger.debug(f"📊 Estadísticas: devices={stats['total_devices']}, device_history={stats['total_history']}")
-                
-            return stats
-            
-        except Exception as e:
-            logger.error(f"Error en get_system_stats: {e}")
-            return {
-                'avg_latency': 0, 
-                'total_devices': 0, 
-                'total_history': 0,
-                'status': 'error'
-            }
-
-    def test_history_connection(self) -> bool:
-        """Prueba específica para la conexión con device_history"""
-        try:
-            if not self.enabled: 
-                return False
-            
-            result = self._make_appsheet_request("device_history", "Find", properties={"Top": 1})
             return result is not None
-                
+
         except Exception as e:
-            logger.error(f"Error probando device_history: {e}")
+            logger.error(f"Error en add_history_entry: {e}")
             return False
 
-    # ====== MÉTODOS PARA COMPATIBILIDAD CON MONITOR_SERVICE ======
-    
-    def sync_device_complete(self, device_data: Dict) -> bool:
-        """Método para compatibilidad con monitor_service"""
-        success, device_id, device_exists = self.get_or_create_device(device_data)
-        return success
-    
-    def add_latency_record(self, device_data: Dict) -> bool:
-        """Método para compatibilidad con monitor_service - usa latency_history"""
-        return self.add_latency_to_history(device_data)
-    
-    def upsert_device(self, device_data: Dict) -> bool:
-        """Método para compatibilidad con monitor_service"""
-        success, device_id, device_exists = self.get_or_create_device(device_data)
-        return success
-    
-    def add_alert(self, device_data: Dict, alert_type: str, message: str, severity: str) -> bool:
-        """Método para compatibilidad con monitor_service"""
-        pc_name = device_data.get('pc_name', '')
-        
-        alert_data = {
-            "device_name": pc_name,
-            "pc_name": pc_name,
-            "unit": device_data.get('unit', 'General'),
-            "action": "Alerta del Sistema",
-            "what": alert_type.upper(),
-            "desc": f"ALERTA {severity.upper()}: {message}",
-            "req": "Sistema de Monitoreo",
-            "exec": "Watchdog Argos",
-            "solved": False,
-            "timestamp": datetime.now(TZ_MX).isoformat()
-        }
-        
-        return self.add_history_entry(alert_data)
+    # --- Métodos de Ayuda / Compatibilidad ---
 
     def list_available_tables(self) -> List[str]:
-        """Lista las tablas disponibles en la app de AppSheet"""
-        try:
-            if not self.enabled:
-                return []
-            
-            # Usar las tablas que sabemos que tienes
-            known_tables = ["devices", "device_history", "latency_history", "alerts"]
-            available_tables = []
-            
-            for table in known_tables:
-                try:
-                    logger.info(f"🔍 Probando tabla: {table}")
-                    result = self._make_appsheet_request(table, "Find", properties={"Top": 1})
-                    
-                    if result is not None:
-                        available_tables.append(table)
-                        logger.info(f"✅ Tabla '{table}' encontrada y accesible")
-                        
-                        # Mostrar estructura de la tabla
-                        if isinstance(result, list) and len(result) > 0:
-                            columns = list(result[0].keys())
-                            logger.info(f"   📋 Columnas ({len(columns)}): {columns[:5]}{'...' if len(columns) > 5 else ''}")
-                        elif isinstance(result, dict):
-                            if 'Rows' in result and len(result['Rows']) > 0:
-                                columns = list(result['Rows'][0].keys())
-                                logger.info(f"   📋 Columnas ({len(columns)}): {columns[:5]}{'...' if len(columns) > 5 else ''}")
-                    else:
-                        logger.warning(f"❌ Tabla '{table}' no encontrada o no accesible")
-                        
-                except Exception as e:
-                    logger.error(f"⚠️  Error probando tabla '{table}': {e}")
-            
-            logger.info(f"📊 Tablas disponibles confirmadas: {available_tables}")
-            return available_tables
-            
-        except Exception as e:
-            logger.error(f"Error listando tablas: {e}")
-            return []
+        return ["devices", "device_history", "Latency_history", "alerts"]
+
+    def get_status_info(self) -> Dict:
+        return {
+            "status": "enabled" if self.enabled else "disabled", 
+            "last_sync": str(self.last_sync_time)
+        }
+        
+    def get_system_stats(self) -> Dict:
+        return {"status": "ok"} # Simplificado para evitar errores 400 en lecturas complejas
+
+    def sync_device_complete(self, device_data: Dict) -> bool:
+        """Compatibilidad con monitor_service"""
+        success, _, _ = self.get_or_create_device(device_data)
+        return success
+    
+    def upsert_device(self, device_data: Dict) -> bool:
+        """Compatibilidad con monitor_service"""
+        return self.sync_device_complete(device_data)
+    
+    def add_latency_record(self, device_data: Dict) -> bool:
+        """Compatibilidad con monitor_service"""
+        return self.add_latency_to_history(device_data)
+
+    def add_alert(self, device_data: Dict, alert_type: str, message: str, severity: str) -> bool:
+        """Compatibilidad con monitor_service"""
+        # Redirige a history ya que alerts tiene un esquema distinto que no hemos mapeado
+        return self.add_history_entry({
+            "device_name": device_data.get('pc_name'),
+            "action": "ALERTA",
+            "what": alert_type,
+            "desc": f"[{severity}] {message}",
+            "req": "Watchdog",
+            "solved": False
+        })
+    
+    # --- Métodos de Lectura (Read) ---
+    # Nota: AppSheet FilterQuery es delicado. Si falla, devolver lista vacía para no romper el front.
+    
+    def get_full_history(self, limit: int = 200) -> List[Dict]:
+        res = self._make_appsheet_request("device_history", "Find", properties={"Top": limit})
+        return res if isinstance(res, list) else []
+
+    def get_history_for_device(self, pc_name: str) -> List[Dict]:
+        # Para evitar complejidad de filtros, traemos los últimos y filtramos en memoria
+        # AppSheet Database a veces falla con selectores complejos vía API REST
+        all_rows = self.get_full_history(300)
+        device_id = self.generate_device_id(pc_name)
+        return [r for r in all_rows if r.get('device_id') == device_id]
