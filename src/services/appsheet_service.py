@@ -17,22 +17,32 @@ logger = logging.getLogger(__name__)
 
 class AppSheetService:
     """
-    Servicio AppSheet API v2 - VERSIÓN ARGOS FULL STACK
-    Soporta Escritura (Add), Lectura (Find) y Diagnóstico.
+    Servicio AppSheet API v2 - VERSIÓN ARGOS DEBUG
+    Incluye limpieza de credenciales y manejo seguro de errores JSON.
     """
     
     def __init__(self):
-        self.api_key = os.getenv('APPSHEET_API_KEY', '')
-        self.app_id = os.getenv('APPSHEET_APP_ID', '')
+        # --- CORRECCIÓN CRÍTICA: .strip() ---
+        # Render a veces agrega espacios invisibles o saltos de línea al copiar/pegar
+        raw_key = os.getenv('APPSHEET_API_KEY', '')
+        raw_id = os.getenv('APPSHEET_APP_ID', '')
+        
+        self.api_key = raw_key.strip() if raw_key else ''
+        self.app_id = raw_id.strip() if raw_id else ''
+        
         self.base_url = "https://api.appsheet.com/api/v2"
         
         env_enabled = os.getenv('APPSHEET_ENABLED', 'false').lower()
         is_config_enabled = env_enabled in ['true', '1', 'yes', 'on']
-        has_creds = self.api_key and self.app_id and 'tu_api_key' not in self.api_key
+        
+        # Validación de credenciales
+        has_creds = len(self.api_key) > 5 and len(self.app_id) > 5 and 'tu_api_key' not in self.api_key
 
         if not is_config_enabled or not has_creds:
             self.enabled = False
-            logger.warning("⚠️ AppSheetService deshabilitado - Credenciales faltantes o flag apagada")
+            # Logueamos por qué falló (sin mostrar la key completa)
+            logger.warning(f"⚠️ AppSheetService OFF - Config: {is_config_enabled}, Creds: {has_creds}")
+            logger.warning(f"   AppID Length: {len(self.app_id)}")
             return
             
         self.enabled = True
@@ -41,21 +51,21 @@ class AppSheetService:
             'ApplicationAccessKey': self.api_key
         }
         self.last_sync_time = None
-        logger.info(f"✅ AppSheetService Listo - App: {self.app_id[:8]}...")
+        logger.info(f"✅ AppSheetService Listo - AppID: {self.app_id[:8]}... (Longitud: {len(self.app_id)})")
 
     def _make_appsheet_request(self, table: str, action: str, rows: List[Dict] = None, properties: Dict = None) -> Optional[Any]:
-        """Envía petición HTTP a la API (Soporta Add y Find)"""
+        """Envía petición HTTP a la API con DEBUG EXTENDIDO"""
         try:
             if not self.enabled: return None
             
-            # Propiedades base
+            # 1. Construir URL y Payload
+            url = f"{self.base_url}/apps/{self.app_id}/tables/{table}/Action"
+            
             props = {
                 "Locale": "es-MX",
                 "Timezone": "Central Standard Time"
             }
-            # Fusionar propiedades extra (ej: Selectores, Top)
-            if properties:
-                props.update(properties)
+            if properties: props.update(properties)
 
             payload = {
                 "Action": action, 
@@ -63,23 +73,35 @@ class AppSheetService:
             }
             if rows: payload["Rows"] = rows
             
-            url = f"{self.base_url}/apps/{self.app_id}/tables/{table}/Action"
-            
+            # 2. Enviar Request
+            # logger.info(f"📡 Enviando a {url}...") # Descomentar solo si es necesario debuggear URL
             response = requests.post(url, headers=self.headers, json=payload, timeout=30)
             
-            if response.status_code == 200:
-                self.last_sync_time = datetime.now(TZ_MX)
-                return response.json()
-            
-            logger.error(f"❌ AppSheet Error {response.status_code} en tabla '{table}': {response.text}")
-            return None
+            # 3. MANEJO DE RESPUESTA (AQUÍ OCURRE EL ERROR ACTUALMENTE)
+            try:
+                # Intentamos decodificar JSON
+                response_data = response.json()
+                
+                if response.status_code == 200:
+                    self.last_sync_time = datetime.now(TZ_MX)
+                    return response_data
+                else:
+                    logger.error(f"❌ AppSheet Error {response.status_code}: {json.dumps(response_data)}")
+                    return None
+                    
+            except json.JSONDecodeError:
+                # --- AQUÍ CAPTURAMOS EL ERROR 'Expecting value...' ---
+                logger.error(f"🔥 ERROR DE FORMATO: AppSheet no devolvió JSON.")
+                logger.error(f"   Status Code: {response.status_code}")
+                logger.error(f"   URL Usada: {url}")
+                logger.error(f"   Respuesta CRUDA recibida: {response.text[:500]}") # Imprime los primeros 500 chars
+                return None
             
         except Exception as e:
-            logger.error(f"🔥 Error crítico conexión AppSheet: {e}")
+            logger.error(f"🔥 Error conexión crítica: {e}")
             return None
 
     def generate_device_id(self, pc_name: str) -> str:
-        """Genera ID Hash MD5 consistente"""
         try:
             if not pc_name: return "UNKNOWN"
             clean_name = pc_name.strip().upper()
@@ -89,11 +111,9 @@ class AppSheetService:
         except: return "ERROR_ID"
 
     # ==========================================================
-    # 1. ESCRITURA (WRITE METHODS)
+    # MÉTODOS DE ESCRITURA
     # ==========================================================
-
     def get_or_create_device(self, device_data: Dict) -> tuple:
-        """Sincroniza con la tabla 'devices'."""
         try:
             if not self.enabled: return False, None, False
             pc_name = device_data.get('pc_name', '').strip()
@@ -119,12 +139,12 @@ class AppSheetService:
             return False, None, False
 
     def add_history_entry(self, log_data: Dict) -> bool:
-        """Inserta en 'device_history'."""
         try:
             if not self.enabled: return False
             dev_name = log_data.get('device_name') or log_data.get('pc_name')
             if not dev_name: return False
 
+            # Intentar asegurar padre
             self.get_or_create_device({
                 "pc_name": dev_name,
                 "unit": log_data.get('unit', 'General')
@@ -144,6 +164,8 @@ class AppSheetService:
                 "status_snapshot": str(log_data.get('status_snapshot', 'active')),
                 "timestamp": ts
             }
+            
+            logger.info(f"📝 Enviando Bitácora: {dev_name}")
             result = self._make_appsheet_request("device_history", "Add", [row])
             return result is not None
         except Exception as e:
@@ -151,7 +173,6 @@ class AppSheetService:
             return False
 
     def add_latency_to_history(self, device_data: Dict) -> bool:
-        """Inserta en 'latency_history'."""
         try:
             if not self.enabled: return False
             pc_name = device_data.get('pc_name', '')
@@ -173,16 +194,15 @@ class AppSheetService:
                 "status": str(device_data.get('status', 'online')),
                 "extended_sensors": str(device_data.get('extended_sensors', ''))[:2000]
             }
+            # Verificar nombre exacto de la tabla (Case Sensitive)
             result = self._make_appsheet_request("latency_history", "Add", [row])
             return result is not None
         except Exception: return False
 
     def add_alert(self, data: Dict, type_alert: str, msg: str, sev: str) -> bool:
-        """Inserta en 'alerts'."""
         try:
             if not self.enabled: return False
             pc_name = data.get('pc_name', '')
-            if not pc_name: return False
             device_id = self.generate_device_id(pc_name)
             alert_id = str(uuid.uuid4())
             ts = datetime.now(TZ_MX).strftime('%Y-%m-%d %H:%M:%S')
@@ -201,87 +221,44 @@ class AppSheetService:
         except Exception: return False
 
     # ==========================================================
-    # 2. LECTURA (READ METHODS) - REQUERIDOS POR API.PY
+    # MÉTODOS DE LECTURA (NECESARIOS PARA API.PY)
     # ==========================================================
-
     def get_full_history(self, limit: int = 100) -> List[Dict]:
-        """Obtiene historial reciente (Para /history/all)"""
         try:
             if not self.enabled: return []
-            
-            # Action: Find para leer datos
-            # OJO: AppSheet retorna una lista de filas directamente o dentro de un objeto
-            result = self._make_appsheet_request(
-                "device_history", 
-                "Find", 
-                properties={"Selector": "Filter(device_history, true)", "Top": limit} # Selector simple
-            )
-            
+            result = self._make_appsheet_request("device_history", "Find", properties={"Top": limit})
             if not result: return []
-            
-            # Normalizar respuesta (A veces es lista directa, a veces dict)
-            rows = result if isinstance(result, list) else result.get('Rows', [])
-            return rows
-        except Exception as e:
-            logger.error(f"Error leyendo historial: {e}")
-            return []
+            return result if isinstance(result, list) else result.get('Rows', [])
+        except Exception: return []
 
     def get_history_for_device(self, pc_name: str) -> List[Dict]:
-        """Obtiene historial filtrado por dispositivo"""
         try:
             if not self.enabled: return []
-            
-            # Selector AppSheet: [pc_name] = 'VALOR'
             selector = f"Filter(device_history, [pc_name] = '{pc_name}')"
-            
-            result = self._make_appsheet_request(
-                "device_history", 
-                "Find", 
-                properties={"Selector": selector}
-            )
-            
-            rows = result if isinstance(result, list) else result.get('Rows', [])
-            return rows
-        except Exception as e:
-            logger.error(f"Error historial dispositivo: {e}")
-            return []
+            result = self._make_appsheet_request("device_history", "Find", properties={"Selector": selector})
+            return result if isinstance(result, list) else result.get('Rows', [])
+        except Exception: return []
 
     # ==========================================================
-    # 3. DIAGNÓSTICO Y COMPATIBILIDAD (REQUERIDOS POR APP.PY)
+    # MÉTODOS DE DIAGNÓSTICO
     # ==========================================================
-
     def _test_table_connection(self, table_name: str) -> bool:
-        """Prueba simple para ver si la tabla responde (Para app.py)"""
         try:
-            # Intentamos leer 1 fila cualquiera
             res = self._make_appsheet_request(table_name, "Find", properties={"Top": 1})
             return res is not None
-        except:
-            return False
+        except: return False
 
     def test_history_connection(self) -> bool:
-        """Alias específico para device_history"""
         return self._test_table_connection("device_history")
 
-    def sync_device_complete(self, data: Dict) -> bool:
-        success, _, _ = self.get_or_create_device(data)
-        return success
-    
-    def upsert_device(self, data: Dict) -> bool:
-        return self.sync_device_complete(data)
-    
-    def add_latency_record(self, data: Dict) -> bool:
-        return self.add_latency_to_history(data)
-
-    def list_available_tables(self) -> List[str]:
-        return ["devices", "device_history", "latency_history", "alerts"]
-
     def get_status_info(self) -> Dict:
-        return {
-            "status": "enabled" if self.enabled else "disabled", 
-            "last_sync": str(self.last_sync_time),
-            "app_id": self.app_id
-        }
-        
+        return {"status": "enabled", "app_id_len": len(self.app_id)}
+
     def get_system_stats(self) -> Dict:
-        return {"status": "ok", "mode": "DB-Native"}
+        return {"status": "ok"}
+    
+    # Compatibilidad
+    def sync_device_complete(self, data: Dict) -> bool: return self.get_or_create_device(data)[0]
+    def upsert_device(self, data: Dict) -> bool: return self.get_or_create_device(data)[0]
+    def add_latency_record(self, data: Dict) -> bool: return self.add_latency_to_history(data)
+    def list_available_tables(self) -> List[str]: return ["devices", "device_history", "latency_history", "alerts"]
