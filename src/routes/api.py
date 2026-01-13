@@ -4,6 +4,8 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime
 import json
 import traceback
+
+# Manejo de zonas horarias compatible con Python < 3.9
 try:
     from zoneinfo import ZoneInfo
 except ImportError:
@@ -15,28 +17,26 @@ bp = Blueprint('api', __name__, url_prefix='/api')
 TZ_MX = ZoneInfo("America/Mexico_City")
 EMAIL_TIMEOUT_SECONDS = 45 
 
-# --- RUTAS CORE ---
+# ==========================================================
+# RUTAS DE REPORTES (Dispositivos -> Servidor)
+# ==========================================================
 @bp.route('/report', methods=['POST'])
 def report():
-    """Endpoint para recibir reportes de dispositivos"""
+    """Endpoint principal: Recibe heartbeat de los agentes en las NUCs"""
     try:
         data = request.get_json()
         if not data or 'pc_name' not in data: 
             print("❌ /report: Falta pc_name en el reporte")
-            return jsonify({
-                "status": "error", 
-                "message": "Falta pc_name en el reporte"
-            }), 400
+            return jsonify({"status": "error", "message": "Falta pc_name"}), 400
         
+        # Estampamos la hora del servidor
         data['timestamp'] = datetime.now(TZ_MX).isoformat()
         
-        print(f"📨 /report recibió datos de {data.get('pc_name')}")
-        
-        # Guardar en almacenamiento local
+        # 1. Guardar en DB Local (JSON)
         if src.storage: 
             src.storage.save_device_report(data)
         
-        # Enviar a AppSheet si está habilitado
+        # 2. Pasar al Monitor (que decide si enviar a AppSheet)
         if src.monitor and src.appsheet and src.appsheet.enabled: 
             src.monitor.ingest_data(data.copy())
         
@@ -44,122 +44,83 @@ def report():
         
     except Exception as e:
         print(f"❌ Error en /report: {e}")
-        return jsonify({
-            "status": "error", 
-            "message": f"Error interno: {str(e)}"
-        }), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @bp.route('/data', methods=['GET'])
 def get_data():
-    """Obtiene datos de todos los dispositivos"""
+    """Endpoint para el Frontend: Devuelve estado de todos los equipos"""
     try:
-        if not src.storage: 
-            print("⚠️  /data: Storage no disponible")
-            return jsonify({})
+        if not src.storage: return jsonify({})
         
         raw = src.storage.get_all_devices()
         processed_data = {}
         now = datetime.now(TZ_MX)
         
-        print(f"📊 /data: Procesando {len(raw)} dispositivos")
-        
         for pc_name, info in raw.items():
             device_info = info.copy()
-            
-            # Lógica de estado online/offline
+            # Cálculo de estado Online/Offline basado en tiempo
             last = info.get('timestamp')
             if last:
                 try:
+                    # Normalizamos fecha para comparación
                     last_time = datetime.fromisoformat(last.replace('Z', '+00:00'))
                     time_diff = (now - last_time).total_seconds()
-                    
-                    if time_diff > EMAIL_TIMEOUT_SECONDS:
-                        device_info['status'] = 'offline'
-                    else:
-                        device_info['status'] = 'online'
-                        
-                except Exception as e:
+                    device_info['status'] = 'offline' if time_diff > EMAIL_TIMEOUT_SECONDS else 'online'
+                except:
                     device_info['status'] = 'unknown'
-                    device_info['error'] = str(e)
             
             processed_data[pc_name] = device_info
         
-        print(f"✅ /data: Devolviendo {len(processed_data)} dispositivos procesados")
         return jsonify(processed_data)
         
     except Exception as e:
-        print(f"❌ Error en /data: {e}")
         return jsonify({"error": str(e)}), 500
 
-# --- RUTAS APPSHEET ---
+# ==========================================================
+# RUTAS DE APPSHEET (Diagnóstico y Estado)
+# ==========================================================
 @bp.route('/appsheet/status', methods=['GET'])
 def appsheet_status():
-    """Obtiene el estado de conexión con AppSheet"""
+    """Estado de conexión para el dashboard"""
     try:
         if not src.appsheet: 
-            print("⚠️  /appsheet/status: AppSheet no inicializado")
-            return jsonify({
-                "status": "disabled", 
-                "message": "AppSheet no inicializado"
-            }), 200
-        
-        status_info = src.appsheet.get_status_info()
-        print(f"📡 /appsheet/status: {status_info}")
-        return jsonify(status_info)
-        
+            return jsonify({"status": "disabled", "message": "No inicializado"}), 200
+        return jsonify(src.appsheet.get_status_info())
     except Exception as e:
-        print(f"❌ Error en /appsheet/status: {e}")
-        return jsonify({
-            "status": "error", 
-            "message": str(e)
-        }), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @bp.route('/appsheet/stats', methods=['GET'])
 def appsheet_stats():
-    """Obtiene estadísticas de AppSheet"""
+    """Estadísticas de registros (Latency, Uptime)"""
     try:
-        if src.appsheet: 
-            stats = src.appsheet.get_system_stats()
-            print(f"📊 /appsheet/stats: {stats}")
-            return jsonify(stats)
-        
-        print("⚠️  /appsheet/stats: AppSheet no disponible")
+        if src.appsheet: return jsonify(src.appsheet.get_system_stats())
         return jsonify({})
-        
     except Exception as e:
-        print(f"❌ Error en /appsheet/stats: {e}")
-        return jsonify({
-            "status": "error", 
-            "message": str(e)
-        }), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @bp.route('/appsheet/diagnose', methods=['GET'])
 def appsheet_diagnose():
-    """Endpoint para diagnóstico de AppSheet"""
+    """
+    Diagnóstico profundo. 
+    Intenta leer 1 fila de cada tabla para verificar permisos.
+    """
     try:
         if not src.appsheet:
-            print("❌ /appsheet/diagnose: AppSheet no inicializado")
-            return jsonify({
-                "status": "error", 
-                "message": "AppSheet no inicializado"
-            }), 500
+            return jsonify({"status": "error", "message": "AppSheet OFF"}), 500
         
-        print("🔍 /appsheet/diagnose: Ejecutando diagnóstico...")
-        
-        # Probar conexión básica
+        print("🔍 Ejecutando diagnóstico de tablas...")
         basic_test = False
         history_test = False
         
-        if hasattr(src.appsheet, '_make_appsheet_request'):
-            # Probar devices
-            devices_result = src.appsheet._make_appsheet_request("devices", "Find", properties={"Top": 1})
-            basic_test = devices_result is not None
+        # Usamos _make_safe_request que es el método robusto del servicio nuevo
+        if hasattr(src.appsheet, '_make_safe_request'):
+            # Prueba Devices
+            res_dev = src.appsheet._make_safe_request("devices", "Find", properties={"Top": 1})
+            basic_test = res_dev is not None
             
-            # Probar device_history
-            history_result = src.appsheet._make_appsheet_request("device_history", "Find", properties={"Top": 1})
-            history_test = history_result is not None
-        
-        print(f"📊 /appsheet/diagnose: devices={basic_test}, device_history={history_test}")
+            # Prueba History
+            res_hist = src.appsheet._make_safe_request("device_history", "Find", properties={"Top": 1})
+            history_test = res_hist is not None
         
         return jsonify({
             "status": "success",
@@ -168,353 +129,58 @@ def appsheet_diagnose():
                     "devices": "connected" if basic_test else "disconnected",
                     "device_history": "connected" if history_test else "disconnected"
                 },
-                "appsheet_enabled": src.appsheet.enabled if src.appsheet else False,
-                "environment": {
-                    "APPSHEET_ENABLED": os.getenv('APPSHEET_ENABLED', 'Not set'),
-                    "APPSHEET_APP_ID_set": bool(os.getenv('APPSHEET_APP_ID'))
-                }
+                "appsheet_enabled": src.appsheet.enabled
             }
         })
-        
     except Exception as e:
-        print(f"❌ Error en /appsheet/diagnose: {e}")
-        return jsonify({
-            "status": "error", 
-            "message": str(e)
-        }), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
 
-@bp.route('/appsheet/test-history', methods=['POST'])
-def test_history_entry():
-    """Endpoint para probar la inserción de una ficha de prueba"""
-    try:
-        if not src.appsheet:
-            print("❌ /appsheet/test-history: AppSheet no inicializado")
-            return jsonify({
-                "status": "error", 
-                "message": "AppSheet no inicializado"
-            }), 500
-        
-        # Crear datos de prueba
-        test_data = {
-            "device_name": f"MX_TEST_{datetime.now().strftime('%H%M%S')}",
-            "pc_name": f"MX_TEST_{datetime.now().strftime('%H%M%S')}",
-            "unit": "ECOVALLAS",
-            "action": "Prueba de Sistema",
-            "what": "NUC",
-            "desc": "Prueba automática de funcionalidad de bitácora",
-            "req": "Sistema Automático",
-            "exec": "API Test",
-            "solved": True,
-            "timestamp": datetime.now(TZ_MX).isoformat()
-        }
-        
-        print(f"🧪 /appsheet/test-history: Enviando datos de prueba")
-        print(json.dumps(test_data, indent=2, ensure_ascii=False))
-        
-        success = src.appsheet.add_history_entry(test_data)
-        
-        if success:
-            print("✅ /appsheet/test-history: Prueba exitosa")
-            return jsonify({
-                "status": "success", 
-                "message": "Prueba de inserción exitosa",
-                "test_data": test_data
-            })
-        else:
-            print("❌ /appsheet/test-history: Prueba fallida")
-            return jsonify({
-                "status": "error", 
-                "message": "Prueba de inserción falló"
-            }), 500
-        
-    except Exception as e:
-        print(f"❌ Error en /appsheet/test-history: {e}")
-        return jsonify({
-            "status": "error", 
-            "message": f"Error en prueba: {str(e)}"
-        }), 500
-
-# --- RUTAS BITÁCORA ---
+# ==========================================================
+# RUTAS DE BITÁCORA (Historial)
+# ==========================================================
 @bp.route('/history/all', methods=['GET'])
 def get_history():
-    """Obtiene todo el historial de bitácora"""
+    """Lectura de bitácora desde AppSheet"""
     try:
-        print("📋 /history/all: Solicitando historial completo...")
-        
         if src.appsheet: 
             history = src.appsheet.get_full_history()
-            print(f"✅ /history/all: Devolviendo {len(history)} registros")
-            
-            if history and len(history) > 0:
-                print(f"📊 Muestra primer registro:")
-                print(f"   device_id: {history[0].get('device_id')}")
-                print(f"   acción: {history[0].get('action_type')}")
-                print(f"   componente: {history[0].get('component')}")
-                print(f"   fecha: {history[0].get('timestamp')}")
-            
             return jsonify(history)
-        
-        print("⚠️  /history/all: AppSheet no disponible")
         return jsonify([])
-        
     except Exception as e:
-        print(f"❌ Error en /history/all: {e}")
-        return jsonify({
-            "status": "error", 
-            "message": str(e),
-            "data": []
-        }), 500
-
-@bp.route('/history/device/<device_name>', methods=['GET'])
-def get_device_history(device_name):
-    """Obtiene historial específico para un dispositivo"""
-    try:
-        decoded_device_name = device_name
-        print(f"📋 /history/device/{decoded_device_name}: Solicitando historial específico...")
-        
-        if src.appsheet: 
-            history = src.appsheet.get_history_for_device(decoded_device_name)
-            print(f"✅ /history/device/{decoded_device_name}: Encontrados {len(history)} registros")
-            
-            if history and len(history) > 0:
-                print(f"📊 Muestra primer registro para {decoded_device_name}:")
-                print(f"   device_id: {history[0].get('device_id')}")
-                print(f"   acción: {history[0].get('action_type')}")
-                print(f"   fecha: {history[0].get('timestamp')}")
-            
-            return jsonify(history)
-        
-        print(f"⚠️  /history/device/{decoded_device_name}: AppSheet no disponible")
-        return jsonify([])
-        
-    except Exception as e:
-        print(f"❌ Error en /history/device/{device_name}: {e}")
-        return jsonify({
-            "status": "error", 
-            "message": str(e),
-            "data": []
-        }), 500
+        print(f"❌ Error history/all: {e}")
+        return jsonify([]), 500
 
 @bp.route('/history/add', methods=['POST'])
 def add_history():
-    """Agrega una nueva entrada a la bitácora"""
+    """
+    Escritura en bitácora.
+    Recibe datos del Frontend, los valida y los manda al Servicio.
+    """
     try:
         data = request.get_json()
-        if not data:
-            print("❌ /history/add: No se recibieron datos")
-            return jsonify({
-                "status": "error", 
-                "message": "No se recibieron datos"
-            }), 400
+        if not data: return jsonify({"status": "error", "message": "Sin datos"}), 400
         
-        print(f"📨 /history/add recibió datos:")
-        print(json.dumps(data, indent=2, ensure_ascii=False))
+        print(f"📨 /history/add payload: {json.dumps(data, ensure_ascii=False)}")
         
-        # Validar campos requeridos
-        required_fields = ['device_name', 'action', 'what']
-        for field in required_fields:
-            if field not in data or not data[field]:
-                print(f"❌ /history/add: Falta campo requerido: {field}")
-                return jsonify({
-                    "status": "error",
-                    "message": f"Falta campo requerido: {field}"
-                }), 400
+        # Validación mínima
+        if not data.get('device_name') or not data.get('action'):
+            return jsonify({"status": "error", "message": "Faltan campos obligatorios"}), 400
         
-        # Agregar timestamp si no está presente
+        # Timestamp servidor
         if 'timestamp' not in data:
             data['timestamp'] = datetime.now(TZ_MX).isoformat()
         
-        # Intentar agregar a AppSheet si está disponible
+        # Enviar al servicio
         success = False
         if src.appsheet and src.appsheet.enabled:
             success = src.appsheet.add_history_entry(data)
         
         if success:
-            print(f"✅ /history/add: Entrada agregada exitosamente para {data.get('device_name')}")
-            return jsonify({
-                "status": "success",
-                "message": "Entrada de bitácora agregada exitosamente"
-            })
+            return jsonify({"status": "success", "message": "Guardado en AppSheet"})
         else:
-            print(f"⚠️  /history/add: No se pudo agregar a AppSheet, guardando localmente")
-            # Aquí podrías agregar lógica para guardar localmente si AppSheet falla
-            return jsonify({
-                "status": "partial_success",
-                "message": "Datos recibidos pero no se pudo conectar con AppSheet"
-            }), 202
+            # Si falla (o AppSheet devuelve error), avisamos al frontend
+            return jsonify({"status": "error", "message": "No se pudo conectar con AppSheet"}), 500
             
     except Exception as e:
-        print(f"❌ Error en /history/add: {e}")
-        return jsonify({
-            "status": "error",
-            "message": f"Error interno: {str(e)}"
-        }), 500
-
-# --- RUTAS DE DEBUGGING ---
-@bp.route('/appsheet/tables', methods=['GET'])
-def list_appsheet_tables():
-    """Lista las tablas disponibles en AppSheet"""
-    try:
-        if not src.appsheet: 
-            print("⚠️  /appsheet/tables: AppSheet no inicializado")
-            return jsonify({
-                "status": "error", 
-                "message": "AppSheet no inicializado"
-            }), 500
-        
-        tables = src.appsheet.list_available_tables()
-        print(f"📊 /appsheet/tables: Encontradas {len(tables)} tablas: {tables}")
-        
-        return jsonify({
-            "status": "success",
-            "tables": tables,
-            "count": len(tables)
-        })
-        
-    except Exception as e:
-        print(f"❌ Error en /appsheet/tables: {e}")
-        return jsonify({
-            "status": "error", 
-            "message": str(e)
-        }), 500
-
-@bp.route('/appsheet/debug', methods=['GET'])
-def debug_appsheet():
-    """Endpoint para debugging detallado de AppSheet"""
-    try:
-        if not src.appsheet:
-            print("❌ /appsheet/debug: AppSheet no inicializado")
-            return jsonify({
-                "status": "error",
-                "message": "AppSheet no inicializado"
-            }), 500
-        
-        print("🔍 /appsheet/debug: Ejecutando diagnóstico detallado...")
-        
-        # Obtener estado
-        status_info = src.appsheet.get_status_info()
-        
-        # Listar tablas disponibles
-        tables = src.appsheet.list_available_tables()
-        
-        # Probar obtener datos de muestra
-        sample_devices = []
-        sample_history = []
-        
-        if src.appsheet.enabled:
-            try:
-                # Intentar obtener algunos dispositivos
-                result = src.appsheet._make_appsheet_request("devices", "Find", properties={"Top": 3})
-                if result:
-                    if isinstance(result, list):
-                        sample_devices = result[:3]
-                    elif isinstance(result, dict):
-                        if 'Rows' in result:
-                            sample_devices = result['Rows'][:3]
-                        elif 'data' in result:
-                            sample_devices = result['data'][:3]
-                print(f"📊 Muestra devices: {len(sample_devices)} registros")
-            except Exception as e:
-                sample_devices = [f"Error: {str(e)}"]
-                print(f"❌ Error obteniendo devices: {e}")
-            
-            try:
-                # Intentar obtener historial
-                result = src.appsheet._make_appsheet_request("device_history", "Find", properties={"Top": 3})
-                if result:
-                    if isinstance(result, list):
-                        sample_history = result[:3]
-                    elif isinstance(result, dict):
-                        if 'Rows' in result:
-                            sample_history = result['Rows'][:3]
-                        elif 'data' in result:
-                            sample_history = result['data'][:3]
-                print(f"📊 Muestra device_history: {len(sample_history)} registros")
-            except Exception as e:
-                sample_history = [f"Error: {str(e)}"]
-                print(f"❌ Error obteniendo device_history: {e}")
-        
-        response_data = {
-            "status": "success",
-            "appsheet_enabled": src.appsheet.enabled,
-            "environment": {
-                "APPSHEET_ENABLED": os.getenv('APPSHEET_ENABLED', 'Not set'),
-                "APPSHEET_API_KEY_set": bool(os.getenv('APPSHEET_API_KEY')),
-                "APPSHEET_APP_ID_set": bool(os.getenv('APPSHEET_APP_ID')),
-                "APPSHEET_API_KEY_length": len(os.getenv('APPSHEET_API_KEY', ''))
-            },
-            "status_info": status_info,
-            "available_tables": tables,
-            "sample_data": {
-                "devices": sample_devices,
-                "device_history": sample_history
-            }
-        }
-        
-        print(f"✅ /appsheet/debug: Diagnóstico completado")
-        return jsonify(response_data)
-        
-    except Exception as e:
-        print(f"❌ Error en /appsheet/debug: {e}")
-        return jsonify({
-            "status": "error",
-            "message": str(e),
-            "traceback": traceback.format_exc()
-        }), 500
-
-# --- RUTAS DE MONITOREO ---
-@bp.route('/monitor/sync', methods=['POST'])
-def force_sync():
-    """Forza una sincronización manual con AppSheet"""
-    try:
-        if not src.monitor:
-            print("❌ /monitor/sync: Monitor no disponible")
-            return jsonify({
-                "status": "error",
-                "message": "Monitor no disponible"
-            }), 500
-        
-        print("🔄 /monitor/sync: Forzando sincronización manual...")
-        src.monitor.force_manual_sync()
-        
-        return jsonify({
-            "status": "success",
-            "message": "Sincronización manual iniciada"
-        })
-        
-    except Exception as e:
-        print(f"❌ Error en /monitor/sync: {e}")
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
-
-@bp.route('/system/health', methods=['GET'])
-def system_health():
-    """Endpoint de health check para el sistema"""
-    try:
-        health_status = {
-            "status": "healthy",
-            "timestamp": datetime.now(TZ_MX).isoformat(),
-            "components": {
-                "storage": "active" if src.storage else "inactive",
-                "appsheet": "active" if src.appsheet and src.appsheet.enabled else "inactive",
-                "monitor": "active" if src.monitor else "inactive"
-            }
-        }
-        
-        # Verificar AppSheet específicamente
-        if src.appsheet:
-            appsheet_status = src.appsheet.get_status_info()
-            health_status["appsheet_details"] = appsheet_status
-        
-        print(f"❤️  /system/health: Sistema verificado")
-        return jsonify(health_status)
-        
-    except Exception as e:
-        print(f"❌ Error en /system/health: {e}")
-        return jsonify({
-            "status": "unhealthy",
-            "error": str(e),
-            "timestamp": datetime.now(TZ_MX).isoformat()
-        }), 500
+        print(f"❌ Excepción en /history/add: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
