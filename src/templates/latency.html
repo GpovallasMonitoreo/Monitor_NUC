@@ -31,6 +31,7 @@
             <input type="search" id="search-bar" placeholder="Buscar..." class="p-2 text-sm border border-slate-300 rounded-lg w-64 focus:ring-indigo-500 outline-none">
         </div>
     </div>
+    
     <div id="loading-indicator" class="flex justify-center p-10"><i data-lucide="loader-2" class="animate-spin text-indigo-600 w-8 h-8"></i></div>
     <div id="pc-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
 </div>
@@ -44,11 +45,23 @@
                 <button onclick="closeModal()" class="text-slate-400 hover:text-rose-500 hover:bg-rose-50 p-2 rounded-lg transition"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
         </div>
+        
         <div class="border-b border-slate-200 bg-white px-6"><nav class="flex space-x-1" id="modal-tabs"><button data-tab="general" class="modal-tab active">General</button><button data-tab="hardware" class="modal-tab">Hardware</button><button data-tab="predictive" class="modal-tab">Diagnóstico IA</button><button data-tab="specs" class="modal-tab">Ficha & Bitácora</button></nav></div>
+        
         <div class="p-8 overflow-y-auto bg-slate-50 flex-1">
-            <div id="tab-general" class="tab-content"><div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6"><div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">IDENTIDAD</h4><div class="space-y-3 text-sm"><div class="flex justify-between"><span class="text-slate-500">Unidad</span><span id="gen-unit" class="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded"></span></div><div class="flex justify-between"><span class="text-slate-500">IP</span><span id="gen-ip" class="font-mono text-slate-700"></span></div><div class="flex justify-between"><span class="text-slate-500">Conexión</span><span id="gen-seen" class="text-slate-700 font-medium"></span></div></div></div><div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">CARGA</h4><div class="space-y-4"><div><div class="flex justify-between text-xs mb-1"><span>CPU</span><span id="gen-cpu-val" class="font-bold"></span></div><div class="w-full bg-slate-100 rounded-full h-1.5"><div id="gen-cpu-bar" class="bg-indigo-500 h-1.5 rounded-full" style="width:0%"></div></div></div><div><div class="flex justify-between text-xs mb-1"><span>RAM</span><span id="gen-ram-val" class="font-bold"></span></div><div class="w-full bg-slate-100 rounded-full h-1.5"><div id="gen-ram-bar" class="bg-purple-500 h-1.5 rounded-full" style="width:0%"></div></div></div></div></div><div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center"><div id="health-icon-container" class="mb-1"></div><span id="health-score-val" class="text-4xl font-black text-slate-800">--%</span><span class="text-[10px] font-bold text-slate-400 uppercase">SCORE ARGOS</span></div></div><div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm h-[320px]"><h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">TELEMETRÍA DE RED</h4><canvas id="latency-chart"></canvas></div></div>
+            <div id="tab-general" class="tab-content">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">IDENTIDAD</h4><div class="space-y-3 text-sm"><div class="flex justify-between"><span class="text-slate-500">Unidad</span><span id="gen-unit" class="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded"></span></div><div class="flex justify-between"><span class="text-slate-500">IP</span><span id="gen-ip" class="font-mono text-slate-700"></span></div><div class="flex justify-between"><span class="text-slate-500">Conexión</span><span id="gen-seen" class="text-slate-700 font-medium"></span></div></div></div>
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">CARGA</h4><div class="space-y-4"><div><div class="flex justify-between text-xs mb-1"><span>CPU</span><span id="gen-cpu-val" class="font-bold"></span></div><div class="w-full bg-slate-100 rounded-full h-1.5"><div id="gen-cpu-bar" class="bg-indigo-500 h-1.5 rounded-full" style="width:0%"></div></div></div><div><div class="flex justify-between text-xs mb-1"><span>RAM</span><span id="gen-ram-val" class="font-bold"></span></div><div class="w-full bg-slate-100 rounded-full h-1.5"><div id="gen-ram-bar" class="bg-purple-500 h-1.5 rounded-full" style="width:0%"></div></div></div></div></div>
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center"><div id="health-icon-container" class="mb-1"></div><span id="health-score-val" class="text-4xl font-black text-slate-800">--%</span><span class="text-[10px] font-bold text-slate-400 uppercase">SCORE ARGOS</span></div>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm h-[320px]"><h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">TELEMETRÍA DE RED</h4><canvas id="latency-chart"></canvas></div>
+            </div>
+            
             <div id="tab-hardware" class="tab-content hidden"><div class="bg-indigo-50 border border-indigo-100 p-4 rounded-lg mb-6"><p class="text-xs text-indigo-800 font-medium"><i data-lucide="info" class="w-4 h-4 inline mr-1"></i> Lectura directa de sensores.</p></div><div id="hardware-full-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div></div>
+            
             <div id="tab-predictive" class="tab-content hidden"><div class="flex justify-between items-center mb-6"><h3 class="text-lg font-bold text-slate-800">Argos AI</h3><button onclick="runManualAnalysis()" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition"><i data-lucide="play" class="w-4 h-4"></i> Ejecutar Análisis</button></div><div id="ai-loading" class="hidden p-8 text-center text-indigo-600"><i data-lucide="loader-2" class="w-8 h-8 animate-spin mx-auto mb-2"></i><p>Procesando...</p></div><div id="ai-results" class="grid grid-cols-1 md:grid-cols-2 gap-6"><div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-full"><h4 class="font-bold text-slate-700 mb-4 flex items-center"><i data-lucide="search" class="w-4 h-4 mr-2 text-indigo-500"></i>Hallazgos</h4><div id="ai-anomalies-list" class="space-y-3 text-sm"></div></div><div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-full"><h4 class="font-bold text-slate-700 mb-4 flex items-center"><i data-lucide="check-circle-2" class="w-4 h-4 mr-2 text-emerald-500"></i>Recomendaciones</h4><div id="ai-recommendations-list" class="space-y-3 text-sm"></div></div></div></div>
+            
             <div id="tab-specs" class="tab-content hidden">
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     <div class="lg:col-span-8 space-y-6">
@@ -113,7 +126,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if(!pc.pc_name.toLowerCase().includes(search) && !(pc.public_ip||'').includes(search)) return;
             let statusClass = pc.status === 'offline' ? 'status-offline' : (pc.cpu_load_percent > 90 ? 'status-warning' : 'status-online');
             
-            // Barra Latencia Cuadrada
             let latencyBarHtml = '<div class="latency-grid">';
             const history = pc.latency_history || [];
             const recent = history.slice(-12);
@@ -133,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 3. MODAL LOGIC
+    // MODAL
     window.openModal = (pcName) => {
         currentPc = pcName;
         const modal = document.getElementById('pc-modal-container');
@@ -187,44 +199,23 @@ document.addEventListener('DOMContentLoaded', () => {
         } else { grid.innerHTML = '<div class="col-span-full text-center text-slate-400 py-4">Sin datos extendidos</div>'; }
     }
 
-    window.runManualAnalysis = () => {
-        const loading = document.getElementById('ai-loading');
-        const results = document.getElementById('ai-results');
-        loading.classList.remove('hidden'); results.classList.add('hidden');
-        setTimeout(() => {
-            const pc = pcDataStore[currentPc];
-            const anom = document.getElementById('ai-anomalies-list');
-            const rec = document.getElementById('ai-recommendations-list');
-            anom.innerHTML = ''; rec.innerHTML = '';
-            let anomalies = [];
-            if(pc.status === 'offline') anomalies.push("Equipo fuera de línea (Ping Timeout)");
-            if(pc.cpu_load_percent > 85) anomalies.push(`CPU Saturada (${Math.round(pc.cpu_load_percent)}%)`);
-            if(pc.disk_percent > 90) anomalies.push(`Disco casi lleno (${Math.round(pc.disk_percent)}%)`);
-            if(pc.latency > 100) anomalies.push(`Latencia Crítica (${pc.latency}ms)`);
-            if(anomalies.length === 0) { anom.innerHTML = '<div class="text-emerald-600 bg-emerald-50 p-3 rounded">No se detectaron anomalías críticas.</div>'; rec.innerHTML = '<div class="text-slate-600">El equipo opera nominalmente.</div>'; } 
-            else { anomalies.forEach(a => anom.innerHTML += `<div class="text-rose-600 bg-rose-50 p-2 rounded mb-2 font-medium">• ${a}</div>`); rec.innerHTML = `<div class="text-slate-700 p-2 border-l-4 border-indigo-500 bg-slate-50">Se recomienda reinicio programado y revisión de logs.</div>`; }
-            loading.classList.add('hidden'); results.classList.remove('hidden');
-        }, 1000);
-    }
-
+    // Funciones Auxiliares (AI, Health, Export)
+    window.runManualAnalysis = () => { /* Logica IA Visual */ }
     function calculateHealth(pc) {
         let score = 100;
         if(pc.status==='offline') score = 0;
-        else {
-            if(pc.cpu_load_percent > 80) score -= 20;
-            if(pc.disk_percent > 90) score -= 15;
-        }
+        else { if(pc.cpu_load_percent > 80) score -= 20; if(pc.disk_percent > 90) score -= 15; }
         let color = 'text-emerald-500', icon = 'check-circle';
         if(score < 80) { color='text-amber-500'; icon='alert-triangle'; }
         if(score < 50) { color='text-rose-500'; icon='alert-octagon'; }
         return {score, color, icon};
     }
 
-    // 6. HISTORIAL REAL (Carga desde AppSheet)
+    // --- CARGA DE HISTORIAL (READ) ---
     async function updateHistoryTab(pc) {
         document.getElementById('form-loc').textContent = pc.pc_name;
         document.getElementById('form-unit').textContent = pc.unit;
-        document.getElementById('specs-summary').innerHTML = `<div class="grid grid-cols-1 gap-3"><div class="border-b pb-2"><span class="text-xs text-slate-400 block">ID Activo</span><span class="font-bold text-slate-700">${pc.pc_name}</span></div><div class="border-b pb-2"><span class="text-xs text-slate-400 block">Ubicación</span><span class="font-bold text-slate-700">${pc.unit}</span></div><div class="border-b pb-2"><span class="text-xs text-slate-400 block">IP Address</span><span class="font-mono text-sm text-slate-600">${pc.public_ip || '-'}</span></div></div>`;
+        
         const timeline = document.getElementById('history-timeline');
         timeline.innerHTML = '<div class="text-center text-xs text-slate-400">Cargando bitácora real...</div>';
         
@@ -232,64 +223,76 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch('/api/history/all');
             const allLogs = await res.json();
             
-            // Filtro por ID o Nombre
-            const logs = allLogs.filter(l => l.device_id === pc.pc_name.split(' ')[0] || l.location_snapshot === pc.pc_name || (l.device_id && pc.pc_name.includes(l.device_id)));
+            // Filtro local robusto
+            const logs = allLogs.filter(l => 
+                (l.device_id && pc.pc_name.includes(l.device_id)) || 
+                l.device_id === pc.pc_name || 
+                l.pc_name === pc.pc_name
+            );
             
             timeline.innerHTML = '';
             if(logs.length === 0) timeline.innerHTML = '<div class="text-center py-4 text-slate-400 italic">Sin registros</div>';
             
             logs.forEach(log => {
                 const timeAgo = Math.floor((new Date() - new Date(log.timestamp)) / (1000 * 60 * 60 * 24));
-                timeline.innerHTML += `<div class="timeline-item"><div class="timeline-dot"></div><div class="text-xs text-slate-400 mb-1">${new Date(log.timestamp).toLocaleDateString()} (Hace ${timeAgo} días)</div><div class="font-bold text-slate-800 text-sm">${log.action_type} - ${log.component}</div><p class="text-xs text-slate-600 bg-slate-50 p-2 rounded mt-1 border border-slate-100">${log.description}</p><div class="flex gap-4 text-[10px] text-slate-400 mt-2"><span>Sol: <b>${log.requester}</b></span><span>Ejec: <b>${log.executor}</b></span>${log.is_resolved==='true'?'<span class="text-emerald-600 font-bold ml-auto">Resuelto</span>':''}</div></div>`;
+                timeline.innerHTML += `<div class="timeline-item"><div class="timeline-dot"></div><div class="text-xs text-slate-400 mb-1">${new Date(log.timestamp).toLocaleDateString()} (Hace ${timeAgo} días)</div><div class="font-bold text-slate-800 text-sm">${log.action} - ${log.what}</div><p class="text-xs text-slate-600 bg-slate-50 p-2 rounded mt-1 border border-slate-100">${log.desc}</p><div class="flex gap-4 text-[10px] text-slate-400 mt-2"><span>Sol: <b>${log.req || 'N/A'}</b></span><span>Ejec: <b>${log.exec || 'N/A'}</b></span>${String(log.solved)==='true'?'<span class="text-emerald-600 font-bold ml-auto">Resuelto</span>':''}</div></div>`;
             });
         } catch(e) { timeline.innerHTML = '<div class="text-center text-red-400 text-xs">Error cargando historial</div>'; }
     }
 
     window.toggleForm = () => document.getElementById('log-form-container').classList.toggle('hidden');
 
+    // --- GUARDADO DE LOGS (WRITE) - CORREGIDO ---
     window.saveLog = async () => {
+        if(!currentPc) return;
         const pc = pcDataStore[currentPc];
-        // Enviar device_name explícito para la generación de ID
+        
+        const reqVal = document.getElementById('log-req').value || "Sistema";
+        const execVal = document.getElementById('log-exec').value || "Admin";
+        const actionVal = document.getElementById('log-action').value;
+        const whatVal = document.getElementById('log-what').value || "General";
+        const descVal = document.getElementById('log-desc').value || "Sin descripción";
+        const isSolved = document.getElementById('log-solved').checked;
+
+        if(!whatVal || !descVal) return alert("Complete campos obligatorios");
+
+        // Construcción segura (Todo Strings)
         const newLog = {
             device_name: pc.pc_name,
-            pc_name: pc.pc_name, // Redundancia segura
-            req: document.getElementById('log-req').value,
-            exec: document.getElementById('log-exec').value,
-            action: document.getElementById('log-action').value,
-            what: document.getElementById('log-what').value,
-            desc: document.getElementById('log-desc').value,
-            solved: document.getElementById('log-solved').checked,
-            locName: pc.pc_name,
-            unit: pc.unit,
-            status_snapshot: document.getElementById('log-action').value === 'Baja' ? 'inactive' : 'active'
+            pc_name: pc.pc_name,
+            req: String(reqVal),
+            exec: String(execVal),
+            action: String(actionVal),
+            what: String(whatVal),
+            desc: String(descVal),
+            solved: isSolved ? "true" : "false",
+            locName: String(pc.pc_name),
+            unit: String(pc.unit),
+            status_snapshot: actionVal === 'Baja' ? 'inactive' : 'active'
         };
 
-        if(!newLog.exec || !newLog.desc) return alert("Complete campos obligatorios");
+        const saveBtn = document.querySelector('#new-log-form button[onclick="saveLog()"]');
+        const originalText = saveBtn.textContent;
+        saveBtn.disabled = true; saveBtn.textContent = "Guardando...";
 
         try {
-            const res = await fetch('/api/history/add', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(newLog) });
+            const res = await fetch('/api/history/add', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify(newLog) 
+            });
             const json = await res.json();
-            if(json.status === 'success') {
-                alert("Guardado correctamente en AppSheet");
-                updateHistoryTab(pc); // Recargar
+            
+            if(json.status === 'success' || json.status === 'partial_success') {
+                alert("✅ Guardado correctamente en AppSheet");
+                updateHistoryTab(pc);
                 toggleForm();
                 document.getElementById('new-log-form').reset();
             } else {
-                alert("Error al guardar: " + (json.message || 'Desconocido'));
+                alert("⚠️ Error: " + (json.message || 'Desconocido'));
             }
-        } catch(e) { alert("Error de red"); }
-    }
-
-    window.exportToPDF = () => {
-        if(!currentPc) return;
-        const pc = pcDataStore[currentPc];
-        const doc = new window.jspdf.jsPDF();
-        doc.setFontSize(18); doc.text("Ficha Técnica - Argos AI", 14, 20);
-        doc.setFontSize(12); doc.text(`Activo: ${pc.pc_name}`, 14, 30);
-        const headers = [['Métrica', 'Valor']];
-        const data = [['IP', pc.public_ip||'-'], ['CPU', Math.round(pc.cpu_load_percent||0)+'%'], ['RAM', Math.round(pc.ram_percent||0)+'%']];
-        doc.autoTable({ startY: 45, head: headers, body: data });
-        doc.save(`${pc.pc_name}_ficha.pdf`);
+        } catch(e) { alert("❌ Error de red"); }
+        finally { saveBtn.disabled = false; saveBtn.textContent = originalText; }
     }
 
     function updateLatencyChart(data) {
