@@ -500,4 +500,95 @@ def test_appsheet_all():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if
+    if 'username' in session: return redirect(url_for('views.home'))
+    if request.method == 'POST':
+        if request.form.get('username') == 'gpovallas' and request.form.get('password') == 'admin':
+            session['username'] = 'gpovallas'
+            return redirect(url_for('views.home'))
+        return render_template('login.html', error="Credenciales inválidas")
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('username', None)
+    return redirect(url_for('login'))
+
+@app.route('/health')
+def health():
+    try:
+        monitor_status = "RUNNING" if (src.monitor and hasattr(src.monitor, 'running') and src.monitor.running) else "STOPPED"
+        appsheet_enabled = src.appsheet.enabled if (src.appsheet and hasattr(src.appsheet, 'enabled')) else False
+        appsheet_status = src.appsheet.get_status_info() if (src.appsheet and hasattr(src.appsheet, 'get_status_info')) else {"status": "unknown"}
+        
+        return jsonify({
+            "status": "Argos Online",
+            "monitor": monitor_status,
+            "appsheet_enabled": appsheet_enabled,
+            "appsheet_status": appsheet_status,
+            "services": {
+                "storage": "OK" if src.storage else "ERROR",
+                "alerts": "OK" if src.alerts else "ERROR",
+                "appsheet": "OK" if src.appsheet else "ERROR",
+                "monitor": "OK" if src.monitor else "ERROR"
+            },
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "Argos Error",
+            "error": str(e),
+            "services": {
+                "storage": "OK" if src.storage else "ERROR",
+                "alerts": "OK" if src.alerts else "ERROR",
+                "appsheet": "ERROR",
+                "monitor": "ERROR"
+            },
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
+# 6. MANEJO DE ERRORES GLOBALES
+@app.errorhandler(404)
+def not_found_error(error):
+    return jsonify({
+        "status": "error", 
+        "message": "Ruta no encontrada",
+        "timestamp": datetime.now().isoformat()
+    }), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    logger.error(f"❌ Error interno del servidor: {error}")
+    return jsonify({
+        "status": "error", 
+        "message": "Error interno del servidor",
+        "timestamp": datetime.now().isoformat()
+    }), 500
+
+# 7. MIDDLEWARE PARA HEADERS DE SEGURIDAD
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    return response
+
+# 8. ARRANQUE
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 8000))
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    
+    logger.info(f"🚀 Iniciando Argos en puerto {port} (debug: {debug_mode})")
+    logger.info(f"📁 Base dir: {base_dir}")
+    logger.info(f"📁 Template dir: {template_dir}")
+    logger.info(f"📁 Static dir: {static_dir}")
+    
+    # Verificar estructura de directorios
+    if not os.path.exists(template_dir):
+        logger.warning(f"⚠️  Directorio de templates no encontrado: {template_dir}")
+        os.makedirs(template_dir, exist_ok=True)
+    
+    if not os.path.exists(static_dir):
+        logger.warning(f"⚠️  Directorio static no encontrado: {static_dir}")
+        os.makedirs(static_dir, exist_ok=True)
+    
+    app.run(host='0.0.0.0', port=port, debug=debug_mode, use_reloader=False)
