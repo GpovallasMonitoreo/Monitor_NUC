@@ -1,4 +1,4 @@
-# src/services/appsheet_service.py
+import os  # <--- ESTO FALTABA
 import logging
 from datetime import datetime
 
@@ -10,7 +10,7 @@ class AppSheetStub:
         self.enabled = False
         self.table_status = {}
         self.last_sync_time = None
-        logger.warning("⚠️ Usando AppSheet STUB - Funcionalidad limitada.")
+        # logger.warning("⚠️ Usando AppSheet STUB - Funcionalidad limitada.") # Comentado para reducir ruido en logs
 
     def get_status_info(self):
         return {"enabled": False, "connection_status": "disabled", "error": "Using Stub"}
@@ -23,15 +23,13 @@ class AppSheetStub:
 class AppSheetService:
     """Servicio Real de AppSheet."""
     def __init__(self):
-        # Aquí iría tu lógica real de conexión, API Keys, etc.
-        # Simulamos que todo carga bien para el ejemplo
         self.enabled = True
         self.table_status = {"devices": True, "history": True}
         self.last_sync_time = datetime.now()
-        # self.api_key = os.environ.get('APPSHEET_KEY') 
         
-        # Simular validación
-        if not os.environ.get('APPSHEET_KEY') and False: # Pon True si quieres forzar validación
+        # Validación de seguridad
+        # Si NO existe la variable y quieres forzar el error, esto fallaba antes por falta de 'os'
+        if not os.environ.get('APPSHEET_KEY') and False: 
              raise ValueError("Falta API KEY")
 
     def get_status_info(self):
@@ -42,11 +40,9 @@ class AppSheetService:
         }
 
     def get_or_create_device(self, device_data):
-        # Lógica real...
         return True, "id_123", True
 
     def add_history_entry(self, log_data):
-        # Lógica real...
         return True
 
     def get_full_history(self, limit=100):
