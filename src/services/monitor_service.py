@@ -1,196 +1,208 @@
 import time
 import threading
-import copy
+import statistics
 import logging
 from datetime import datetime
 from typing import Dict, Any
 
-# Configuración de umbrales
-THRESHOLDS = {
-    'cpu_spike': 40.0,        
-    'temp_spike': 15.0,       
-    'offline_timeout': 600,  # 10 minutos sin señal = Offline
-    'periodic_sync': 300,    # 5 minutos: Actualizar estado "Seen Last" en DB
-}
-
 logger = logging.getLogger(__name__)
+
+# CONFIGURACIÓN DE AHORRO DE DATOS
+CONFIG = {
+    'aggregation_window': 900,      # 15 minutos: Tiempo para guardar el promedio
+    'latency_spike_threshold': 2.0, # Sensibilidad: Si el ping se duplica, guarda YA
+    'packet_loss_critical': 1,      # Si se pierde 1 paquete, guarda YA
+    'offline_timeout': 600,         # 10 minutos sin señal = Offline
+    'periodic_sync_status': 300     # 5 minutos: Actualizar "Last Seen" en tabla devices
+}
 
 class DeviceMonitorManager:
     """
-    Gestor que orquesta la monitorización y el envío a Supabase.
+    Gestor que agrupa métricas en memoria y solo envía a la DB 
+    resúmenes estadísticos o alertas críticas.
     """
-
     def __init__(self, db_service, storage_service):
-        self.db = db_service           # SupabaseService
-        self.storage = storage_service # StorageService (Local + Alertas)
+        self.db = db_service
+        self.storage = storage_service
         
-        self.devices_state: Dict[str, Dict] = {} 
+        # Estado actual (última foto para dashboard)
+        self.devices_state: Dict[str, Dict] = {}
+        
+        # Buffer de Agregación: { 'device_id': { 'pings': [], 'loss': 0, 'start': datetime } }
+        self.latency_buffer: Dict[str, Dict] = {}
+        
         self.running = False
         self.lock = threading.Lock()
-        self.last_global_sync = datetime.now()
-        
-        # Hilo en segundo plano
         self.monitor_thread = threading.Thread(target=self._background_loop, daemon=True)
 
     def start(self):
         if not self.running:
             self.running = True
             self.monitor_thread.start()
-            logger.info("🚀 MonitorManager iniciado (Backend: Supabase)")
+            logger.info("🚀 Monitor Inteligente iniciado (Modo Agregación Activado)")
 
     def stop(self):
         self.running = False
-        logger.info("🛑 MonitorManager detenido")
 
     def ingest_data(self, device_data: Dict[str, Any]):
-        """
-        Recibe datos del agente instalado en la PC.
-        """
-        # Asegurar que tenemos un ID único. Usamos mac_address o pc_name.
+        """Recibe datos del agente PC."""
         device_id = device_data.get('mac_address') or device_data.get('pc_name')
         if not device_id: return
 
-        pc_name = device_data.get('pc_name', 'Unknown')
+        now = datetime.now()
+        latency = device_data.get('latency_ms')
+        packet_loss = device_data.get('packet_loss', 0)
 
         with self.lock:
-            # 1. Recuperar estado anterior de la RAM
-            old_data = self.devices_state.get(device_id, {})
-            
-            # 2. Detectar cambios bruscos (CPU, Status, etc)
-            is_urgent = self._check_sudden_changes(device_data, old_data)
-            
-            # 3. Actualizar timestamp local
-            now = datetime.now()
+            # 1. Actualizar RAM (para Dashboard en tiempo real)
             device_data['_last_seen_local'] = now
-            
-            # 4. Guardar en RAM
             self.devices_state[device_id] = device_data
+            
+            # 2. Procesar Latencia (Buffer Inteligente)
+            if latency is not None:
+                self._process_latency_smart(device_id, float(latency), packet_loss)
 
-        # --- LÓGICA DE ENVÍO A SUPABASE ---
+            # 3. Detectar Cambios de Estado (Online/Offline) -> Guardar Inmediato
+            old_data = self.devices_state.get(device_id, {})
+            if device_data.get('status') != old_data.get('status'):
+                logger.info(f"⚡ Cambio de estado en {device_id}. Actualizando DB.")
+                self._update_device_status_in_db(device_data)
 
-        # A. MÉTRICAS (Historial):
-        # Enviamos SIEMPRE al buffer. La clase SupabaseService se encarga de 
-        # juntar 50 registros antes de hacer la petición a internet.
+    def _process_latency_smart(self, device_id: str, latency: float, packet_loss: int):
+        """Decide si guardar inmediatamente o esperar."""
+        
+        # Inicializar buffer si es nuevo
+        if device_id not in self.latency_buffer:
+            self.latency_buffer[device_id] = {
+                'pings': [],
+                'packet_loss_accum': 0,
+                'start_time': datetime.now()
+            }
+        
+        buf = self.latency_buffer[device_id]
+        
+        # --- Detección de Anomalías (Spikes) ---
+        is_spike = False
+        
+        # Regla 1: Pérdida de paquetes
+        if packet_loss >= CONFIG['packet_loss_critical']:
+            is_spike = True
+            
+        # Regla 2: Latencia se dispara (comparado con el promedio del buffer actual)
+        if len(buf['pings']) > 5:
+            current_avg = statistics.mean(buf['pings'])
+            if current_avg > 0 and latency > (current_avg * CONFIG['latency_spike_threshold']) and latency > 100:
+                is_spike = True
+
+        # Agregar al buffer
+        buf['pings'].append(latency)
+        buf['packet_loss_accum'] += packet_loss
+
+        # --- Decisión de Guardado ---
+        time_diff = (datetime.now() - buf['start_time']).total_seconds()
+        
+        # Guardamos si: Es un pico O ya pasó el tiempo de ventana (15 min)
+        if is_spike or time_diff >= CONFIG['aggregation_window']:
+            reason = "SPIKE" if is_spike else "PERIODIC"
+            self._flush_device_buffer(device_id, reason)
+
+    def _flush_device_buffer(self, device_id: str, reason: str):
+        """Calcula estadísticas y envía a Supabase."""
+        if device_id not in self.latency_buffer: return
+        
+        buf = self.latency_buffer[device_id]
+        if not buf['pings']: return
+
+        # Matemáticas
+        avg_lat = int(statistics.mean(buf['pings']))
+        min_lat = int(min(buf['pings']))
+        max_lat = int(max(buf['pings']))
+        samples = len(buf['pings'])
+        total_loss = buf['packet_loss_accum']
+
         try:
+            # Enviamos a Supabase con metadatos extra
             self.db.buffer_metric(
                 device_id=device_id,
-                latency=device_data.get('latency_ms', 0),
-                packet_loss=device_data.get('packet_loss', 0)
+                latency=avg_lat,
+                packet_loss=total_loss,
+                extra_data={
+                    "min": min_lat,
+                    "max": max_lat,
+                    "samples": samples
+                }
             )
+            
+            if reason == "SPIKE":
+                logger.warning(f"📉 Pico detectado en {device_id}: {avg_lat}ms. Guardado inmediato.")
+                
         except Exception as e:
-            logger.debug(f"Error buffer metrics: {e}")
+            logger.error(f"Error flushing buffer: {e}")
 
-        # B. ESTADO DEL DISPOSITIVO (Tabla Devices):
-        # Si es urgente (cambio de status, CPU pico) o pasó mucho tiempo, actualizamos la tabla de inventario.
-        if is_urgent:
-            logger.info(f"⚡ Cambio urgente en {pc_name}. Actualizando DB.")
-            self._update_device_status_in_db(device_data)
-
-    def force_manual_sync(self):
-        """
-        Botón 'Refrescar' de la web: Fuerza actualización de estados.
-        """
-        logger.info("🔄 Sincronización manual solicitada")
-        self._perform_bulk_sync()
+        # Reiniciar buffer
+        self.latency_buffer[device_id] = {
+            'pings': [],
+            'packet_loss_accum': 0,
+            'start_time': datetime.now()
+        }
 
     def _background_loop(self):
-        """Ciclo infinito que corre en segundo plano"""
+        """Tarea de fondo para Watchdog y limpieza de buffers viejos"""
         while self.running:
             try:
                 now = datetime.now()
-                
-                # 1. Chequeo de dispositivos caídos (Watchdog)
                 self._check_offline_devices(now)
-
-                # 2. Sincronización periódica (Heartbeat a la DB)
-                # Actualiza el campo "last_seen" en la nube cada X minutos
-                if (now - self.last_global_sync).total_seconds() >= THRESHOLDS['periodic_sync']:
-                    self._perform_bulk_sync()
-                    self.last_global_sync = now
                 
-                # 3. Flushear el buffer de métricas si quedó algo pendiente
-                # (Por si no llegaron a 50 registros)
+                # Revisar buffers que expiraron por tiempo
+                with self.lock:
+                    for dev_id in list(self.latency_buffer.keys()):
+                        buf = self.latency_buffer[dev_id]
+                        if (now - buf['start_time']).total_seconds() >= CONFIG['aggregation_window']:
+                            self._flush_device_buffer(dev_id, "TIMEOUT")
+
+                # Enviar datos pendientes a la nube (Batch de Supabase)
                 if hasattr(self.db, '_flush_buffer'):
                     self.db._flush_buffer()
+                
+                # Sincronizar 'last_seen' periódicamente
+                if (now - self.last_global_sync).total_seconds() >= CONFIG['periodic_sync_status']:
+                     self._perform_bulk_status_update()
+                     self.last_global_sync = now
 
-                time.sleep(10) # Loop tranquilo cada 10s
+                time.sleep(10)
             except Exception as e:
-                logger.error(f"Error en monitor loop: {e}")
+                logger.error(f"Monitor loop error: {e}")
                 time.sleep(30)
+    
+    # Inicializar variable de sync
+    last_global_sync = datetime.now()
 
-    def _check_sudden_changes(self, new_data: Dict, old_data: Dict) -> bool:
-        """Determina si vale la pena actualizar la tabla de estado YA MISMO"""
-        if not old_data: return True 
-        
-        # Cambio de status (Online -> Busy)
-        if new_data.get('status') != old_data.get('status'): return True
-        
-        # Pico de CPU
-        try:
-            cpu_diff = abs(float(new_data.get('cpu_load_percent', 0)) - float(old_data.get('cpu_load_percent', 0)))
-            if cpu_diff > THRESHOLDS['cpu_spike']: return True
-        except: pass
-        
-        return False
-
-    def _check_offline_devices(self, now: datetime):
-        """Marca como OFFLINE los equipos que no han reportado"""
+    def _check_offline_devices(self, now):
         with self.lock:
             for dev_id, data in self.devices_state.items():
                 last_seen = data.get('_last_seen_local')
                 if not last_seen: continue
                 
-                # Si pasó el tiempo límite
-                if (now - last_seen).total_seconds() > THRESHOLDS['offline_timeout']:
+                if (now - last_seen).total_seconds() > CONFIG['offline_timeout']:
                     if data.get('status') != 'offline':
-                        logger.warning(f"💀 Watchdog: {data.get('pc_name')} OFFLINE")
-                        
-                        # 1. Cambiar estado local
                         data['status'] = 'offline'
-                        
-                        # 2. Actualizar DB Nube
+                        logger.warning(f"💀 Watchdog: {data.get('pc_name')} OFFLINE")
                         self._update_device_status_in_db(data)
-                        
-                        # 3. Generar Alerta (Usando el servicio de storage que tiene alerts)
-                        if self.storage and hasattr(self.storage, 'alert_service'):
-                            self.storage.alert_service.create_alert(
-                                device_id=dev_id,
-                                type_alert="watchdog_offline",
-                                msg=f"Dispositivo {data.get('pc_name')} dejó de responder",
-                                sev="high"
-                            )
 
-    def _perform_bulk_sync(self):
-        """Actualiza el estado (tabla devices) de todos los equipos en memoria"""
+    def _perform_bulk_status_update(self):
+        """Actualiza solo el 'last_seen' en la tabla devices para que sepamos que siguen vivos"""
         with self.lock:
-            devices = copy.deepcopy(self.devices_state)
-        
-        for _, data in devices.items():
-            self._update_device_status_in_db(data)
+            devices = list(self.devices_state.values())
+        for dev in devices:
+            self._update_device_status_in_db(dev)
 
-    def _update_device_status_in_db(self, device_data):
-        """
-        Helper para hacer UPSERT en la tabla 'devices' de Supabase.
-        """
-        try:
-            # Preparamos el objeto plano para la DB
-            payload = {
-                "device_id": device_data.get('mac_address') or device_data.get('pc_name'),
-                "pc_name": device_data.get('pc_name'),
-                "ip_address": device_data.get('ip_address'),
-                "status": device_data.get('status'),
-                "cpu_load": device_data.get('cpu_load_percent'),
-                "ram_usage": device_data.get('ram_load_percent'),
-                "last_seen": datetime.utcnow().isoformat(),
-                "location": device_data.get('location', 'Unknown')
-            }
-            
-            # Usamos el cliente raw de Supabase si no hay método específico
-            if hasattr(self.db, 'upsert_device_status'):
-                self.db.upsert_device_status(payload)
-            elif hasattr(self.db, 'client'):
-                self.db.client.table('devices').upsert(payload).execute()
-                
-        except Exception as e:
-            logger.error(f"Error actualizando status DB: {e}")
-            
+    def _update_device_status_in_db(self, data):
+        if hasattr(self.db, 'upsert_device_status'):
+            self.db.upsert_device_status({
+                "device_id": data.get('mac_address') or data.get('pc_name'),
+                "pc_name": data.get('pc_name'),
+                "status": data.get('status'),
+                "ip_address": data.get('ip_address'),
+                "cpu_load": data.get('cpu_load_percent'),
+                "last_seen": datetime.utcnow().isoformat()
+            })
