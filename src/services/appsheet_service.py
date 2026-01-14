@@ -402,20 +402,22 @@ class AppSheetService:
             return []
     
     def get_status_info(self) -> Dict:
-        """Obtiene información de estado detallada"""
+        """Obtiene información de estado detallada - VERSIÓN CORREGIDA"""
         is_connected = any(self.table_status.values()) if self.table_status else False
         
         return {
-            "enabled": self.enabled,
+            "enabled": self.enabled,  # ¡BOOLEANO, no string!
             "connection_status": "connected" if is_connected else "disconnected",
             "tables": self.table_status,
             "has_credentials": bool(self.api_key and self.app_id),
+            "app_id": self.app_id,
             "app_id_preview": self.app_id[:8] + "..." if self.app_id else "None",
             "api_key_length": len(self.api_key) if self.api_key else 0,
             "last_sync": self.last_sync_time.isoformat() if self.last_sync_time else None
         }
     
     def get_system_stats(self) -> Dict:
+        """Estadísticas del sistema - VERSIÓN CORREGIDA"""
         is_connected = any(self.table_status.values()) if self.table_status else False
         
         return {
@@ -423,7 +425,8 @@ class AppSheetService:
             "mode": "AppSheet",
             "connection": "connected" if is_connected else "disconnected",
             "tables_connected": sum(1 for v in self.table_status.values() if v) if self.table_status else 0,
-            "total_tables": len(self.table_status) if self.table_status else 0
+            "total_tables": len(self.table_status) if self.table_status else 0,
+            "last_sync": self.last_sync_time.isoformat() if self.last_sync_time else "Nunca"
         }
     
     # ==================== MÉTODOS DE COMPATIBILIDAD ====================
