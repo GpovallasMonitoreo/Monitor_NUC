@@ -1,21 +1,6 @@
-# Flask Framework
-Flask==2.3.3
-Flask-CORS==4.0.0
-
-# Variables de entorno
-python-dotenv==1.0.0
-
-# AppSheet API
-requests==2.31.0
-
-# Servidor de producción
-gunicorn==20.1.0
-
-# Logging (opcional avanzado)
-# colorlog==6.7.0
-
-# Utilidades
-pytz==2023.3
-
-# Si necesitas manejar fechas complejas
-python-dateutil==2.8.2
+flask
+flask-cors
+gunicorn
+python-dotenv
+supabase
+requests
