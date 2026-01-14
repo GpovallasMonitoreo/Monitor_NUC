@@ -1,186 +1,74 @@
-import sys
-import os
 from flask import Blueprint, request, jsonify
+import logging
 from datetime import datetime
-import json
-import traceback
+import src  # Acceso a las variables globales: src.monitor, src.supabase
 
-# Manejo de zonas horarias compatible con Python < 3.9
-try:
-    from zoneinfo import ZoneInfo
-except ImportError:
-    from backports.zoneinfo import ZoneInfo
-
-import src 
+logger = logging.getLogger(__name__)
 
 bp = Blueprint('api', __name__, url_prefix='/api')
-TZ_MX = ZoneInfo("America/Mexico_City")
-EMAIL_TIMEOUT_SECONDS = 45 
 
-# ==========================================================
-# RUTAS DE REPORTES (Dispositivos -> Servidor)
-# ==========================================================
 @bp.route('/report', methods=['POST'])
-def report():
-    """Endpoint principal: Recibe heartbeat de los agentes en las NUCs"""
+def receive_report():
+    """
+    Endpoint principal que recibe datos de los agentes instalados en las PC.
+    """
     try:
         data = request.get_json()
-        if not data or 'pc_name' not in data: 
-            print("❌ /report: Falta pc_name en el reporte")
-            return jsonify({"status": "error", "message": "Falta pc_name"}), 400
+        if not data:
+            return jsonify({"status": "error", "message": "No JSON data"}), 400
+
+        # Validación básica de identidad
+        device_id = data.get('mac_address') or data.get('pc_name')
+        if not device_id:
+            return jsonify({"status": "error", "message": "Missing ID"}), 400
+
+        # 1. Intentar pasar los datos al MONITOR (La vía preferida)
+        # El monitor se encarga de analizar alertas y hacer buffer de latencia
+        if src.monitor:
+            src.monitor.ingest_data(data)
+            return jsonify({"status": "success", "handler": "monitor"}), 200
         
-        # Estampamos la hora del servidor
-        data['timestamp'] = datetime.now(TZ_MX).isoformat()
-        
-        # 1. Guardar en DB Local (JSON)
-        if src.storage: 
-            src.storage.save_device_report(data)
-        
-        # 2. Pasar al Monitor (que decide si enviar a AppSheet)
-        if src.monitor and src.appsheet and src.appsheet.enabled: 
-            src.monitor.ingest_data(data.copy())
-        
-        return jsonify({"status": "OK", "message": "Reporte recibido"})
-        
+        # 2. Fallback: Si el monitor falló, intentamos guardar directo en Supabase
+        # Esto asegura que no se pierdan datos aunque el monitor esté reiniciándose
+        elif src.supabase and hasattr(src.supabase, 'upsert_device_status'):
+            logger.warning("⚠️ Monitor no disponible, guardando directo en DB")
+            
+            # Guardar estado
+            src.supabase.upsert_device_status({
+                "device_id": device_id,
+                "pc_name": data.get('pc_name'),
+                "status": data.get('status', 'online'),
+                "ip_address": data.get('ip_address'),
+                "last_seen": datetime.utcnow().isoformat()
+            })
+            
+            # Guardar métrica si existe
+            if 'latency_ms' in data:
+                src.supabase.buffer_metric(
+                    device_id=device_id, 
+                    latency=data.get('latency_ms'),
+                    packet_loss=data.get('packet_loss', 0)
+                )
+                
+            return jsonify({"status": "success", "handler": "direct_db"}), 200
+
+        else:
+            logger.error("❌ Sistema crítico: Ni Monitor ni Supabase están disponibles")
+            return jsonify({"status": "error", "message": "System unavailable"}), 503
+
     except Exception as e:
-        print(f"❌ Error en /report: {e}")
+        logger.error(f"❌ Error procesando reporte: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @bp.route('/data', methods=['GET'])
-def get_data():
-    """Endpoint para el Frontend: Devuelve estado de todos los equipos"""
+def get_all_data():
+    """Endpoint para ver datos crudos en el navegador (Depuración)"""
     try:
-        if not src.storage: return jsonify({})
-        
-        raw = src.storage.get_all_devices()
-        processed_data = {}
-        now = datetime.now(TZ_MX)
-        
-        for pc_name, info in raw.items():
-            device_info = info.copy()
-            # Cálculo de estado Online/Offline basado en tiempo
-            last = info.get('timestamp')
-            if last:
-                try:
-                    # Normalizamos fecha para comparación
-                    last_time = datetime.fromisoformat(last.replace('Z', '+00:00'))
-                    time_diff = (now - last_time).total_seconds()
-                    device_info['status'] = 'offline' if time_diff > EMAIL_TIMEOUT_SECONDS else 'online'
-                except:
-                    device_info['status'] = 'unknown'
-            
-            processed_data[pc_name] = device_info
-        
-        return jsonify(processed_data)
-        
+        # Obtenemos datos de la memoria del monitor si es posible
+        if src.monitor:
+            devices = src.monitor.devices_state
+            return jsonify(devices)
+        else:
+            return jsonify({"status": "Monitor not running", "data": {}})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-# ==========================================================
-# RUTAS DE APPSHEET (Diagnóstico y Estado)
-# ==========================================================
-@bp.route('/appsheet/status', methods=['GET'])
-def appsheet_status():
-    """Estado de conexión para el dashboard"""
-    try:
-        if not src.appsheet: 
-            return jsonify({"status": "disabled", "message": "No inicializado"}), 200
-        return jsonify(src.appsheet.get_status_info())
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-@bp.route('/appsheet/stats', methods=['GET'])
-def appsheet_stats():
-    """Estadísticas de registros (Latency, Uptime)"""
-    try:
-        if src.appsheet: return jsonify(src.appsheet.get_system_stats())
-        return jsonify({})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-@bp.route('/appsheet/diagnose', methods=['GET'])
-def appsheet_diagnose():
-    """
-    Diagnóstico profundo. 
-    Intenta leer 1 fila de cada tabla para verificar permisos.
-    """
-    try:
-        if not src.appsheet:
-            return jsonify({"status": "error", "message": "AppSheet OFF"}), 500
-        
-        print("🔍 Ejecutando diagnóstico de tablas...")
-        basic_test = False
-        history_test = False
-        
-        # Usamos _make_safe_request que es el método robusto del servicio nuevo
-        if hasattr(src.appsheet, '_make_safe_request'):
-            # Prueba Devices
-            res_dev = src.appsheet._make_safe_request("devices", "Find", properties={"Top": 1})
-            basic_test = res_dev is not None
-            
-            # Prueba History
-            res_hist = src.appsheet._make_safe_request("device_history", "Find", properties={"Top": 1})
-            history_test = res_hist is not None
-        
-        return jsonify({
-            "status": "success",
-            "diagnosis": {
-                "tables": {
-                    "devices": "connected" if basic_test else "disconnected",
-                    "device_history": "connected" if history_test else "disconnected"
-                },
-                "appsheet_enabled": src.appsheet.enabled
-            }
-        })
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-# ==========================================================
-# RUTAS DE BITÁCORA (Historial)
-# ==========================================================
-@bp.route('/history/all', methods=['GET'])
-def get_history():
-    """Lectura de bitácora desde AppSheet"""
-    try:
-        if src.appsheet: 
-            history = src.appsheet.get_full_history()
-            return jsonify(history)
-        return jsonify([])
-    except Exception as e:
-        print(f"❌ Error history/all: {e}")
-        return jsonify([]), 500
-
-@bp.route('/history/add', methods=['POST'])
-def add_history():
-    """
-    Escritura en bitácora.
-    Recibe datos del Frontend, los valida y los manda al Servicio.
-    """
-    try:
-        data = request.get_json()
-        if not data: return jsonify({"status": "error", "message": "Sin datos"}), 400
-        
-        print(f"📨 /history/add payload: {json.dumps(data, ensure_ascii=False)}")
-        
-        # Validación mínima
-        if not data.get('device_name') or not data.get('action'):
-            return jsonify({"status": "error", "message": "Faltan campos obligatorios"}), 400
-        
-        # Timestamp servidor
-        if 'timestamp' not in data:
-            data['timestamp'] = datetime.now(TZ_MX).isoformat()
-        
-        # Enviar al servicio
-        success = False
-        if src.appsheet and src.appsheet.enabled:
-            success = src.appsheet.add_history_entry(data)
-        
-        if success:
-            return jsonify({"status": "success", "message": "Guardado en AppSheet"})
-        else:
-            # Si falla (o AppSheet devuelve error), avisamos al frontend
-            return jsonify({"status": "error", "message": "No se pudo conectar con AppSheet"}), 500
-            
-    except Exception as e:
-        print(f"❌ Excepción en /history/add: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
