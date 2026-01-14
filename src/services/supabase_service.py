@@ -11,23 +11,33 @@ class SupabaseService:
         key = os.environ.get("SUPABASE_KEY")
         
         if not url or not key:
-            # Si faltan credenciales, lanzamos error para que __init__.py use el Stub
             raise ValueError("Faltan credenciales de Supabase en .env")
 
         self.client: Client = create_client(url, key)
         self.buffer = [] 
         self.BATCH_SIZE = 50 
         
-        logger.info("✅ Conexión a Supabase establecida (Modo Batch)")
+        logger.info("✅ Conexión a Supabase establecida (Modo Batch + Agregación)")
 
-    def buffer_metric(self, device_id, latency, packet_loss=0):
-        data = {
+    def buffer_metric(self, device_id, latency, packet_loss=0, extra_data=None):
+        """
+        Guarda métricas en buffer para envío masivo.
+        Acepta 'extra_data' con min_latency, max_latency, etc.
+        """
+        row = {
             "device_id": device_id,
             "latency_ms": int(latency) if latency is not None else 0,
             "packet_loss": int(packet_loss),
             "created_at": datetime.utcnow().isoformat()
         }
-        self.buffer.append(data)
+        
+        # Mapear datos extra a las columnas de SQL
+        if extra_data:
+            row['min_latency'] = extra_data.get('min')
+            row['max_latency'] = extra_data.get('max')
+            row['sample_count'] = extra_data.get('samples', 1)
+        
+        self.buffer.append(row)
         
         if len(self.buffer) >= self.BATCH_SIZE:
             self._flush_buffer()
@@ -35,14 +45,22 @@ class SupabaseService:
     def _flush_buffer(self):
         try:
             if not self.buffer: return
+            
             data_to_send = self.buffer
+            # Insertamos en raw_metrics
             self.client.table("raw_metrics").insert(data_to_send).execute()
+            
+            # Limpiamos buffer solo si tuvo éxito
             self.buffer = [] 
+            
         except Exception as e:
             logger.error(f"❌ Error enviando batch a Supabase: {e}")
+            # Estrategia simple: Si falla, limpiamos igual para no atascar la memoria RAM
+            # En producción podrías implementar lógica de reintento
+            self.buffer = []
 
     def upsert_device_status(self, device_data: dict):
-        """Actualiza el estado actual del dispositivo (Tabla inventario)"""
+        """Actualiza el inventario (Tabla devices)"""
         try:
             self.client.table("devices").upsert(device_data).execute()
             return True
@@ -64,6 +82,7 @@ class SupabaseService:
             return []
 
     def run_nightly_cleanup(self):
+        """Borra datos crudos viejos (Mantenimiento)"""
         try:
             cutoff = (datetime.now() - timedelta(days=30)).isoformat()
             self.client.table("raw_metrics").delete().lt("created_at", cutoff).execute()
