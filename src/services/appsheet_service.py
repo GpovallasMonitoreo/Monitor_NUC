@@ -1,4 +1,4 @@
-# src/services/appsheet_service.py - VERSIÓN CON TUS COLUMNAS EXACTAS
+# src/services/appsheet_service.py
 import os
 import requests
 import json
@@ -27,6 +27,7 @@ class AppSheetService:
         
         # Estado de conexión por tabla
         self.table_status = {}
+        self.last_sync_time = None
         
         logger.info(f"AppSheet Service: {'ENABLED' if self.enabled else 'DISABLED'}")
         
@@ -146,11 +147,6 @@ class AppSheetService:
                 elif response.status_code == 401:
                     logger.error("   🔐 API Key inválida o expirada")
                 
-                # Log detallado solo en debug
-                if logger.level <= logging.DEBUG:
-                    logger.debug(f"   URL: {url}")
-                    logger.debug(f"   Respuesta: {response.text[:500]}")
-                
                 return None
                 
         except requests.exceptions.Timeout:
@@ -187,8 +183,8 @@ class AppSheetService:
                 "unit": str(device_data.get('unit', 'General')),
                 "public_ip": str(device_data.get('public_ip', device_data.get('ip', ''))),
                 "last_known_location": str(device_data.get('locName', pc_name)),
-                "is_active": "true",  # Nuevo campo
-                "created_at": ts,     # Nuevo campo  
+                "is_active": "true",
+                "created_at": ts,
                 "updated_at": ts
             }
             
@@ -199,6 +195,7 @@ class AppSheetService:
             
             if result:
                 logger.info(f"✅ Dispositivo {device_id} creado/existente")
+                self.last_sync_time = datetime.now()
                 return True, device_id, True
             else:
                 logger.warning(f"⚠️ No se pudo crear dispositivo {device_id}")
@@ -225,15 +222,15 @@ class AppSheetService:
             # ¡COLUMNAS EXACTAS DE TU TABLA 'device_history'!
             row = {
                 "device_id": device_id,
-                "pc_name": pc_name,  # Nueva columna en tu tabla
+                "pc_name": pc_name,
                 "exec": str(log_data.get('exec', 'Sistema')),
                 "action": str(log_data.get('action', 'Info')),
                 "what": str(log_data.get('what', 'General')),
                 "desc": str(log_data.get('desc', 'NA')),
                 "solved": str(log_data.get('solved', 'true')).lower(),
-                "locName": str(log_data.get('locName', pc_name)),  # ¡Exacto como en tu tabla!
+                "locName": str(log_data.get('locName', pc_name)),
                 "unit": str(log_data.get('unit', 'General')),
-                "status_snapshot": str(log_data.get('status_snapshot', 'active')),  # Nueva columna
+                "status_snapshot": str(log_data.get('status_snapshot', 'active')),
                 "timestamp": ts
             }
             
@@ -243,6 +240,7 @@ class AppSheetService:
             
             if result:
                 logger.info(f"✅ Historial añadido para {device_id}")
+                self.last_sync_time = datetime.now()
             else:
                 logger.warning(f"⚠️ No se pudo añadir historial para {device_id}")
                 
@@ -268,17 +266,21 @@ class AppSheetService:
                 "device_id": device_id,
                 "timestamp": ts,
                 "latency_ms": str(data.get('latency', 0)),
-                "cpu_percent": str(data.get('cpu_load_percent', data.get('cpu_percent', 0))),  # ¡Nombre exacto!
-                "ram_percent": str(data.get('ram_percent', 0)),  # ¡Nombre exacto!
-                "temperature_c": str(data.get('temperature_c', 0)),  # Nueva columna
-                "disk_percent": str(data.get('disk_percent', 0)),    # Nueva columna
+                "cpu_percent": str(data.get('cpu_load_percent', data.get('cpu_percent', 0))),
+                "ram_percent": str(data.get('ram_percent', 0)),
+                "temperature_c": str(data.get('temperature_c', 0)),
+                "disk_percent": str(data.get('disk_percent', 0)),
                 "status": str(data.get('status', 'online')),
-                "extended_sensors": str(data.get('extended_sensors', ''))  # Nueva columna
+                "extended_sensors": str(data.get('extended_sensors', ''))
             }
             
             logger.info(f"Añadiendo latencia: {device_id} - {row['latency_ms']}ms")
             
             result = self._make_safe_request("latency_history", "Add", [row])
+            
+            if result:
+                self.last_sync_time = datetime.now()
+                
             return result is not None
             
         except Exception as e:
@@ -303,8 +305,8 @@ class AppSheetService:
                 "severity": str(sev),
                 "message": str(msg),
                 "timestamp": ts,
-                "resolved": "false",        # Nueva columna
-                "resolved_at": ""           # Nueva columna
+                "resolved": "false",
+                "resolved_at": ""
             }
             
             logger.warning(f"🚨 Añadiendo alerta {sev}: {type_alert} - {msg[:50]}...")
@@ -313,6 +315,7 @@ class AppSheetService:
             
             if result:
                 logger.warning(f"✅ Alerta registrada para {device_id}")
+                self.last_sync_time = datetime.now()
                 
             return result is not None
             
@@ -400,23 +403,38 @@ class AppSheetService:
     
     def get_status_info(self) -> Dict:
         """Obtiene información de estado detallada"""
+        is_connected = any(self.table_status.values()) if self.table_status else False
+        
         return {
             "enabled": self.enabled,
-            "connection_status": "connected" if any(self.table_status.values()) else "disconnected",
+            "connection_status": "connected" if is_connected else "disconnected",
             "tables": self.table_status,
             "has_credentials": bool(self.api_key and self.app_id),
             "app_id_preview": self.app_id[:8] + "..." if self.app_id else "None",
-            "api_key_length": len(self.api_key) if self.api_key else 0
+            "api_key_length": len(self.api_key) if self.api_key else 0,
+            "last_sync": self.last_sync_time.isoformat() if self.last_sync_time else None
         }
     
     def get_system_stats(self) -> Dict:
+        is_connected = any(self.table_status.values()) if self.table_status else False
+        
         return {
-            "status": "ok" if self.enabled else "error",
+            "status": "ok" if self.enabled and is_connected else "error",
             "mode": "AppSheet",
-            "connection": "connected" if any(self.table_status.values()) else "disconnected",
-            "tables_connected": sum(1 for v in self.table_status.values() if v),
-            "total_tables": len(self.table_status)
+            "connection": "connected" if is_connected else "disconnected",
+            "tables_connected": sum(1 for v in self.table_status.values() if v) if self.table_status else 0,
+            "total_tables": len(self.table_status) if self.table_status else 0
         }
+    
+    # ==================== MÉTODOS DE COMPATIBILIDAD ====================
+    
+    def _test_table_connection(self, table_name):
+        """Método legacy para compatibilidad"""
+        return self.table_status.get(table_name, False)
+    
+    def test_history_connection(self):
+        """Método legacy para compatibilidad"""
+        return self.table_status.get('device_history', False)
     
     # ==================== ALIASES PARA COMPATIBILIDAD ====================
     
