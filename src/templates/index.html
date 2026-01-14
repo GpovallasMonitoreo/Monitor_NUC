@@ -199,18 +199,23 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("🚀 Inicializando dashboard...");
     lucide.createIcons();
+    
+    // Cargar estados iniciales
     updateAppSheetStatus();
     updateSystemStatus();
     
-    // Auto-update
+    // Auto-update cada 30 segundos
     setInterval(() => {
         updateSystemStatus();
         updateAppSheetStatus();
     }, 30000);
 
+    // Actualizar cuando la página vuelva a ser visible
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
+            console.log("📱 Página visible, actualizando estados...");
             updateSystemStatus();
             updateAppSheetStatus();
         }
@@ -218,6 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function updateSystemStatus() {
         try {
+            console.log("🔄 Actualizando estado del sistema...");
             const response = await fetch('/api/data');
             const rawData = await response.json();
             const devices = Object.values(rawData);
@@ -261,13 +267,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('system-stats').classList.remove('hidden');
             }
             lucide.createIcons();
-        } catch (error) { console.error(error); }
+        } catch (error) { 
+            console.error('❌ Error actualizando estado del sistema:', error);
+        }
     }
 
     async function updateAppSheetStatus() {
         try {
+            console.log("🔄 Actualizando estado AppSheet...");
             const response = await fetch('/api/appsheet/status');
             const data = await response.json();
+            
+            console.log("📊 Respuesta AppSheet:", data);
             
             const statusEl = document.getElementById('appsheet-status');
             const textEl = document.getElementById('appsheet-connection-text');
@@ -275,11 +286,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const connectionIcon = document.getElementById('appsheet-connection-icon');
             const statusCard = document.getElementById('appsheet-status-card');
             const lastSyncEl = document.getElementById('last-sync-time');
-            const statsContainer = document.getElementById('appsheet-stats');
-            const connectionStats = document.getElementById('appsheet-connection-stats');
             
-            if (data.success && data.connected) {
-                // CONECTADO
+            if (data.success && data.connected === true) {
+                // ✅ CONECTADO
+                console.log("✅ AppSheet CONECTADO");
                 statusEl.innerHTML = '<span class="bg-emerald-500/20 text-emerald-300 px-2 py-1 rounded-full">CONECTADO</span>';
                 textEl.innerHTML = '<span class="font-bold text-emerald-400">CONECTADO</span> • Sincronización activa';
                 connectionIcon.innerHTML = '<i data-lucide="cloud" class="text-emerald-400"></i>';
@@ -287,39 +297,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 statusCard.className = 'bg-emerald-900 rounded-2xl p-6 text-white flex items-center justify-between';
                 
                 // Mostrar última sincronización
-                if (data.status && data.status.last_sync) {
-                    const syncTime = new Date(data.status.last_sync);
-                    const now = new Date();
-                    const diffMs = now - syncTime;
-                    const diffMins = Math.floor(diffMs / 60000);
-                    
-                    let timeText;
-                    if (diffMins < 1) {
-                        timeText = 'hace unos segundos';
-                    } else if (diffMins < 60) {
-                        timeText = `hace ${diffMins} minuto${diffMins > 1 ? 's' : ''}`;
-                    } else if (diffMins < 1440) {
-                        const hours = Math.floor(diffMins / 60);
-                        timeText = `hace ${hours} hora${hours > 1 ? 's' : ''}`;
-                    } else {
-                        const days = Math.floor(diffMins / 1440);
-                        timeText = `hace ${days} día${days > 1 ? 's' : ''}`;
-                    }
-                    
-                    if (lastSyncEl) {
+                if (lastSyncEl) {
+                    if (data.status && data.status.last_sync) {
+                        const syncTime = new Date(data.status.last_sync);
+                        const now = new Date();
+                        const diffMs = now - syncTime;
+                        const diffMins = Math.floor(diffMs / 60000);
+                        
+                        let timeText;
+                        if (diffMins < 1) {
+                            timeText = 'hace unos segundos';
+                        } else if (diffMins < 60) {
+                            timeText = `hace ${diffMins} min`;
+                        } else {
+                            const hours = Math.floor(diffMins / 60);
+                            timeText = `hace ${hours} horas`;
+                        }
+                        
                         lastSyncEl.textContent = `Última sinc: ${timeText}`;
+                    } else {
+                        lastSyncEl.textContent = 'Nunca sincronizado';
                     }
                 }
                 
                 // Mostrar estadísticas
+                const statsContainer = document.getElementById('appsheet-stats');
+                const connectionStats = document.getElementById('appsheet-connection-stats');
                 if (statsContainer) statsContainer.classList.remove('hidden');
                 if (connectionStats) connectionStats.classList.remove('hidden');
                 
                 // Cargar estadísticas detalladas
                 loadAppSheetStats();
                 
-            } else if (data.success && data.available && !data.connected) {
-                // DISPONIBLE PERO DESCONECTADO
+            } else if (data.success && data.available === true) {
+                // ⚠️ DISPONIBLE PERO DESCONECTADO
+                console.log("⚠️ AppSheet DISPONIBLE pero DESCONECTADO");
                 statusEl.innerHTML = '<span class="bg-amber-500/20 text-amber-300 px-2 py-1 rounded-full">DESCONECTADO</span>';
                 textEl.innerHTML = '<span class="font-bold text-amber-400">DESCONECTADO</span> • Revisar conexión';
                 connectionIcon.innerHTML = '<i data-lucide="cloud-off" class="text-amber-400"></i>';
@@ -327,10 +339,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 statusCard.className = 'bg-amber-900 rounded-2xl p-6 text-white flex items-center justify-between';
                 
                 if (lastSyncEl) lastSyncEl.textContent = '';
-                if (statsContainer) statsContainer.classList.add('hidden');
                 
-            } else {
-                // NO DISPONIBLE / ERROR
+            } else if (data.success && data.available === false) {
+                // 🔧 NO CONFIGURADO
+                console.log("🔧 AppSheet NO CONFIGURADO");
                 statusEl.innerHTML = '<span class="bg-slate-500/20 text-slate-300 px-2 py-1 rounded-full">NO CONFIGURADO</span>';
                 textEl.innerHTML = '<span class="font-bold text-slate-400">NO CONFIGURADO</span> • Configure AppSheet';
                 connectionIcon.innerHTML = '<i data-lucide="cloud-off" class="text-slate-400"></i>';
@@ -338,12 +350,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 statusCard.className = 'bg-slate-800 rounded-2xl p-6 text-white flex items-center justify-between';
                 
                 if (lastSyncEl) lastSyncEl.textContent = '';
-                if (statsContainer) statsContainer.classList.add('hidden');
+                
+            } else {
+                // ❌ ERROR
+                console.log("❌ Error en AppSheet:", data.error || 'Error desconocido');
+                statusEl.innerHTML = '<span class="bg-red-500/20 text-red-300 px-2 py-1 rounded-full">ERROR</span>';
+                textEl.innerHTML = '<span class="font-bold text-red-400">ERROR</span> • No se pudo conectar';
+                connectionIcon.innerHTML = '<i data-lucide="cloud-off" class="text-red-400"></i>';
+                syncButton.disabled = true;
+                statusCard.className = 'bg-red-900 rounded-2xl p-6 text-white flex items-center justify-between';
+                
+                if (lastSyncEl) lastSyncEl.textContent = '';
             }
             
             lucide.createIcons();
+            
         } catch (error) { 
-            console.error('Error actualizando estado AppSheet:', error);
+            console.error('❌ Error actualizando estado AppSheet:', error);
             
             // Mostrar error en UI
             const statusEl = document.getElementById('appsheet-status');
@@ -362,11 +385,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadAppSheetStats() {
         try {
+            console.log("📊 Cargando estadísticas AppSheet...");
             const response = await fetch('/api/appsheet/stats');
             const data = await response.json();
             
             if (data.success && data.stats) {
                 const stats = data.stats;
+                console.log("📈 Estadísticas AppSheet:", stats);
                 
                 // Actualizar panel de estadísticas
                 const statDevices = document.getElementById('stat-devices');
@@ -395,9 +420,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const connectionStats = document.getElementById('appsheet-connection-stats');
                 if (statsContainer) statsContainer.classList.remove('hidden');
                 if (connectionStats) connectionStats.classList.remove('hidden');
+            } else {
+                console.warn("⚠️ No se pudieron cargar estadísticas AppSheet");
             }
         } catch (error) { 
-            console.error('Error cargando estadísticas AppSheet:', error);
+            console.error('❌ Error cargando estadísticas AppSheet:', error);
         }
     }
 });
@@ -409,6 +436,8 @@ async function syncToAppSheet() {
     const percentageSpan = document.getElementById('sync-percentage');
     const detailsDiv = document.getElementById('sync-details');
     
+    console.log("🔄 Iniciando sincronización con AppSheet...");
+    
     syncButton.disabled = true;
     syncButton.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i><span>Sincronizando...</span>';
     progressDiv.classList.remove('hidden');
@@ -417,7 +446,10 @@ async function syncToAppSheet() {
         const response = await fetch('/api/appsheet/sync', { method: 'POST' });
         const data = await response.json();
         
+        console.log("📤 Respuesta sincronización:", data);
+        
         if (data.success) {
+            // Simular progreso
             let progress = 0;
             const interval = setInterval(() => {
                 progress += 10;
@@ -446,7 +478,7 @@ async function syncToAppSheet() {
             throw new Error(data.error || 'Error desconocido en sincronización');
         }
     } catch (error) {
-        console.error('Error sincronizando con AppSheet:', error);
+        console.error('❌ Error sincronizando con AppSheet:', error);
         detailsDiv.innerHTML = `<div class="text-red-400 flex items-center gap-2"><i data-lucide="alert-circle" class="w-4 h-4"></i> Error: ${error.message}</div>`;
         
         setTimeout(() => {
@@ -458,10 +490,12 @@ async function syncToAppSheet() {
 }
 
 function showAppSheetConfig() { 
+    console.log("⚙️ Mostrando configuración AppSheet");
     document.getElementById('appsheet-config-modal').classList.remove('hidden'); 
 }
 
 function hideAppSheetConfig() { 
+    console.log("👋 Ocultando configuración AppSheet");
     document.getElementById('appsheet-config-modal').classList.add('hidden'); 
 }
 </script>
