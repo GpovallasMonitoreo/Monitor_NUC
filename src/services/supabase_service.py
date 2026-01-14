@@ -7,8 +7,8 @@ logger = logging.getLogger(__name__)
 
 class SupabaseService:
     def __init__(self):
-        url = os.environ.get("https://jxwdncxtnhmrufvdxuti.supabase.co")
-        key = os.environ.get("sb_publishable_pB9U_sLwpPWFS4Zf-ko8Lw_Wmqi0Mio")
+        url = os.environ.get("SUPABASE_URL")
+        key = os.environ.get("SUPABASE_KEY")
         
         if not url or not key:
             # Si faltan credenciales, lanzamos error para que __init__.py use el Stub
