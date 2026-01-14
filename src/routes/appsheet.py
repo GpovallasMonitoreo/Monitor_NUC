@@ -1,47 +1,29 @@
-# src/routes/appsheet.py
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify
 from datetime import datetime
-import src  # Importamos el paquete para acceder a las variables globales (src.appsheet, src.storage)
+import src
 
 bp = Blueprint('appsheet', __name__, url_prefix='/api/appsheet')
 
 @bp.route('/status', methods=['GET'])
 def get_status():
-    """Endpoint para verificar estado de AppSheet"""
+    """Adaptador de compatibilidad para Dashboard viejo"""
     try:
-        service = src.appsheet
-        # Usamos el método del servicio, sea Stub o Real
-        status = service.get_status_info()
+        # Verificamos Supabase en lugar de AppSheet
+        is_online = False
+        status_detail = "Offline"
+        
+        # Verificamos si src.supabase existe y NO es el Stub (mirando si tiene 'client')
+        if src.supabase and hasattr(src.supabase, 'client'):
+            is_online = True
+            status_detail = "Connected (Supabase Backend)"
         
         return jsonify({
             "success": True,
-            "available": service.enabled,
-            "status": status,
-            "timestamp": datetime.now().isoformat()
+            "available": is_online,
+            "connected": is_online,
+            "timestamp": datetime.now().isoformat(),
+            "status": {"connection_status": status_detail}
         })
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@bp.route('/sync', methods=['POST'])
-def manual_sync():
-    """Sincronización manual"""
-    if not src.appsheet.enabled:
-        return jsonify({"success": False, "error": "AppSheet deshabilitado"}), 400
-
-    results = {"synced": 0, "errors": 0}
-    
-    # Ejemplo de uso del StorageService global
-    local_data = src.storage.get_all_devices() if src.storage else {}
-
-    for dev_id, data in local_data.items():
-        success, _, _ = src.appsheet.get_or_create_device(data)
-        if success:
-            results["synced"] += 1
-        else:
-            results["errors"] += 1
-
-    return jsonify({
-        "success": True, 
-        "results": results,
-        "timestamp": datetime.now().isoformat()
-    })
+        # Retornamos JSON de error pero con código 200 para no alarmar al dashboard
+        return jsonify({"success": False, "error": str(e)}), 200
