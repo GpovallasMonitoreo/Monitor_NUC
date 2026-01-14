@@ -78,9 +78,6 @@ except ImportError as e:
             def get_system_stats(self):
                 return {'avg_latency': 0, 'total_devices': 0}
             
-            def _test_all_tables(self):
-                return {}
-            
             def get_or_create_device(self, device_data):
                 return False, None, False
             
@@ -89,6 +86,9 @@ except ImportError as e:
             
             def add_alert(self, data, type_alert, msg, sev):
                 return False
+            
+            def _make_safe_request(self, table, action, properties=None):
+                return None
         
         AppSheetService = AppSheetServiceStub
         logger.warning("⚠️  Usando AppSheetService stub - funcionalidad limitada")
@@ -171,6 +171,9 @@ except Exception as e:
         
         def add_alert(self, data, type_alert, msg, sev):
             return False
+        
+        def _make_safe_request(self, table, action, properties=None):
+            return None
     
     src.appsheet = AppSheetStub()
 
@@ -217,7 +220,7 @@ except ImportError as e:
     def home_fallback():
         return "Argos System - Views blueprint no disponible"
 
-# ==================== NUEVAS RUTAS PARA APPSHEET DIAGNÓSTICO ====================
+# ==================== NUEVAS RUTAS PARA APPSHEET ====================
 
 @app.route('/api/appsheet/status', methods=['GET'])
 def appsheet_status():
@@ -227,16 +230,157 @@ def appsheet_status():
             status = src.appsheet.get_status_info()
             return jsonify({
                 "success": True,
+                "available": status.get('enabled', False),
+                "connected": status.get('connection_status') == 'connected',
                 "timestamp": datetime.now().isoformat(),
                 "status": status
             })
         else:
             return jsonify({
                 "success": False,
+                "available": False,
+                "connected": False,
                 "error": "AppSheet service not available",
                 "timestamp": datetime.now().isoformat()
             })
     except Exception as e:
+        return jsonify({
+            "success": False,
+            "available": False,
+            "connected": False,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
+@app.route('/api/appsheet/stats', methods=['GET'])
+def get_appsheet_stats():
+    """Obtiene estadísticas de AppSheet para el dashboard"""
+    try:
+        if not src.appsheet or not src.appsheet.enabled:
+            return jsonify({
+                "success": False,
+                "error": "AppSheet service not enabled",
+                "timestamp": datetime.now().isoformat()
+            }), 400
+        
+        # Obtener historial reciente para calcular stats
+        history = src.appsheet.get_full_history(limit=100)
+        
+        # Contar dispositivos únicos
+        unique_devices = set()
+        if history:
+            for entry in history:
+                if isinstance(entry, dict):
+                    device_id = entry.get('device_id')
+                    if device_id:
+                        unique_devices.add(device_id)
+        
+        # Calcular tiempo desde última sincronización
+        last_sync = None
+        if hasattr(src.appsheet, 'last_sync_time') and src.appsheet.last_sync_time:
+            last_sync = src.appsheet.last_sync_time.isoformat()
+        
+        # Obtener información de tablas
+        tables_connected = 0
+        if hasattr(src.appsheet, 'table_status'):
+            tables_connected = sum(1 for v in src.appsheet.table_status.values() if v)
+        
+        stats = {
+            "total_records": len(history),
+            "total_devices": len(unique_devices),
+            "active_alerts": 0,  # Podrías calcular esto si tienes alertas
+            "last_sync": last_sync,
+            "uptime_percent": 99.9,  # Placeholder
+            "avg_latency": 45,  # Placeholder
+            "tables_connected": tables_connected
+        }
+        
+        return jsonify({
+            "success": True,
+            "timestamp": datetime.now().isoformat(),
+            "stats": stats
+        })
+        
+    except Exception as e:
+        logger.error(f"Error en get_appsheet_stats: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
+@app.route('/api/appsheet/sync', methods=['POST'])
+def manual_sync_to_appsheet():
+    """Sincronización manual de datos a AppSheet"""
+    try:
+        if not src.appsheet or not src.appsheet.enabled:
+            return jsonify({
+                "success": False,
+                "error": "AppSheet service not enabled",
+                "timestamp": datetime.now().isoformat()
+            }), 400
+        
+        # Obtener datos locales
+        local_data = {}
+        if src.storage and hasattr(src.storage, 'get_all_devices'):
+            local_data = src.storage.get_all_devices()
+        
+        results = {
+            "synced_devices": 0,
+            "synced_records": 0,
+            "errors": 0,
+            "details": []
+        }
+        
+        # Sincronizar cada dispositivo
+        for device_id, device_data in local_data.items():
+            try:
+                if device_data and isinstance(device_data, dict):
+                    # Sincronizar dispositivo
+                    success, _, _ = src.appsheet.get_or_create_device(device_data)
+                    if success:
+                        results["synced_devices"] += 1
+                        
+                        # Crear entrada de historial
+                        history_entry = {
+                            "pc_name": device_data.get('pc_name', device_id),
+                            "action": "manual_sync",
+                            "desc": f"Sincronización manual desde dashboard",
+                            "exec": "Dashboard",
+                            "unit": device_data.get('unit', 'General'),
+                            "solved": "true",
+                            "locName": device_data.get('locName', device_data.get('pc_name', 'Unknown')),
+                            "status_snapshot": "synced"
+                        }
+                        
+                        history_success = src.appsheet.add_history_entry(history_entry)
+                        if history_success:
+                            results["synced_records"] += 1
+                        
+                        results["details"].append({
+                            "device": device_id,
+                            "device_sync": success,
+                            "history_sync": history_success
+                        })
+                    else:
+                        results["errors"] += 1
+            except Exception as e:
+                results["errors"] += 1
+                results["details"].append({
+                    "device": device_id,
+                    "error": str(e)
+                })
+        
+        return jsonify({
+            "success": True,
+            "status": "success" if results["errors"] == 0 else "partial",
+            "message": f"Sincronizados {results['synced_devices']} dispositivos con {results['synced_records']} registros",
+            "results": results,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error en manual_sync_to_appsheet: {e}")
         return jsonify({
             "success": False,
             "error": str(e),
@@ -343,125 +487,6 @@ def test_appsheet_all():
             "success": False,
             "error": str(e),
             "traceback": traceback.format_exc(),
-            "timestamp": datetime.now().isoformat()
-        }), 500
-
-@app.route('/api/appsheet/check-tables', methods=['GET'])
-def check_appsheet_tables():
-    """Verifica estructura exacta de tablas"""
-    try:
-        if not src.appsheet or not src.appsheet.enabled:
-            return jsonify({
-                "success": False,
-                "error": "AppSheet service not enabled",
-                "timestamp": datetime.now().isoformat()
-            }), 400
-        
-        # Método para extraer columnas
-        def extract_columns(result):
-            try:
-                if isinstance(result, list) and len(result) > 0:
-                    return list(result[0].keys())
-                elif isinstance(result, dict) and 'Rows' in result and len(result['Rows']) > 0:
-                    return list(result['Rows'][0].keys())
-            except:
-                pass
-            return []
-        
-        table_details = {}
-        
-        for table in ["devices", "device_history", "latency_history", "alerts"]:
-            try:
-                # Usar el método interno del servicio
-                if hasattr(src.appsheet, '_make_safe_request'):
-                    result = src.appsheet._make_safe_request(
-                        table,
-                        "Find",
-                        properties={"Locale": "es-MX", "Top": 1}
-                    )
-                else:
-                    # Método alternativo si no existe _make_safe_request
-                    result = None
-                
-                if result:
-                    columns = extract_columns(result)
-                    table_details[table] = {
-                        "exists": True,
-                        "columns": columns,
-                        "sample_row": result[0] if isinstance(result, list) and result else 
-                                     result.get('Rows', [])[0] if isinstance(result, dict) and result.get('Rows') else None
-                    }
-                else:
-                    table_details[table] = {
-                        "exists": False,
-                        "error": "No response or error"
-                    }
-                    
-            except Exception as e:
-                table_details[table] = {
-                    "exists": False,
-                    "error": str(e)
-                }
-        
-        return jsonify({
-            "success": True,
-            "timestamp": datetime.now().isoformat(),
-            "tables": table_details,
-            "expected_columns": {
-                "devices": ["device_id", "pc_name", "unit", "public_ip", "last_known_location", "is_active", "created_at", "updated_at"],
-                "device_history": ["device_id", "pc_name", "exec", "action", "what", "desc", "solved", "locName", "unit", "status_snapshot", "timestamp"],
-                "latency_history": ["record_id", "device_id", "timestamp", "latency_ms", "cpu_percent", "ram_percent", "temperature_c", "disk_percent", "status", "extended_sensors"],
-                "alerts": ["alert_id", "device_id", "alert_type", "severity", "message", "timestamp", "resolved", "resolved_at"]
-            }
-        })
-        
-    except Exception as e:
-        logger.error(f"Error en check_appsheet_tables: {e}")
-        return jsonify({
-            "success": False,
-            "error": str(e),
-            "timestamp": datetime.now().isoformat()
-        }), 500
-
-@app.route('/api/appsheet/test-connection', methods=['GET'])
-def test_appsheet_connection():
-    """Prueba simple de conexión a AppSheet"""
-    try:
-        if not src.appsheet:
-            return jsonify({
-                "success": False,
-                "connected": False,
-                "error": "AppSheet service not initialized",
-                "timestamp": datetime.now().isoformat()
-            })
-        
-        # Crear una instancia temporal para test
-        from src.services.appsheet_service import AppSheetService
-        temp_service = AppSheetService()
-        
-        status = temp_service.get_status_info()
-        
-        # Probar una operación simple
-        test_result = temp_service._make_safe_request(
-            "devices",
-            "Find",
-            properties={"Locale": "es-MX", "Top": 1}
-        ) if hasattr(temp_service, '_make_safe_request') else None
-        
-        return jsonify({
-            "success": True,
-            "connected": temp_service.enabled and test_result is not None,
-            "service_status": status,
-            "test_result": "received" if test_result else "failed",
-            "timestamp": datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        logger.error(f"Error en test_appsheet_connection: {e}")
-        return jsonify({
-            "success": False,
-            "connected": False,
-            "error": str(e),
             "timestamp": datetime.now().isoformat()
         }), 500
 
