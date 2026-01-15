@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block header_title %}Costo por Ubicación y Rentabilidad{% endblock %}
+{% block content %}
+<div class="max-w-[1800px] mx-auto">
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+            <h3 class="text-xs font-bold text-slate-400 uppercase mb-1">Total Inversión Activos</h3>
+            <p id="total-invest" class="text-2xl font-mono font-bold text-slate-700">$0.00</p>
+        </div>
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+            <h3 class="text-xs font-bold text-slate-400 uppercase mb-1">Gastos Mantenimiento</h3>
+            <p id="total-mant" class="text-2xl font-mono font-bold text-amber-600">$0.00</p>
+        </div>
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+            <h3 class="text-xs font-bold text-slate-400 uppercase mb-1">Utilidad Neta Global</h3>
+            <p id="total-profit" class="text-2xl font-mono font-black text-slate-800">$0.00</p>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+        <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+            <div>
+                <h3 class="font-bold text-slate-800 text-lg">Reporte de Costos por Ubicación</h3>
+                <p class="text-xs text-slate-500">Comparativa de Costos (Instalación + Mtto) vs Ingresos.</p>
+            </div>
+            <button onclick="loadReport()" class="text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition"><i data-lucide="refresh-cw" class="w-5 h-5"></i></button>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-slate-100 text-slate-500 uppercase text-xs font-bold tracking-wider">
+                    <tr>
+                        <th class="p-4">Ubicación</th>
+                        <th class="p-4 text-right">Inversión (Inst.)</th>
+                        <th class="p-4 text-right">Mantenimiento</th>
+                        <th class="p-4 text-right">Total Gastos</th>
+                        <th class="p-4 text-right text-emerald-600">Ventas</th>
+                        <th class="p-4 text-right font-black">Ganancia / Pérdida</th>
+                        <th class="p-4 text-center">ROI %</th>
+                        <th class="p-4 text-center">Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="report-body" class="divide-y divide-slate-100">
+                    <tr><td colspan="8" class="p-8 text-center text-slate-400"><i data-lucide="loader-2" class="animate-spin inline mr-2"></i> Calculando finanzas...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => { lucide.createIcons(); loadReport(); });
+
+    async function loadReport() {
+        try {
+            const res = await fetch('/costs/report');
+            const data = await res.json();
+            const tbody = document.getElementById('report-body');
+            tbody.innerHTML = '';
+            
+            let sumInvest = 0, sumMant = 0, sumProfit = 0;
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-slate-400 italic">No hay datos financieros registrados.</td></tr>';
+                return;
+            }
+
+            data.forEach(row => {
+                sumInvest += row.cost_installation;
+                sumMant += row.cost_maintenance;
+                sumProfit += row.net_profit;
+
+                // Estilos de Estado
+                let badgeClass = 'bg-red-100 text-red-700';
+                if (row.status_label === 'RENTABLE') badgeClass = 'bg-emerald-100 text-emerald-700';
+                if (row.status_label === 'RECUPERANDO') badgeClass = 'bg-blue-100 text-blue-700';
+
+                // Barra ROI
+                let progressColor = row.roi_percent >= 100 ? 'bg-emerald-500' : 'bg-indigo-500';
+                let roiBar = `<div class="w-full bg-slate-200 rounded-full h-1.5 mt-2"><div class="${progressColor} h-1.5 rounded-full" style="width: ${Math.min(row.roi_percent, 100)}%"></div></div>`;
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                        <td class="p-4 font-bold text-slate-700">${row.device_id}</td>
+                        <td class="p-4 text-right font-mono text-slate-500">$${row.cost_installation.toLocaleString()}</td>
+                        <td class="p-4 text-right font-mono text-amber-600">$${row.cost_maintenance.toLocaleString()}</td>
+                        <td class="p-4 text-right font-mono font-bold text-red-400">$${row.total_expenses.toLocaleString()}</td>
+                        <td class="p-4 text-right font-mono font-bold text-emerald-600">$${row.total_sales.toLocaleString()}</td>
+                        <td class="p-4 text-right font-mono font-black ${row.net_profit >= 0 ? 'text-emerald-600' : 'text-red-500'}">
+                            $${row.net_profit.toLocaleString()}
+                        </td>
+                        <td class="p-4 text-center w-32">
+                            <div class="text-[10px] text-slate-400 font-bold">${row.roi_percent}%</div>
+                            ${roiBar}
+                        </td>
+                        <td class="p-4 text-center"><span class="px-2 py-1 rounded-full text-[10px] font-bold ${badgeClass}">${row.status_label}</span></td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('total-invest').textContent = `$${sumInvest.toLocaleString()}`;
+            document.getElementById('total-mant').textContent = `$${sumMant.toLocaleString()}`;
+            const profElem = document.getElementById('total-profit');
+            profElem.textContent = `$${sumProfit.toLocaleString()}`;
+            profElem.className = sumProfit >= 0 ? "text-2xl font-mono font-black text-emerald-600" : "text-2xl font-mono font-black text-red-500";
+
+        } catch(e) { console.error(e); }
+    }
+</script>
+{% endblock %}
