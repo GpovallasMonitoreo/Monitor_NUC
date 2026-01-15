@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block header_title %}Registro de Ventas{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-sm border border-slate-200">
+    <div class="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
+        <div class="p-3 bg-emerald-50 rounded-lg text-emerald-600"><i data-lucide="banknote" class="w-6 h-6"></i></div>
+        <div>
+            <h2 class="text-xl font-bold text-slate-800">Ingresos por Ubicación</h2>
+            <p class="text-sm text-slate-500">Registro mensual de ventas y campañas publicitarias.</p>
+        </div>
+    </div>
+
+    <form id="sales-form" class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Ubicación</label>
+                <select id="device-select" class="w-full p-3 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:ring-2 focus:ring-emerald-500"><option>Cargando...</option></select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Concepto</label>
+                <input type="text" id="description" placeholder="Ej: Renta Mensual Marzo, Campaña Navidad..." class="w-full p-3 border border-slate-300 rounded-lg text-sm">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Monto Ingreso ($)</label>
+                <div class="relative">
+                    <span class="absolute left-3 top-3 text-slate-400 font-bold">$</span>
+                    <input type="number" id="amount" placeholder="0.00" class="w-full pl-8 p-3 border border-emerald-300 rounded-lg text-sm font-mono font-bold text-emerald-700">
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Fecha</label>
+                <input type="date" id="date" class="w-full p-3 border border-slate-300 rounded-lg text-sm">
+            </div>
+        </div>
+
+        <div class="flex justify-end">
+            <button type="button" onclick="saveSale()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-lg font-bold shadow-lg transition flex items-center gap-2">
+                <i data-lucide="save" class="w-4 h-4"></i> Registrar Venta
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => { lucide.createIcons(); loadDevices(); document.getElementById('date').valueAsDate = new Date(); });
+
+    async function saveSale() {
+        const devId = document.getElementById('device-select').value;
+        const amount = document.getElementById('amount').value;
+        const desc = document.getElementById('description').value;
+
+        if(!devId || !amount) return alert("Complete los datos");
+
+        try {
+            const res = await fetch('/costs/add', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ 
+                    device_id: devId, type: 'sale', subtype: 'campaña', 
+                    description: desc, amount: amount, date: document.getElementById('date').value 
+                })
+            });
+            if(res.ok) { alert("✅ Venta Registrada"); location.reload(); }
+        } catch(e) { alert("Error de red"); }
+    }
+
+    async function loadDevices() {
+        const res = await fetch('/api/data'); const data = await res.json();
+        const sel = document.getElementById('device-select'); sel.innerHTML = '<option value="">Seleccione...</option>';
+        Object.values(data).forEach(d => sel.innerHTML += `<option value="${d.pc_name}">${d.pc_name}</option>`);
+    }
+</script>
+{% endblock %}
