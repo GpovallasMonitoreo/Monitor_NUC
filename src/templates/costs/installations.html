@@ -1,93 +1,78 @@
 {% extends 'base.html' %}
-{% block header_title %}Alta de Instalaciones{% endblock %}
+{% block header_title %}Registro de Instalaciones{% endblock %}
 {% block content %}
 <div class="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-sm border border-slate-200">
     <div class="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
         <div class="p-3 bg-indigo-50 rounded-lg text-indigo-600"><i data-lucide="monitor-speaker" class="w-6 h-6"></i></div>
         <div>
-            <h2 class="text-xl font-bold text-slate-800">Costo de Instalación Inicial</h2>
-            <p class="text-sm text-slate-500">Registre los costos de materiales y mano de obra para nuevas pantallas.</p>
+            <h2 class="text-xl font-bold text-slate-800">Alta de Pantalla</h2>
+            <p class="text-sm text-slate-500">Costos iniciales de inversión.</p>
         </div>
     </div>
 
-    <form id="install-form" class="space-y-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <form id="form-inst" class="space-y-6">
+        <div class="grid grid-cols-2 gap-6">
             <div>
-                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Ubicación / Pantalla</label>
-                <select id="device-select" class="w-full p-3 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:ring-2 focus:ring-indigo-500"><option value="">Cargando...</option></select>
+                <label class="text-xs font-bold text-slate-500 uppercase">Ubicación</label>
+                <select id="dev-id" class="w-full p-3 border rounded-lg text-sm bg-slate-50"><option>Cargando...</option></select>
             </div>
             <div>
-                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Fecha Instalación</label>
-                <input type="date" id="date" class="w-full p-3 border border-slate-300 rounded-lg text-sm">
+                <label class="text-xs font-bold text-slate-500 uppercase">Fecha</label>
+                <input type="date" id="date" class="w-full p-3 border rounded-lg text-sm">
             </div>
         </div>
 
-        <div class="p-4 bg-slate-50 rounded-lg border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="p-4 bg-slate-50 rounded-lg grid grid-cols-2 gap-4 border border-slate-200">
             <div>
-                <label class="block text-xs font-bold text-slate-500 mb-1">Costo Materiales ($)</label>
-                <input type="number" id="cost-material" placeholder="0.00" oninput="calcTotal()" class="w-full p-2 border border-slate-300 rounded text-sm bg-white">
+                <label class="text-xs font-bold text-slate-500">Material ($)</label>
+                <input type="number" id="c-mat" placeholder="0" oninput="calc()" class="w-full p-2 border rounded">
             </div>
             <div>
-                <label class="block text-xs font-bold text-slate-500 mb-1">Costo Mano de Obra ($)</label>
-                <input type="number" id="cost-labor" placeholder="0.00" oninput="calcTotal()" class="w-full p-2 border border-slate-300 rounded text-sm bg-white">
+                <label class="text-xs font-bold text-slate-500">Mano de Obra ($)</label>
+                <input type="number" id="c-mo" placeholder="0" oninput="calc()" class="w-full p-2 border rounded">
             </div>
-            <div class="md:col-span-2 pt-3 border-t border-slate-200 flex justify-between items-center">
-                <span class="font-bold text-slate-700">Inversión Total:</span>
-                <span id="total-display" class="text-xl font-black text-indigo-600">$0.00</span>
+            <div class="col-span-2 pt-2 border-t flex justify-between">
+                <span class="font-bold">Total:</span>
+                <span id="total-txt" class="text-lg font-black text-indigo-600">$0.00</span>
             </div>
         </div>
 
         <div>
-            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Detalles Adicionales</label>
-            <textarea id="description" rows="2" class="w-full p-3 border border-slate-300 rounded-lg text-sm" placeholder="Ej: Pantalla LED P3, incluye estructura metálica..."></textarea>
+            <label class="text-xs font-bold text-slate-500 uppercase">Descripción</label>
+            <textarea id="desc" class="w-full p-3 border rounded-lg" rows="2" placeholder="Detalles de la instalación..."></textarea>
         </div>
 
-        <div class="flex justify-end">
-            <button type="button" onclick="saveInstall()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-lg font-bold shadow-lg transition flex items-center gap-2">
-                <i data-lucide="save" class="w-4 h-4"></i> Registrar Instalación
-            </button>
-        </div>
+        <button type="button" onclick="save()" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-700">Guardar Instalación</button>
     </form>
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', () => { 
-        lucide.createIcons(); loadDevices(); document.getElementById('date').valueAsDate = new Date(); 
-    });
-    
-    function calcTotal() {
-        const mat = parseFloat(document.getElementById('cost-material').value) || 0;
-        const labor = parseFloat(document.getElementById('cost-labor').value) || 0;
-        document.getElementById('total-display').textContent = `$${(mat + labor).toLocaleString()}`;
+    document.addEventListener('DOMContentLoaded', () => { lucide.createIcons(); loadDevs(); document.getElementById('date').valueAsDate = new Date(); });
+    function calc() {
+        const t = (parseFloat(document.getElementById('c-mat').value)||0) + (parseFloat(document.getElementById('c-mo').value)||0);
+        document.getElementById('total-txt').textContent = `$${t.toLocaleString()}`;
     }
-
-    async function saveInstall() {
-        const mat = parseFloat(document.getElementById('cost-material').value) || 0;
-        const labor = parseFloat(document.getElementById('cost-labor').value) || 0;
-        const total = mat + labor;
-        const devId = document.getElementById('device-select').value;
-        const desc = document.getElementById('description').value;
-        
-        if(!devId || total <= 0) return alert("Verifique los costos y seleccione una ubicación");
-
-        const fullDesc = `${desc} (Mat: $${mat}, MO: $${labor})`;
-
-        try {
-            const res = await fetch('/costs/add', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ 
-                    device_id: devId, type: 'installation', subtype: 'inicial', 
-                    description: fullDesc, amount: total, date: document.getElementById('date').value 
-                })
-            });
-            if(res.ok) { alert("✅ Instalación Guardada"); location.reload(); }
-        } catch(e) { alert("Error de red"); }
+    async function loadDevs() {
+        const r = await fetch('/api/data'); const d = await r.json();
+        const s = document.getElementById('dev-id'); s.innerHTML='<option value="">Seleccione...</option>';
+        Object.values(d).forEach(x => s.innerHTML+=`<option value="${x.pc_name}">${x.pc_name}</option>`);
     }
+    async function save() {
+        const mat = document.getElementById('c-mat').value || 0;
+        const mo = document.getElementById('c-mo').value || 0;
+        const total = parseFloat(mat) + parseFloat(mo);
+        const dev = document.getElementById('dev-id').value;
+        if(!dev || total <= 0) return alert("Faltan datos");
 
-    async function loadDevices() {
-        const res = await fetch('/api/data'); const data = await res.json();
-        const sel = document.getElementById('device-select'); sel.innerHTML = '<option value="">Seleccione...</option>';
-        Object.values(data).forEach(d => sel.innerHTML += `<option value="${d.pc_name}">${d.pc_name}</option>`);
+        await fetch('/costs/add', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({
+                device_id: dev, type: 'installation', subtype: 'inicial',
+                description: `${document.getElementById('desc').value} (Mat:$${mat}, MO:$${mo})`,
+                amount: total, date: document.getElementById('date').value
+            })
+        });
+        alert("Guardado"); location.reload();
     }
 </script>
 {% endblock %}
