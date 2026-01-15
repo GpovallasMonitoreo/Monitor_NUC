@@ -1,62 +1,67 @@
 from flask import Blueprint, request, jsonify
-import src # Acceso a supabase
+import src # Acceso a supabase y monitor
 
 bp = Blueprint('incidents', __name__, url_prefix='/api/incidents')
 
-# 1. REPORTAR FALLA
+# 1. REPORTAR FALLA MANUAL (Vandalismo, Fibra, etc.)
 @bp.route('/report', methods=['POST'])
 def report_incident():
     try:
         data = request.get_json()
         payload = {
             "device_id": data.get('device_id'),
-            "issue_type": data.get('type'), # desconexion, fibra, energia...
+            "issue_type": data.get('type'), # vandalismo, fibra, energia...
             "description": data.get('description'),
-            "reported_by": "Admin", # O el usuario logueado
+            "reported_by": "Admin",
             "incident_date": "now()"
         }
         src.supabase.client.table('incidents').insert(payload).execute()
-        
-        # Opcional: Incrementar contador en tabla devices si se requiere persistencia rápida
         return jsonify({"status": "success", "msg": "Incidente registrado"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# 2. OBTENER SEMÁFORO DE RIESGO (Para el Mapa)
+# 2. CALCULAR SEMÁFORO DE RIESGO (Automático + Manual)
 @bp.route('/risk-map', methods=['GET'])
 def get_risk_map():
     try:
-        # Traemos todos los incidentes
-        response = src.supabase.client.table('incidents').select('*').execute()
-        incidents = response.data
+        # A) Obtener contadores automáticos de los dispositivos
+        response_devs = src.supabase.client.table('devices').select('pc_name, disconnect_count, lat, lng').execute()
+        devices = response_devs.data
         
-        # Agrupamos por dispositivo para contar fallas
-        risk_analysis = {}
+        # B) Obtener incidentes manuales
+        response_incs = src.supabase.client.table('incidents').select('*').execute()
+        incidents = response_incs.data
         
-        for inc in incidents:
-            dev = inc['device_id']
-            if dev not in risk_analysis:
-                risk_analysis[dev] = {"count": 0, "types": []}
-            
-            risk_analysis[dev]["count"] += 1
-            risk_analysis[dev]["types"].append(inc['issue_type'])
+        risk_map = []
 
-        # Determinamos color (Verde, Amarillo, Rojo)
-        result = []
-        for dev, data in risk_analysis.items():
-            count = data["count"]
+        for dev in devices:
+            pc_name = dev.get('pc_name')
+            # 1. Sumar desconexiones automáticas
+            auto_fails = dev.get('disconnect_count', 0)
+            
+            # 2. Sumar reportes manuales para este equipo
+            manual_fails = len([i for i in incidents if i['device_id'] == pc_name])
+            
+            # 3. Total de problemas
+            total_issues = auto_fails + manual_fails
+            
+            # 4. Determinar Color (Semáforo)
             status = "stable" # Verde
+            if total_issues >= 10: status = "critical" # Rojo
+            elif total_issues >= 3: status = "unstable" # Amarillo
             
-            if count >= 5: status = "critical" # Rojo
-            elif count >= 2: status = "unstable" # Amarillo
+            # Solo enviamos si tiene ubicación
+            if dev.get('lat'):
+                risk_map.append({
+                    "device_id": pc_name,
+                    "lat": dev.get('lat'),
+                    "lng": dev.get('lng'),
+                    "auto_disconnects": auto_fails,
+                    "manual_reports": manual_fails,
+                    "total": total_issues,
+                    "risk_level": status
+                })
             
-            result.append({
-                "device_id": dev,
-                "total_incidents": count,
-                "risk_level": status,
-                "recent_issues": list(set(data["types"])) # Tipos únicos
-            })
-            
-        return jsonify(result)
+        return jsonify(risk_map)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
