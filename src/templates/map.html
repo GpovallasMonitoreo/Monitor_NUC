@@ -1,637 +1,290 @@
 {% extends 'base.html' %}
-
-{% block header_title %}Mapa de Infraestructura y Riesgos{% endblock %}
+{% block header_title %}Mapa de Riesgos e Infraestructura{% endblock %}
 
 {% block content %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-
 <style>
-    /* --- CONTENEDOR PRINCIPAL --- */
-    #app-container { 
-        position: relative; 
-        height: calc(100vh - 5rem); 
-        width: 100%; 
-        overflow: hidden; 
-        background: #f1f5f9;
-        border: 1px solid #cbd5e1;
-        border-radius: 6px; 
-    }
+    #app-container { position: relative; height: calc(100vh - 5rem); width: 100%; overflow: hidden; background: #f1f5f9; border-radius: 8px; }
+    #map { height: 100%; width: 100%; z-index: 1; }
     
-    #map { height: 100%; width: 100%; z-index: 1; background: #e2e8f0; }
-
-    /* --- SIDEBAR DERECHO (ESTILO EJECUTIVO) --- */
-    #sidebar {
-        position: absolute; top: 0; bottom: 0; right: 0;
-        width: 350px; 
-        background: #ffffff;
-        box-shadow: -2px 0 10px rgba(0,0,0,0.1); 
-        z-index: 2000;
-        display: flex; flex-direction: column;
-        transition: transform 0.3s ease;
-        transform: translateX(0);
-        border-left: 1px solid #e2e8f0;
-    }
+    /* Sidebar */
+    #sidebar { position: absolute; top: 0; bottom: 0; right: 0; width: 320px; background: white; z-index: 2000; box-shadow: -2px 0 15px rgba(0,0,0,0.1); transform: translateX(0); transition: transform 0.3s ease; display: flex; flex-direction: column; }
     #sidebar.collapsed { transform: translateX(100%); }
-
-    /* Botón Toggle */
-    #sidebar-toggle {
-        position: absolute; top: 20px; right: 365px; z-index: 2001;
-        background: #334155; color: white; border: none;
-        width: 40px; height: 40px; border-radius: 6px;
-        cursor: pointer; display: flex; align-items: center; justify-content: center;
-        transition: right 0.3s ease; 
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    }
-    #sidebar-toggle:hover { background: #1e293b; }
-    #sidebar.collapsed + #sidebar-toggle { right: 20px; }
-
-    /* --- ESTILOS INTERNOS --- */
-    .sidebar-header { 
-        padding: 18px 20px; 
-        background: #f8fafc; 
-        color: #1e293b; 
-        display: flex; justify-content: space-between; align-items: center; 
-        border-bottom: 1px solid #e2e8f0; 
-    }
-    .sidebar-header h2 { margin: 0; font-size: 1rem; font-weight: 700; color: #0f172a; }
-    .sidebar-header small { color: #64748b; font-weight: 500; }
-
-    .sidebar-content { flex: 1; overflow-y: auto; padding: 15px; background: #ffffff; }
+    .sidebar-header { padding: 15px; background: #1e293b; color: white; display: flex; justify-content: space-between; align-items: center; }
+    .sidebar-content { flex: 1; overflow-y: auto; padding: 15px; }
     
-    /* Tarjetas de Control */
-    .control-card { 
-        background: #ffffff; 
-        border: 1px solid #e2e8f0; 
-        border-radius: 6px; 
-        margin-bottom: 12px; 
-        overflow: hidden; 
-    }
-    .card-header { 
-        padding: 10px 15px; 
-        background: #f8fafc; 
-        color: #334155; 
-        font-weight: 600; 
-        font-size: 0.85rem;
-        border-bottom: 1px solid #f1f5f9; 
-        display: flex; justify-content: space-between; cursor: pointer; 
-    }
-    .card-header:hover { background: #f1f5f9; color: #0f172a; }
-    .card-body { padding: 0; }
-    .card-body.hidden { display: none; }
+    /* Cards Controls */
+    .control-card { background: white; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .card-header { padding: 10px 15px; background: #f8fafc; font-weight: 600; font-size: 0.85rem; color: #334155; cursor: pointer; display: flex; justify-content: space-between; }
+    .card-body { padding: 5px 0; }
+    .hidden { display: none; }
 
-    .layer-toggle { padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; }
-    .layer-info { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; color: #475569; }
-    .color-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-
-    /* Switch Estándar */
-    .switch { position: relative; display: inline-block; width: 32px; height: 18px; }
+    /* Toggles */
+    .layer-item { padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; font-size: 0.8rem; }
+    .color-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+    
+    /* Toggle Switch */
+    .switch { position: relative; display: inline-block; width: 34px; height: 20px; }
     .switch input { opacity: 0; width: 0; height: 0; }
-    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .3s; border-radius: 34px; }
-    .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 2px; bottom: 2px; background-color: white; transition: .3s; border-radius: 50%; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+    .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
     input:checked + .slider { background-color: #2563eb; }
     input:checked + .slider:before { transform: translateX(14px); }
 
-    /* KPI Dashboard Flotante */
-    .kpi-dashboard { position: absolute; top: 15px; left: 15px; z-index: 1000; display: flex; gap: 10px; }
-    .kpi-card { 
-        background: white; padding: 10px 15px; border-radius: 6px; 
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; 
-        min-width: 110px; 
-    }
-    .kpi-title { font-size: 0.65rem; color: #64748b; font-weight: 700; text-transform: uppercase; }
-    .kpi-value { font-size: 1.1rem; font-weight: 700; color: #0f172a; display: block; margin-top: 2px; }
+    /* Modal Incidentes */
+    #incident-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 3000; display: none; justify-content: center; align-items: center; }
+    .modal-content { background: white; width: 400px; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
 
-    /* --- ICONOS DE NUC (Estilo Profesional) --- */
-    .nuc-marker {
-        display: flex; justify-content: center; align-items: center;
-        background: white;
-        border-radius: 4px;
-        border: 2px solid #64748b;
-        width: 24px; height: 24px;
-        font-size: 12px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        transition: all 0.3s;
-    }
-    
-    /* Estados */
-    .nuc-online { border-color: #16a34a; color: #16a34a; background: #f0fdf4; }
-    .nuc-offline { border-color: #94a3b8; color: #94a3b8; background: #f8fafc; }
-    .nuc-critical { 
-        border-color: #dc2626; color: #dc2626; background: #fef2f2; 
-        animation: soft-pulse 2s infinite;
-        z-index: 1000 !important;
-    }
-
-    @keyframes soft-pulse {
-        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
-        70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
-        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
-    }
-
-    /* Listas del Sidebar */
-    .marker-list { max-height: 200px; overflow-y: auto; }
-    .marker-row { 
-        padding: 8px 15px; display: flex; align-items: center; 
-        border-bottom: 1px solid #f1f5f9; font-size: 0.8rem; 
-        cursor: pointer; color: #334155; 
-    }
-    .marker-row:hover { background: #f1f5f9; color: #0f172a; }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 10px; }
-    .dot-green { background: #16a34a; }
-    .dot-red { background: #dc2626; }
-    .dot-orange { background: #f59e0b; }
-    
-    /* Iconos FontAwesome Custom (POI) */
-    .custom-fa-icon { 
-        display: flex !important; justify-content: center; align-items: center; 
-        background: white; border-radius: 50%; border: 1px solid #94a3b8; 
-        box-shadow: 0 2px 4px rgba(0,0,0,0.15); 
-    }
+    /* Marcadores */
+    .nuc-marker { display: flex; justify-content: center; align-items: center; background: white; border-radius: 4px; border: 2px solid #64748b; width: 24px; height: 24px; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    .nuc-online { border-color: #16a34a; color: #16a34a; }
+    .nuc-offline { border-color: #94a3b8; color: #94a3b8; background: #f1f5f9; }
+    .nuc-critical { border-color: #dc2626; color: #dc2626; animation: pulse 2s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); } }
 </style>
 
 <div id="app-container">
-    
-    <div class="kpi-dashboard">
-        <div class="kpi-card">
-            <span class="kpi-title">Equipos Activos</span>
-            <span class="kpi-value text-emerald-600" id="kpi-online">0</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-title">Alertas</span>
-            <span class="kpi-value text-red-600" id="kpi-issues">0</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-title">Velocidad Promedio</span>
-            <span class="kpi-value text-blue-600" id="avg-speed">--</span>
-        </div>
-    </div>
-
     <div id="map"></div>
 
     <div id="sidebar">
         <div class="sidebar-header">
-            <div>
-                <h2>Panel Ejecutivo</h2>
-                <small>Infraestructura CDMX</small>
-            </div>
-            <i class="fa-solid fa-map text-slate-400"></i>
+            <span>Control de Capas</span>
+            <button onclick="toggleSidebar()" class="text-white hover:text-gray-300"><i class="fa-solid fa-times"></i></button>
         </div>
-
         <div class="sidebar-content">
             
-            <div class="control-card" style="border-left: 3px solid #2563eb;">
+            <div class="control-card">
                 <div class="card-header">
-                    <span><i class="fa-solid fa-layer-group text-blue-600 mr-2"></i> Capas de Análisis</span>
+                    <span><i class="fa-solid fa-eye text-indigo-600 mr-2"></i> Modo de Vista</span>
                 </div>
                 <div class="card-body">
-                    <div class="layer-toggle">
-                        <div class="layer-info"><span class="color-dot" style="background:#2563eb;"></span> Red Internet</div>
-                        <label class="switch"><input type="radio" name="exclusive-mode" checked onchange="activateExclusiveMode('red')"><span class="slider"></span></label>
+                    <div class="layer-item bg-slate-50">
+                        <span><i class="fa-regular fa-square mr-2"></i> Vista Limpia (Mapa Base)</span>
+                        <label class="switch"><input type="radio" name="view-mode" onchange="setMode('none')"><span class="slider"></span></label>
                     </div>
-                    <div class="layer-toggle">
-                        <div class="layer-info"><span class="color-dot" style="background:#ef4444;"></span> Calor: Afluencia</div>
-                        <label class="switch"><input type="radio" name="exclusive-mode" onchange="activateExclusiveMode('afluencia')"><span class="slider"></span></label>
+                    <div class="layer-item">
+                        <span><span class="color-dot bg-blue-600"></span> Monitor de Red</span>
+                        <label class="switch"><input type="radio" name="view-mode" checked onchange="setMode('network')"><span class="slider"></span></label>
                     </div>
-                    <div class="layer-toggle">
-                        <div class="layer-info"><span class="color-dot" style="background:#0f172a;"></span> Calor: Fallas</div>
-                        <label class="switch"><input type="radio" name="exclusive-mode" onchange="activateExclusiveMode('fallas')"><span class="slider"></span></label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="control-card">
-                <div class="card-header" onclick="toggleCard(this)">
-                    <span><i class="fa-solid fa-clock mr-2"></i> Filtro de Hora (Afluencia)</span>
-                    <i class="fa-solid fa-chevron-down text-slate-400 transition-transform"></i>
-                </div>
-                <div class="card-body hidden">
-                    <div style="padding: 15px;">
-                        <select id="heatmap-time-selector" class="w-full p-2 border border-slate-300 rounded text-sm bg-white" onchange="updateAfluenciaHeatmap(this.value)">
-                            <option value="off">Desactivado</option>
-                            <option value="6">06:00 AM - Inicio Jornada</option>
-                            <option value="9" selected>09:00 AM - Hora Pico</option>
-                            <option value="12">12:00 PM - Mediodía</option>
-                            <option value="15">03:00 PM - Tarde</option>
-                            <option value="18">06:00 PM - Salida Laboral</option>
-                            <option value="21">09:00 PM - Noche</option>
-                        </select>
+                    <div class="layer-item">
+                        <span><span class="color-dot bg-red-500"></span> Zonas de Riesgo (Incidentes)</span>
+                        <label class="switch"><input type="radio" name="view-mode" onchange="setMode('risk')"><span class="slider"></span></label>
                     </div>
                 </div>
             </div>
 
             <div class="control-card">
-                <div class="card-header" onclick="toggleCard(this)">
-                    <span><i class="fa-solid fa-building mr-2"></i> Puntos de Referencia</span>
-                    <i class="fa-solid fa-chevron-down text-slate-400 transition-transform"></i>
+                <div class="card-header" onclick="this.nextElementSibling.classList.toggle('hidden')">
+                    <span><i class="fa-solid fa-building text-slate-500 mr-2"></i> Infraestructura</span>
+                    <i class="fa-solid fa-chevron-down"></i>
                 </div>
                 <div class="card-body hidden">
-                    <div class="layer-toggle">
-                        <div class="layer-info"><span class="color-dot" style="background:#800080;"></span> Sitios de Interés (POI)</div>
+                    <div class="layer-item">
+                        <span>Sitios de Interés (POI)</span>
                         <label class="switch"><input type="checkbox" checked onchange="toggleLayer('poi', this.checked)"><span class="slider"></span></label>
                     </div>
-                    <div class="layer-toggle">
-                        <div class="layer-info"><span class="color-dot" style="background:#0000ff;"></span> Metro CDMX</div>
-                        <label class="switch"><input type="checkbox" checked onchange="toggleLayer('metro', this.checked)"><span class="slider"></span></label>
-                    </div>
                 </div>
             </div>
 
-            <div id="dynamic-panels"></div>
+            <div class="p-3 bg-blue-50 rounded border border-blue-100 text-xs text-blue-800">
+                <i class="fa-solid fa-info-circle mr-1"></i> Haz clic en un equipo en el mapa para reportar una falla.
+            </div>
         </div>
     </div>
+</div>
 
-    <button id="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+<div id="incident-modal">
+    <div class="modal-content">
+        <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> Reportar Incidente
+        </h3>
+        <p class="text-sm text-slate-500 mb-4">Equipo: <strong id="modal-dev-name">--</strong></p>
+        
+        <form id="incident-form" class="space-y-4">
+            <input type="hidden" id="modal-dev-id">
+            
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">Tipo de Falla</label>
+                <select id="inc-type" class="w-full p-2 border rounded text-sm">
+                    <option value="desconexion">Desconexión de Red</option>
+                    <option value="energia">Falla Eléctrica / Voltaje</option>
+                    <option value="fibra">Corte de Fibra Óptica</option>
+                    <option value="vandalismo">Vandalismo / Robo</option>
+                    <option value="hardware">Falla de Hardware (NUC)</option>
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">Detalles</label>
+                <textarea id="inc-desc" rows="3" class="w-full p-2 border rounded text-sm" placeholder="Ej: Se detectó corte en la zona..."></textarea>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="closeModal()" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded">Cancelar</button>
+                <button type="button" onclick="submitIncident()" class="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 font-bold">Registrar Falla</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-<script src="{{ url_for('static', filename='js/datos_speedtest.js') }}"></script>
-
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+    let map, layers = {};
+    let liveDevices = [];
 
-    // --- 1. DATOS ESTÁTICOS PARA HEATMAPS ---
-    const DATA_INTERMITENCIAS = [
-        [19.357, -99.299, 1.0], [19.388, -99.193, 0.9], [19.288, -99.167, 0.8], [19.278, -99.102, 0.75],
-        [19.309, -99.123, 0.7], [19.296, -99.192, 0.7], [19.160, -99.000, 0.9], [19.400, -99.100, 0.85],
-        [19.417, -99.114, 0.9], [19.443, -99.145, 1.0]
-    ];
-
-    const DATA_POI = [
-        [19.4678, -99.2132, "Tecamachalco", "house", "purple"], [19.4687, -99.2155, "Parque de los Venados", "tree", "purple"],
-        [19.4326, -99.1332, "Zócalo CDMX", "landmark", "purple"], [19.4385, -99.1764, "Monumento Revolución", "monument", "purple"],
-        [19.4380, -99.1687, "Ángel Independencia", "star", "purple"], [19.4449, -99.1820, "Museo Soumaya", "building", "purple"]
-    ];
-
-    const PUNTOS_BASE_AFLUENCIA = [
-        [19.4326, -99.1332, 0.9], [19.4353, -99.1411, 0.85], [19.4290, -99.1380, 0.8],
-        [19.4240, -99.1650, 0.75], [19.4220, -99.1700, 0.7], [19.4330, -99.2000, 0.65], 
-        [19.4350, -99.2050, 0.6], [19.4110, -99.1800, 0.7], [19.4090, -99.1850, 0.65]
-    ];
-
-    let map = null;
-    let afluenciaHeatmapLayers = {};
-    
-    // Capas - EXACTAMENTE COMO EN TU SISTEMA
-    const layers = {
-        // Capas de velocidad de internet
-        high: L.layerGroup(), 
-        mid: L.layerGroup(), 
-        low: L.layerGroup(),
-        
-        // Capas de infraestructura
-        metro: L.layerGroup(), 
-        poi: L.layerGroup(),
-        
-        // Capas de heatmaps
-        afluencia: L.layerGroup(), 
-        fallas_electricas: L.layerGroup(),
-        
-        // Capas Dinámicas por Unidad de Negocio (EXACTO como tu dashboard)
-        'BioBox': L.layerGroup(), 
-        'ViaVerde': L.layerGroup(), 
-        'Ecovallas': L.layerGroup(), 
-        'General': L.layerGroup()
-    };
-
-    const markerRegistry = {}; 
-
-    function init() {
-        // MAPA BASE CLARO (Profesional)
-        map = L.map('map', { renderer: L.canvas(), zoomControl: false }).setView([19.4326, -99.1332], 12);
-        L.control.zoom({ position: 'topleft' }).addTo(map);
-        
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: 'Argos Analytics',
-            maxZoom: 19
+    document.addEventListener('DOMContentLoaded', () => {
+        // 1. INICIALIZAR MAPA
+        map = L.map('map', {zoomControl: false}).setView([19.4326, -99.1332], 12);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: 'Argos Risk Map'
         }).addTo(map);
+        L.control.zoom({position: 'topleft'}).addTo(map);
 
-        // Z-Index Panes
-        map.createPane('redPane').style.zIndex = 400;
-        map.createPane('heatmapPane').style.zIndex = 450;
-        map.createPane('markerPane').style.zIndex = 600;
-        map.createPane('nucPane').style.zIndex = 700; 
+        // 2. CREAR CAPAS
+        layers.network = L.layerGroup(); // Equipos normales
+        layers.risk = L.layerGroup();    // Zonas de colores (Semáforo)
+        layers.poi = L.layerGroup();     // Puntos de interés
+        
+        // Cargar por defecto
+        layers.network.addTo(map);
+        layers.poi.addTo(map);
 
-        // Inicializar Capas Estáticas
-        initRedData();
-        initAfluenciaData();
-        initFallasElectricas();
-        initInfraestructura();
+        // 3. CARGAR DATOS
+        fetchLiveNucs(); // Cargar equipos
+        fetchRiskData(); // Cargar zonas de riesgo (backend)
 
-        // Cargar Capas por defecto
-        activateExclusiveMode('red'); 
-        map.addLayer(layers.metro);
-        map.addLayer(layers.poi);
+        // Actualizar cada 10s
+        setInterval(fetchLiveNucs, 10000);
+    });
 
-        // Añadir capas de unidades (para que estén disponibles desde el inicio)
-        ['BioBox', 'ViaVerde', 'Ecovallas', 'General'].forEach(unit => {
-            layers[unit].addTo(map);
-        });
+    // --- LÓGICA DE CAPAS ---
+    function setMode(mode) {
+        // Limpiar todo primero
+        map.removeLayer(layers.network);
+        map.removeLayer(layers.risk);
 
-        // 🔥 Cargar NUCs en vivo - EXACTO como tu dashboard
-        fetchLiveNucs();
-        setInterval(fetchLiveNucs, 3000); 
+        if (mode === 'none') {
+            // No hacemos nada, queda limpio
+        } else if (mode === 'network') {
+            map.addLayer(layers.network);
+        } else if (mode === 'risk') {
+            map.addLayer(layers.risk);
+            fetchRiskData(); // Refrescar riesgos al activar
+        }
     }
 
-    // --- 2. GESTIÓN DE NUCs EN VIVO (EXACTO como tu sistema) ---
+    function toggleLayer(name, checked) {
+        if(checked) map.addLayer(layers[name]);
+        else map.removeLayer(layers[name]);
+    }
+
+    // --- DATOS EN VIVO (EQUIPOS) ---
     async function fetchLiveNucs() {
         try {
-            // URL EXACTA como en tu dashboard
-            const response = await fetch('/api/data');
-            const rawData = await response.json();
+            const res = await fetch('/api/data');
+            const data = await res.json();
+            liveDevices = Object.values(data);
             
-            // CONVERTIR A LISTA EXACTO como en tu dashboard
-            let devices = Object.values(rawData);
-            
-            updateMapWithLiveDevices(devices);
-            updateSidebars(devices);
-            updateKPIs(devices);
-            
-        } catch (e) { 
-            console.error("Error API:", e); 
-            document.getElementById('avg-speed').innerText = "Error";
-        }
-    }
+            layers.network.clearLayers();
 
-    function updateMapWithLiveDevices(devices) {
-        // Limpiar capas de unidades
-        ['BioBox', 'ViaVerde', 'Ecovallas', 'General'].forEach(k => layers[k].clearLayers());
+            liveDevices.forEach(d => {
+                if(!d.lat || !d.lng) return; // Saltar sin GPS
 
-        devices.forEach(dev => {
-            // Validar Coordenadas (Si no vienen, no se pinta) - EXACTO como tu sistema
-            if (!dev.lat || !dev.lng) return;
+                let colorClass = 'nuc-online';
+                if(d.status === 'offline') colorClass = 'nuc-offline';
+                if(d.status === 'critical') colorClass = 'nuc-critical';
 
-            // LÓGICA DE ESTADO EXACTA como en tu dashboard
-            let statusClass = 'nuc-online';
-            let iconName = 'desktop';
-            
-            // EXACTA lógica de estados de tu dashboard
-            if (dev.status === 'offline') {
-                statusClass = 'nuc-offline';
-                iconName = 'power-off';
-            } else if (dev.cpu_load_percent > 90) {
-                statusClass = 'nuc-critical';
-                iconName = 'triangle-exclamation';
-            } else if (dev.status === 'critical') {
-                statusClass = 'nuc-critical';
-                iconName = 'triangle-exclamation';
-            }
+                const icon = L.divIcon({
+                    className: '',
+                    html: `<div class="nuc-marker ${colorClass}"><i class="fa-solid fa-desktop"></i></div>`,
+                    iconSize: [24, 24]
+                });
 
-            const icon = L.divIcon({
-                className: 'custom-div-icon',
-                html: `<div class="nuc-marker ${statusClass}"><i class="fa-solid fa-${iconName}"></i></div>`,
-                iconSize: [24, 24],
-                iconAnchor: [12, 12]
-            });
-
-            // CONTENIDO DEL POPUP EXACTO con tus datos reales
-            // Función para obtener temperatura como en tu dashboard
-            const getTemp = (d) => {
-                if (d.extended_sensors && d.extended_sensors['Intel CPU']) {
-                    const t = d.extended_sensors['Intel CPU'].find(s => s.tipo === 'Temperature');
-                    return t ? t.valor : 40;
-                }
-                return d.temperature || 40;
-            };
-
-            const popupContent = `
-                <div style="min-width:180px; font-family: sans-serif;">
-                    <strong style="font-size:14px;">${dev.pc_name}</strong><br>
-                    <span style="color:#666; font-size:11px;">${dev.unit || 'General'}</span>
-                    <hr style="margin:8px 0; border:0; border-top:1px solid #eee;">
-                    <div style="font-size:12px;">
-                        Estado: <b>${dev.status ? dev.status.toUpperCase() : 'ONLINE'}</b><br>
-                        CPU: <b>${Math.round(dev.cpu_load_percent || 0)}%</b><br>
-                        RAM: <b>${Math.round(dev.ram_percent || 0)}%</b><br>
-                        Temp: <b>${Math.round(getTemp(dev))}°C</b><br>
-                        Disco: <b>${Math.round(dev.disk_percent || 0)}%</b>
-                    </div>
-                </div>
-            `;
-
-            const marker = L.marker([dev.lat, dev.lng], { icon: icon, pane: 'nucPane' })
-                .bindPopup(popupContent);
-
-            // ASIGNAR A CAPA según unidad - EXACTO como tu sistema
-            const unit = dev.unit || 'General';
-            if (layers[unit]) {
-                layers[unit].addLayer(marker);
-                markerRegistry[dev.pc_name] = marker;
-            } else {
-                // Si la unidad no existe, asignar a General (backup)
-                layers['General'].addLayer(marker);
-                markerRegistry[dev.pc_name] = marker;
-            }
-        });
-    }
-
-    function updateSidebars(devices) {
-        const container = document.getElementById('dynamic-panels');
-        
-        // AGRUPAR POR UNIDAD EXACTO como en tu dashboard
-        const groups = {};
-        devices.forEach(d => {
-            const unit = d.unit || 'General';
-            if (!groups[unit]) groups[unit] = [];
-            groups[unit].push(d);
-        });
-
-        // Limpiar y recrear
-        container.innerHTML = '';
-        
-        Object.entries(groups).forEach(([unitName, devs]) => {
-            if (devs.length > 0) {
-                const card = document.createElement('div');
-                card.className = 'control-card';
-                
-                card.innerHTML = `
-                    <div class="card-header" onclick="toggleCard(this)">
-                        <span>${unitName} <small>(${devs.length})</small></span>
-                        <i class="fa-solid fa-chevron-down text-slate-400 transition-transform"></i>
-                    </div>
-                    <div class="card-body hidden">
-                        <div class="marker-list">
-                            ${devs.map(d => {
-                                // Determinar color del punto EXACTO como tu dashboard
-                                let dotClass = 'dot-green';
-                                if (d.status === 'offline') {
-                                    dotClass = 'dot-red';
-                                } else if (d.cpu_load_percent > 90 || d.status === 'critical') {
-                                    dotClass = 'dot-orange';
-                                }
-                                
-                                return `
-                                <div class="marker-row" onclick="zoomToMarker('${d.pc_name}')">
-                                    <div id="dot-${d.pc_name.replace(/\s/g, '-')}" 
-                                         class="status-dot ${dotClass}"></div>
-                                    <label style="flex: 1; cursor: pointer;">${d.pc_name}</label>
-                                    <span class="text-xs text-slate-400">${Math.round(d.cpu_load_percent || 0)}%</span>
-                                </div>
-                            `}).join('')}
+                const marker = L.marker([d.lat, d.lng], {icon: icon})
+                    .bindPopup(`
+                        <div class="text-sm">
+                            <strong class="block text-slate-800 mb-1">${d.pc_name}</strong>
+                            <span class="text-xs text-slate-500">${d.ip_address || ''}</span>
+                            <hr class="my-2">
+                            <button onclick="openIncidentModal('${d.pc_name}')" class="w-full bg-red-50 text-red-600 border border-red-200 px-3 py-1 rounded text-xs font-bold hover:bg-red-100 transition">
+                                <i class="fa-solid fa-triangle-exclamation mr-1"></i> Reportar Falla
+                            </button>
                         </div>
-                    </div>
-                `;
-                container.appendChild(card);
-            }
-        });
+                    `);
+                
+                layers.network.addLayer(marker);
+            });
+        } catch(e) { console.error("Error data", e); }
     }
 
-    // --- 3. LÓGICA DE CAPAS (Restaurada) ---
-    function initRedData() {
-        if (typeof SPEEDTEST_DATA === 'undefined') {
-            document.getElementById('avg-speed').innerText = "N/A";
-            return;
-        }
-        
-        const feats = { high: [], mid: [], low: [] };
-        let totalSpeed = 0, count = 0;
-        
-        SPEEDTEST_DATA.features.forEach(f => {
-            const d = f.properties.download;
-            totalSpeed += d; count++;
-            if(d > 50) feats.high.push(f); 
-            else if(d > 10) feats.mid.push(f); 
-            else feats.low.push(f);
-        });
+    // --- CAPA DE RIESGOS (ZONAS DE COLOR) ---
+    async function fetchRiskData() {
+        try {
+            const res = await fetch('/api/incidents/risk-map');
+            const risks = await res.json();
+            
+            layers.risk.clearLayers();
 
-        const style = (c) => ({ weight: 1, color: c, fillOpacity: 0.4, fillColor: c });
-        const onEach = (f, l) => { 
-            if(f.properties) l.bindPopup(`<b>Zona: ${Math.round(f.properties.download)} Mbps</b>`); 
-        };
+            // Cruzar datos de riesgo con ubicación de dispositivos
+            risks.forEach(r => {
+                const device = liveDevices.find(d => d.pc_name === r.device_id);
+                if(device && device.lat) {
+                    
+                    let color = '#22c55e'; // Verde (Estable)
+                    let radius = 200;
+                    
+                    if(r.risk_level === 'unstable') { color = '#eab308'; radius = 400; } // Amarillo
+                    if(r.risk_level === 'critical') { color = '#ef4444'; radius = 600; } // Rojo
 
-        layers.high.addLayer(L.geoJson(feats.high, { pane: 'redPane', style: style('#16a34a'), onEachFeature: onEach }));
-        layers.mid.addLayer(L.geoJson(feats.mid, { pane: 'redPane', style: style('#eab308'), onEachFeature: onEach }));
-        layers.low.addLayer(L.geoJson(feats.low, { pane: 'redPane', style: style('#ef4444'), onEachFeature: onEach }));
-        
-        document.getElementById('avg-speed').innerText = count > 0 ? Math.round(totalSpeed / count) + " Mbps" : "N/A";
-    }
-
-    function initAfluenciaData() {
-        const horarios = [6, 9, 12, 15, 18, 21];
-        
-        horarios.forEach(hora => {
-            let factor = 0.5;
-            if(hora === 9 || hora === 18) factor = 1.0;
-            else if(hora === 6 || hora === 21) factor = 0.6;
-            else factor = 0.8;
-
-            const heatData = [];
-            PUNTOS_BASE_AFLUENCIA.forEach(punto => {
-                let intensidad = punto[2] * factor;
-                heatData.push([punto[0], punto[1], intensidad]);
-                for (let i = 0; i < 20; i++) {
-                    const nLat = punto[0] + (Math.random() - 0.5) * 0.02;
-                    const nLon = punto[1] + (Math.random() - 0.5) * 0.02;
-                    heatData.push([nLat, nLon, intensidad * 0.7]);
+                    // Dibujar Zona
+                    L.circle([device.lat, device.lng], {
+                        color: color,
+                        fillColor: color,
+                        fillOpacity: 0.4,
+                        radius: radius
+                    }).bindPopup(`
+                        <b>Zona: ${r.device_id}</b><br>
+                        Nivel: ${r.risk_level.toUpperCase()}<br>
+                        Incidentes: ${r.total_incidents}<br>
+                        Tipos: ${r.recent_issues.join(', ')}
+                    `).addTo(layers.risk);
                 }
             });
-
-            afluenciaHeatmapLayers[hora] = L.heatLayer(heatData, {
-                radius: 35, blur: 25, minOpacity: 0.4, pane: 'heatmapPane',
-                gradient: {0.4: 'blue', 0.7: 'yellow', 1.0: 'red'}
-            });
-        });
+        } catch(e) { console.error("Error risk", e); }
     }
 
-    function initFallasElectricas() {
-        const heatData = [];
-        DATA_INTERMITENCIAS.forEach(punto => {
-            heatData.push([punto[0], punto[1], punto[2]]);
-            for (let i = 0; i < 30; i++) {
-                const nLat = punto[0] + (Math.random() - 0.5) * 0.04;
-                const nLon = punto[1] + (Math.random() - 0.5) * 0.04;
-                heatData.push([nLat, nLon, punto[2] * 0.6]);
+    // --- GESTIÓN DE INCIDENTES (MODAL) ---
+    function openIncidentModal(pcName) {
+        document.getElementById('modal-dev-name').innerText = pcName;
+        document.getElementById('modal-dev-id').value = pcName;
+        document.getElementById('incident-modal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('incident-modal').style.display = 'none';
+        document.getElementById('incident-form').reset();
+    }
+
+    async function submitIncident() {
+        const id = document.getElementById('modal-dev-id').value;
+        const type = document.getElementById('inc-type').value;
+        const desc = document.getElementById('inc-desc').value;
+
+        try {
+            const res = await fetch('/api/incidents/report', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ device_id: id, type: type, description: desc })
+            });
+            if(res.ok) {
+                alert("Falla registrada. La zona se actualizará en el mapa de riesgos.");
+                closeModal();
+                if(document.querySelector('input[name="view-mode"]:checked').value === 'risk') {
+                    fetchRiskData(); // Actualizar mapa si estamos viendolo
+                }
             }
-        });
-        L.heatLayer(heatData, {
-            radius: 40, blur: 30, minOpacity: 0.5, pane: 'heatmapPane',
-            gradient: {0.0: 'orange', 0.5: 'red', 1.0: '#3f0000'}
-        }).addTo(layers.fallas_electricas);
+        } catch(e) { alert("Error de conexión"); }
     }
 
-    function initInfraestructura() {
-        DATA_POI.forEach(p => {
-            const icon = L.divIcon({ 
-                html: `<i class="fa-solid fa-${p[3]}" style="color:${p[4]}; font-size:14px;"></i>`, 
-                className: 'custom-fa-icon', 
-                iconSize: [26, 26] 
-            });
-            L.marker([p[0], p[1]], {icon: icon, pane: 'markerPane'}).bindPopup(`<b>${p[2]}</b>`).addTo(layers.poi);
-        });
-        
-        // Metro Lines
-        const lines = [
-            {c:'#f06292', p:[[19.42,-99.12],[19.43,-99.14],[19.44,-99.15]]},
-            {c:'#fbbf24', p:[[19.45,-99.10],[19.44,-99.12],[19.41,-99.13]]}
-        ];
-        lines.forEach(l => L.polyline(l.p, {color: l.c, weight: 4, pane:'markerPane'}).addTo(layers.metro));
-    }
-
-    // --- UI HELPERS ---
-    window.activateExclusiveMode = (mode) => {
-        ['high', 'mid', 'low', 'afluencia', 'fallas_electricas'].forEach(k => {
-            if (layers[k]) map.removeLayer(layers[k]);
-        });
-        
-        if (mode === 'red') {
-            map.addLayer(layers.high); 
-            map.addLayer(layers.mid); 
-            map.addLayer(layers.low);
-        } else if (mode === 'afluencia') {
-            map.addLayer(layers.afluencia); 
-            updateAfluenciaHeatmap(document.getElementById('heatmap-time-selector').value);
-        } else if (mode === 'fallas') {
-            map.addLayer(layers.fallas_electricas);
-        }
-    };
-
-    window.updateAfluenciaHeatmap = (h) => {
-        layers.afluencia.clearLayers();
-        if (h !== 'off' && afluenciaHeatmapLayers[h]) {
-            layers.afluencia.addLayer(afluenciaHeatmapLayers[h]);
-        }
-    };
-
-    window.toggleLayer = (lid, ch) => {
-        if (ch) {
-            map.addLayer(layers[lid]);
-        } else {
-            map.removeLayer(layers[lid]);
-        }
-    };
-
-    window.toggleSidebar = () => {
-        document.getElementById('sidebar').classList.toggle('collapsed');
-    };
-
-    window.toggleCard = (h) => { 
-        const body = h.nextElementSibling;
-        body.classList.toggle('hidden'); 
-        const icon = h.querySelector('i.fa-chevron-down');
-        if (icon) icon.classList.toggle('fa-rotate-180');
-    };
-
-    window.zoomToMarker = (name) => {
-        const m = markerRegistry[name];
-        if (m) { 
-            map.flyTo(m.getLatLng(), 16); 
-            m.openPopup(); 
-        }
-    };
-
-    function updateKPIs(devices) {
-        // CÁLCULO DE KPIs EXACTO como en tu dashboard
-        const total = devices.length;
-        const criticals = devices.filter(d => (d.cpu_load_percent > 90) || d.status === 'critical' || d.status === 'offline').length;
-        const online = total - criticals;
-        
-        document.getElementById('kpi-online').innerText = online;
-        document.getElementById('kpi-issues').innerText = criticals;
-    }
-
-    // Inicializar
-    init();
-});
+    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('hidden'); }
 </script>
 {% endblock %}
