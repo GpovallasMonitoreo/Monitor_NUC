@@ -1,0 +1,260 @@
+{% extends 'base.html' %}
+{% block title %}Finanzas - Argos{% endblock %}
+{% block header_title %}Control de Costos y Rentabilidad{% endblock %}
+
+{% block content %}
+<div class="max-w-[1800px] mx-auto p-6 space-y-8">
+
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <i data-lucide="wallet" class="text-indigo-600"></i> Registrar Movimiento
+        </h3>
+        
+        <div class="flex space-x-2 mb-6 border-b border-slate-100 pb-1">
+            <button onclick="setMode('instalacion')" id="btn-inst" class="px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 transition mode-btn">
+                <i data-lucide="monitor-speaker" class="inline w-4 h-4 mr-1"></i> Instalación
+            </button>
+            <button onclick="setMode('mantenimiento')" id="btn-mant" class="px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-500 hover:bg-amber-50 hover:text-amber-600 transition mode-btn">
+                <i data-lucide="wrench" class="inline w-4 h-4 mr-1"></i> Mantenimiento
+            </button>
+            <button onclick="setMode('venta')" id="btn-vent" class="px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 text-slate-500 hover:bg-emerald-50 hover:text-emerald-600 transition mode-btn">
+                <i data-lucide="banknote" class="inline w-4 h-4 mr-1"></i> Venta / Ingreso
+            </button>
+        </div>
+
+        <form id="finance-form" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="md:col-span-1">
+                <label class="block text-xs font-bold text-slate-500 mb-1">Ubicación / NUC</label>
+                <select id="device-select" class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-slate-50">
+                    <option value="">Cargando dispositivos...</option>
+                </select>
+            </div>
+
+            <div class="md:col-span-1">
+                <label class="block text-xs font-bold text-slate-500 mb-1">Concepto</label>
+                <input type="text" id="concept" placeholder="Ej: Pantalla LED, Renta Marzo..." class="w-full p-2 border border-slate-300 rounded-lg text-sm">
+            </div>
+
+            <div class="md:col-span-1">
+                <label class="block text-xs font-bold text-slate-500 mb-1">Monto ($)</label>
+                <input type="number" id="amount" placeholder="0.00" class="w-full p-2 border border-slate-300 rounded-lg text-sm font-mono font-bold">
+            </div>
+
+            <div class="md:col-span-1 hidden" id="mant-type-container">
+                <label class="block text-xs font-bold text-slate-500 mb-1">Tipo Mantenimiento</label>
+                <select id="mant-type" class="w-full p-2 border border-slate-300 rounded-lg text-sm">
+                    <option value="mantenimiento_prev">Preventivo</option>
+                    <option value="mantenimiento_corr">Correctivo</option>
+                </select>
+            </div>
+
+            <div class="md:col-span-1">
+                <label class="block text-xs font-bold text-slate-500 mb-1">Fecha</label>
+                <input type="date" id="date" class="w-full p-2 border border-slate-300 rounded-lg text-sm">
+            </div>
+
+            <div class="md:col-span-4 flex justify-end pt-4 border-t border-slate-100">
+                <button type="button" onclick="saveTransaction()" class="bg-slate-900 text-white px-6 py-2 rounded-lg font-bold hover:bg-slate-800 transition flex items-center gap-2">
+                    <i data-lucide="save" class="w-4 h-4"></i> Registrar Movimiento
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="bg-indigo-900 text-white p-6 rounded-xl shadow-lg lg:col-span-1">
+            <h4 class="text-indigo-200 text-sm font-bold uppercase mb-4">Balance General</h4>
+            <div class="space-y-6">
+                <div>
+                    <span class="text-indigo-300 text-xs block">Total Invertido (Instalación + Mtto)</span>
+                    <span id="global-expense" class="text-2xl font-mono font-bold text-red-300">$0.00</span>
+                </div>
+                <div>
+                    <span class="text-indigo-300 text-xs block">Total Ventas</span>
+                    <span id="global-revenue" class="text-2xl font-mono font-bold text-emerald-300">$0.00</span>
+                </div>
+                <div class="pt-4 border-t border-indigo-800">
+                    <span class="text-indigo-300 text-xs block">Utilidad Neta</span>
+                    <span id="global-profit" class="text-4xl font-mono font-black">$0.00</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden lg:col-span-2">
+            <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                <h3 class="font-bold text-slate-700">Rentabilidad por Ubicación</h3>
+                <button onclick="loadFinancialData()" class="text-indigo-600 hover:text-indigo-800"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-100 text-slate-500 uppercase text-xs">
+                        <tr>
+                            <th class="p-4">Ubicación</th>
+                            <th class="p-4 text-right">Inversión Inicial</th>
+                            <th class="p-4 text-right">Mantenimiento</th>
+                            <th class="p-4 text-right">Ventas Totales</th>
+                            <th class="p-4 text-center">ROI %</th>
+                            <th class="p-4 text-center">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="finance-table-body" class="divide-y divide-slate-100">
+                        <tr><td colspan="6" class="p-8 text-center text-slate-400">Cargando datos financieros...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentMode = 'instalacion';
+
+document.addEventListener('DOMContentLoaded', () => {
+    lucide.createIcons();
+    loadDevices();
+    loadFinancialData();
+    document.getElementById('date').valueAsDate = new Date();
+    setMode('instalacion'); // Default
+});
+
+// 1. CONTROL DE INTERFAZ
+function setMode(mode) {
+    currentMode = mode;
+    
+    // Reset estilos botones
+    document.querySelectorAll('.mode-btn').forEach(b => {
+        b.classList.remove('bg-indigo-600', 'bg-amber-600', 'bg-emerald-600', 'text-white', 'ring-2');
+        b.classList.add('bg-slate-100', 'text-slate-500');
+    });
+
+    const btn = document.getElementById(mode === 'instalacion' ? 'btn-inst' : mode === 'mantenimiento' ? 'btn-mant' : 'btn-vent');
+    const mantContainer = document.getElementById('mant-type-container');
+
+    // Aplicar estilos según modo
+    if (mode === 'instalacion') {
+        btn.classList.replace('bg-slate-100', 'bg-indigo-600');
+        btn.classList.replace('text-slate-500', 'text-white');
+        mantContainer.classList.add('hidden');
+        document.getElementById('concept').placeholder = "Ej: Pantalla LED, Cableado, Mano de Obra";
+    } else if (mode === 'mantenimiento') {
+        btn.classList.replace('bg-slate-100', 'bg-amber-600');
+        btn.classList.replace('text-slate-500', 'text-white');
+        mantContainer.classList.remove('hidden');
+        document.getElementById('concept').placeholder = "Ej: Cambio de Fuente, Viáticos";
+    } else {
+        btn.classList.replace('bg-slate-100', 'bg-emerald-600');
+        btn.classList.replace('text-slate-500', 'text-white');
+        mantContainer.classList.add('hidden');
+        document.getElementById('concept').placeholder = "Ej: Renta Marzo, Campaña Liverpool";
+    }
+}
+
+// 2. CARGAR DISPOSITIVOS
+async function loadDevices() {
+    try {
+        const res = await fetch('/api/data');
+        const data = await res.json();
+        const select = document.getElementById('device-select');
+        select.innerHTML = '<option value="">Seleccione Ubicación...</option>';
+        
+        Object.values(data).forEach(dev => {
+            select.innerHTML += `<option value="${dev.pc_name}">${dev.pc_name} - ${dev.ip_address || ''}</option>`;
+        });
+    } catch(e) { console.error(e); }
+}
+
+// 3. GUARDAR
+async function saveTransaction() {
+    const deviceId = document.getElementById('device-select').value;
+    const amount = document.getElementById('amount').value;
+    const concept = document.getElementById('concept').value;
+    
+    if(!deviceId || !amount || !concept) return alert("Faltan datos");
+
+    let category = currentMode;
+    if (currentMode === 'mantenimiento') {
+        category = document.getElementById('mant-type').value;
+    }
+
+    const payload = {
+        device_id: deviceId,
+        location: deviceId, // Podríamos mejorar esto obteniendo la ubicación real
+        category: category,
+        concept: concept,
+        amount: amount,
+        date: document.getElementById('date').value
+    };
+
+    try {
+        const res = await fetch('/costs/add', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+        
+        if(json.status === 'success') {
+            alert("✅ Movimiento guardado");
+            document.getElementById('finance-form').reset();
+            document.getElementById('date').valueAsDate = new Date();
+            loadFinancialData(); // Recargar tabla
+        } else {
+            alert("Error: " + json.message);
+        }
+    } catch(e) { alert("Error de red"); }
+}
+
+// 4. TABLA DE FINANZAS
+async function loadFinancialData() {
+    try {
+        const res = await fetch('/costs/summary');
+        const data = await res.json();
+        
+        const tbody = document.getElementById('finance-table-body');
+        tbody.innerHTML = '';
+        
+        let globalExp = 0;
+        let globalRev = 0;
+
+        data.forEach(item => {
+            globalExp += (item.investment + item.maintenance);
+            globalRev += item.revenue;
+            
+            // Estilos de estado
+            let statusBadge = '';
+            if (item.status_label === 'RENTABLE') statusBadge = '<span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-xs font-bold">RENTABLE</span>';
+            else if (item.status_label === 'RECUPERANDO') statusBadge = '<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-bold">RECUPERANDO</span>';
+            else statusBadge = '<span class="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-bold">PÉRDIDA</span>';
+
+            // Barra de progreso ROI
+            let progressColor = item.roi >= 100 ? 'bg-emerald-500' : 'bg-indigo-500';
+            let roiBar = `<div class="w-full bg-slate-100 rounded-full h-2 mt-1"><div class="${progressColor} h-2 rounded-full" style="width: ${Math.min(item.roi, 100)}%"></div></div>`;
+
+            tbody.innerHTML += `
+                <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                    <td class="p-4 font-bold text-slate-700">${item.location}</td>
+                    <td class="p-4 text-right font-mono text-red-400">-$${item.investment.toLocaleString()}</td>
+                    <td class="p-4 text-right font-mono text-amber-500">-$${item.maintenance.toLocaleString()}</td>
+                    <td class="p-4 text-right font-mono text-emerald-600 font-bold">+$${item.revenue.toLocaleString()}</td>
+                    <td class="p-4 text-center">
+                        <div class="text-xs font-bold text-slate-600">${item.roi}% Recup.</div>
+                        ${roiBar}
+                    </td>
+                    <td class="p-4 text-center">${statusBadge}</td>
+                </tr>
+            `;
+        });
+
+        // Actualizar Totales Globales
+        document.getElementById('global-expense').textContent = `-$${globalExp.toLocaleString()}`;
+        document.getElementById('global-revenue').textContent = `+$${globalRev.toLocaleString()}`;
+        
+        const profit = globalRev - globalExp;
+        const profitEl = document.getElementById('global-profit');
+        profitEl.textContent = (profit >= 0 ? '+' : '-') + `$${Math.abs(profit).toLocaleString()}`;
+        profitEl.className = profit >= 0 ? "text-4xl font-mono font-black text-emerald-300" : "text-4xl font-mono font-black text-red-300";
+
+    } catch(e) { console.error(e); }
+}
+</script>
+{% endblock %}
