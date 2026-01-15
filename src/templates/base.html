@@ -22,7 +22,7 @@
         }
         .nav-active i { color: white !important; }
 
-        #inventory-menu { transition: all 0.3s ease-in-out; }
+        #inventory-menu, #costs-menu { transition: all 0.3s ease-in-out; }
         .rotate-180 { transform: rotate(180deg); }
     </style>
 </head>
@@ -98,6 +98,42 @@
                         </li>
                     </ul>
                 </li>
+
+                <li class="px-3 pt-4 pb-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                    Finanzas
+                </li>
+
+                <li>
+                    <button onclick="toggleCostsMenu()" class="w-full flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200 outline-none">
+                        <i data-lucide="dollar-sign" class="w-5 h-5 mr-3 group-hover:text-emerald-400 transition-colors"></i>
+                        <span class="font-medium">Costos</span>
+                        <i data-lucide="chevron-down" id="costs-arrow" class="w-4 h-4 ml-auto transition-transform duration-300"></i>
+                    </button>
+                    
+                    <ul id="costs-menu" class="hidden mt-1 space-y-1 px-2">
+                        <li>
+                            <a href="/costs/" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+                                <i data-lucide="monitor-speaker" class="w-4 h-4 mr-3"></i> Instalaciones
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/costs/" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+                                <i data-lucide="wrench" class="w-4 h-4 mr-3"></i> Mantenimiento
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/costs/" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+                                <i data-lucide="banknote" class="w-4 h-4 mr-3"></i> Ventas
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/costs/" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+                                <i data-lucide="pie-chart" class="w-4 h-4 mr-3"></i> Costo por Ubicación
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
             </ul>
 
             <div class="mt-8 px-3">
@@ -151,9 +187,18 @@
         // Inicializar Iconos Lucide
         lucide.createIcons();
 
+        // Toggle Menú Inventario
         function toggleInventoryMenu() {
             const menu = document.getElementById('inventory-menu');
             const arrow = document.getElementById('inv-arrow');
+            menu.classList.toggle('hidden');
+            arrow.classList.toggle('rotate-180');
+        }
+
+        // Toggle Menú Costos (NUEVO)
+        function toggleCostsMenu() {
+            const menu = document.getElementById('costs-menu');
+            const arrow = document.getElementById('costs-arrow');
             menu.classList.toggle('hidden');
             arrow.classList.toggle('rotate-180');
         }
@@ -164,15 +209,26 @@
             const navLinks = document.querySelectorAll('.nav-link');
             const invMenu = document.getElementById('inventory-menu');
             const invArrow = document.getElementById('inv-arrow');
+            const costsMenu = document.getElementById('costs-menu');
+            const costsArrow = document.getElementById('costs-arrow');
             
             navLinks.forEach(link => {
                 const href = link.getAttribute('href');
                 if (href === currentPath || (currentPath === '/' && href === '/')) {
                     link.classList.add('nav-active');
+                    
+                    // Lógica para abrir Inventario si estamos dentro
                     if (currentPath.startsWith('/inventory')) {
                         invMenu.classList.remove('hidden');
                         invArrow.classList.add('rotate-180');
                     }
+
+                    // Lógica para abrir Costos si estamos dentro (NUEVO)
+                    if (currentPath.startsWith('/costs')) {
+                        costsMenu.classList.remove('hidden');
+                        costsArrow.classList.add('rotate-180');
+                    }
+
                     const icon = link.querySelector('i');
                     if(icon) {
                         icon.classList.remove('text-slate-400', 'group-hover:text-indigo-400');
