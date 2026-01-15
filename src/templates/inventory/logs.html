@@ -1,120 +1,211 @@
 {% extends 'base.html' %}
 {% block title %}Bitácora Global - Argos{% endblock %}
-{% block header_title %}Bitácora de Operaciones Global{% endblock %}
+{% block header_title %}Bitácora de Operaciones y Mantenimiento{% endblock %}
 
 {% block content %}
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-8 p-6 max-w-[1600px] mx-auto">
-    
-    <div class="lg:col-span-1">
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 sticky top-6">
-            <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <i data-lucide="pen-tool" class="text-indigo-600"></i> Registrar Actividad
-            </h3>
-            
-            <form id="global-log-form" class="space-y-4">
-                <div>
-                    <label class="text-xs font-bold text-slate-500 uppercase">Activo / NUC ID</label>
-                    <input type="text" id="g-nuc" placeholder="Ej: MX_CM_EV_01" class="w-full p-2.5 bg-slate-50 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-xs font-bold text-slate-500 uppercase">Solicita</label>
-                        <input type="text" id="g-req" class="w-full p-2.5 bg-slate-50 border rounded-lg text-sm">
-                    </div>
-                    <div>
-                        <label class="text-xs font-bold text-slate-500 uppercase">Ejecuta</label>
-                        <input type="text" id="g-exec" class="w-full p-2.5 bg-slate-50 border rounded-lg text-sm">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="text-xs font-bold text-slate-500 uppercase">Tipo & Componente</label>
-                    <div class="flex gap-2">
-                        <select id="g-type" class="w-1/2 p-2.5 bg-slate-50 border rounded-lg text-sm">
-                            <option>Mantenimiento</option>
-                            <option>Incidente</option>
-                            <option>Renovación</option>
-                        </select>
-                        <input type="text" id="g-comp" placeholder="Ej: Disco Duro" class="w-1/2 p-2.5 bg-slate-50 border rounded-lg text-sm">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="text-xs font-bold text-slate-500 uppercase">Descripción</label>
-                    <textarea id="g-desc" class="w-full p-2.5 bg-slate-50 border rounded-lg text-sm h-24 resize-none" placeholder="Detalles técnicos..."></textarea>
-                </div>
-
-                <div class="flex items-center gap-2">
-                    <input type="checkbox" id="g-resolved" class="rounded text-indigo-600 focus:ring-indigo-500">
-                    <label for="g-resolved" class="text-sm text-slate-600">Incidente Resuelto</label>
-                </div>
-
-                <button type="button" onclick="saveGlobalLog()" class="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">
-                    Guardar Registro
-                </button>
-            </form>
+<div class="space-y-6 max-w-[1800px] mx-auto p-6">
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
+        <div class="flex items-center gap-4 w-full md:w-auto">
+            <h3 class="font-bold text-slate-800 whitespace-nowrap">Registro Histórico</h3>
+            <span class="bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full" id="log-count">Cargando...</span>
+        </div>
+        <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+            <select id="filter-unit" class="text-sm border-slate-300 rounded-lg focus:ring-indigo-500 bg-slate-50">
+                <option value="all">Todas las Unidades</option>
+                <option value="ECOVALLAS">Ecovallas</option>
+                <option value="VIAVERDE">Via Verde</option>
+                <option value="BIOBOX">BioBox</option>
+            </select>
+            <select id="filter-status" class="text-sm border-slate-300 rounded-lg focus:ring-indigo-500 bg-slate-50">
+                <option value="all">Todos los Tipos</option>
+                <option value="Mantenimiento">Mantenimiento</option>
+                <option value="Incidente">Incidente</option>
+                <option value="Baja">Bajas / Retiros</option>
+            </select>
+            <div class="relative w-full md:w-64">
+                <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400"></i>
+                <input type="text" id="search-input" placeholder="Buscar ubicación, técnico..." class="pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm w-full focus:ring-indigo-500 outline-none">
+            </div>
+            <button onclick="exportFilteredData()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition flex items-center justify-center gap-2 shadow-sm">
+                <i data-lucide="download" class="w-4 h-4"></i> CSV
+            </button>
         </div>
     </div>
 
-    <div class="lg:col-span-2">
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                <h3 class="font-bold text-slate-700">Feed de Actividad Reciente</h3>
-                <div class="flex gap-2">
-                    <input type="text" placeholder="Filtrar..." class="text-xs p-2 border rounded-lg">
-                    <button class="p-2 bg-white border rounded-lg hover:bg-slate-100"><i data-lucide="filter" class="w-4 h-4 text-slate-500"></i></button>
-                </div>
-            </div>
-            
-            <div id="global-logs-container" class="divide-y divide-slate-100">
-                <div class="p-8 text-center text-slate-400">Cargando registros...</div>
-            </div>
+    <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse" id="bitacora-table">
+                <thead>
+                    <tr class="bg-slate-900 text-white">
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider">Fecha</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider">Dispositivo</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider">Acción</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider w-1/3">Descripción</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-center">Responsables</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-center">Estado</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200" id="bitacora-body">
+                    <tr>
+                        <td colspan="6" class="px-6 py-10 text-center text-slate-400">
+                            <div class="flex justify-center items-center gap-2">
+                                <i data-lucide="loader-2" class="animate-spin"></i> Conectando con Supabase...
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        lucide.createIcons();
-        // Aquí cargarías los datos de AppSheet al iniciar
-        // loadGlobalLogs();
-    });
+document.addEventListener('DOMContentLoaded', () => { 
+    lucide.createIcons(); 
+    fetchLogs(); 
+});
 
-    function saveGlobalLog() {
-        const nuc = document.getElementById('g-nuc').value;
-        const desc = document.getElementById('g-desc').value;
-        
-        if(!nuc || !desc) return alert("Faltan datos");
+let allLogs = [];
 
-        // Simulación de agregar al feed visualmente
-        const container = document.getElementById('global-logs-container');
-        const now = new Date();
+async function fetchLogs() {
+    try {
+        // Consultar API (que lee de Supabase)
+        const response = await fetch('/api/history/all');
+        const data = await response.json();
         
-        const html = `
-            <div class="p-4 hover:bg-slate-50 transition animate-fade-in-up">
-                <div class="flex justify-between items-start mb-2">
-                    <div class="flex items-center gap-2">
-                        <span class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-xs font-bold">${document.getElementById('g-type').value}</span>
-                        <span class="font-bold text-slate-800 text-sm">${nuc}</span>
-                    </div>
-                    <span class="text-xs text-slate-400">${now.toLocaleDateString()} ${now.toLocaleTimeString()}</span>
-                </div>
-                <p class="text-sm text-slate-600 mb-3">${desc}</p>
-                <div class="flex items-center gap-4 text-xs text-slate-400 border-t pt-2 border-slate-50">
-                    <span><i data-lucide="user" class="w-3 h-3 inline mr-1"></i>${document.getElementById('g-req').value || 'Sistema'}</span>
-                    <span><i data-lucide="wrench" class="w-3 h-3 inline mr-1"></i>${document.getElementById('g-exec').value || 'Pendiente'}</span>
-                    ${document.getElementById('g-resolved').checked ? '<span class="text-emerald-600 font-bold ml-auto flex items-center"><i data-lucide="check" class="w-3 h-3 mr-1"></i>Resuelto</span>' : ''}
-                </div>
-            </div>
-        `;
-        
-        // Insertar al inicio
-        container.insertAdjacentHTML('afterbegin', html);
-        lucide.createIcons();
-        
-        // Limpiar form
-        document.getElementById('global-log-form').reset();
+        if (Array.isArray(data)) { 
+            allLogs = data; 
+            renderTable(allLogs); 
+        } else { 
+            document.getElementById('bitacora-body').innerHTML = '<tr><td colspan="6" class="text-center py-4 text-red-500">Error al cargar datos. Verifique conexión.</td></tr>'; 
+        }
+    } catch (error) { 
+        console.error("Error fetch:", error); 
     }
+}
+
+function renderTable(logs) {
+    const tbody = document.getElementById('bitacora-body');
+    const countBadge = document.getElementById('log-count');
+    
+    tbody.innerHTML = '';
+    countBadge.textContent = `${logs.length} Registros`;
+    
+    if (logs.length === 0) { 
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-400 italic">No se encontraron registros con estos filtros.</td></tr>'; 
+        return; 
+    }
+
+    logs.forEach(log => {
+        // Formato de Fecha
+        const dateObj = new Date(log.timestamp);
+        const dateStr = !isNaN(dateObj) ? dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : log.timestamp;
+        
+        // Mapeo de datos seguros
+        const pcName = log.pc_name || log.device_id || 'Desconocido';
+        const action = log.action || 'General';
+        const desc = log.desc || log.description || '';
+        const req = log.req || log.requester || 'Sistema';
+        const exec = log.exec || log.executor || 'Admin';
+        
+        // CORRECCIÓN CRÍTICA: Lectura del booleano "solved"
+        // La API devuelve string "true" o "false"
+        const isSolved = String(log.solved) === 'true' || log.is_solved === true;
+
+        // Detección de BAJA (Para estilo visual)
+        const isBaja = action.toLowerCase().includes('baja') || action.toLowerCase().includes('retiro');
+        const rowClass = isBaja ? 'bg-red-50/50 hover:bg-red-50' : 'hover:bg-slate-50';
+        const textClass = isBaja ? 'text-red-800' : 'text-slate-800';
+
+        // Icono de Estado (Resuelto / Pendiente)
+        const statusIcon = isSolved 
+            ? `<div class="flex flex-col items-center gap-1"><i data-lucide="check-circle" class="w-5 h-5 text-emerald-500"></i><span class="text-[10px] font-bold text-emerald-600">RESUELTO</span></div>`
+            : `<div class="flex flex-col items-center gap-1"><i data-lucide="clock" class="w-5 h-5 text-amber-500"></i><span class="text-[10px] font-bold text-amber-600">PENDIENTE</span></div>`;
+
+        // Badge de Acción
+        let actionBadgeColor = 'bg-indigo-100 text-indigo-700';
+        if(isBaja) actionBadgeColor = 'bg-red-100 text-red-700';
+        if(action.toLowerCase().includes('incidente')) actionBadgeColor = 'bg-amber-100 text-amber-700';
+
+        tbody.innerHTML += `
+            <tr class="${rowClass} transition-colors border-b border-slate-100 group text-sm">
+                <td class="px-6 py-4 whitespace-nowrap text-slate-500 font-mono text-xs">${dateStr}</td>
+                
+                <td class="px-6 py-4">
+                    <div class="font-bold ${textClass}">${pcName}</div>
+                </td>
+                
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${actionBadgeColor}">${action}</span>
+                    ${isBaja ? '<span class="block text-[10px] text-red-500 mt-1 font-bold">INACTIVO</span>' : ''}
+                </td>
+                
+                <td class="px-6 py-4">
+                    <p class="text-slate-600 line-clamp-2" title="${desc}">${desc}</p>
+                    <div class="mt-1 text-xs text-slate-400 font-mono">${log.what || ''}</div>
+                </td>
+                
+                <td class="px-6 py-4 text-center">
+                    <div class="text-xs text-slate-500 flex flex-col gap-1 items-center">
+                        <span title="Solicitante"><i data-lucide="user" class="w-3 h-3 inline mr-1"></i> ${req}</span>
+                        <span title="Ejecutor" class="font-bold"><i data-lucide="wrench" class="w-3 h-3 inline mr-1"></i> ${exec}</span>
+                    </div>
+                </td>
+                
+                <td class="px-6 py-4 text-center">
+                    ${statusIcon}
+                </td>
+            </tr>`;
+    });
+    lucide.createIcons();
+}
+
+function applyFilters() {
+    const searchTerm = document.getElementById('search-input').value.toLowerCase();
+    const actionFilter = document.getElementById('filter-status').value.toLowerCase();
+    
+    const filtered = allLogs.filter(log => {
+        // Filtro Texto
+        const textMatch = JSON.stringify(log).toLowerCase().includes(searchTerm);
+        
+        // Filtro Acción (Tipo)
+        const logAction = (log.action || '').toLowerCase();
+        let actionMatch = true;
+        if(actionFilter !== 'all') {
+            if(actionFilter === 'baja') actionMatch = logAction.includes('baja') || logAction.includes('retiro');
+            else actionMatch = logAction.includes(actionFilter);
+        }
+        
+        return textMatch && actionMatch;
+    });
+    renderTable(filtered);
+    return filtered;
+}
+
+document.getElementById('search-input').addEventListener('input', applyFilters);
+document.getElementById('filter-status').addEventListener('change', applyFilters);
+
+function exportFilteredData() {
+    const dataToExport = applyFilters();
+    if (dataToExport.length === 0) return alert("No hay datos para exportar.");
+    
+    const formattedData = dataToExport.map(log => ({ 
+        Fecha: log.timestamp, 
+        Dispositivo: log.pc_name, 
+        Accion: log.action, 
+        Componente: log.what, 
+        Descripcion: log.desc, 
+        Solicita: log.req, 
+        Ejecuta: log.exec, 
+        Resuelto: String(log.solved) === 'true' ? 'SI' : 'NO'
+    }));
+    
+    const ws = XLSX.utils.json_to_sheet(formattedData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Bitacora_Argos");
+    XLSX.writeFile(wb, `Bitacora_Argos_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
 </script>
 {% endblock %}
