@@ -8,44 +8,45 @@ logger = logging.getLogger(__name__)
 bp = Blueprint('costs', __name__, url_prefix='/costs')
 
 # ==============================================================================
-# 1. RUTAS DE VISTAS (PANTALLAS INDEPENDIENTES)
+# 1. RUTAS DE VISTAS (LAS 4 PANTALLAS INDEPENDIENTES)
 # ==============================================================================
 
 @bp.route('/installations')
 def view_installations():
-    """Pantalla 1: Registro de Instalaciones"""
+    """Pantalla 1: Formulario de Instalaciones"""
     return render_template('costs/installations.html')
 
 @bp.route('/maintenance')
 def view_maintenance():
-    """Pantalla 2: Registro de Mantenimientos"""
+    """Pantalla 2: Formulario de Mantenimiento"""
     return render_template('costs/maintenance.html')
 
 @bp.route('/sales')
 def view_sales():
-    """Pantalla 3: Registro de Ventas"""
+    """Pantalla 3: Formulario de Ventas"""
     return render_template('costs/sales.html')
 
 @bp.route('/dashboard')
 def view_dashboard():
-    """Pantalla 4: Reporte Financiero y ROI"""
+    """Pantalla 4: Costo por Ubicación (Reporte Final)"""
     return render_template('costs/dashboard.html')
 
 
 # ==============================================================================
-# 2. API: GUARDAR INFORMACIÓN
+# 2. API: GUARDAR INFORMACIÓN (Ingresos y Egresos)
 # ==============================================================================
 @bp.route('/add', methods=['POST'])
 def add_transaction():
     try:
         data = request.get_json()
         
+        # Validaciones
         if not data.get('device_id') or not data.get('amount'):
             return jsonify({"status": "error", "message": "Faltan datos obligatorios"}), 400
 
         payload = {
             "device_id": data.get('device_id'),
-            "location": data.get('location'), # Opcional
+            "location": data.get('location'), 
             "type": data.get('type'),         # 'installation', 'maintenance', 'sale'
             "subtype": data.get('subtype'),   # 'preventivo', 'correctivo', 'material'
             "description": data.get('description'),
@@ -62,7 +63,7 @@ def add_transaction():
 
 
 # ==============================================================================
-# 3. API: GENERAR REPORTE FINANCIERO
+# 3. API: REPORTE FINANCIERO (Lógica de Costo por Ubicación)
 # ==============================================================================
 @bp.route('/report', methods=['GET'])
 def get_financial_report():
@@ -73,7 +74,7 @@ def get_financial_report():
         
         report = {}
 
-        # Agrupar por dispositivo
+        # Agrupar por dispositivo (Ubicación)
         for t in transactions:
             dev = t.get('device_id')
             if dev not in report:
@@ -88,6 +89,7 @@ def get_financial_report():
             amount = float(t['amount'])
             type_trans = t['type']
             
+            # Sumar según categoría
             if type_trans == 'installation':
                 report[dev]['cost_installation'] += amount
             elif type_trans == 'maintenance':
@@ -95,13 +97,16 @@ def get_financial_report():
             elif type_trans == 'sale':
                 report[dev]['total_sales'] += amount
 
-        # Calcular totales y ROI
+        # Calcular totales y ROI final
         results = []
         for dev, data in report.items():
+            # Suma de los dos anteriores (Instalación + Mantenimiento)
             total_expenses = data['cost_installation'] + data['cost_maintenance']
+            
+            # Ganancia o Pérdida Neta
             net_profit = data['total_sales'] - total_expenses
             
-            # Cálculo de ROI
+            # Cálculo de ROI y Punto de Equilibrio
             roi_percent = 0
             status = "PÉRDIDA"
             
