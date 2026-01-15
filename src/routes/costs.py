@@ -1,132 +1,107 @@
 from flask import Blueprint, request, jsonify, render_template
 import logging
 from datetime import datetime
-import src # Acceso a la instancia global de supabase
+import src 
 
 logger = logging.getLogger(__name__)
 
 bp = Blueprint('costs', __name__, url_prefix='/costs')
 
-# ==============================================================================
-# 1. RUTAS DE VISTAS (LAS 4 PANTALLAS INDEPENDIENTES)
-# ==============================================================================
-
+# --- RUTAS DE NAVEGACIÓN (VISTAS) ---
 @bp.route('/installations')
 def view_installations():
-    """Pantalla 1: Formulario de Instalaciones"""
     return render_template('costs/installations.html')
 
 @bp.route('/maintenance')
 def view_maintenance():
-    """Pantalla 2: Formulario de Mantenimiento"""
     return render_template('costs/maintenance.html')
 
 @bp.route('/sales')
 def view_sales():
-    """Pantalla 3: Formulario de Ventas"""
     return render_template('costs/sales.html')
 
 @bp.route('/dashboard')
 def view_dashboard():
-    """Pantalla 4: Costo por Ubicación (Reporte Final)"""
     return render_template('costs/dashboard.html')
 
-
-# ==============================================================================
-# 2. API: GUARDAR INFORMACIÓN (Ingresos y Egresos)
-# ==============================================================================
+# --- API: GUARDAR DATOS ---
 @bp.route('/add', methods=['POST'])
 def add_transaction():
     try:
         data = request.get_json()
-        
-        # Validaciones
         if not data.get('device_id') or not data.get('amount'):
-            return jsonify({"status": "error", "message": "Faltan datos obligatorios"}), 400
+            return jsonify({"status": "error", "message": "Faltan datos"}), 400
 
         payload = {
             "device_id": data.get('device_id'),
-            "location": data.get('location'), 
-            "type": data.get('type'),         # 'installation', 'maintenance', 'sale'
-            "subtype": data.get('subtype'),   # 'preventivo', 'correctivo', 'material'
+            "location": data.get('device_id'), # Usamos el ID como ubicación por defecto
+            "type": data.get('type'),
+            "subtype": data.get('subtype'),
             "description": data.get('description'),
             "amount": float(data.get('amount')),
             "date": data.get('date', datetime.now().strftime('%Y-%m-%d'))
         }
 
         src.supabase.client.table('finances').insert(payload).execute()
-        return jsonify({"status": "success", "message": "Registro guardado correctamente"})
-
+        return jsonify({"status": "success", "message": "Guardado"})
     except Exception as e:
-        logger.error(f"Error saving finance: {e}")
+        logger.error(f"Error finance: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
-
-# ==============================================================================
-# 3. API: REPORTE FINANCIERO (Lógica de Costo por Ubicación)
-# ==============================================================================
+# --- API: REPORTE FINANCIERO (Lógica de Negocio) ---
 @bp.route('/report', methods=['GET'])
 def get_financial_report():
     try:
-        # Traer todas las transacciones de Supabase
         response = src.supabase.client.table('finances').select('*').execute()
         transactions = response.data
         
         report = {}
 
-        # Agrupar por dispositivo (Ubicación)
+        # 1. Sumarizar datos
         for t in transactions:
             dev = t.get('device_id')
             if dev not in report:
                 report[dev] = {
                     "device_id": dev,
-                    "location": t.get('location') or dev,
                     "cost_installation": 0.0,
                     "cost_maintenance": 0.0,
                     "total_sales": 0.0
                 }
             
             amount = float(t['amount'])
-            type_trans = t['type']
+            tipo = t['type']
             
-            # Sumar según categoría
-            if type_trans == 'installation':
+            if tipo == 'installation':
                 report[dev]['cost_installation'] += amount
-            elif type_trans == 'maintenance':
+            elif tipo == 'maintenance':
                 report[dev]['cost_maintenance'] += amount
-            elif type_trans == 'sale':
+            elif tipo == 'sale':
                 report[dev]['total_sales'] += amount
 
-        # Calcular totales y ROI final
+        # 2. Calcular ROI y Totales
         results = []
         for dev, data in report.items():
-            # Suma de los dos anteriores (Instalación + Mantenimiento)
             total_expenses = data['cost_installation'] + data['cost_maintenance']
-            
-            # Ganancia o Pérdida Neta
             net_profit = data['total_sales'] - total_expenses
             
-            # Cálculo de ROI y Punto de Equilibrio
-            roi_percent = 0
+            roi = 0
             status = "PÉRDIDA"
             
             if total_expenses > 0:
-                roi_percent = (data['total_sales'] / total_expenses) * 100
-                if roi_percent >= 100: status = "RENTABLE"
-                elif roi_percent > 50: status = "RECUPERANDO"
+                roi = (data['total_sales'] / total_expenses) * 100
+                if roi >= 100: status = "RENTABLE"
+                elif roi > 50: status = "RECUPERANDO"
             elif data['total_sales'] > 0:
-                status = "RENTABLE" # Solo ganancia
-                roi_percent = 100
+                status = "RENTABLE"
+                roi = 100
 
             data['total_expenses'] = total_expenses
             data['net_profit'] = net_profit
-            data['roi_percent'] = round(roi_percent, 1)
+            data['roi_percent'] = round(roi, 1)
             data['status_label'] = status
             
             results.append(data)
 
         return jsonify(results)
-
     except Exception as e:
-        logger.error(f"Error generating report: {e}")
         return jsonify({"error": str(e)}), 500
