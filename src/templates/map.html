@@ -1,159 +1,372 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa de Red CDMX</title>
+{% extends 'base.html' %}
+
+{% block header_title %}Mapa de Infraestructura y Riesgos Corporativos{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+<style>
+    /* --- ESTILOS NUCLEO MANTENIDOS --- */
+    #app-container { 
+        position: relative; 
+        height: calc(100vh - 5rem); 
+        width: 100%; 
+        overflow: hidden; 
+        background: #f1f5f9; 
+        border: 1px solid #cbd5e1; 
+        border-radius: 6px; 
+    }
+    #map { 
+        height: 100%; 
+        width: 100%; 
+        z-index: 1; 
+        background: #e2e8f0; 
+    }
+    #sidebar { 
+        position: absolute; 
+        top: 0; 
+        bottom: 0; 
+        right: 0; 
+        width: 350px; 
+        background: #ffffff; 
+        box-shadow: -2px 0 10px rgba(0,0,0,0.1); 
+        z-index: 2000; 
+        display: flex; 
+        flex-direction: column; 
+        transition: transform 0.3s ease; 
+        border-left: 1px solid #e2e8f0; 
+    }
+    #sidebar.collapsed { 
+        transform: translateX(100%); 
+    }
+    #sidebar-toggle { 
+        position: absolute; 
+        top: 20px; 
+        right: 365px; 
+        z-index: 2001; 
+        background: #334155; 
+        color: white; 
+        border: none; 
+        width: 40px; 
+        height: 40px; 
+        border-radius: 6px; 
+        cursor: pointer; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        transition: all 0.3s ease; 
+    }
+    #sidebar.collapsed + #sidebar-toggle { 
+        right: 20px; 
+    }
     
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    .sidebar-header { 
+        padding: 18px 20px; 
+        background: #f8fafc; 
+        border-bottom: 1px solid #e2e8f0; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+    }
+    .sidebar-content { 
+        flex: 1; 
+        overflow-y: auto; 
+        padding: 15px; 
+    }
     
-    <style>
-        :root {
-            --primary-dark: #1e293b;
-            --accent-blue: #3b82f6;
-            --sidebar-width: 340px;
-        }
+    /* KPI CARDS */
+    .kpi-dashboard { 
+        position: absolute; 
+        top: 15px; 
+        left: 15px; 
+        z-index: 1000; 
+        display: flex; 
+        gap: 10px; 
+    }
+    .kpi-card { 
+        background: white; 
+        padding: 10px 15px; 
+        border-radius: 8px; 
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); 
+        border: 1px solid #e2e8f0; 
+        min-width: 120px; 
+    }
+    .kpi-value { 
+        font-size: 1.25rem; 
+        font-weight: 800; 
+        display: block; 
+    }
+    
+    /* MARKERS */
+    .nuc-marker { 
+        display: flex; 
+        justify-content: center; 
+        align-items: center; 
+        background: white; 
+        border-radius: 6px; 
+        border: 2px solid #64748b; 
+        width: 28px; 
+        height: 28px; 
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+    }
+    .nuc-online { 
+        border-color: #10b981; 
+        color: #10b981; 
+        background: #f0fdf4; 
+    }
+    .nuc-offline { 
+        border-color: #ef4444; 
+        color: #ef4444; 
+        background: #fef2f2; 
+    }
+    .nuc-critical { 
+        border-color: #f59e0b; 
+        color: #f59e0b; 
+        animation: pulse 1.5s infinite; 
+    }
+    
+    @keyframes pulse { 
+        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); } 
+        70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); } 
+        100% { transform: scale(1); } 
+    }
+    
+    .control-card { 
+        background: white; 
+        border: 1px solid #e2e8f0; 
+        border-radius: 8px; 
+        margin-bottom: 10px; 
+        overflow: hidden; 
+    }
+    .card-header { 
+        padding: 12px 15px; 
+        background: #f8fafc; 
+        font-weight: 700; 
+        font-size: 0.8rem; 
+        cursor: pointer; 
+        display: flex; 
+        justify-content: space-between; 
+    }
+    .layer-toggle { 
+        padding: 8px 15px; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        border-top: 1px solid #f1f5f9; 
+        font-size: 0.75rem; 
+    }
+    
+    /* SWITCH STYLES */
+    .switch { 
+        position: relative; 
+        width: 30px; 
+        height: 16px; 
+    }
+    .switch input { 
+        opacity: 0; 
+        width: 0; 
+        height: 0; 
+    }
+    .slider { 
+        position: absolute; 
+        cursor: pointer; 
+        top: 0; 
+        left: 0; 
+        right: 0; 
+        bottom: 0; 
+        background: #cbd5e1; 
+        transition: .2s; 
+        border-radius: 20px; 
+    }
+    .slider:before { 
+        position: absolute; 
+        content: ""; 
+        height: 12px; 
+        width: 12px; 
+        left: 2px; 
+        bottom: 2px; 
+        background: white; 
+        transition: .2s; 
+        border-radius: 50%; 
+    }
+    input:checked + .slider { 
+        background: #4f46e5; 
+    }
+    input:checked + .slider:before { 
+        transform: translateX(14px); 
+    }
 
-        body { 
-            margin: 0; 
-            padding: 0; 
-            font-family: 'Roboto', sans-serif; 
-            overflow: hidden; 
-            background: #e2e8f0; 
-            height: 100vh;
-            width: 100vw;
-        }
-        
-        #app-container { 
-            position: relative; 
-            height: 100vh; 
-            width: 100%; 
-            overflow: hidden; 
-        }
-        
-        #map { 
-            height: 100%; 
-            width: 100%; 
-            z-index: 1; 
-        }
+    /* MODAL */
+    #incident-modal { 
+        position: fixed; 
+        inset: 0; 
+        background: rgba(15, 23, 42, 0.7); 
+        z-index: 3000; 
+        display: none; 
+        justify-content: center; 
+        align-items: center; 
+        backdrop-filter: blur(4px); 
+    }
+    .modal-box { 
+        background: white; 
+        padding: 24px; 
+        border-radius: 16px; 
+        width: 400px; 
+    }
 
-        /* Sidebar */
-        #sidebar {
-            position: absolute;
-            top: 0; bottom: 0; right: 0;
-            width: var(--sidebar-width);
-            background: white;
-            box-shadow: -2px 0 15px rgba(0,0,0,0.1);
-            z-index: 2000;
-            display: flex;
-            flex-direction: column;
-            border-left: 1px solid #cbd5e1;
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            transform: translateX(0);
-        }
-
-        #sidebar.collapsed { transform: translateX(100%); }
-
-        #sidebar-toggle {
-            position: absolute;
-            top: 20px;
-            right: calc(var(--sidebar-width) + 15px);
-            z-index: 2001;
-            background: var(--primary-dark);
-            color: white;
-            border: none;
-            width: 40px; height: 40px;
-            border-radius: 8px;
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex; align-items: center; justify-content: center;
-        }
-        #sidebar-toggle:hover { background: #334155; }
-        #sidebar.collapsed + #sidebar-toggle { right: 20px; }
-
-        .sidebar-header {
-            padding: 20px;
-            background: var(--primary-dark);
-            color: white;
-            display: flex; align-items: center; justify-content: space-between;
-        }
-        .sidebar-header h2 { margin: 0; font-size: 1.1rem; font-weight: 500; }
-
-        .sidebar-content { flex: 1; overflow-y: auto; padding: 15px; background: #f8fafc; }
-
-        /* Tarjetas */
-        .control-card {
-            background: white; border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 15px;
-            border: 1px solid #e2e8f0; overflow: hidden;
-        }
-        .card-header {
-            padding: 12px 15px; background: white; font-weight: 600; color: #334155;
-            border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between;
-            align-items: center; cursor: pointer;
-        }
-        .card-header:hover { background: #f1f5f9; }
-        .card-body { display: block; }
-        .card-body.hidden { display: none; }
-
-        /* Switches y Listas */
-        .layer-toggle { padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; }
-        .layer-info { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; color: #475569; }
-        .color-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-
-        .switch { position: relative; display: inline-block; width: 34px; height: 20px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .4s; border-radius: 34px; }
-        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: var(--accent-blue); }
-        input:checked + .slider:before { transform: translateX(14px); }
-
-        /* Buscador */
-        .search-box { padding: 10px; border-bottom: 1px solid #f1f5f9; }
-        .search-box input { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; }
-        
-        .marker-list { max-height: 250px; overflow-y: auto; }
-        .marker-row { padding: 8px 15px; display: flex; align-items: center; border-bottom: 1px solid #f8fafc; font-size: 0.85rem; }
-        .marker-row:hover { background: #f1f5f9; }
-        .marker-row label { margin-left: 10px; cursor: pointer; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .marker-row.filtered { display: none; }
-
-        .select-actions { padding: 5px 15px; font-size: 0.75rem; text-align: right; background: #f8fafc; color: var(--accent-blue); cursor: pointer; border-bottom: 1px solid #eee; }
-
-        /* KPI Widgets */
-        .kpi-dashboard {
-            position: absolute; top: 20px; left: 60px; z-index: 1000;
-            display: flex; gap: 15px;
-        }
-        .kpi-card {
-            background: white; padding: 10px 15px; border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; flex-direction: column; min-width: 100px;
-        }
-        .kpi-title { font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase; }
-        .kpi-value { font-size: 1.2rem; font-weight: 700; color: #1e293b; }
-
-        .custom-fa-icon {
-            display: flex !important; justify-content: center; align-items: center;
-            background: white; border-radius: 50%; border: 2px solid white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
-    </style>
-</head>
-<body>
+    /* NUEVOS ESTILOS PARA FILTROS DE CALOR */
+    .layer-info { 
+        display: flex; 
+        align-items: center; 
+        gap: 10px; 
+    }
+    .color-dot { 
+        width: 10px; 
+        height: 10px; 
+        border-radius: 50%; 
+        display: inline-block; 
+    }
+    
+    /* Estilos para card body hidden */
+    .card-body { 
+        padding: 0; 
+    }
+    .hidden { 
+        display: none !important; 
+    }
+    
+    /* Iconos FontAwesome Custom (POI) */
+    .custom-fa-icon { 
+        display: flex !important; 
+        justify-content: center !important; 
+        align-items: center !important; 
+        background: white; 
+        border-radius: 50%; 
+        border: 1px solid #94a3b8; 
+        box-shadow: 0 2px 4px rgba(0,0,0,0.15); 
+    }
+    
+    /* Text colors */
+    .text-emerald-600 { color: #059669; }
+    .text-rose-600 { color: #e11d48; }
+    .text-amber-500 { color: #f59e0b; }
+    .text-blue-600 { color: #2563eb; }
+    .text-slate-400 { color: #94a3b8; }
+    .text-slate-800 { color: #1e293b; }
+    .text-slate-500 { color: #64748b; }
+    .text-indigo-500 { color: #6366f1; }
+    
+    /* Margin y padding utilities */
+    .mr-2 { margin-right: 0.5rem; }
+    .mb-2 { margin-bottom: 0.5rem; }
+    .mb-4 { margin-bottom: 1rem; }
+    .mt-2 { margin-top: 0.5rem; }
+    .gap-2 { gap: 0.5rem; }
+    .space-y-4 > * + * { margin-top: 1rem; }
+    
+    /* Flex utilities */
+    .flex { display: flex; }
+    .items-center { align-items: center; }
+    .justify-end { justify-content: flex-end; }
+    .justify-between { justify-content: space-between; }
+    
+    /* Border utilities */
+    .border { border: 1px solid #e2e8f0; }
+    .border-b { border-bottom: 1px solid #f1f5f9; }
+    .rounded-lg { border-radius: 0.5rem; }
+    .rounded { border-radius: 0.25rem; }
+    
+    /* Width utilities */
+    .w-full { width: 100%; }
+    
+    /* Padding utilities */
+    .p-2 { padding: 0.5rem; }
+    
+    /* Font utilities */
+    .font-bold { font-weight: 700; }
+    .text-xs { font-size: 0.75rem; }
+    .text-sm { font-size: 0.875rem; }
+    
+    /* Background colors */
+    .bg-white { background-color: white; }
+    .bg-rose-600 { background-color: #e11d48; }
+    
+    /* Shadow */
+    .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+    
+    /* Cursor */
+    .cursor-pointer { cursor: pointer; }
+    
+    /* Hover effects */
+    .hover\:bg-slate-50:hover { background-color: #f8fafc; }
+    
+    /* LEGENDA DE COLOR DE RED */
+    .red-legend {
+        position: absolute;
+        bottom: 30px;
+        left: 15px;
+        z-index: 1000;
+        background: white;
+        padding: 10px 15px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        border: 1px solid #e2e8f0;
+        font-size: 0.75rem;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 5px;
+    }
+    
+    .legend-color {
+        width: 15px;
+        height: 15px;
+        border-radius: 3px;
+    }
+</style>
 
 <div id="app-container">
-    
     <div class="kpi-dashboard">
         <div class="kpi-card">
-            <span class="kpi-title">Puntos Totales</span>
-            <span class="kpi-value" id="total-points">0</span>
+            <span style="font-size: 10px; font-weight: bold; color: #94a3b8; text-transform: uppercase;">En Línea</span>
+            <span class="kpi-value text-emerald-600" id="kpi-online">0</span>
         </div>
         <div class="kpi-card">
-            <span class="kpi-title">Vel. Promedio Red</span>
-            <span class="kpi-value" id="avg-speed">--</span>
+            <span style="font-size: 10px; font-weight: bold; color: #94a3b8; text-transform: uppercase;">Alertas</span>
+            <span class="kpi-value text-rose-600" id="kpi-issues">0</span>
+        </div>
+        <div class="kpi-card">
+            <span style="font-size: 10px; font-weight: bold; color: #94a3b8; text-transform: uppercase;">Zonas Afectadas</span>
+            <span class="kpi-value text-amber-500" id="kpi-zones">0</span>
+        </div>
+        <div class="kpi-card">
+            <span style="font-size: 10px; font-weight: bold; color: #94a3b8; text-transform: uppercase;">Velocidad Promedio</span>
+            <span class="kpi-value text-blue-600" id="avg-speed">--</span>
+        </div>
+    </div>
+
+    <!-- NUEVA: Leyenda de color de red -->
+    <div class="red-legend" id="red-legend" style="display: none;">
+        <div style="font-weight: bold; margin-bottom: 8px; font-size: 0.8rem;">Calidad de Red por Zona</div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #16a34a;"></div>
+            <span>Alta velocidad (>50 Mbps)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #eab308;"></div>
+            <span>Velocidad media (10-50 Mbps)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #ef4444;"></div>
+            <span>Baja velocidad (<10 Mbps)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #7c3aed;"></div>
+            <span>Sin datos</span>
         </div>
     </div>
 
@@ -162,379 +375,729 @@
     <div id="sidebar">
         <div class="sidebar-header">
             <div>
-                <h2>Panel Ejecutivo</h2>
-                <small style="opacity: 0.8;">Infraestructura de red CDMX</small>
+                <h2 class="text-sm font-bold text-slate-800 uppercase">Control de Infraestructura</h2>
+                <small class="text-slate-400">CDMX - Latencia & Riesgo</small>
             </div>
-            <i class="fa-solid fa-chart-pie"></i>
+            <i class="fa-solid fa-server text-indigo-500"></i>
         </div>
-
         <div class="sidebar-content">
-            
-            <div class="control-card">
-                <div class="card-header" onclick="toggleCard(this)">
-                    <span><i class="fa-solid fa-wifi"></i> Calidad de Red</span>
-                    <i class="fa-solid fa-chevron-up"></i>
+            <div class="control-card" style="border-left: 4px solid #4f46e5;">
+                <div class="card-header"><span>MODO DE MAPA</span></div>
+                <div class="layer-toggle">
+                    <span>Análisis Operativo</span>
+                    <label class="switch">
+                        <input type="radio" name="vm" checked onchange="setMapMode('analysis')">
+                        <span class="slider"></span>
+                    </label>
                 </div>
-                <div class="card-body">
-                    <div class="layer-toggle">
-                        <div class="layer-info"><span class="color-dot" style="background:#15803d;"></span> Excelente (>50 Mbps)</div>
-                        <label class="switch"><input type="checkbox" checked onchange="toggleLayer('high', this.checked)"><span class="slider"></span></label>
+                <div class="layer-toggle">
+                    <span>Mapa de Riesgos (Zonas)</span>
+                    <label class="switch">
+                        <input type="radio" name="vm" onchange="setMapMode('risk')">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="control-card">
+                <div class="card-header"><span>FILTROS DE CALOR</span></div>
+                <div class="layer-toggle">
+                    <div class="layer-info">
+                        <span class="color-dot" style="background:#2563eb;"></span>
+                        <span>Red Internet</span>
                     </div>
-                    <div class="layer-toggle">
-                        <div class="layer-info"><span class="color-dot" style="background:#eab308;"></span> Regular (10-50 Mbps)</div>
-                        <label class="switch"><input type="checkbox" checked onchange="toggleLayer('mid', this.checked)"><span class="slider"></span></label>
+                    <label class="switch">
+                        <input type="radio" name="exclusive-mode" checked onchange="activateHeatMode('red')">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="layer-toggle">
+                    <div class="layer-info">
+                        <span class="color-dot" style="background:#ef4444;"></span>
+                        <span>Afluencia Peatonal</span>
                     </div>
-                    <div class="layer-toggle">
-                        <div class="layer-info"><span class="color-dot" style="background:#ef4444;"></span> Crítica (<10 Mbps)</div>
-                        <label class="switch"><input type="checkbox" checked onchange="toggleLayer('low', this.checked)"><span class="slider"></span></label>
+                    <label class="switch">
+                        <input type="radio" name="exclusive-mode" onchange="activateHeatMode('afluencia')">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="layer-toggle">
+                    <div class="layer-info">
+                        <span class="color-dot" style="background:#0f172a;"></span>
+                        <span>Fallas Eléctricas</span>
+                    </div>
+                    <label class="switch">
+                        <input type="radio" name="exclusive-mode" onchange="activateHeatMode('fallas')">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- NUEVO: Filtro de Hora para Afluencia -->
+            <div class="control-card" id="time-filter-container" style="display: none;">
+                <div class="card-header" onclick="toggleCard(this)">
+                    <span><i class="fa-solid fa-clock mr-2"></i> Filtro de Hora (Afluencia)</span>
+                    <i class="fa-solid fa-chevron-down text-slate-400"></i>
+                </div>
+                <div class="card-body hidden">
+                    <div style="padding: 15px;">
+                        <select id="heatmap-time-selector" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 0.25rem; font-size: 0.875rem; background: white;" onchange="updateAfluenciaHeatmap(this.value)">
+                            <option value="off">Desactivado</option>
+                            <option value="6">06:00 AM - Inicio Jornada</option>
+                            <option value="9" selected>09:00 AM - Hora Pico</option>
+                            <option value="12">12:00 PM - Mediodía</option>
+                            <option value="15">03:00 PM - Tarde</option>
+                            <option value="18">06:00 PM - Salida Laboral</option>
+                            <option value="21">09:00 PM - Noche</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-card">
+                <div class="card-header"><span>REFERENCIAS</span></div>
+                <div class="layer-toggle">
+                    <span>Metro CDMX</span>
+                    <label class="switch">
+                        <input type="checkbox" checked onchange="toggleLayer('metro', this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="layer-toggle">
+                    <span>Sitios de Interés (POI)</span>
+                    <label class="switch">
+                        <input type="checkbox" checked onchange="toggleLayer('poi', this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- NUEVO: Mostrar velocidad por zona -->
+            <div class="control-card" id="speed-zones-panel">
+                <div class="card-header" onclick="toggleCard(this)">
+                    <span><i class="fa-solid fa-gauge-high mr-2"></i> Velocidad por Zona</span>
+                    <i class="fa-solid fa-chevron-down text-slate-400"></i>
+                </div>
+                <div class="card-body hidden">
+                    <div style="padding: 15px;">
+                        <div id="speed-zones-list" style="font-size: 0.8rem;">
+                            <!-- Aquí se cargarán las zonas dinámicamente -->
+                            <div style="text-align: center; color: #94a3b8; padding: 10px;">
+                                Cargando datos de velocidad...
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div id="dynamic-panels"></div>
-
         </div>
     </div>
+    <button id="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+</div>
 
-    <button id="sidebar-toggle" onclick="toggleSidebar()">
-        <i class="fa-solid fa-bars"></i>
-    </button>
-
+<div id="incident-modal">
+    <div class="modal-box">
+        <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
+            <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> 
+            Reporte de Causa Externa
+        </h3>
+        <p class="text-xs text-slate-500 mb-4">Equipo: <b id="modal-dev-name"></b></p>
+        <div class="space-y-4">
+            <select id="inc-type" style="width: 100%; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; font-size: 0.875rem;">
+                <option value="energia">Corte de Energía (CFE)</option>
+                <option value="vandalismo">Vandalismo</option>
+                <option value="mantenimiento">Mantenimiento Local</option>
+            </select>
+            <textarea id="inc-desc" rows="3" style="width: 100%; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; font-size: 0.875rem;" placeholder="Detalles adicionales..."></textarea>
+            <div class="flex justify-end gap-2">
+                <button onclick="closeModal()" style="padding: 0.5rem 1rem; font-size: 0.75rem; font-weight: bold; color: #94a3b8;">Cancelar</button>
+                <button onclick="submitIncident()" style="padding: 0.5rem 1.5rem; background-color: #e11d48; color: white; border-radius: 0.5rem; font-size: 0.75rem; font-weight: bold; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">Registrar</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-<script src="{{ url_for('static', filename='datos_speedtest.js') }}"></script>
+<script src="{{ url_for('static', filename='js/datos_speedtest.js') }}"></script>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+// Variables globales necesarias
+let map = null;
+let currentMode = 'analysis';
+let afluenciaHeatmapLayers = {};
+let redZonesLayer = null; // NUEVO: Capa para zonas de red
+let riskZonesLayer = null; // NUEVO: Capa para zonas de riesgo superpuestas
 
-    // ===========================================
-    // 1. DATASET COMPLETO
-    // ===========================================
-    const DATA = {
-        intermitencias: [
-            [19.357, -99.299, 1.0], [19.388, -99.193, 0.9], [19.288, -99.167, 0.8], [19.278, -99.102, 0.75],
-            [19.309, -99.123, 0.7], [19.296, -99.192, 0.7], [19.160, -99.000, 0.9], [19.400, -99.100, 0.85],
-            [19.417, -99.114, 0.9], [19.443, -99.145, 1.0]
-        ],
-        bb: [
-            [19.4216111, -99.21763889, 'BB03 SIERRA MADRE'], [19.4399167, -99.18375, 'BB04 PARQUES POLANCO'],
-            [19.4109887, -99.1955921, 'BB25 PAPALOTE MUSEO DEL NIÑO'], [19.4326, -99.1332, 'ZÓCALO CDMX'],
-            [19.4240, -99.1650, 'REFORMA'], [19.4330, -99.2000, 'POLANCO'], [19.4110, -99.1800, 'CONDESA'],
-            [19.401798, -99.170935, 'BB 001'], [19.3843154, -99.1505638, 'BB 002'], [19.3759734, -99.1685104, 'BB 005'],
-            [19.4316797, -99.1983821, 'BB 006'], [19.405734, -99.17728, 'BB 0010'], [19.3725587, -99.1735077, 'BB 0011'],
-            [19.430234, -99.200316, 'BB 0012'], [19.3852629, -99.1826788, 'BB 0013'], [19.4212327, -99.1541222, 'BB 0020'],
-            [19.3737265, -99.1791741, 'BB 0021'], [19.4194252, -99.2177707, 'BB 0022'], [19.3189701, -99.2110609, 'BB 0023'],
-            [19.414087, -99.16896, 'BB 0024'], [19.4129281, -99.1709573, 'BB 0027'], [19.4166362, -99.1676682, 'BB 0028'],
-            [19.3734827, -99.1575385, 'BB 0029'], [19.3294706, -99.1367356, 'BB 0031'], [19.4018045, -99.1541309, 'BB 0032'],
-            [19.4315086, -99.1849107, 'BB 0034'], [19.4224987, -99.1674012, 'BB 0035'], [19.4160048, -99.1701669, 'BB 0036'],
-            [19.4174833, -99.1595134, 'BB 038'], [19.440186, -99.2055744, 'BB 0040'], [19.3963098, -99.1715673, 'BB 0041'],
-            [19.3674133, -99.1719939, 'BB 0044'], [19.443336, -99.2261388, 'BB 0045'], [19.430056, -99.211056, 'BB 0046'],
-            [19.432823, -99.2064292, 'BB 0047'], [19.4181204, -99.1610813, 'BB 0048'], [19.428556, -99.19183, 'BB 0049'],
-            [19.4131873, -99.1717122, 'BB 0050'], [19.3851995, -99.1809361, 'BB 0051'], [19.415314, -99.1654078, 'BB 0052'],
-            [19.3769895, -99.1620046, 'BB 0053'], [19.431639, -99.181361, 'BB 0054'], [19.3856317, -99.1752127, 'BB 0055'],
-            [19.429028, -99.18025, 'BB 0056'], [19.3633735, -99.1737537, 'BB 0057'], [19.3991986, -99.1626323, 'BB 0059'],
-            [19.4193243, -99.15997, 'BB 0063'], [19.4065289, -99.1559435, 'BB 0064'], [19.4215588, -99.1716732, 'BB 0065'],
-            [19.4328772, -99.2078854, 'BB 0066'], [19.4075892, -99.1551999, 'BB 0067'], [19.4117317, -99.1722592, 'BB 0069'],
-            [19.3849852, -99.1557409, 'BB 0070'], [19.3881289, -99.1538254, 'BB 0071'], [19.4332979, -99.1909538, 'BB 0072'],
-            [19.3914235, -99.1510176, 'BB 0074'], [19.4069052, -99.1550888, 'BB 0075'], [19.3953019, -99.1685625, 'BB 0077'],
-            [19.4384381, -99.2058495, 'BB 0079'], [19.4113678, -99.1713869, 'BB 0080'], [19.4018659, -99.1599822, 'BB 0081'],
-            [19.3471247, -99.1875277, 'BB 0082'], [19.4225903, -99.1608521, 'BB 0083'], [19.3515601, -99.1859279, 'BB 0084'],
-            [19.3773991, -99.1633568, 'BB 0085'], [19.3470415, -99.1877327, 'BB 0087'], [19.3406645, -99.1373199, 'BB 0088'],
-            [19.3529305, -99.1766841, 'BB 0089'], [19.3703861, -99.1571005, 'BB 0090'], [19.4320000, -99.2019000, 'BB 0091'],
-            [19.4399315, -99.1846625, 'BB 0092'], [19.4198791, -99.1658517, 'BB 0093'], [19.380041, -99.1771747, 'BB 0094'],
-            [19.4358159, -99.1906767, 'BB 0095'], [19.3788486, -99.1589275, 'BB 0096'], [19.4328868, -99.1834243, 'BB 0097'],
-            [19.406126, -99.17233, 'BB 0102'], [19.411472, -99.169917, 'BB 0103'], [19.423028, -99.20725, 'BB 0104'],
-            [19.4338181, -99.1821523, 'BB 0105'], [19.4319835, -99.199403, 'BB 0106'], [19.3391236, -99.1920431, 'BB 0107'],
-            [19.416604, -99.1688053, 'BB 0108'], [19.4194569, -99.1543563, 'BB 0109'], [19.4363701, -99.2065386, 'BB 0110'],
-            [19.4353939, -99.1866192, 'BB 0111'], [19.361415, -99.17091, 'BB 0112'], [19.3664255, -99.1674947, 'BB 0114'],
-            [19.434861, -99.180111, 'BB 0116'], [19.4071539, -99.1819629, 'BB 0117'], [19.4002283, -99.2227671, 'BB 0119'],
-            [19.4093775, -99.1700941, 'BB 0122'], [19.431389, -99.188194, 'BB 0125'], [19.4313747, -99.1814836, 'BB 0129'],
-            [19.4334481, -99.1896528, 'BB 0131'], [19.3849484, -99.186845, 'BB 0132'], [19.3672308, -99.2632397, 'BB 0133'],
-            [19.4260402, -99.1943382, 'BB 0134'], [19.3892931, -99.1763418, 'BB 0181'], [19.3711562, -99.1679876, 'BB 0183'],
-            [19.4228515, -99.2072998, 'BB 0184'], [19.383556, -99.175611, 'BB 0192'], [19.428861, -99.194028, 'BB 0193'],
-            [19.4147169, -99.1721477, 'BB 0199']
-        ],
-        vv: [
-            [19.333725, -99.208813, 'VV_419'], [19.337409, -99.205066, 'VV_440'], [19.341675, -99.202549, 'VV_459'],
-            [19.343484, -99.202472, 'VV_465'], [19.346612, -99.201968, 'VV_478'], [19.3499392, -99.201008, 'VV_491'],
-            [19.3532075, -99.2002144, 'VV_505'], [19.3539181, -99.1999523, 'VV_509'], [19.3562441, -99.1984843, 'VV_519'],
-            [19.3572467, -99.1961306, 'VV_529'], [19.359104, -99.193533, 'VV_542'], [19.361856, -99.191159, 'VV_552'],
-            [19.366317, -99.190649, 'VV_571'], [19.368015, -99.190952, 'VV_576'], [19.370222, -99.191686, 'VV_588'],
-            [19.372011, -99.191702, 'VV_594'], [19.375652, -99.191818, 'VV_606'], [19.3782918, -99.1914838, 'VV_620'],
-            [19.3799091, -99.1916087, 'VV_628'], [19.3821858, -99.1915978, 'VV_639'], [19.38284, -99.191533, 'VV_641'],
-            [19.383643, -99.1912811, 'VV_646'], [19.3862769, -99.1905135, 'VV_651'], [19.38618, -99.19026, 'VV_656'],
-            [19.381715, -99.191861, 'VV_661'], [19.3881, -99.1897, 'VV_665'], [19.379448, -99.191817, 'VV_669'],
-            [19.377175, -99.191865, 'VV_679'], [19.376211, -99.191993, 'VV_689'], [19.374285, -99.1922, 'VV_706'],
-            [19.373186, -99.192244, 'VV_715'], [19.368864, -99.191794, 'VV_735'], [19.365537, -99.190902, 'VV_748'],
-            [19.364018, -99.191334, 'VV_756'], [19.360755, -99.192106, 'VV_767'], [19.358622, -99.194524, 'VV_778'],
-            [19.3570814, -99.1976286, 'VV_791'], [19.3549753, -99.1999014, 'VV_802'], [19.3529999, -99.2006589, 'VV_811'],
-            [19.3507097, -99.2011275, 'VV_820'], [19.3484424, -99.2017292, 'VV_829'], [19.345683, -99.202458, 'VV_840'],
-            [19.341695, -99.2029, 'VV_856'], [19.339862, -99.203473, 'VV_863'], [19.338978, -99.203938, 'VV_867'],
-            [19.337156, -99.205735, 'VV_877'], [19.336672, -99.206376, 'VV_881'], [19.333523, -99.209347, 'VV_897']
-        ],
-        mx: [
-            [19.4277525, -99.1939915, 'MX_CM_EV_2094-1'], [19.4277122, -99.1940784, 'MX_CM_EV_2094-2'],
-            [19.4276766, -99.1941701, 'MX_CM_EV_2094-3'], [19.4276609, -99.1942541, 'MX_CM_EV_2094-4'],
-            [19.3955745, -99.2388249, 'MX_CM_EV_2219-1'], [19.3671524, -99.2572126, 'MX_CM_EV_2397-1'],
-            [19.4336622, -99.2103497, 'MX_CM_EV_2740-1'], [19.4320925, -99.2006609, 'MX_CM_EV_2856-1'],
-            [19.4321921, -99.2005967, 'MX_CM_EV_2856-2'], [19.364293, -99.190861, 'MX_CM_EV_2880-1'],
-            [19.4431956, -99.1949942, 'MX_CM_EV_2920-1'], [19.4335715, -99.1585174, 'MX_CM_EV_2941-1'],
-            [19.4258738, -99.206918, 'MX_CM_EV_2958-1'], [19.4193443, -99.1646268, 'MX_CM_EV_2993-1'],
-            [19.425079, -99.222167, 'MX_CM_EV_3074-1'], [19.4017968, -99.1706704, 'MX_CM_EV_3133-1'],
-            [19.4297041, -99.1610377, 'MX_CM_EV_3139-1'], [19.4297041, -99.1610377, 'MX_CM_EV_3139-2'],
-            [19.4295961, -99.1613111, 'MX_CM_EV_3139-3'], [19.4295961, -99.1613111, 'MX_CM_EV_3139-4'],
-            [19.3355649, -99.1978012, 'MX_CM_EV_3225-1'], [19.337114, -99.1976235, 'MX_CM_EV_3225-2'],
-            [19.4109668, -99.1669757, 'MX_CM_EV_3261-1'], [19.4367285, -99.1832087, 'MX_CM_EV_3287-1'],
-            [19.4246001, -99.1715414, 'MX_CM_EV_3346-1'], [19.4245975, -99.1716307, 'MX_CM_EV_3346-2'],
-            [19.4245852, -99.1718581, 'MX_CM_EV_3346-3'], [19.4284836, -99.1684834, 'MX_CM_EV_3347-1'],
-            [19.4164921, -99.168464, 'MX_CM_EV_3357-1'], [19.4253212, -99.1703747, 'MX_CM_EV_3373-1'],
-            [19.4223897, -99.1634003, 'MX_CM_EV_3378-1'], [19.4316838, -99.1573891, 'MX_CM_EV_3417-1'],
-            [19.3885791, -99.189899, 'MX_CM_EV_3420-1'], [19.3257069, -99.2136546, 'MX_CM_EV_3422-1'],
-            [19.3664563, -99.1682744, 'MX_CM_EV_3429-1'], [19.4285876, -99.1916277, 'MX_CM_EV_3434-1'],
-            [19.4306672, -99.1608254, 'MX_CM_EV_3458-1'], [19.424251, -99.172589, 'MX_CM_EV_3490-1'],
-            [19.3999508, -99.1799725, 'MX_CM_EV_3492-1'], [19.378827, -99.187426, 'MX_CM_EV_3519-1'],
-            [19.3594567, -99.189481, 'MX_CM_EV_3530-1'], [19.436129, -99.20006, 'MX_CM_EV_3546-1'],
-            [19.434379, -99.198344, 'MX_CM_EV_3548-1'], [19.4265217, -99.1963591, 'MX_CM_EV_3579-1']
-        ],
-        poi: [
-            [19.467812, -99.213217, "Tecamachalco", 'house', 'purple'], [19.468755, -99.215569, "Parque de los Venados", 'house', 'purple'],
-            [19.47525, -99.217346, "Parque Naucalli", 'house', 'purple'], [19.47648, -99.21855, "Cinepolis Satélite", 'house', 'purple'],
-            [19.465872, -99.209798, "Plaza Toreo Parque Central", 'house', 'purple'], [19.458925, -99.199738, "Plaza Antara Fashion Hall", 'house', 'purple'],
-            [19.458925, -99.199738, "Plaza Antara Fashion Hall", 'house', 'purple'], [19.444903, -99.18204, "Museo Soumaya", 'house', 'purple'],
-            [19.438515, -99.176465, "Monumento a la Revolución", 'house', 'purple'], [19.438096, -99.168759, "Ángel de la Independencia", 'house', 'purple'],
-            [19.423985, -99.167098, "Fuente de la Diana Cazadora", 'house', 'purple'], [19.40742, -99.16548, "Parque México", 'house', 'purple'],
-            [19.40548, -99.167815, "Parque España", 'house', 'purple'], [19.4005, -99.15551, "Plaza Río de Janeiro", 'house', 'purple'],
-            [19.41846, -99.16016, "Avenida Insurgentes", 'house', 'purple']
-        ]
-    };
-
-    // Iconos Solicitados
-    const ICONS = {
-        bb: L.icon({ iconUrl: 'https://i.imgur.com/ZmudvQC.png', iconSize: [36, 36], popupAnchor: [0, -18] }),
-        vv: L.icon({ iconUrl: 'https://i.imgur.com/xMpVv7D.png', iconSize: [36, 36], popupAnchor: [0, -18] }),
-        mx: L.icon({ iconUrl: 'https://i.imgur.com/VjRMdDa.png', iconSize: [36, 36], popupAnchor: [0, -18] }),
-        custom: (n, c) => L.divIcon({ html: `<i class="fa-solid fa-${n}" style="color:${c}; font-size:18px;"></i>`, className: 'custom-fa-icon', iconSize: [28,28] })
-    };
-
-    // ===============================================
-    // 2. LÓGICA DE MAPA Y CAPAS
-    // ===============================================
-    let map = null;
-    const layers = {
-        high: L.layerGroup(),
-        mid: L.layerGroup(),
-        low: L.layerGroup(),
-        intermitencias: L.layerGroup(),
-        bb: L.layerGroup(),
-        vv: L.layerGroup(),
-        mx: L.layerGroup(),
-        metro: L.layerGroup(),
-        poi: L.layerGroup()
-    };
+// Capas extendidas con los filtros de calor
+const layers = {
+    // Capas originales del primer código
+    high: L.layerGroup(), 
+    mid: L.layerGroup(), 
+    low: L.layerGroup(),
+    metro: L.layerGroup(), 
+    poi: L.layerGroup(),
+    afluencia: L.layerGroup(), 
+    fallas: L.layerGroup(),
+    'BioBox': L.layerGroup(), 
+    'ViaVerde': L.layerGroup(), 
+    'Ecovallas': L.layerGroup(), 
+    'General': L.layerGroup(),
+    autoRiskZones: L.layerGroup(),
     
-    // Registro para buscador (ID -> Marker)
-    const markerRegistry = {}; 
+    // Nueva capa para fallas eléctricas (del segundo código)
+    fallas_electricas: L.layerGroup(),
+    
+    // NUEVAS CAPAS ADICIONALES
+    redZones: L.layerGroup(), // Para zonas de red con color
+    riskZonesOverlay: L.layerGroup() // Para zonas de riesgo superpuestas
+};
 
-    function init() {
-        // Inicializar Mapa
-        map = L.map('map', { 
-            renderer: L.canvas(), zoomControl: false 
-        }).setView([19.4326, -99.1332], 12);
+const markerRegistry = {};
+
+// --- DATOS ESTÁTICOS PARA HEATMAPS ---
+const DATA_INTERMITENCIAS = [
+    [19.357, -99.299, 1.0], [19.388, -99.193, 0.9], [19.288, -99.167, 0.8], [19.278, -99.102, 0.75],
+    [19.309, -99.123, 0.7], [19.296, -99.192, 0.7], [19.160, -99.000, 0.9], [19.400, -99.100, 0.85],
+    [19.417, -99.114, 0.9], [19.443, -99.145, 1.0]
+];
+
+const DATA_POI = [
+    [19.4678, -99.2132, "Tecamachalco", "house", "purple"],
+    [19.4687, -99.2155, "Parque de los Venados", "tree", "purple"],
+    [19.4326, -99.1332, "Zócalo CDMX", "landmark", "purple"],
+    [19.4385, -99.1764, "Monumento Revolución", "monument", "purple"],
+    [19.4380, -99.1687, "Ángel Independencia", "star", "purple"],
+    [19.4449, -99.1820, "Museo Soumaya", "building", "purple"]
+];
+
+const PUNTOS_BASE_AFLUENCIA = [
+    [19.4326, -99.1332, 0.9], [19.4353, -99.1411, 0.85], [19.4290, -99.1380, 0.8],
+    [19.4240, -99.1650, 0.75], [19.4220, -99.1700, 0.7], [19.4330, -99.2000, 0.65], 
+    [19.4350, -99.2050, 0.6], [19.4110, -99.1800, 0.7], [19.4090, -99.1850, 0.65]
+];
+
+// NUEVO: Datos de zonas predefinidas para CDMX
+const ZONAS_CDMX = [
+    { name: "Centro Histórico", bounds: [[19.428, -99.145], [19.445, -99.125]], speed: 45, color: "#eab308" },
+    { name: "Polanco", bounds: [[19.430, -99.210], [19.445, -99.195]], speed: 85, color: "#16a34a" },
+    { name: "Roma-Condesa", bounds: [[19.410, -99.175], [19.425, -99.155]], speed: 60, color: "#16a34a" },
+    { name: "Santa Fe", bounds: [[19.350, -99.280], [19.370, -99.260]], speed: 30, color: "#ef4444" },
+    { name: "Coyoacán", bounds: [[19.340, -99.170], [19.360, -99.150]], speed: 55, color: "#eab308" },
+    { name: "Nápoles", bounds: [[19.400, -99.185], [19.410, -99.170]], speed: 70, color: "#16a34a" },
+    { name: "Del Valle", bounds: [[19.370, -99.180], [19.390, -99.160]], speed: 48, color: "#eab308" },
+    { name: "Tlalpan", bounds: [[19.280, -99.170], [19.300, -99.150]], speed: 25, color: "#ef4444" },
+    { name: "Iztapalapa", bounds: [[19.350, -99.100], [19.370, -99.080]], speed: 15, color: "#ef4444" },
+    { name: "Xochimilco", bounds: [[19.250, -99.110], [19.270, -99.090]], speed: 20, color: "#ef4444" }
+];
+
+// NUEVO: Zonas de riesgo predefinidas
+const ZONAS_RIESGO = [
+    { name: "Riesgo Alto - Centro", center: [19.4326, -99.1332], radius: 1500, color: "#ef4444", opacity: 0.3, reason: "Alta densidad de equipos" },
+    { name: "Riesgo Medio - Polanco", center: [19.437, -99.202], radius: 1200, color: "#f59e0b", opacity: 0.25, reason: "Tráfico intenso" },
+    { name: "Riesgo Bajo - Santa Fe", center: [19.360, -99.270], radius: 2000, color: "#3b82f6", opacity: 0.2, reason: "Zona industrial" },
+    { name: "Riesgo Alto - Iztapalapa", center: [19.360, -99.090], radius: 1800, color: "#ef4444", opacity: 0.3, reason: "Infraestructura antigua" },
+    { name: "Riesgo Medio - Coyoacán", center: [19.350, -99.160], radius: 1000, color: "#f59e0b", opacity: 0.25, reason: "Crecimiento rápido" }
+];
+
+// --- FUNCIONES GLOBALES ---
+window.setMapMode = function(mode) {
+    currentMode = mode;
+    
+    // Limpiar capas específicas
+    Object.values(layers).forEach(l => {
+        if (l !== layers.autoRiskZones && l !== layers.high && l !== layers.mid && l !== layers.low) {
+            map.removeLayer(l);
+        }
+    });
+    
+    if (mode === 'analysis') {
+        // Mostrar NUCs y referencias
+        map.addLayer(layers.poi); 
+        map.addLayer(layers.metro);
+        ['BioBox', 'ViaVerde', 'Ecovallas', 'General'].forEach(k => map.addLayer(layers[k]));
         
-        L.control.zoom({ position: 'topleft' }).addTo(map);
-
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: 'Argos Analytics'
-        }).addTo(map);
-
-        // Panes (Z-Index ordering)
-        map.createPane('netPane'); map.getPane('netPane').style.zIndex = 400;
-        map.createPane('markerPane'); map.getPane('markerPane').style.zIndex = 600;
-
-        // 1. Procesar Red (Speedtest)
-        processSpeedData();
+        // NUEVO: Mostrar zonas de red y riesgo superpuestas
+        map.addLayer(layers.redZones);
+        map.addLayer(layers.riskZonesOverlay);
         
-        // 2. Procesar Intermitencias (Heatmap)
-        const heat = L.heatLayer(DATA.intermitencias, { radius: 30, gradient: {0.6: 'red'} });
-        layers.intermitencias.addLayer(heat);
-
-        // 3. Procesar Metro (Lineas y Estaciones)
-        buildMetroLayer();
-
-        // 4. Procesar Puntos de Interés
-        DATA.poi.forEach(p => {
-            L.marker([p[0], p[1]], {icon: ICONS.custom(p[3], p[4]), pane: 'markerPane'})
-             .bindPopup(p[2]).addTo(layers.poi);
-        });
-
-        // 5. Generar Paneles Dinámicos (Checkboxes)
-        createListPanel('bb', 'BIOBOX', DATA.bb, ICONS.bb);
-        createListPanel('vv', 'VIAVERDE', DATA.vv, ICONS.vv);
-        createListPanel('mx', 'ECOVALLAS', DATA.mx, ICONS.mx);
+        // Mantener capa de heatmap activa si está seleccionada
+        const activeHeatMode = document.querySelector('input[name="exclusive-mode"]:checked');
+        if (activeHeatMode) {
+            const modeValue = activeHeatMode.getAttribute('onchange');
+            if (modeValue.includes("'red'")) activateHeatMode('red');
+            else if (modeValue.includes("'afluencia'")) activateHeatMode('afluencia');
+            else if (modeValue.includes("'fallas'")) activateHeatMode('fallas');
+        }
+    } else if (mode === 'risk') {
+        // Mostrar zonas de riesgo y NUCs
+        map.addLayer(layers.autoRiskZones);
+        ['BioBox', 'ViaVerde', 'Ecovallas', 'General'].forEach(k => map.addLayer(layers[k]));
         
-        // Cargar capas por defecto
-        ['high', 'mid', 'low', 'bb', 'vv', 'mx'].forEach(key => map.addLayer(layers[key]));
-
-        updateKPIs();
+        // NUEVO: Mantener zonas de riesgo superpuestas
+        map.addLayer(layers.riskZonesOverlay);
     }
+};
 
-    // --- Procesa datos de red desde variable externa ---
-    function processSpeedData() {
-        if (typeof SPEEDTEST_DATA === 'undefined') return;
-
-        const feats = { high: [], mid: [], low: [] };
-        let totalSpeed = 0, count = 0;
-
-        SPEEDTEST_DATA.features.forEach(f => {
-            const d = f.properties.download;
-            totalSpeed += d; count++;
-            if(d > 50) feats.high.push(f);
-            else if(d > 10) feats.mid.push(f);
-            else feats.low.push(f);
-        });
-
-        const style = (c) => ({ weight: 0, fillOpacity: 0.55, fillColor: c });
+window.activateHeatMode = function(mode) {
+    // Mostrar/ocultar filtro de hora para afluencia
+    const timeFilter = document.getElementById('time-filter-container');
+    timeFilter.style.display = mode === 'afluencia' ? 'block' : 'none';
+    
+    // Mostrar/ocultar leyenda de red
+    const redLegend = document.getElementById('red-legend');
+    redLegend.style.display = mode === 'red' ? 'block' : 'none';
+    
+    // Remover capas de calor anteriores
+    map.removeLayer(layers.high);
+    map.removeLayer(layers.mid);
+    map.removeLayer(layers.low);
+    map.removeLayer(layers.afluencia);
+    map.removeLayer(layers.fallas_electricas);
+    
+    if (mode === 'red') {
+        // Red Internet
+        map.addLayer(layers.high);
+        map.addLayer(layers.mid);
+        map.addLayer(layers.low);
         
-        layers.high.addLayer(L.geoJson(feats.high, { pane: 'netPane', style: style('#15803d'), onEachFeature: (f,l)=>l.bindPopup(`🚀 ${f.properties.download} Mbps`) }));
-        layers.mid.addLayer(L.geoJson(feats.mid, { pane: 'netPane', style: style('#eab308'), onEachFeature: (f,l)=>l.bindPopup(`⚠️ ${f.properties.download} Mbps`) }));
-        layers.low.addLayer(L.geoJson(feats.low, { pane: 'netPane', style: style('#ef4444'), onEachFeature: (f,l)=>l.bindPopup(`🚨 ${f.properties.download} Mbps`) }));
-
-        document.getElementById('avg-speed').innerText = Math.round(totalSpeed / count) + " Mbps";
+        // NUEVO: Mostrar zonas de red con color
+        map.addLayer(layers.redZones);
+        
+        // Actualizar lista de velocidades por zona
+        updateSpeedZonesList();
+    } else if (mode === 'afluencia') {
+        // Afluencia Peatonal
+        map.addLayer(layers.afluencia);
+        const timeSelector = document.getElementById('heatmap-time-selector');
+        updateAfluenciaHeatmap(timeSelector.value);
+    } else if (mode === 'fallas') {
+        // Fallas Eléctricas
+        map.addLayer(layers.fallas_electricas);
     }
-
-    // --- Construye Capa Metro ---
-    function buildMetroLayer() {
-        const estaciones = [
-            [19.5000, -99.1200, 'Cuatro Caminos'], [19.4400, -99.1500, 'Tacuba'], [19.4280, -99.1650, 'Hidalgo'], [19.4220, -99.1800, 'Bellas Artes'], [19.4100, -99.2100, 'Zócalo']
-        ];
-        estaciones.forEach(e => {
-            L.marker([e[0], e[1]], {
-                icon: ICONS.custom('train', 'darkblue'), pane: 'markerPane'
-            }).bindPopup(e[2]).addTo(layers.metro);
-        });
-
-        const lineas = [
-            {c:'#FF69B4', p:[[19.4550,-99.1400],[19.4500,-99.1450],[19.4450,-99.1500],[19.4400,-99.1550],[19.4350,-99.1600],[19.4300,-99.1650],[19.4250,-99.1700],[19.4200,-99.1750],[19.4150,-99.1800],[19.4100,-99.1850],[19.4050,-99.1900],[19.4000,-99.1950],[19.3950,-99.2000],[19.3900,-99.2050],[19.3850,-99.2100],[19.3800,-99.2150],[19.3750,-99.2200],[19.3700,-99.2250]]},
-            {c:'#0000FF', p:[[19.5000,-99.1200],[19.4900,-99.1250],[19.4800,-99.1300],[19.4700,-99.1350],[19.4600,-99.1400],[19.4500,-99.1450],[19.4400,-99.1500],[19.4350,-99.1550],[19.4300,-99.1600],[19.4280,-99.1650],[19.4250,-99.1700],[19.4220,-99.1800],[19.4200,-99.1900],[19.4180,-99.2000],[19.4160,-99.2100]]},
-            {c:'#808000', p:[[19.4900,-99.1000],[19.4800,-99.1050],[19.4700,-99.1100],[19.4600,-99.1150],[19.4500,-99.1200],[19.4400,-99.1250],[19.4300,-99.1300],[19.4200,-99.1350],[19.4100,-99.1400],[19.4000,-99.1450],[19.3900,-99.1500],[19.3800,-99.1550]]},
-            {c:'#00FFFF', p:[[19.4500,-99.0800],[19.4450,-99.0850],[19.4400,-99.0900],[19.4350,-99.0950],[19.4300,-99.1000],[19.4250,-99.1050],[19.4200,-99.1100],[19.4150,-99.1150],[19.4100,-99.1200],[19.4050,-99.1250],[19.4000,-99.1300]]},
-            {c:'#FFFF00', p:[[19.5000,-99.1500],[19.4900,-99.1550],[19.4800,-99.1600],[19.4700,-99.1650],[19.4600,-99.1700],[19.4500,-99.1750],[19.4400,-99.1800],[19.4300,-99.1850],[19.4200,-99.1900],[19.4100,-99.1950],[19.4000,-99.2000],[19.3900,-99.2050]]},
-            {c:'#FF0000', p:[[19.4500,-99.2000],[19.4450,-99.2050],[19.4400,-99.2100],[19.4350,-99.2150],[19.4300,-99.2200],[19.4250,-99.2250],[19.4200,-99.2300],[19.4150,-99.2350],[19.4100,-99.2400],[19.4050,-99.2450],[19.4000,-99.2500]]}
-        ];
-        lineas.forEach(l => L.polyline(l.p, {color: l.c, weight: 4, opacity: 0.7, pane:'markerPane'}).addTo(layers.metro));
+    
+    // Asegurar que los NUCs siempre estén visibles
+    ['BioBox', 'ViaVerde', 'Ecovallas', 'General'].forEach(k => {
+        if (!map.hasLayer(layers[k])) {
+            map.addLayer(layers[k]);
+        }
+    });
+    
+    // NUEVO: Asegurar que zonas de riesgo superpuestas estén visibles
+    if (!map.hasLayer(layers.riskZonesOverlay)) {
+        map.addLayer(layers.riskZonesOverlay);
     }
+};
 
-    // --- Genera Paneles en Sidebar ---
-    function createListPanel(id, title, data, icon) {
-        const container = document.getElementById('dynamic-panels');
-        const card = document.createElement('div');
-        card.className = 'control-card';
-        card.innerHTML = `
-            <div class="card-header" onclick="toggleCard(this)">
-                <span>${title} <small>(${data.length})</small></span>
-                <i class="fa-solid fa-chevron-down"></i>
-            </div>
-            <div class="card-body hidden">
-                <div class="search-box">
-                    <input type="text" placeholder="Buscar..." onkeyup="filterList('${id}', this.value)">
+window.updateAfluenciaHeatmap = function(h) {
+    layers.afluencia.clearLayers();
+    if (h !== 'off' && afluenciaHeatmapLayers[h]) {
+        layers.afluencia.addLayer(afluenciaHeatmapLayers[h]);
+    }
+};
+
+window.toggleLayer = function(id, show) { 
+    if(show) map.addLayer(layers[id]); 
+    else map.removeLayer(layers[id]); 
+};
+
+window.toggleSidebar = function() { 
+    document.getElementById('sidebar').classList.toggle('collapsed'); 
+};
+
+window.toggleCard = function(h) { 
+    const body = h.nextElementSibling;
+    body.classList.toggle('hidden'); 
+    const icon = h.querySelector('i.fa-chevron-down');
+    if (icon) icon.classList.toggle('fa-rotate-180');
+};
+
+window.zoomToMarker = function(name) {
+    const m = markerRegistry[name];
+    if(m) { 
+        map.flyTo(m.getLatLng(), 17); 
+        m.openPopup(); 
+    }
+};
+
+window.openIncidentModal = function(n) { 
+    document.getElementById('modal-dev-name').innerText = n; 
+    document.getElementById('incident-modal').style.display='flex'; 
+};
+
+window.closeModal = function() { 
+    document.getElementById('incident-modal').style.display='none'; 
+};
+
+window.submitIncident = function() { 
+    alert("Incidente registrado en zona."); 
+    closeModal(); 
+};
+
+// NUEVA: Función para actualizar lista de velocidades por zona
+window.updateSpeedZonesList = function() {
+    const speedZonesList = document.getElementById('speed-zones-list');
+    if (!speedZonesList) return;
+    
+    let html = '';
+    ZONAS_CDMX.forEach(zone => {
+        let statusClass = '';
+        let statusText = '';
+        
+        if (zone.speed >= 50) {
+            statusClass = 'text-emerald-600';
+            statusText = 'Alta';
+        } else if (zone.speed >= 10) {
+            statusClass = 'text-amber-500';
+            statusText = 'Media';
+        } else {
+            statusClass = 'text-rose-600';
+            statusText = 'Baja';
+        }
+        
+        html += `
+            <div style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-weight: 600;">${zone.name}</span>
+                    <span class="${statusClass}" style="font-weight: 700;">${zone.speed} Mbps</span>
                 </div>
-                <div class="select-actions">
-                    <span onclick="toggleAllList('${id}', true)">Todas</span> / <span onclick="toggleAllList('${id}', false)">Ninguna</span>
+                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #64748b; margin-top: 2px;">
+                    <span>Calidad: ${statusText}</span>
+                    <span style="display: flex; align-items: center; gap: 4px;">
+                        <div style="width: 10px; height: 10px; border-radius: 2px; background-color: ${zone.color};"></div>
+                        Zona
+                    </span>
                 </div>
-                <div class="marker-list" id="list-${id}"></div>
             </div>
         `;
-        container.appendChild(card);
-
-        const listContainer = card.querySelector(`#list-${id}`);
-        data.forEach((d, index) => {
-            const uid = `${id}-${index}`;
-            const [lat, lon, name] = d;
-            
-            const marker = L.marker([lat, lon], { icon: icon, title: name, pane: 'markerPane' })
-                .bindPopup(`<b>${title}</b><br>${name}`);
-            
-            markerRegistry[uid] = marker;
-            layers[id].addLayer(marker);
-
-            const item = document.createElement('div');
-            item.className = 'marker-row';
-            item.dataset.uid = uid;
-            item.innerHTML = `
-                <input type="checkbox" checked onchange="toggleSingleMarker('${uid}', '${id}', this.checked)">
-                <label onclick="zoomToMarker('${uid}')">${name}</label>
-            `;
-            listContainer.appendChild(item);
-        });
-    }
-
-    // ===============================================
-    // 3. UI EVENTS
-    // ===============================================
+    });
     
-    // Abrir/Cerrar Sidebar
-    window.toggleSidebar = () => {
-        document.getElementById('sidebar').classList.toggle('collapsed');
-    };
+    speedZonesList.innerHTML = html || '<div style="text-align: center; color: #94a3b8; padding: 10px;">No hay datos de velocidad disponibles</div>';
+};
 
-    // Acordeón de tarjetas
-    window.toggleCard = (header) => {
-        header.nextElementSibling.classList.toggle('hidden');
-        header.querySelector('i').classList.toggle('fa-chevron-down');
-        header.querySelector('i').classList.toggle('fa-chevron-up');
-    };
+// NUEVA: Función para crear zonas de red con color
+function createRedZones() {
+    layers.redZones.clearLayers();
+    
+    ZONAS_CDMX.forEach(zone => {
+        // Crear rectángulo para la zona
+        const rectangle = L.rectangle(zone.bounds, {
+            color: zone.color,
+            fillColor: zone.color,
+            fillOpacity: 0.15,
+            weight: 2,
+            pane: 'riskPane'
+        }).addTo(layers.redZones);
+        
+        // Añadir popup con información de velocidad
+        rectangle.bindPopup(`
+            <div style="min-width: 200px;">
+                <h4 style="margin: 0 0 8px 0; font-weight: bold;">${zone.name}</h4>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span>Velocidad:</span>
+                    <span style="font-weight: bold; color: ${zone.speed >= 50 ? '#16a34a' : zone.speed >= 10 ? '#eab308' : '#ef4444'}">
+                        ${zone.speed} Mbps
+                    </span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span>Calidad:</span>
+                    <span style="font-weight: bold;">${zone.speed >= 50 ? 'Alta' : zone.speed >= 10 ? 'Media' : 'Baja'}</span>
+                </div>
+                <div style="margin-top: 8px; font-size: 0.8rem; color: #64748b;">
+                    ${zone.speed >= 50 ? '✅ Conexión óptima para operaciones' : 
+                      zone.speed >= 10 ? '⚠️ Conexión aceptable' : 
+                      '🔴 Posibles problemas de conectividad'}
+                </div>
+            </div>
+        `);
+        
+        // Añadir tooltip
+        rectangle.bindTooltip(`${zone.name}: ${zone.speed} Mbps`, {
+            permanent: false,
+            direction: 'top'
+        });
+    });
+}
 
-    // Switch de Capas Generales
-    window.toggleLayer = (lid, checked) => {
-        checked ? map.addLayer(layers[lid]) : map.removeLayer(layers[lid]);
-    };
+// NUEVA: Función para crear zonas de riesgo superpuestas
+function createRiskZonesOverlay() {
+    layers.riskZonesOverlay.clearLayers();
+    
+    ZONAS_RIESGO.forEach(zone => {
+        // Crear círculo para zona de riesgo
+        const circle = L.circle(zone.center, {
+            radius: zone.radius,
+            color: zone.color,
+            fillColor: zone.color,
+            fillOpacity: zone.opacity,
+            weight: 2,
+            pane: 'riskPane'
+        }).addTo(layers.riskZonesOverlay);
+        
+        // Añadir popup con información de riesgo
+        circle.bindPopup(`
+            <div style="min-width: 220px;">
+                <h4 style="margin: 0 0 8px 0; font-weight: bold; color: ${zone.color};">${zone.name}</h4>
+                <div style="margin-bottom: 8px; padding: 8px; background-color: #f8fafc; border-radius: 4px;">
+                    <span style="font-weight: 600;">Motivo:</span>
+                    <p style="margin: 4px 0 0 0; font-size: 0.9rem;">${zone.reason}</p>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+                    <span>Radio de afectación:</span>
+                    <span style="font-weight: bold;">${(zone.radius / 1000).toFixed(1)} km</span>
+                </div>
+            </div>
+        `);
+        
+        // Añadir tooltip
+        const riskLevel = zone.color === '#ef4444' ? 'Alto' : zone.color === '#f59e0b' ? 'Medio' : 'Bajo';
+        circle.bindTooltip(`${zone.name} - Riesgo ${riskLevel}`, {
+            permanent: false,
+            direction: 'top'
+        });
+    });
+}
 
-    // Checkbox Individual (Fix de Lógica)
-    window.toggleSingleMarker = (uid, lid, checked) => {
-        const m = markerRegistry[uid];
-        checked ? layers[lid].addLayer(m) : layers[lid].removeLayer(m);
-    };
+// --- FUNCIONES PRIVADAS ---
+function init() {
+    // Mapa base
+    map = L.map('map', { zoomControl: false }).setView([19.4326, -99.1332], 12);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
-    // Selección Masiva
-    window.toggleAllList = (id, checked) => {
-        const rows = document.querySelectorAll(`#list-${id} .marker-row:not(.filtered) input`);
-        rows.forEach(inp => {
-            if(inp.checked !== checked) {
-                inp.checked = checked;
-                inp.dispatchEvent(new Event('change'));
+    // Panes para capas
+    map.createPane('riskPane');
+    map.getPane('riskPane').style.zIndex = 450;
+    
+    map.createPane('nucPane');
+    map.getPane('nucPane').style.zIndex = 650;
+    
+    map.createPane('heatmapPane');
+    map.getPane('heatmapPane').style.zIndex = 500;
+    
+    map.createPane('redPane');
+    map.getPane('redPane').style.zIndex = 400;
+
+    // Inicializar todas las capas
+    initAllLayers();
+    
+    // NUEVO: Crear zonas de red y riesgo
+    createRedZones();
+    createRiskZonesOverlay();
+    
+    setMapMode('analysis');
+    fetchLiveNucs();
+    setInterval(fetchLiveNucs, 5000);
+}
+
+function initAllLayers() {
+    // 1. Red Internet
+    if (typeof SPEEDTEST_DATA !== 'undefined') {
+        L.geoJson(SPEEDTEST_DATA, { 
+            style: { color: '#4f46e5', weight: 1, fillOpacity: 0.2 }, 
+            pane: 'riskPane' 
+        }).addTo(layers.high);
+        
+        // Calcular velocidad promedio
+        let totalSpeed = 0, count = 0;
+        if (SPEEDTEST_DATA.features) {
+            SPEEDTEST_DATA.features.forEach(f => {
+                if (f.properties && f.properties.download) {
+                    totalSpeed += f.properties.download;
+                    count++;
+                }
+            });
+            document.getElementById('avg-speed').innerText = count > 0 ? Math.round(totalSpeed / count) + " Mbps" : "N/A";
+        }
+    }
+    
+    // 2. Afluencia Heatmap
+    initAfluenciaData();
+    
+    // 3. Fallas Eléctricas
+    initFallasElectricas();
+    
+    // 4. POIs
+    DATA_POI.forEach(p => {
+        const icon = L.divIcon({ 
+            html: `<i class="fa-solid fa-${p[3]}" style="color:${p[4]}; font-size:14px;"></i>`, 
+            className: 'custom-fa-icon', 
+            iconSize: [26, 26] 
+        });
+        L.marker([p[0], p[1]], {icon: icon}).bindPopup(`<b>${p[2]}</b>`).addTo(layers.poi);
+    });
+    
+    // 5. Líneas de Metro
+    const metroLines = [
+        {color: '#f06292', points: [[19.42, -99.12], [19.43, -99.14], [19.44, -99.15]]},
+        {color: '#fbbf24', points: [[19.45, -99.10], [19.44, -99.12], [19.41, -99.13]]}
+    ];
+    metroLines.forEach(line => {
+        L.polyline(line.points, {color: line.color, weight: 4}).addTo(layers.metro);
+    });
+}
+
+function initAfluenciaData() {
+    const horarios = [6, 9, 12, 15, 18, 21];
+    
+    horarios.forEach(hora => {
+        let factor = 0.5;
+        if(hora === 9 || hora === 18) factor = 1.0;
+        else if(hora === 6 || hora === 21) factor = 0.6;
+        else factor = 0.8;
+
+        const heatData = [];
+        PUNTOS_BASE_AFLUENCIA.forEach(punto => {
+            let intensidad = punto[2] * factor;
+            heatData.push([punto[0], punto[1], intensidad]);
+            for (let i = 0; i < 20; i++) {
+                const nLat = punto[0] + (Math.random() - 0.5) * 0.02;
+                const nLon = punto[1] + (Math.random() - 0.5) * 0.02;
+                heatData.push([nLat, nLon, intensidad * 0.7]);
             }
         });
-    };
 
-    // Buscador
-    window.filterList = (id, term) => {
-        const t = term.toLowerCase();
-        document.querySelectorAll(`#list-${id} .marker-row`).forEach(row => {
-            const txt = row.querySelector('label').innerText.toLowerCase();
-            if(txt.includes(t)) row.classList.remove('filtered');
-            else row.classList.add('filtered');
+        afluenciaHeatmapLayers[hora] = L.heatLayer(heatData, {
+            radius: 35, 
+            blur: 25, 
+            minOpacity: 0.4, 
+            pane: 'heatmapPane',
+            gradient: {0.4: 'blue', 0.7: 'yellow', 1.0: 'red'}
         });
-    };
-
-    // Zoom al marcador
-    window.zoomToMarker = (uid) => {
-        const m = markerRegistry[uid];
-        if(!map.hasLayer(m)) {
-            document.querySelector(`.marker-row[data-uid="${uid}"] input`).click();
-        }
-        map.flyTo(m.getLatLng(), 15);
-        m.openPopup();
-    };
-
-    function updateKPIs() {
-        const total = DATA.bb.length + DATA.vv.length + DATA.mx.length;
-        document.getElementById('total-points').innerText = total;
+    });
+    
+    // Capa por defecto para afluencia
+    if (afluenciaHeatmapLayers[9]) {
+        layers.afluencia.addLayer(afluenciaHeatmapLayers[9]);
     }
+}
 
-    init();
-});
+function initFallasElectricas() {
+    const heatData = [];
+    DATA_INTERMITENCIAS.forEach(punto => {
+        heatData.push([punto[0], punto[1], punto[2]]);
+        for (let i = 0; i < 30; i++) {
+            const nLat = punto[0] + (Math.random() - 0.5) * 0.04;
+            const nLon = punto[1] + (Math.random() - 0.5) * 0.04;
+            heatData.push([nLat, nLon, punto[2] * 0.6]);
+        }
+    });
+    
+    L.heatLayer(heatData, {
+        radius: 40, 
+        blur: 30, 
+        minOpacity: 0.5, 
+        pane: 'heatmapPane',
+        gradient: {0.0: 'orange', 0.5: 'red', 1.0: '#3f0000'}
+    }).addTo(layers.fallas_electricas);
+}
+
+async function fetchLiveNucs() {
+    try {
+        const res = await fetch('/api/data');
+        const data = await res.json();
+        const devices = Object.values(data);
+
+        devices.forEach(dev => {
+            if (!dev.lat || !dev.lng) return;
+
+            const statusClass = dev.status === 'offline' ? 'nuc-offline' : (dev.cpu_load_percent > 85 ? 'nuc-critical' : 'nuc-online');
+            const newPos = [dev.lat, dev.lng];
+
+            if (markerRegistry[dev.pc_name]) {
+                const marker = markerRegistry[dev.pc_name];
+                marker.setLatLng(newPos);
+                marker.setIcon(L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div class="nuc-marker ${statusClass}"><i class="fa-solid fa-desktop"></i></div>`,
+                    iconSize: [28, 28]
+                }));
+            } else {
+                const icon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div class="nuc-marker ${statusClass}"><i class="fa-solid fa-desktop"></i></div>`,
+                    iconSize: [28, 28]
+                });
+                const marker = L.marker(newPos, { icon: icon, pane: 'nucPane' })
+                    .bindPopup(`<b>${dev.pc_name}</b><br>IP: ${dev.public_ip}<br><button onclick="openIncidentModal('${dev.pc_name}')" style="width:100%; margin-top:5px;">Reportar</button>`);
+                
+                const unit = dev.unit || 'General';
+                if (layers[unit]) layers[unit].addLayer(marker);
+                markerRegistry[dev.pc_name] = marker;
+            }
+        });
+
+        updateKPIs(devices);
+        updateSidebars(devices);
+        generateAutoZones(devices);
+    } catch (e) { 
+        console.error("Error actualización NUCs", e); 
+    }
+}
+
+function generateAutoZones(devices) {
+    layers.autoRiskZones.clearLayers();
+    const issues = devices.filter(d => d.status === 'offline' || d.cpu_load_percent > 85);
+    const grouped = [];
+
+    issues.forEach(d => {
+        let zone = grouped.find(z => Math.abs(z.lat - d.lat) < 0.008 && Math.abs(z.lng - d.lng) < 0.008);
+        if (zone) zone.count++; 
+        else grouped.push({ lat: d.lat, lng: d.lng, count: 1 });
+    });
+
+    document.getElementById('kpi-zones').innerText = grouped.length;
+
+    if (currentMode === 'risk') {
+        grouped.forEach(z => {
+            L.circle([z.lat, z.lng], {
+                radius: z.count > 1 ? 800 : 400,
+                color: '#ef4444', 
+                fillColor: '#ef4444', 
+                fillOpacity: 0.2, 
+                weight: 1, 
+                pane: 'riskPane'
+            }).addTo(layers.autoRiskZones).bindTooltip(`Zona Afectada: ${z.count} equipo(s)`, { permanent: false });
+        });
+        map.addLayer(layers.autoRiskZones);
+    }
+}
+
+function updateKPIs(devices) {
+    document.getElementById('kpi-online').innerText = devices.filter(x => x.status !== 'offline').length;
+    document.getElementById('kpi-issues').innerText = devices.filter(x => x.status === 'offline').length;
+}
+
+function updateSidebars(devices) {
+    const cont = document.getElementById('dynamic-panels');
+    const groups = {};
+    devices.forEach(d => { 
+        const u = d.unit || 'General'; 
+        if(!groups[u]) groups[u] = []; 
+        groups[u].push(d); 
+    });
+    
+    cont.innerHTML = '';
+    Object.entries(groups).forEach(([u, devs]) => {
+        cont.innerHTML += `
+            <div class="control-card">
+                <div class="card-header" onclick="toggleCard(this)">
+                    ${u} (${devs.length})
+                    <i class="fa-solid fa-chevron-down text-slate-400"></i>
+                </div>
+                <div class="card-body hidden">
+                    ${devs.map(d => `
+                        <div class="p-2 border-b text-[10px] cursor-pointer hover:bg-slate-50 flex items-center gap-2" onclick="zoomToMarker('${d.pc_name}')">
+                            <div class="w-2 h-2 rounded-full ${d.status==='offline'?'bg-rose-500':'bg-emerald-500'}"></div>
+                            ${d.pc_name}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>`;
+    });
+}
+
+// Inicializar cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', init);
 </script>
-</body>
-</html>
+{% endblock %}
