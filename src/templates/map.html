@@ -1,37 +1,35 @@
 {% extends 'base.html' %}
 
-{% block header_title %}Mapa de Infraestructura y Riesgos Críticos{% endblock %}
+{% block header_title %}Mapa de Infraestructura y Red (Grilla Crítica){% endblock %}
 
 {% block content %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
 <style>
-    /* --- ESTRUCTURA BASE --- */
     #app-container { position: relative; height: calc(100vh - 5rem); width: 100%; overflow: hidden; background: #f1f5f9; }
     #map { height: 100%; width: 100%; z-index: 1; }
     #sidebar { position: absolute; top: 0; bottom: 0; right: 0; width: 380px; background: #ffffff; box-shadow: -4px 0 15px rgba(0,0,0,0.1); z-index: 2000; transition: transform 0.3s ease; border-left: 1px solid #e2e8f0; }
     #sidebar.collapsed { transform: translateX(100%); }
-    #sidebar-toggle { position: absolute; top: 20px; right: 395px; z-index: 2001; background: #1e293b; color: white; border: none; width: 42px; height: 42px; border-radius: 8px; cursor: pointer; transition: all 0.3s; }
+    #sidebar-toggle { position: absolute; top: 20px; right: 395px; z-index: 2001; background: #1e293b; color: white; border: none; width: 42px; height: 42px; border-radius: 8px; cursor: pointer; }
     #sidebar.collapsed + #sidebar-toggle { right: 20px; }
 
-    /* --- KPI DASHBOARD --- */
+    /* KPI DASHBOARD */
     .kpi-dashboard { position: absolute; top: 15px; left: 15px; z-index: 1000; display: flex; gap: 12px; }
     .kpi-card { background: white; padding: 12px 18px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; min-width: 130px; }
-    .kpi-value { font-size: 1.5rem; font-weight: 900; line-height: 1; margin-top: 4px; }
+    .kpi-value { font-size: 1.5rem; font-weight: 900; }
 
-    /* --- ESTILOS DE NUC Y MARCADORES --- */
-    .nuc-marker { display: flex; justify-content: center; align-items: center; background: white; border-radius: 8px; border: 2px solid #64748b; width: 30px; height: 30px; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-    .nuc-online { border-color: #10b981; color: #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.3); }
-    .nuc-offline { border-color: #ef4444; color: #ef4444; box-shadow: 0 0 10px rgba(239, 68, 68, 0.3); }
+    /* NUC MARKERS */
+    .nuc-marker { display: flex; justify-content: center; align-items: center; background: white; border-radius: 8px; border: 2px solid #64748b; width: 30px; height: 30px; transition: all 0.3s ease; }
+    .nuc-online { border-color: #10b981; color: #10b981; }
+    .nuc-offline { border-color: #ef4444; color: #ef4444; }
     .nuc-warning { border-color: #f59e0b; color: #f59e0b; animation: blinker 1.5s linear infinite; }
-    
-    @keyframes blinker { 50% { opacity: 0.5; transform: scale(1.1); } }
+    @keyframes blinker { 50% { opacity: 0.5; } }
 
-    /* --- CONTROLES LATERALES --- */
-    .control-card { background: #f8fafc; border-radius: 10px; margin-bottom: 12px; border: 1px solid #e2e8f0; }
-    .card-header { padding: 12px 15px; font-weight: 800; font-size: 0.75rem; text-transform: uppercase; color: #475569; display: flex; justify-content: space-between; cursor: pointer; }
-    .layer-row { padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; background: white; }
+    /* CONTROLES */
+    .control-card { background: #f8fafc; border-radius: 10px; margin-bottom: 12px; border: 1px solid #e2e8f0; overflow: hidden; }
+    .card-header { padding: 12px 15px; font-weight: 800; font-size: 0.75rem; text-transform: uppercase; color: #475569; border-bottom: 1px solid #f1f5f9; }
+    .layer-row { padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; background: white; border-bottom: 1px solid #f1f5f9; }
     
     .switch { position: relative; width: 36px; height: 20px; }
     .switch input { opacity: 0; width: 0; height: 0; }
@@ -40,64 +38,32 @@
     input:checked + .slider { background: #4f46e5; }
     input:checked + .slider:before { transform: translateX(16px); }
 
-    /* POPUP STYLES */
-    .nuc-popup-stats { background: #f1f5f9; padding: 8px; border-radius: 6px; margin-top: 8px; border: 1px solid #e2e8f0; }
-    .stat-item { display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; margin-bottom: 2px; }
+    .nuc-popup-stats { background: #f1f5f9; padding: 8px; border-radius: 6px; margin-top: 8px; border: 1px solid #e2e8f0; font-size: 10px; }
 </style>
 
 <div id="app-container">
     <div class="kpi-dashboard">
-        <div class="kpi-card">
-            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Activos</span>
-            <div class="kpi-value text-emerald-600" id="kpi-online">0</div>
-        </div>
-        <div class="kpi-card">
-            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Alertas</span>
-            <div class="kpi-value text-rose-600" id="kpi-issues">0</div>
-        </div>
-        <div class="kpi-card">
-            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Zonas Críticas</span>
-            <div class="kpi-value text-amber-500" id="kpi-zones">0</div>
-        </div>
+        <div class="kpi-card"><span class="text-[10px] font-bold text-slate-400 uppercase">Activos</span><div class="kpi-value text-emerald-600" id="kpi-online">0</div></div>
+        <div class="kpi-card"><span class="text-[10px] font-bold text-slate-400 uppercase">Alertas</span><div class="kpi-value text-rose-600" id="kpi-issues">0</div></div>
+        <div class="kpi-card"><span class="text-[10px] font-bold text-slate-400 uppercase">Zonas Críticas</span><div class="kpi-value text-amber-500" id="kpi-zones">0</div></div>
     </div>
 
     <div id="map"></div>
 
     <div id="sidebar">
-        <div class="p-6 border-b">
-            <h2 class="font-black text-slate-800 text-lg">ARGOS GEOMAP</h2>
-            <p class="text-xs text-slate-400">Control Multicapa de Infraestructura</p>
-        </div>
-
+        <div class="p-6 border-b"><h2 class="font-black text-slate-800 text-lg">GEO-CONTROL ARGOS</h2><p class="text-xs text-slate-400">Infraestructura & Supervisión</p></div>
         <div class="sidebar-content p-4">
             <div class="control-card">
                 <div class="card-header">CAPAS DE INFRAESTRUCTURA</div>
-                <div class="layer-row">
-                    <span class="text-xs font-bold"><i class="fa-solid fa-wifi mr-2 text-blue-500"></i> Mapa de Red</span>
-                    <label class="switch"><input type="checkbox" onchange="toggleSimultaneousLayer('netHeat', this.checked)"><span class="slider"></span></label>
-                </div>
-                <div class="layer-row">
-                    <span class="text-xs font-bold"><i class="fa-solid fa-bolt mr-2 text-yellow-500"></i> Estabilidad Eléctrica</span>
-                    <label class="switch"><input type="checkbox" onchange="toggleSimultaneousLayer('elecHeat', this.checked)"><span class="slider"></span></label>
-                </div>
-                <div class="layer-row">
-                    <span class="text-xs font-bold"><i class="fa-solid fa-users mr-2 text-orange-500"></i> Afluencia Peatonal</span>
-                    <label class="switch"><input type="checkbox" onchange="toggleSimultaneousLayer('afluHeat', this.checked)"><span class="slider"></span></label>
-                </div>
+                <div class="layer-row"><span><i class="fa-solid fa-th mr-2 text-indigo-500"></i> Red (Grilla Original)</span><label class="switch"><input type="checkbox" checked onchange="toggleSimultaneousLayer('netGrid', this.checked)"><span class="slider"></span></label></div>
+                <div class="layer-row"><span><i class="fa-solid fa-bolt mr-2 text-yellow-500"></i> Fallas Eléctricas</span><label class="switch"><input type="checkbox" onchange="toggleSimultaneousLayer('elecHeat', this.checked)"><span class="slider"></span></label></div>
+                <div class="layer-row"><span><i class="fa-solid fa-users mr-2 text-orange-500"></i> Afluencia</span><label class="switch"><input type="checkbox" onchange="toggleSimultaneousLayer('afluHeat', this.checked)"><span class="slider"></span></label></div>
             </div>
-
             <div class="control-card">
-                <div class="card-header">SISTEMA DE RIESGOS</div>
-                <div class="layer-row">
-                    <span class="text-xs font-bold text-rose-600"><i class="fa-solid fa-circle-exclamation mr-2"></i> Zonas de Incidencia Auto</span>
-                    <label class="switch"><input type="checkbox" checked onchange="toggleSimultaneousLayer('riskZones', this.checked)"><span class="slider"></span></label>
-                </div>
-                <div class="layer-row">
-                    <span class="text-xs font-bold"><i class="fa-solid fa-train-subway mr-2"></i> Líneas Metro</span>
-                    <label class="switch"><input type="checkbox" onchange="toggleSimultaneousLayer('metro', this.checked)"><span class="slider"></span></label>
-                </div>
+                <div class="card-header">ANÁLISIS DE RIESGO</div>
+                <div class="layer-row"><span><i class="fa-solid fa-circle-nodes mr-2 text-rose-500"></i> Afectación de Zona</span><label class="switch"><input type="checkbox" checked onchange="toggleSimultaneousLayer('riskZones', this.checked)"><span class="slider"></span></label></div>
+                <div class="layer-row"><span><i class="fa-solid fa-train mr-2 text-slate-500"></i> Metro</span><label class="switch"><input type="checkbox" onchange="toggleSimultaneousLayer('metro', this.checked)"><span class="slider"></span></label></div>
             </div>
-
             <div id="dynamic-nuc-list"></div>
         </div>
     </div>
@@ -106,23 +72,23 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="{{ url_for('static', filename='js/datos_speedtest.js') }}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     let map = null;
-    const nucStats = {}; // Almacén persistente de bajones y apagados locales
+    const nucStats = {}; 
     const markerRegistry = {};
 
     const panes = {
-        net: 'networkPane',
-        elec: 'electricPane',
-        aflu: 'afluenciaPane',
+        grid: 'gridPane',
+        heat: 'heatPane',
         risk: 'riskPane',
         nuc: 'nucPane'
     };
 
     const layers = {
-        netHeat: L.layerGroup(),
+        netGrid: L.layerGroup(),
         elecHeat: L.layerGroup(),
         afluHeat: L.layerGroup(),
         riskZones: L.layerGroup(),
@@ -134,22 +100,47 @@ document.addEventListener('DOMContentLoaded', () => {
         map = L.map('map', { zoomControl: false }).setView([19.4326, -99.1332], 12);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
-        // CONFIGURACIÓN DE Z-INDEX (SOBREPOSICIÓN CORRECTA)
-        map.createPane(panes.net).style.zIndex = 400;
-        map.createPane(panes.elec).style.zIndex = 410;
-        map.createPane(panes.aflu).style.zIndex = 420;
-        map.createPane(panes.risk).style.zIndex = 500; // Zonas de afectación sobre el calor
-        map.createPane(panes.nuc).style.zIndex = 700;  // NUCs siempre arriba
+        // JERARQUÍA DE SUPERPOSICIÓN
+        map.createPane(panes.heat).style.zIndex = 400; // Fondo (Calor)
+        map.createPane(panes.grid).style.zIndex = 450; // Grilla de Red
+        map.createPane(panes.risk).style.zIndex = 500; // Zonas de Afectación
+        map.createPane(panes.nuc).style.zIndex = 700;  // NUC (Siempre arriba)
 
-        initInfrastructureMaps();
+        initOriginalGrid();
+        initHeatmaps();
         fetchLiveNucs();
         setInterval(fetchLiveNucs, 5000);
         
-        // Activar capas de riesgo por defecto
+        // Activar capas por defecto
+        layers.netGrid.addTo(map);
         layers.riskZones.addTo(map);
+        ['BioBox', 'ViaVerde', 'Ecovallas', 'General'].forEach(l => layers[l].addTo(map));
     }
 
-    // --- MONITOREO AUTOMÁTICO DE NUCs Y CONTADORES ---
+    // RESTAURACIÓN DE LA GRILLA ORIGINAL (SPEEDTEST DATA)
+    function initOriginalGrid() {
+        if (typeof SPEEDTEST_DATA === 'undefined') return;
+        const style = (c) => ({ color: c, weight: 1, fillOpacity: 0.4, fillColor: c, pane: panes.grid });
+        
+        const high = [], mid = [], low = [];
+        SPEEDTEST_DATA.features.forEach(f => {
+            const d = f.properties.download;
+            if(d > 50) high.push(f); else if(d > 15) mid.push(f); else low.push(f);
+        });
+
+        layers.netGrid.addLayer(L.geoJson(high, { style: style('#10b981') }));
+        layers.netGrid.addLayer(L.geoJson(mid, { style: style('#f59e0b') }));
+        layers.netGrid.addLayer(L.geoJson(low, { style: style('#ef4444') }));
+    }
+
+    function initHeatmaps() {
+        const elecPoints = [[19.43, -99.13, 0.9], [19.45, -99.20, 0.8]];
+        L.heatLayer(elecPoints, { radius: 40, blur: 25, pane: panes.heat, gradient: {0.5: 'yellow', 1: 'orange'} }).addTo(layers.elecHeat);
+        
+        const afluPoints = [[19.432, -99.133, 0.9]];
+        L.heatLayer(afluPoints, { radius: 30, blur: 20, pane: panes.heat }).addTo(layers.afluHeat);
+    }
+
     async function fetchLiveNucs() {
         try {
             const res = await fetch('/api/data');
@@ -159,105 +150,56 @@ document.addEventListener('DOMContentLoaded', () => {
             devices.forEach(dev => {
                 if (!dev.lat || !dev.lng) return;
 
-                // Inicializar estadísticas si no existen
-                if (!nucStats[dev.pc_name]) {
-                    nucStats[dev.pc_name] = { bajones: 0, apagados: 0, lastStatus: dev.status };
-                }
-
-                // Lógica automática de conteo
-                const currentLat = dev.latency_ms || dev.latency || 0;
-                if (currentLat > 120) nucStats[dev.pc_name].bajones++;
-                if (nucStats[dev.pc_name].lastStatus === 'online' && dev.status === 'offline') {
-                    nucStats[dev.pc_name].apagados++;
-                }
+                if (!nucStats[dev.pc_name]) nucStats[dev.pc_name] = { bajones: 0, apagados: 0, lastStatus: dev.status };
+                
+                const lat = dev.latency_ms || dev.latency || 0;
+                if (lat > 130) nucStats[dev.pc_name].bajones++;
+                if (nucStats[dev.pc_name].lastStatus === 'online' && dev.status === 'offline') nucStats[dev.pc_name].apagados++;
                 nucStats[dev.pc_name].lastStatus = dev.status;
 
-                const stats = nucStats[dev.pc_name];
-                const statusClass = dev.status === 'offline' ? 'nuc-offline' : (currentLat > 100 ? 'nuc-warning' : 'nuc-online');
-                const pos = [dev.lat, dev.lng];
-
-                const popupHtml = `
-                    <div style="min-width:160px">
-                        <b class="text-slate-800">${dev.pc_name}</b><br>
-                        <small class="text-slate-400">${dev.unit}</small>
-                        <div class="nuc-popup-stats">
-                            <div class="stat-item"><span>BAJONES LATENCIA</span><span class="text-amber-600">${stats.bajones}</span></div>
-                            <div class="stat-item"><span>CAÍDAS TOTALES</span><span class="text-rose-600">${stats.apagados}</span></div>
-                            <div class="stat-item"><span>LATENCIA ACT.</span><span>${currentLat}ms</span></div>
-                        </div>
-                    </div>`;
+                const st = nucStats[dev.pc_name];
+                const statusClass = dev.status === 'offline' ? 'nuc-offline' : (lat > 110 ? 'nuc-warning' : 'nuc-online');
+                
+                const popup = `<b>${dev.pc_name}</b><div class="nuc-popup-stats">BAJONES: ${st.bajones} | CAÍDAS: ${st.apagados} | LAT: ${lat}ms</div>`;
 
                 if (markerRegistry[dev.pc_name]) {
                     const m = markerRegistry[dev.pc_name];
-                    m.setLatLng(pos);
-                    m.setIcon(L.divIcon({
-                        className: 'custom-div-icon',
-                        html: `<div class="nuc-marker ${statusClass}"><i class="fa-solid fa-microchip"></i></div>`,
-                        iconSize: [30, 30]
-                    }));
-                    m.getPopup().setContent(popupHtml);
+                    m.setLatLng([dev.lat, dev.lng]);
+                    m.setIcon(L.divIcon({ className: '', html: `<div class="nuc-marker ${statusClass}"><i class="fa-solid fa-microchip"></i></div>`, iconSize: [30,30] }));
+                    m.getPopup().setContent(popup);
                 } else {
-                    const m = L.marker(pos, {
-                        icon: L.divIcon({
-                            className: 'custom-div-icon',
-                            html: `<div class="nuc-marker ${statusClass}"><i class="fa-solid fa-microchip"></i></div>`,
-                            iconSize: [30, 30]
-                        }),
+                    const m = L.marker([dev.lat, dev.lng], {
+                        icon: L.divIcon({ className: '', html: `<div class="nuc-marker ${statusClass}"><i class="fa-solid fa-microchip"></i></div>`, iconSize: [30,30] }),
                         pane: panes.nuc
-                    }).bindPopup(popupHtml).addTo(layers[dev.unit || 'General']);
+                    }).bindPopup(popup).addTo(layers[dev.unit || 'General']);
                     markerRegistry[dev.pc_name] = m;
                 }
             });
-
             updateKPIs(devices);
-            generateAutoRiskZones(devices);
-        } catch (e) { console.error("Error Argos Sync:", e); }
+            generateRiskZones(devices);
+        } catch (e) { console.error(e); }
     }
 
-    // --- GENERACIÓN DE MAPAS DE CALOR (INFRAESTRUCTURA) ---
-    function initInfrastructureMaps() {
-        // Red: Basado en puntos de baja velocidad simulados
-        const netData = [[19.43, -99.13, 0.8], [19.41, -99.16, 0.9]];
-        L.heatLayer(netData, { radius: 40, blur: 25, pane: panes.net, gradient: {0.4: 'blue', 0.6: 'cyan', 1: 'navy'} }).addTo(layers.netHeat);
-
-        // Eléctrico: Puntos de fallas de red eléctrica
-        const elecData = [[19.45, -99.12, 0.7], [19.39, -99.18, 0.9]];
-        L.heatLayer(elecData, { radius: 50, blur: 30, pane: panes.elec, gradient: {0.4: 'yellow', 0.7: 'orange', 1: 'red'} }).addTo(layers.elecHeat);
-        
-        // Afluencia
-        const afluData = [[19.432, -99.133, 0.9], [19.435, -99.141, 0.8]];
-        L.heatLayer(afluData, { radius: 30, blur: 20, pane: panes.aflu }).addTo(layers.afluHeat);
-    }
-
-    // --- DETECCIÓN AUTOMÁTICA DE ZONAS AFECTADAS ---
-    function generateAutoRiskZones(devices) {
+    function generateRiskZones(devices) {
         layers.riskZones.clearLayers();
-        const fails = devices.filter(d => d.status === 'offline' || (d.latency_ms||0) > 100);
+        const problematic = devices.filter(d => d.status === 'offline' || (d.latency_ms||0) > 100);
         const clusters = [];
 
-        fails.forEach(f => {
-            let zone = clusters.find(c => Math.abs(c.lat - f.lat) < 0.009 && Math.abs(c.lng - f.lng) < 0.009);
-            if (zone) zone.count++; else clusters.push({ lat: f.lat, lng: f.lng, count: 1 });
+        problematic.forEach(p => {
+            let zone = clusters.find(c => Math.abs(c.lat - p.lat) < 0.009 && Math.abs(c.lng - p.lng) < 0.009);
+            if(zone) zone.count++; else clusters.push({ lat: p.lat, lng: p.lng, count: 1 });
         });
 
         document.getElementById('kpi-zones').innerText = clusters.length;
 
         clusters.forEach(z => {
-            L.circle([z.lat, z.lng], {
-                radius: z.count > 1 ? 800 : 400,
-                color: '#ef4444', weight: 2, fillOpacity: 0.15, dashArray: '10, 10', pane: panes.risk
-            }).addTo(layers.riskZones).bindTooltip(`Zona con ${z.count} falla(s) activa(s)`, {sticky: true});
+            L.circle([z.lat, z.lng], { radius: 700, color: '#ef4444', weight: 1, fillOpacity: 0.2, pane: panes.risk })
+             .addTo(layers.riskZones).bindTooltip(`Incidencia: ${z.count} activos`, { sticky: true });
         });
     }
 
-    // --- UTILIDADES ---
-    window.toggleSimultaneousLayer = (id, show) => {
-        if (show) map.addLayer(layers[id]);
-        else map.removeLayer(layers[id]);
-    };
-
+    window.toggleSimultaneousLayer = (id, show) => { if(show) map.addLayer(layers[id]); else map.removeLayer(layers[id]); };
     window.toggleSidebar = () => document.getElementById('sidebar').classList.toggle('collapsed');
-    
     function updateKPIs(d) {
         document.getElementById('kpi-online').innerText = d.filter(x => x.status === 'online').length;
         document.getElementById('kpi-issues').innerText = d.filter(x => x.status === 'offline').length;
