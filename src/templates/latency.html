@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = document.createElement('div');
             card.className = 'card cursor-pointer group hover:border-indigo-400';
             card.onclick = () => openModal(pc.pc_name);
-            card.innerHTML = `<div class="flex justify-between items-start mb-2"><div class="truncate pr-2"><h3 class="font-bold text-slate-800 text-sm truncate group-hover:text-indigo-600">${pc.pc_name}</h3><span class="text-[10px] font-bold text-slate-400 uppercase">${pc.unit}</span></div><div class="status-dot ${statusClass} flex-shrink-0"></div></div><div class="flex justify-between items-end mt-1"><span class="text-2xl font-black text-slate-700">${pc.latency_ms || pc.latency || 0}<span class="text-xs text-slate-400 font-bold ml-1">ms</span></span><span class="text-xs font-bold text-slate-500">CPU: ${Math.round(pc.cpu_load_percent||0)}%</span></div>${latencyBarHtml}`;
+            card.innerHTML = `<div class="flex justify-between items-start mb-2"><div class="truncate pr-2"><h3 class="font-bold text-slate-800 text-sm truncate group-hover:text-indigo-600">${pc.pc_name}</h3><span class="text-[10px] font-bold text-slate-400 uppercase">${pc.unit}</span></div><div class="status-dot ${statusClass} flex-shrink-0"></div></div><div class="flex justify-between items-end mt-1"><span class="text-2xl font-black text-slate-700">${pc.latency_ms || pc.latency || 0}</span><span class="text-xs font-bold text-slate-500">CPU: ${Math.round(pc.cpu_load_percent||0)}%</span></div>${latencyBarHtml}`;
             container.appendChild(card);
         });
     }
