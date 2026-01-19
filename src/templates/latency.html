@@ -21,66 +21,257 @@
     .timeline-item { position: relative; padding-left: 2rem; padding-bottom: 2rem; border-left: 2px solid #e2e8f0; }
     .timeline-item:last-child { border-left: 2px solid transparent; }
     .timeline-dot { position: absolute; left: -9px; top: 0; width: 16px; height: 16px; border-radius: 50%; background: white; border: 3px solid #cbd5e1; }
+    
+    /* Alertas */
+    .alert-container { position: fixed; top: 20px; right: 20px; z-index: 1000; max-width: 400px; }
+    .alert { padding: 12px 16px; margin-bottom: 10px; border-radius: 8px; display: flex; align-items: center; gap: 10px; animation: slideIn 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .alert-success { background: #10b981; color: white; border-left: 4px solid #059669; }
+    .alert-warning { background: #f59e0b; color: white; border-left: 4px solid #d97706; }
+    .alert-error { background: #ef4444; color: white; border-left: 4px solid #dc2626; }
+    .alert-info { background: #3b82f6; color: white; border-left: 4px solid #2563eb; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+    
+    /* Score de salud */
+    .health-score-excellent { color: #10b981; }
+    .health-score-good { color: #3b82f6; }
+    .health-score-warning { color: #f59e0b; }
+    .health-score-critical { color: #ef4444; }
 </style>
+
+<!-- Container para alertas -->
+<div id="alert-container" class="alert-container"></div>
 
 <div class="p-6 max-w-[1800px] mx-auto">
     <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <div><h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2"><i data-lucide="activity" class="text-indigo-600"></i> Estado de Activos</h2><p class="text-slate-500 text-xs mt-1">Monitoreo en tiempo real (Supabase)</p></div>
+        <div>
+            <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                <i data-lucide="activity" class="text-indigo-600"></i> Estado de Activos
+            </h2>
+            <div class="flex items-center gap-3 mt-1">
+                <span id="update-status" class="text-xs text-slate-500">Conectando...</span>
+                <span id="device-count" class="text-xs font-bold bg-slate-100 px-2 py-1 rounded">0 dispositivos</span>
+            </div>
+        </div>
         <div class="flex items-center gap-3">
-            <select id="unit-filter" class="p-2 text-sm border border-slate-300 rounded-lg focus:ring-indigo-500 outline-none"><option value="all">Todas las Unidades</option></select>
+            <select id="unit-filter" class="p-2 text-sm border border-slate-300 rounded-lg focus:ring-indigo-500 outline-none">
+                <option value="all">Todas las Unidades</option>
+            </select>
             <input type="search" id="search-bar" placeholder="Buscar..." class="p-2 text-sm border border-slate-300 rounded-lg w-64 focus:ring-indigo-500 outline-none">
+            <button onclick="forceRefresh()" class="p-2 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-lg">
+                <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+            </button>
         </div>
     </div>
     
-    <div id="loading-indicator" class="flex justify-center p-10"><i data-lucide="loader-2" class="animate-spin text-indigo-600 w-8 h-8"></i></div>
+    <div id="loading-indicator" class="flex justify-center p-10">
+        <div class="text-center">
+            <i data-lucide="loader-2" class="animate-spin text-indigo-600 w-8 h-8 mx-auto"></i>
+            <p class="text-sm text-slate-500 mt-2">Cargando datos en tiempo real...</p>
+        </div>
+    </div>
+    
     <div id="pc-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+    
+    <div class="mt-8 text-center text-xs text-slate-400">
+        <p>Actualización automática cada 3 segundos • Última actualización: <span id="last-update-time">--:--:--</span></p>
+    </div>
 </div>
 
+<!-- Modal -->
 <div id="pc-modal-overlay" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden items-center justify-center p-4">
     <div id="pc-modal-container" class="bg-white w-full max-w-6xl h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden transform scale-95 opacity-0 transition-all duration-300">
         <div class="flex justify-between items-start p-6 border-b border-slate-100 bg-white sticky top-0 z-10">
-            <div><h2 id="modal-pc-name" class="text-2xl font-bold text-slate-800"></h2><div id="modal-status-line" class="mt-1 flex items-center gap-2 text-sm"></div></div>
+            <div>
+                <h2 id="modal-pc-name" class="text-2xl font-bold text-slate-800"></h2>
+                <div id="modal-status-line" class="mt-1 flex items-center gap-2 text-sm"></div>
+            </div>
             <div class="flex gap-2">
-                <button onclick="exportToPDF()" class="text-indigo-600 hover:bg-indigo-50 px-3 py-2 rounded-lg text-sm font-bold border border-indigo-200 transition flex items-center gap-2"><i data-lucide="file-down" class="w-4 h-4"></i> Ficha</button>
-                <button onclick="closeModal()" class="text-slate-400 hover:text-rose-500 hover:bg-rose-50 p-2 rounded-lg transition"><i data-lucide="x" class="w-6 h-6"></i></button>
+                <button onclick="exportToPDF()" class="text-indigo-600 hover:bg-indigo-50 px-3 py-2 rounded-lg text-sm font-bold border border-indigo-200 transition flex items-center gap-2">
+                    <i data-lucide="file-down" class="w-4 h-4"></i> Ficha
+                </button>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-rose-500 hover:bg-rose-50 p-2 rounded-lg transition">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
             </div>
         </div>
         
-        <div class="border-b border-slate-200 bg-white px-6"><nav class="flex space-x-1" id="modal-tabs"><button data-tab="general" class="modal-tab active">General</button><button data-tab="hardware" class="modal-tab">Hardware</button><button data-tab="predictive" class="modal-tab">Diagnóstico IA</button><button data-tab="specs" class="modal-tab">Ficha & Bitácora</button></nav></div>
+        <div class="border-b border-slate-200 bg-white px-6">
+            <nav class="flex space-x-1" id="modal-tabs">
+                <button data-tab="general" class="modal-tab active">General</button>
+                <button data-tab="hardware" class="modal-tab">Hardware</button>
+                <button data-tab="predictive" class="modal-tab">Diagnóstico IA</button>
+                <button data-tab="specs" class="modal-tab">Ficha & Bitácora</button>
+            </nav>
+        </div>
         
         <div class="p-8 overflow-y-auto bg-slate-50 flex-1">
+            <!-- Contenido de las pestañas (igual que antes) -->
             <div id="tab-general" class="tab-content">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">IDENTIDAD</h4><div class="space-y-3 text-sm"><div class="flex justify-between"><span class="text-slate-500">Unidad</span><span id="gen-unit" class="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded"></span></div><div class="flex justify-between"><span class="text-slate-500">IP</span><span id="gen-ip" class="font-mono text-slate-700"></span></div><div class="flex justify-between"><span class="text-slate-500">Conexión</span><span id="gen-seen" class="text-slate-700 font-medium"></span></div></div></div>
-                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">CARGA</h4><div class="space-y-4"><div><div class="flex justify-between text-xs mb-1"><span>CPU</span><span id="gen-cpu-val" class="font-bold"></span></div><div class="w-full bg-slate-100 rounded-full h-1.5"><div id="gen-cpu-bar" class="bg-indigo-500 h-1.5 rounded-full" style="width:0%"></div></div></div><div><div class="flex justify-between text-xs mb-1"><span>RAM</span><span id="gen-ram-val" class="font-bold"></span></div><div class="w-full bg-slate-100 rounded-full h-1.5"><div id="gen-ram-bar" class="bg-purple-500 h-1.5 rounded-full" style="width:0%"></div></div></div></div></div>
-                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center"><div id="health-icon-container" class="mb-1"></div><span id="health-score-val" class="text-4xl font-black text-slate-800">--%</span><span class="text-[10px] font-bold text-slate-400 uppercase">SCORE ARGOS</span></div>
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">IDENTIDAD</h4>
+                        <div class="space-y-3 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">Unidad</span>
+                                <span id="gen-unit" class="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">IP</span>
+                                <span id="gen-ip" class="font-mono text-slate-700"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">Última actualización</span>
+                                <span id="gen-seen" class="text-slate-700 font-medium"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">CARGA</h4>
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span>CPU</span>
+                                    <span id="gen-cpu-val" class="font-bold"></span>
+                                </div>
+                                <div class="w-full bg-slate-100 rounded-full h-1.5">
+                                    <div id="gen-cpu-bar" class="bg-indigo-500 h-1.5 rounded-full" style="width:0%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span>RAM</span>
+                                    <span id="gen-ram-val" class="font-bold"></span>
+                                </div>
+                                <div class="w-full bg-slate-100 rounded-full h-1.5">
+                                    <div id="gen-ram-bar" class="bg-purple-500 h-1.5 rounded-full" style="width:0%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span>DISCO</span>
+                                    <span id="gen-disk-val" class="font-bold"></span>
+                                </div>
+                                <div class="w-full bg-slate-100 rounded-full h-1.5">
+                                    <div id="gen-disk-bar" class="bg-amber-500 h-1.5 rounded-full" style="width:0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+                        <div id="health-icon-container" class="mb-1"></div>
+                        <span id="health-score-val" class="text-4xl font-black health-score-excellent">--%</span>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">SCORE ARGOS</span>
+                        <div id="health-indicators" class="mt-2 text-xs text-center text-slate-500"></div>
+                    </div>
                 </div>
-                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm h-[320px]"><h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">TELEMETRÍA DE RED</h4><canvas id="latency-chart"></canvas></div>
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm h-[320px]">
+                    <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">TELEMETRÍA DE RED (Últimas 12 mediciones)</h4>
+                    <canvas id="latency-chart"></canvas>
+                </div>
             </div>
             
-            <div id="tab-hardware" class="tab-content hidden"><div class="bg-indigo-50 border border-indigo-100 p-4 rounded-lg mb-6"><p class="text-xs text-indigo-800 font-medium"><i data-lucide="info" class="w-4 h-4 inline mr-1"></i> Lectura directa de sensores.</p></div><div id="hardware-full-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div></div>
+            <!-- Otras pestañas (hardware, predictive, specs) se mantienen igual -->
+            <div id="tab-hardware" class="tab-content hidden">
+                <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-lg mb-6">
+                    <p class="text-xs text-indigo-800 font-medium">
+                        <i data-lucide="info" class="w-4 h-4 inline mr-1"></i> Lectura directa de sensores.
+                    </p>
+                </div>
+                <div id="hardware-full-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+            </div>
             
-            <div id="tab-predictive" class="tab-content hidden"><div class="flex justify-between items-center mb-6"><h3 class="text-lg font-bold text-slate-800">Argos AI</h3><button onclick="runManualAnalysis()" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition"><i data-lucide="play" class="w-4 h-4"></i> Ejecutar Análisis</button></div><div id="ai-loading" class="hidden p-8 text-center text-indigo-600"><i data-lucide="loader-2" class="w-8 h-8 animate-spin mx-auto mb-2"></i><p>Procesando...</p></div><div id="ai-results" class="grid grid-cols-1 md:grid-cols-2 gap-6"><div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-full"><h4 class="font-bold text-slate-700 mb-4 flex items-center"><i data-lucide="search" class="w-4 h-4 mr-2 text-indigo-500"></i>Hallazgos</h4><div id="ai-anomalies-list" class="space-y-3 text-sm"></div></div><div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-full"><h4 class="font-bold text-slate-700 mb-4 flex items-center"><i data-lucide="check-circle-2" class="w-4 h-4 mr-2 text-emerald-500"></i>Recomendaciones</h4><div id="ai-recommendations-list" class="space-y-3 text-sm"></div></div></div></div>
+            <div id="tab-predictive" class="tab-content hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-bold text-slate-800">Argos AI</h3>
+                    <button onclick="runManualAnalysis()" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition">
+                        <i data-lucide="play" class="w-4 h-4"></i> Ejecutar Análisis
+                    </button>
+                </div>
+                <div id="ai-loading" class="hidden p-8 text-center text-indigo-600">
+                    <i data-lucide="loader-2" class="w-8 h-8 animate-spin mx-auto mb-2"></i>
+                    <p>Procesando...</p>
+                </div>
+                <div id="ai-results" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-full">
+                        <h4 class="font-bold text-slate-700 mb-4 flex items-center">
+                            <i data-lucide="search" class="w-4 h-4 mr-2 text-indigo-500"></i>Hallazgos
+                        </h4>
+                        <div id="ai-anomalies-list" class="space-y-3 text-sm"></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-full">
+                        <h4 class="font-bold text-slate-700 mb-4 flex items-center">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 mr-2 text-emerald-500"></i>Recomendaciones
+                        </h4>
+                        <div id="ai-recommendations-list" class="space-y-3 text-sm"></div>
+                    </div>
+                </div>
+            </div>
             
             <div id="tab-specs" class="tab-content hidden">
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     <div class="lg:col-span-8 space-y-6">
-                        <div class="flex justify-between items-center"><h3 class="font-bold text-lg text-slate-800">Bitácora</h3><button onclick="toggleForm()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i> Nueva Entrada</button></div>
+                        <div class="flex justify-between items-center">
+                            <h3 class="font-bold text-lg text-slate-800">Bitácora</h3>
+                            <button onclick="toggleForm()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center gap-2">
+                                <i data-lucide="plus" class="w-4 h-4"></i> Nueva Entrada
+                            </button>
+                        </div>
                         <div id="log-form-container" class="hidden bg-slate-50 p-6 rounded-xl border border-indigo-100">
                             <form id="new-log-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="md:col-span-2 bg-white p-3 rounded border border-slate-200 grid grid-cols-2 gap-4"><div><label class="text-[10px] uppercase font-bold text-slate-400">Ubicación</label><div id="form-loc" class="font-bold text-sm"></div></div><div><label class="text-[10px] uppercase font-bold text-slate-400">Unidad</label><div id="form-unit" class="font-bold text-sm"></div></div></div>
-                                <div><label class="text-xs font-bold text-slate-500">Solicita</label><input type="text" id="log-req" class="w-full mt-1 p-2 border rounded text-sm bg-white"></div>
-                                <div><label class="text-xs font-bold text-slate-500">Ejecuta</label><input type="text" id="log-exec" class="w-full mt-1 p-2 border rounded text-sm bg-white"></div>
-                                <div><label class="text-xs font-bold text-slate-500">Tipo</label><select id="log-action" class="w-full mt-1 p-2 border rounded text-sm bg-white"><option value="Mantenimiento">Mantenimiento</option><option value="Incidente">Incidente</option><option value="Renovación">Renovación</option><option value="Baja">Baja</option></select></div>
-                                <div><label class="text-xs font-bold text-slate-500">Componente</label><input type="text" id="log-what" class="w-full mt-1 p-2 border rounded text-sm bg-white" placeholder="Ej: Disco"></div>
-                                <div class="md:col-span-2"><label class="text-xs font-bold text-slate-500">Descripción</label><textarea id="log-desc" rows="2" class="w-full mt-1 p-2 border rounded text-sm bg-white"></textarea></div>
-                                <div class="md:col-span-2 flex items-center gap-2"><input type="checkbox" id="log-solved" class="rounded text-indigo-600" checked><label for="log-solved" class="text-sm font-bold text-emerald-700">¿Resuelto?</label></div>
-                                <div class="md:col-span-2 flex justify-end gap-2 mt-2"><button type="button" onclick="toggleForm()" class="px-4 py-2 text-sm text-slate-500">Cancelar</button><button type="button" onclick="saveLog()" class="px-6 py-2 text-sm bg-slate-900 text-white font-bold rounded hover:bg-slate-700">Guardar</button></div>
+                                <div class="md:col-span-2 bg-white p-3 rounded border border-slate-200 grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="text-[10px] uppercase font-bold text-slate-400">Ubicación</label>
+                                        <div id="form-loc" class="font-bold text-sm"></div>
+                                    </div>
+                                    <div>
+                                        <label class="text-[10px] uppercase font-bold text-slate-400">Unidad</label>
+                                        <div id="form-unit" class="font-bold text-sm"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500">Solicita</label>
+                                    <input type="text" id="log-req" class="w-full mt-1 p-2 border rounded text-sm bg-white">
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500">Ejecuta</label>
+                                    <input type="text" id="log-exec" class="w-full mt-1 p-2 border rounded text-sm bg-white">
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500">Tipo</label>
+                                    <select id="log-action" class="w-full mt-1 p-2 border rounded text-sm bg-white">
+                                        <option value="Mantenimiento">Mantenimiento</option>
+                                        <option value="Incidente">Incidente</option>
+                                        <option value="Renovación">Renovación</option>
+                                        <option value="Baja">Baja</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500">Componente</label>
+                                    <input type="text" id="log-what" class="w-full mt-1 p-2 border rounded text-sm bg-white" placeholder="Ej: Disco">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="text-xs font-bold text-slate-500">Descripción</label>
+                                    <textarea id="log-desc" rows="2" class="w-full mt-1 p-2 border rounded text-sm bg-white"></textarea>
+                                </div>
+                                <div class="md:col-span-2 flex items-center gap-2">
+                                    <input type="checkbox" id="log-solved" class="rounded text-indigo-600" checked>
+                                    <label for="log-solved" class="text-sm font-bold text-emerald-700">¿Resuelto?</label>
+                                </div>
+                                <div class="md:col-span-2 flex justify-end gap-2 mt-2">
+                                    <button type="button" onclick="toggleForm()" class="px-4 py-2 text-sm text-slate-500">Cancelar</button>
+                                    <button type="button" onclick="saveLog()" class="px-6 py-2 text-sm bg-slate-900 text-white font-bold rounded hover:bg-slate-700">Guardar</button>
+                                </div>
                             </form>
                         </div>
                         <div id="history-timeline" class="space-y-0"></div>
                     </div>
-                    <div class="lg:col-span-4"><div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm sticky top-0"><h3 class="font-bold text-slate-800 mb-4 pb-2 border-b">Ficha Técnica</h3><div class="space-y-4 text-sm" id="specs-summary"></div></div></div>
+                    <div class="lg:col-span-4">
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm sticky top-0">
+                            <h3 class="font-bold text-slate-800 mb-4 pb-2 border-b">Ficha Técnica</h3>
+                            <div class="space-y-4 text-sm" id="specs-summary"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -89,216 +280,599 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const API_URL = '/api/data';
+    const API_URL = '/api/realtime'; // Cambiado a endpoint de tiempo real
+    const REFRESH_INTERVAL = 3000; // 3 segundos
+    
     let pcDataStore = {};
+    let previousPcDataStore = {};
     let currentPc = null;
     let charts = { latency: null };
+    let updateInterval;
+    let alertCooldown = {}; // Para evitar alertas repetitivas
 
     lucide.createIcons();
 
+    // Sistema de alertas
+    function showAlert(message, type = 'info', duration = 5000) {
+        const alertContainer = document.getElementById('alert-container');
+        if (!alertContainer) return;
+        
+        const alertId = 'alert-' + Date.now();
+        const alert = document.createElement('div');
+        alert.id = alertId;
+        alert.className = `alert alert-${type}`;
+        alert.innerHTML = `
+            <i data-lucide="${getAlertIcon(type)}" class="w-5 h-5 flex-shrink-0"></i>
+            <div class="flex-1 text-sm">${message}</div>
+            <button onclick="document.getElementById('${alertId}').remove()" class="text-white/80 hover:text-white">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        `;
+        
+        alertContainer.appendChild(alert);
+        lucide.createIcons();
+        
+        // Auto-remover después de la duración
+        setTimeout(() => {
+            const alertEl = document.getElementById(alertId);
+            if (alertEl) {
+                alertEl.style.animation = 'fadeOut 0.3s ease';
+                setTimeout(() => alertEl.remove(), 300);
+            }
+        }, duration);
+        
+        return alertId;
+    }
+
+    function getAlertIcon(type) {
+        const icons = {
+            'success': 'check-circle',
+            'warning': 'alert-triangle',
+            'error': 'alert-circle',
+            'info': 'info'
+        };
+        return icons[type] || 'info';
+    }
+
+    // Verificar cambios significativos
+    function checkForSignificantChanges(oldDevice, newDevice) {
+        if (!oldDevice || !newDevice) return null;
+        
+        const changes = [];
+        const deviceName = newDevice.pc_name;
+        
+        // Verificar latencia
+        const oldLatency = oldDevice.latency_ms || oldDevice.latency || 0;
+        const newLatency = newDevice.latency_ms || newDevice.latency || 0;
+        
+        // Cooldown key para evitar alertas repetitivas
+        const cooldownKey = `${deviceName}-latency`;
+        
+        if (oldLatency > 0 && newLatency > 0) {
+            const changePercent = ((newLatency - oldLatency) / oldLatency) * 100;
+            
+            // Latencia mejoró significativamente
+            if (newLatency < oldLatency * 0.7 && oldLatency > 50) {
+                if (!alertCooldown[cooldownKey] || Date.now() - alertCooldown[cooldownKey] > 60000) {
+                    changes.push({
+                        type: 'success',
+                        message: `✅ ${deviceName}: Latencia mejoró ${oldLatency}ms → ${newLatency}ms (-${Math.abs(Math.round(changePercent))}%)`
+                    });
+                    alertCooldown[cooldownKey] = Date.now();
+                }
+            }
+            
+            // Latencia empeoró significativamente
+            if (newLatency > oldLatency * 1.5 && newLatency > 80) {
+                if (!alertCooldown[cooldownKey] || Date.now() - alertCooldown[cooldownKey] > 60000) {
+                    changes.push({
+                        type: 'warning',
+                        message: `⚠️ ${deviceName}: Latencia aumentó ${oldLatency}ms → ${newLatency}ms (+${Math.round(changePercent)}%)`
+                    });
+                    alertCooldown[cooldownKey] = Date.now();
+                }
+            }
+            
+            // Latencia crítica
+            if (newLatency > 200 && oldLatency <= 200) {
+                changes.push({
+                    type: 'error',
+                    message: `🔴 ${deviceName}: Latencia CRÍTICA ${newLatency}ms`
+                });
+            }
+        }
+        
+        // Verificar estado (online/offline)
+        if (oldDevice.status !== newDevice.status) {
+            if (newDevice.status === 'offline') {
+                changes.push({
+                    type: 'error',
+                    message: `🔴 ${deviceName} se desconectó`
+                });
+            } else if (newDevice.status === 'online' && oldDevice.status === 'offline') {
+                changes.push({
+                    type: 'success',
+                    message: `🟢 ${deviceName} se reconectó`
+                });
+            }
+        }
+        
+        // Verificar CPU alta
+        const oldCpu = oldDevice.cpu_load_percent || 0;
+        const newCpu = newDevice.cpu_load_percent || 0;
+        
+        if (newCpu > 90 && oldCpu <= 90) {
+            changes.push({
+                type: 'warning',
+                message: `⚠️ ${deviceName}: CPU alta ${newCpu}%`
+            });
+        }
+        
+        return changes;
+    }
+
     async function updateData() {
         try {
-            const res = await fetch(API_URL);
+            const updateStatus = document.getElementById('update-status');
+            updateStatus.textContent = 'Actualizando...';
+            updateStatus.className = 'text-xs text-amber-500';
+            
+            const timestamp = new Date();
+            document.getElementById('last-update-time').textContent = 
+                timestamp.toLocaleTimeString();
+            
+            const res = await fetch(API_URL + '?t=' + Date.now()); // Cache busting
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            
             const rawData = await res.json();
+            
+            // Guardar datos anteriores para comparar
+            previousPcDataStore = { ...pcDataStore };
+            
+            // Procesar nuevos datos
             const devices = Object.values(rawData);
+            let hasChanges = false;
+            
             devices.forEach(dev => {
-                if(!dev.unit) dev.unit = "General";
-                if(!dev.latency_history) { dev.latency_history = Array(12).fill(0).map(()=>Math.floor(Math.random()*20+10)); }
-                dev.latency_history.push(dev.latency_ms || dev.latency || 0); // Corrección: leer latency_ms
-                if(dev.latency_history.length > 12) dev.latency_history.shift();
-                pcDataStore[dev.pc_name] = dev;
+                const deviceId = dev.pc_name;
+                const oldDevice = previousPcDataStore[deviceId];
+                
+                // Verificar si hay cambios
+                if (!oldDevice || JSON.stringify(dev) !== JSON.stringify(oldDevice)) {
+                    pcDataStore[deviceId] = dev;
+                    hasChanges = true;
+                    
+                    // Verificar cambios significativos para alertas
+                    if (oldDevice) {
+                        const changes = checkForSignificantChanges(oldDevice, dev);
+                        if (changes && changes.length > 0) {
+                            changes.forEach(change => {
+                                showAlert(change.message, change.type);
+                            });
+                        }
+                    }
+                }
             });
-            renderGrid();
-            updateFilters(devices);
-            if(currentPc && pcDataStore[currentPc]) refreshModalData(false);
+            
+            // Actualizar UI solo si hay cambios
+            if (hasChanges) {
+                renderGrid();
+                
+                // Actualizar contador de dispositivos
+                const onlineCount = devices.filter(d => d.status === 'online').length;
+                const totalCount = devices.length;
+                document.getElementById('device-count').textContent = 
+                    `${onlineCount}/${totalCount} dispositivos`;
+                
+                // Si hay un dispositivo abierto en modal, actualizarlo
+                if (currentPc && pcDataStore[currentPc]) {
+                    refreshModalData(false);
+                }
+            }
+            
+            updateStatus.textContent = 'Conectado';
+            updateStatus.className = 'text-xs text-emerald-500';
             document.getElementById('loading-indicator').style.display = 'none';
-        } catch (e) { console.error(e); }
+            
+        } catch (e) {
+            console.error('Error en updateData:', e);
+            document.getElementById('update-status').textContent = 'Error de conexión';
+            document.getElementById('update-status').className = 'text-xs text-rose-500';
+            
+            // Mostrar alerta de error solo cada 30 segundos
+            if (!alertCooldown['connection-error'] || Date.now() - alertCooldown['connection-error'] > 30000) {
+                showAlert('Error conectando al servidor', 'error');
+                alertCooldown['connection-error'] = Date.now();
+            }
+        }
     }
 
     function renderGrid() {
         const container = document.getElementById('pc-cards-container');
         const search = document.getElementById('search-bar').value.toLowerCase();
         const unitFilter = document.getElementById('unit-filter').value;
-        container.innerHTML = '';
+        
+        let html = '';
+        let deviceCount = 0;
+        
         Object.values(pcDataStore).forEach(pc => {
-            if(unitFilter !== 'all' && pc.unit !== unitFilter) return;
-            if(!pc.pc_name.toLowerCase().includes(search) && !(pc.public_ip||'').includes(search)) return;
-            let statusClass = pc.status === 'offline' ? 'status-offline' : (pc.cpu_load_percent > 90 ? 'status-warning' : 'status-online');
+            if (unitFilter !== 'all' && pc.unit !== unitFilter) return;
+            if (!pc.pc_name.toLowerCase().includes(search) && !(pc.public_ip||'').includes(search)) return;
             
+            deviceCount++;
+            
+            let statusClass = 'status-offline';
+            let statusText = 'Offline';
+            
+            if (pc.status === 'online') {
+                if (pc.cpu_load_percent > 90 || (pc.latency_ms > 200)) {
+                    statusClass = 'status-warning';
+                    statusText = 'Crítico';
+                } else if (pc.cpu_load_percent > 80 || (pc.latency_ms > 100)) {
+                    statusClass = 'status-warning';
+                    statusText = 'Alerta';
+                } else {
+                    statusClass = 'status-online';
+                    statusText = 'Online';
+                }
+            }
+            
+            // Generar gráfico de latencia
             let latencyBarHtml = '<div class="latency-grid">';
-            const history = pc.latency_history || [];
-            const recent = history.slice(-12);
-            while(recent.length < 12) recent.push(0);
-            recent.forEach(val => {
+            const history = pc.latency_history || Array(12).fill(0);
+            
+            // Asegurar que siempre tengamos 12 valores
+            const displayHistory = [...history];
+            while (displayHistory.length < 12) displayHistory.push(0);
+            if (displayHistory.length > 12) displayHistory.splice(0, displayHistory.length - 12);
+            
+            displayHistory.forEach((val, index) => {
                 let colorClass = 'bg-slate-100';
-                if(val > 0) colorClass = val > 100 ? 'lb-high' : (val > 50 ? 'lb-med' : 'lb-low');
-                latencyBarHtml += `<div class="latency-block ${colorClass}" title="${val}ms"></div>`;
+                if (val > 0) {
+                    if (val > 100) colorClass = 'lb-high';
+                    else if (val > 50) colorClass = 'lb-med';
+                    else colorClass = 'lb-low';
+                }
+                latencyBarHtml += `<div class="latency-block ${colorClass}" title="${index+1}: ${val}ms"></div>`;
             });
             latencyBarHtml += '</div>';
-
-            const card = document.createElement('div');
-            card.className = 'card cursor-pointer group hover:border-indigo-400';
-            card.onclick = () => openModal(pc.pc_name);
-            card.innerHTML = `<div class="flex justify-between items-start mb-2"><div class="truncate pr-2"><h3 class="font-bold text-slate-800 text-sm truncate group-hover:text-indigo-600">${pc.pc_name}</h3><span class="text-[10px] font-bold text-slate-400 uppercase">${pc.unit}</span></div><div class="status-dot ${statusClass} flex-shrink-0"></div></div><div class="flex justify-between items-end mt-1"><span class="text-2xl font-black text-slate-700">${pc.latency_ms || pc.latency || 0}<span class="text-xs text-slate-400 font-bold ml-1">ms</span></span><span class="text-xs font-bold text-slate-500">CPU: ${Math.round(pc.cpu_load_percent||0)}%</span></div>${latencyBarHtml}`;
-            container.appendChild(card);
+            
+            // Calcular salud
+            const healthScore = pc.health_score || calculateHealthScore(pc);
+            const healthClass = getHealthScoreClass(healthScore);
+            
+            html += `
+                <div class="card cursor-pointer group hover:border-indigo-400" onclick="openModal('${pc.pc_name}')" data-pc="${pc.pc_name}">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="truncate pr-2">
+                            <h3 class="font-bold text-slate-800 text-sm truncate group-hover:text-indigo-600">${pc.pc_name}</h3>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase">${pc.unit}</span>
+                        </div>
+                        <div class="flex flex-col items-end">
+                            <div class="status-dot ${statusClass} flex-shrink-0 mb-1" title="${statusText}"></div>
+                            <span class="text-[10px] font-bold ${healthClass}">${healthScore}%</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-end mt-1">
+                        <span class="text-2xl font-black text-slate-700">
+                            ${pc.latency_ms || 0}<span class="text-xs text-slate-400 font-bold ml-1">ms</span>
+                        </span>
+                        <div class="text-right">
+                            <span class="text-xs font-bold text-slate-500 block">CPU: ${Math.round(pc.cpu_load_percent||0)}%</span>
+                            <span class="text-xs font-bold text-slate-400">RAM: ${Math.round(pc.ram_percent||0)}%</span>
+                        </div>
+                    </div>
+                    ${latencyBarHtml}
+                    <div class="mt-2 text-[10px] text-slate-400 flex justify-between">
+                        <span>${pc.public_ip || 'Sin IP'}</span>
+                        <span>${formatTimeAgo(pc.last_seen)}</span>
+                    </div>
+                </div>
+            `;
         });
+        
+        if (deviceCount === 0) {
+            html = `
+                <div class="col-span-full text-center py-12">
+                    <i data-lucide="search-x" class="w-12 h-12 text-slate-300 mx-auto mb-4"></i>
+                    <p class="text-slate-500">No se encontraron dispositivos</p>
+                    <p class="text-sm text-slate-400 mt-1">Intenta con otros términos de búsqueda</p>
+                </div>
+            `;
+        }
+        
+        container.innerHTML = html;
+        lucide.createIcons();
+    }
+
+    function calculateHealthScore(pc) {
+        let score = 100;
+        
+        if (pc.status === 'offline') return 0;
+        
+        // Penalizaciones
+        if (pc.cpu_load_percent > 90) score -= 30;
+        else if (pc.cpu_load_percent > 80) score -= 20;
+        else if (pc.cpu_load_percent > 70) score -= 10;
+        
+        if (pc.ram_percent > 90) score -= 20;
+        else if (pc.ram_percent > 80) score -= 10;
+        
+        const latency = pc.latency_ms || pc.latency || 0;
+        if (latency > 200) score -= 30;
+        else if (latency > 100) score -= 20;
+        else if (latency > 50) score -= 10;
+        
+        if (pc.packet_loss > 5) score -= 30;
+        else if (pc.packet_loss > 0) score -= 15;
+        
+        return Math.max(0, Math.min(100, Math.round(score)));
+    }
+
+    function getHealthScoreClass(score) {
+        if (score >= 90) return 'text-emerald-600';
+        if (score >= 70) return 'text-blue-600';
+        if (score >= 50) return 'text-amber-600';
+        return 'text-rose-600';
+    }
+
+    function formatTimeAgo(timestamp) {
+        if (!timestamp) return 'Nunca';
+        
+        try {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            
+            if (diffMins < 1) return 'Ahora';
+            if (diffMins < 60) return `Hace ${diffMins}m`;
+            
+            const diffHours = Math.floor(diffMins / 60);
+            if (diffHours < 24) return `Hace ${diffHours}h`;
+            
+            const diffDays = Math.floor(diffHours / 24);
+            return `Hace ${diffDays}d`;
+        } catch {
+            return 'Desconocido';
+        }
     }
 
     window.openModal = (pcName) => {
         currentPc = pcName;
         const modal = document.getElementById('pc-modal-container');
         const overlay = document.getElementById('pc-modal-overlay');
-        overlay.classList.remove('hidden'); overlay.classList.add('flex');
-        setTimeout(() => { modal.classList.remove('opacity-0', 'scale-95'); modal.classList.add('opacity-100', 'scale-100'); }, 10);
+        
+        overlay.classList.remove('hidden');
+        overlay.classList.add('flex');
+        
+        setTimeout(() => {
+            modal.classList.remove('opacity-0', 'scale-95');
+            modal.classList.add('opacity-100', 'scale-100');
+        }, 10);
+        
         switchTab('general');
         refreshModalData(true);
-    }
+    };
 
     window.closeModal = () => {
         const modal = document.getElementById('pc-modal-container');
         const overlay = document.getElementById('pc-modal-overlay');
-        modal.classList.replace('opacity-100', 'opacity-0'); modal.classList.replace('scale-100', 'scale-95');
-        setTimeout(() => { overlay.classList.add('hidden'); overlay.classList.remove('flex'); currentPc = null; }, 300);
-    }
+        
+        modal.classList.replace('opacity-100', 'opacity-0');
+        modal.classList.replace('scale-100', 'scale-95');
+        
+        setTimeout(() => {
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+            currentPc = null;
+        }, 300);
+    };
 
     function refreshModalData(fullUpdate) {
-        if(!currentPc) return;
+        if (!currentPc || !pcDataStore[currentPc]) return;
+        
         const pc = pcDataStore[currentPc];
+        
+        // Actualizar información básica
         document.getElementById('modal-pc-name').textContent = pc.pc_name;
-        document.getElementById('modal-status-line').innerHTML = `<span class="px-2 py-0.5 rounded text-xs font-bold ${pc.status==='online'?'bg-emerald-100 text-emerald-700':'bg-red-100 text-red-700'}">${pc.status ? pc.status.toUpperCase() : 'ONLINE'}</span> <span class="text-slate-400">|</span> <span class="font-mono text-slate-500">${pc.public_ip || '-'}</span>`;
-        document.getElementById('gen-unit').textContent = pc.unit;
+        
+        const statusLine = document.getElementById('modal-status-line');
+        const statusClass = pc.status === 'online' ? 
+            (pc.cpu_load_percent > 90 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700') : 
+            'bg-red-100 text-red-700';
+        
+        statusLine.innerHTML = `
+            <span class="px-2 py-0.5 rounded text-xs font-bold ${statusClass}">
+                ${pc.status ? pc.status.toUpperCase() : 'ONLINE'}
+            </span>
+            <span class="text-slate-400">|</span>
+            <span class="font-mono text-slate-500">${pc.public_ip || '-'}</span>
+            <span class="text-slate-400">|</span>
+            <span class="text-slate-500 text-xs">${formatTimeAgo(pc.last_seen)}</span>
+        `;
+        
+        // Actualizar pestaña General
+        document.getElementById('gen-unit').textContent = pc.unit || 'General';
         document.getElementById('gen-ip').textContent = pc.public_ip || '-';
-        document.getElementById('gen-seen').textContent = new Date().toLocaleTimeString();
+        document.getElementById('gen-seen').textContent = new Date(pc.last_seen || Date.now()).toLocaleString();
+        
         document.getElementById('gen-cpu-val').textContent = Math.round(pc.cpu_load_percent||0)+'%';
         document.getElementById('gen-cpu-bar').style.width = (pc.cpu_load_percent||0)+'%';
+        
         document.getElementById('gen-ram-val').textContent = Math.round(pc.ram_percent||0)+'%';
         document.getElementById('gen-ram-bar').style.width = (pc.ram_percent||0)+'%';
         
-        const health = calculateHealth(pc);
-        document.getElementById('health-score-val').textContent = health.score + '%';
-        document.getElementById('health-icon-container').innerHTML = `<i data-lucide="${health.icon}" class="w-8 h-8 ${health.color}"></i>`;
+        document.getElementById('gen-disk-val').textContent = Math.round(pc.disk_percent||0)+'%';
+        document.getElementById('gen-disk-bar').style.width = (pc.disk_percent||0)+'%';
         
-        if(fullUpdate) {
-            updateLatencyChart(pc.latency_history);
+        // Actualizar score de salud
+        const healthScore = pc.health_score || calculateHealthScore(pc);
+        const healthClass = getHealthScoreClass(healthScore);
+        document.getElementById('health-score-val').textContent = healthScore + '%';
+        document.getElementById('health-score-val').className = `text-4xl font-black ${healthClass}`;
+        
+        // Actualizar icono de salud
+        let healthIcon = 'check-circle';
+        if (healthScore < 50) healthIcon = 'alert-octagon';
+        else if (healthScore < 70) healthIcon = 'alert-triangle';
+        else if (healthScore < 90) healthIcon = 'activity';
+        
+        document.getElementById('health-icon-container').innerHTML = 
+            `<i data-lucide="${healthIcon}" class="w-8 h-8 ${healthClass}"></i>`;
+        
+        // Indicadores de salud
+        const indicators = [];
+        if (pc.cpu_load_percent > 80) indicators.push('CPU alta');
+        if (pc.ram_percent > 80) indicators.push('RAM alta');
+        if ((pc.latency_ms || 0) > 100) indicators.push('Latencia alta');
+        if (pc.packet_loss > 0) indicators.push('Pérdida de paquetes');
+        
+        document.getElementById('health-indicators').textContent = 
+            indicators.length > 0 ? indicators.join(' • ') : 'Todos los sistemas OK';
+        
+        if (fullUpdate) {
+            // Actualizar gráfico de latencia
+            updateLatencyChart(pc.latency_history || Array(12).fill(0));
+            
+            // Actualizar hardware
             updateHardwareGrid(pc);
+            
+            // Actualizar historial
             updateHistoryTab(pc);
         }
+        
         lucide.createIcons();
+    }
+
+    function updateLatencyChart(data) {
+        const ctx = document.getElementById('latency-chart');
+        if (!ctx) return;
+        
+        const chartData = Array.isArray(data) ? data : Array(12).fill(0);
+        
+        if (charts.latency) {
+            charts.latency.data.datasets[0].data = chartData;
+            charts.latency.update();
+        } else {
+            charts.latency = new Chart(ctx.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: Array(chartData.length).fill(''),
+                    datasets: [{
+                        data: chartData,
+                        borderColor: '#6366f1',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#6366f1',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 1,
+                        fill: true,
+                        backgroundColor: 'rgba(99,102,241,0.1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: false },
+                    scales: {
+                        x: { display: false },
+                        y: {
+                            display: true,
+                            grid: { borderDash: [4, 4] },
+                            min: 0,
+                            suggestedMax: Math.max(...chartData) * 1.5 || 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + 'ms';
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            });
+        }
     }
 
     function updateHardwareGrid(pc) {
         const grid = document.getElementById('hardware-full-grid');
         grid.innerHTML = '';
-        if(pc.extended_sensors) {
-            for(const [cat, sensors] of Object.entries(pc.extended_sensors)) {
+        
+        if (pc.extended_sensors && Object.keys(pc.extended_sensors).length > 0) {
+            for (const [cat, sensors] of Object.entries(pc.extended_sensors)) {
                 sensors.forEach(s => {
-                    grid.innerHTML += `<div class="bg-white p-3 rounded border border-slate-100 shadow-sm text-xs"><span class="block text-slate-400 uppercase font-bold text-[10px]">${cat}</span><span class="block text-slate-600 truncate">${s.nombre||s.tipo}</span><span class="block text-lg font-mono font-bold text-slate-800">${s.valor}</span></div>`;
+                    grid.innerHTML += `
+                        <div class="bg-white p-3 rounded border border-slate-100 shadow-sm text-xs">
+                            <span class="block text-slate-400 uppercase font-bold text-[10px]">${cat}</span>
+                            <span class="block text-slate-600 truncate">${s.nombre||s.tipo||'Sensor'}</span>
+                            <span class="block text-lg font-mono font-bold text-slate-800">${s.valor} ${s.unidad||''}</span>
+                        </div>
+                    `;
                 });
             }
-        } else { grid.innerHTML = '<div class="col-span-full text-center text-slate-400 py-4">Sin datos extendidos</div>'; }
-    }
-
-    function calculateHealth(pc) {
-        let score = 100;
-        if(pc.status==='offline') score = 0;
-        else { if(pc.cpu_load_percent > 80) score -= 20; if(pc.disk_percent > 90) score -= 15; }
-        let color = 'text-emerald-500', icon = 'check-circle';
-        if(score < 80) { color='text-amber-500'; icon='alert-triangle'; }
-        if(score < 50) { color='text-rose-500'; icon='alert-octagon'; }
-        return {score, color, icon};
-    }
-
-    // --- CARGA DE HISTORIAL (READ) ---
-    async function updateHistoryTab(pc) {
-        document.getElementById('form-loc').textContent = pc.pc_name;
-        document.getElementById('form-unit').textContent = pc.unit;
+        } else {
+            grid.innerHTML = `
+                <div class="col-span-full text-center py-8">
+                    <i data-lucide="cpu" class="w-8 h-8 text-slate-300 mx-auto mb-2"></i>
+                    <p class="text-slate-400">Sin datos de sensores</p>
+                    <p class="text-xs text-slate-300 mt-1">Los sensores se mostrarán cuando estén disponibles</p>
+                </div>
+            `;
+        }
         
-        const timeline = document.getElementById('history-timeline');
-        timeline.innerHTML = '<div class="text-center text-xs text-slate-400">Cargando bitácora Supabase...</div>';
+        lucide.createIcons();
+    }
+
+    // Funciones de pestañas (mantener igual)
+    window.switchTab = (id) => {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+        document.getElementById('tab-' + id).classList.remove('hidden');
+        document.querySelector(`[data-tab="${id}"]`).classList.add('active');
+    };
+
+    function updateFilters(devices) {
+        const select = document.getElementById('unit-filter');
+        if (select.options.length > 1) return;
         
-        try {
-            const res = await fetch('/api/history/all');
-            const allLogs = await res.json();
-            
-            // Filtro local simple
-            const logs = allLogs.filter(l => l.pc_name === pc.pc_name);
-            
-            timeline.innerHTML = '';
-            if(logs.length === 0) timeline.innerHTML = '<div class="text-center py-4 text-slate-400 italic">Sin registros</div>';
-            
-            logs.forEach(log => {
-                const dateObj = new Date(log.timestamp);
-                const timeAgo = Math.floor((new Date() - dateObj) / (1000 * 60 * 60 * 24));
-                timeline.innerHTML += `<div class="timeline-item"><div class="timeline-dot"></div><div class="text-xs text-slate-400 mb-1">${dateObj.toLocaleDateString()} (Hace ${timeAgo} días)</div><div class="font-bold text-slate-800 text-sm">${log.action} - ${log.what}</div><p class="text-xs text-slate-600 bg-slate-50 p-2 rounded mt-1 border border-slate-100">${log.desc || log.description || ''}</p><div class="flex gap-4 text-[10px] text-slate-400 mt-2"><span>Sol: <b>${log.req || 'N/A'}</b></span><span>Ejec: <b>${log.exec || 'N/A'}</b></span>${String(log.solved)==='true'?'<span class="text-emerald-600 font-bold ml-auto">Resuelto</span>':''}</div></div>`;
-            });
-        } catch(e) { console.error(e); timeline.innerHTML = '<div class="text-center text-red-400 text-xs">Error cargando historial</div>'; }
-    }
-
-    window.toggleForm = () => document.getElementById('log-form-container').classList.toggle('hidden');
-
-    // --- GUARDADO DE LOGS (WRITE) - CORREGIDO PARA SUPABASE ---
-    window.saveLog = async () => {
-        if(!currentPc) return;
-        const pc = pcDataStore[currentPc];
+        const units = [...new Set(devices.map(d => d.unit || 'General'))];
+        units.sort();
         
-        const reqVal = document.getElementById('log-req').value || "Sistema";
-        const execVal = document.getElementById('log-exec').value || "Admin";
-        const actionVal = document.getElementById('log-action').value;
-        const whatVal = document.getElementById('log-what').value || "General";
-        const descVal = document.getElementById('log-desc').value || "Sin descripción";
-        const isSolved = document.getElementById('log-solved').checked;
-
-        if(!whatVal || !descVal) return alert("Complete campos obligatorios");
-
-        // Objeto simple para Supabase
-        const newLog = {
-            pc_name: pc.pc_name,
-            req: reqVal,
-            exec: execVal,
-            action: actionVal,
-            what: whatVal,
-            desc: descVal,
-            solved: isSolved ? "true" : "false"
-        };
-
-        const saveBtn = document.querySelector('#new-log-form button[onclick="saveLog()"]');
-        const originalText = saveBtn.textContent;
-        saveBtn.disabled = true; saveBtn.textContent = "Guardando...";
-
-        try {
-            const res = await fetch('/api/history/add', { 
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify(newLog) 
-            });
-            
-            if(!res.ok) throw new Error("Error servidor");
-            const json = await res.json();
-            
-            if(json.status === 'success') {
-                alert("✅ Guardado en Supabase");
-                updateHistoryTab(pc);
-                toggleForm();
-                document.getElementById('new-log-form').reset();
-            } else {
-                alert("⚠️ Error: " + (json.message || 'Desconocido'));
-            }
-        } catch(e) { alert("❌ Error de red"); }
-        finally { saveBtn.disabled = false; saveBtn.textContent = originalText; }
+        units.forEach(u => {
+            select.appendChild(new Option(u, u));
+        });
     }
 
-    function updateLatencyChart(data) {
-        if (charts.latency) charts.latency.destroy();
-        const ctx = document.getElementById('latency-chart').getContext('2d');
-        charts.latency = new Chart(ctx, { type: 'line', data: { labels: Array(data.length).fill(''), datasets: [{ data: data, borderColor: '#6366f1', borderWidth: 2, tension: 0.4, pointRadius: 0, fill: true, backgroundColor: 'rgba(99,102,241,0.1)' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: {legend:false}, scales: {x:{display:false}, y:{display:true, grid:{borderDash:[4,4]}}} } });
-    }
+    window.forceRefresh = () => {
+        clearInterval(updateInterval);
+        updateData();
+        updateInterval = setInterval(updateData, REFRESH_INTERVAL);
+        showAlert('Actualización forzada realizada', 'info', 3000);
+    };
 
-    window.switchTab = (id) => { document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden')); document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active')); document.getElementById('tab-' + id).classList.remove('hidden'); document.querySelector(`[data-tab="${id}"]`).classList.add('active'); }
-    function updateFilters(devices) { const select = document.getElementById('unit-filter'); if(select.options.length > 1) return; [...new Set(devices.map(d => d.unit))].forEach(u => select.appendChild(new Option(u, u))); }
-    document.getElementById('modal-tabs').onclick = (e) => { if(e.target.closest('.modal-tab')) switchTab(e.target.closest('.modal-tab').dataset.tab); };
+    // Event Listeners
+    document.getElementById('modal-tabs').onclick = (e) => {
+        if (e.target.closest('.modal-tab')) {
+            switchTab(e.target.closest('.modal-tab').dataset.tab);
+        }
+    };
+    
     document.getElementById('search-bar').oninput = renderGrid;
     document.getElementById('unit-filter').onchange = renderGrid;
-    setInterval(updateData, 3000); updateData();
+
+    // Inicialización
+    updateData();
+    updateInterval = setInterval(updateData, REFRESH_INTERVAL);
+    
+    // Actualizar filtros después de cargar datos
+    setTimeout(() => {
+        updateFilters(Object.values(pcDataStore));
+    }, 1000);
 });
 </script>
 {% endblock %}
