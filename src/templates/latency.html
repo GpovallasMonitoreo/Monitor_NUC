@@ -90,7 +90,6 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const API_URL = '/api/data';
-    const OFFLINE_THRESHOLD_MS = 60000; // 60 segundos para declarar Offline
     let pcDataStore = {};
     let currentPc = null;
     let charts = { latency: null };
@@ -102,33 +101,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(API_URL);
             const rawData = await res.json();
             const devices = Object.values(rawData);
-            
             devices.forEach(dev => {
-                const pcName = dev.pc_name;
                 if(!dev.unit) dev.unit = "General";
-                
-                // Mantenemos el historial previo si existe para que la gráfica no se reinicie
-                let history = pcDataStore[pcName] ? pcDataStore[pcName].latency_history : Array(12).fill(0);
-                
-                // Validamos si la PC realmente envió datos nuevos comparando el timestamp
-                const lastSeen = new Date(dev.timestamp || new Date());
-                const isActuallyOffline = (new Date() - lastSeen) > OFFLINE_THRESHOLD_MS;
-                
-                // Si está offline, empujamos 0 a la latencia actual
-                const currentLat = isActuallyOffline ? 0 : (dev.latency_ms || dev.latency || 0);
-                
-                history.push(currentLat);
-                if(history.length > 12) history.shift();
-                
-                dev.latency_history = history;
-                pcDataStore[pcName] = dev;
+                if(!dev.latency_history) { dev.latency_history = Array(12).fill(0).map(()=>Math.floor(Math.random()*20+10)); }
+                dev.latency_history.push(dev.latency_ms || dev.latency || 0); // Corrección: leer latency_ms
+                if(dev.latency_history.length > 12) dev.latency_history.shift();
+                pcDataStore[dev.pc_name] = dev;
             });
-
             renderGrid();
             updateFilters(devices);
             if(currentPc && pcDataStore[currentPc]) refreshModalData(false);
             document.getElementById('loading-indicator').style.display = 'none';
-        } catch (e) { console.error("Error cargando datos:", e); }
+        } catch (e) { console.error(e); }
     }
 
     function renderGrid() {
@@ -136,24 +120,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const search = document.getElementById('search-bar').value.toLowerCase();
         const unitFilter = document.getElementById('unit-filter').value;
         container.innerHTML = '';
-
         Object.values(pcDataStore).forEach(pc => {
             if(unitFilter !== 'all' && pc.unit !== unitFilter) return;
             if(!pc.pc_name.toLowerCase().includes(search) && !(pc.public_ip||'').includes(search)) return;
-
-            // --- LÓGICA DE ESTADO EN TIEMPO REAL ---
-            const lastSeen = new Date(pc.timestamp || new Date());
-            const now = new Date();
-            const isOffline = (now - lastSeen) > OFFLINE_THRESHOLD_MS;
-            
-            let displayStatus = isOffline ? 'offline' : (pc.status || 'online');
-            let displayLatency = isOffline ? 0 : (pc.latency_ms || pc.latency || 0);
-
-            let statusClass = displayStatus === 'offline' ? 'status-offline' : (pc.cpu_load_percent > 90 ? 'status-warning' : 'status-online');
+            let statusClass = pc.status === 'offline' ? 'status-offline' : (pc.cpu_load_percent > 90 ? 'status-warning' : 'status-online');
             
             let latencyBarHtml = '<div class="latency-grid">';
             const history = pc.latency_history || [];
-            history.forEach(val => {
+            const recent = history.slice(-12);
+            while(recent.length < 12) recent.push(0);
+            recent.forEach(val => {
                 let colorClass = 'bg-slate-100';
                 if(val > 0) colorClass = val > 100 ? 'lb-high' : (val > 50 ? 'lb-med' : 'lb-low');
                 latencyBarHtml += `<div class="latency-block ${colorClass}" title="${val}ms"></div>`;
@@ -163,19 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = document.createElement('div');
             card.className = 'card cursor-pointer group hover:border-indigo-400';
             card.onclick = () => openModal(pc.pc_name);
-            card.innerHTML = `
-                <div class="flex justify-between items-start mb-2">
-                    <div class="truncate pr-2">
-                        <h3 class="font-bold text-slate-800 text-sm truncate group-hover:text-indigo-600">${pc.pc_name}</h3>
-                        <span class="text-[10px] font-bold text-slate-400 uppercase">${pc.unit}</span>
-                    </div>
-                    <div class="status-dot ${statusClass} flex-shrink-0"></div>
-                </div>
-                <div class="flex justify-between items-end mt-1">
-                    <span class="text-2xl font-black text-slate-700">${displayLatency}<span class="text-xs text-slate-400 font-bold ml-1">ms</span></span>
-                    <span class="text-xs font-bold text-slate-500">CPU: ${Math.round(pc.cpu_load_percent||0)}%</span>
-                </div>
-                ${latencyBarHtml}`;
+            card.innerHTML = `<div class="flex justify-between items-start mb-2"><div class="truncate pr-2"><h3 class="font-bold text-slate-800 text-sm truncate group-hover:text-indigo-600">${pc.pc_name}</h3><span class="text-[10px] font-bold text-slate-400 uppercase">${pc.unit}</span></div><div class="status-dot ${statusClass} flex-shrink-0"></div></div><div class="flex justify-between items-end mt-1"><span class="text-2xl font-black text-slate-700">${pc.latency_ms || pc.latency || 0}<span class="text-xs text-slate-400 font-bold ml-1">ms</span></span><span class="text-xs font-bold text-slate-500">CPU: ${Math.round(pc.cpu_load_percent||0)}%</span></div>${latencyBarHtml}`;
             container.appendChild(card);
         });
     }
@@ -200,20 +164,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function refreshModalData(fullUpdate) {
         if(!currentPc) return;
         const pc = pcDataStore[currentPc];
-        const lastSeen = new Date(pc.timestamp || new Date());
-        const isOffline = (new Date() - lastSeen) > OFFLINE_THRESHOLD_MS;
-
         document.getElementById('modal-pc-name').textContent = pc.pc_name;
-        document.getElementById('modal-status-line').innerHTML = `<span class="px-2 py-0.5 rounded text-xs font-bold ${!isOffline ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">${isOffline ? 'OFFLINE' : 'ONLINE'}</span> <span class="text-slate-400">|</span> <span class="font-mono text-slate-500">${pc.public_ip || '-'}</span>`;
+        document.getElementById('modal-status-line').innerHTML = `<span class="px-2 py-0.5 rounded text-xs font-bold ${pc.status==='online'?'bg-emerald-100 text-emerald-700':'bg-red-100 text-red-700'}">${pc.status ? pc.status.toUpperCase() : 'ONLINE'}</span> <span class="text-slate-400">|</span> <span class="font-mono text-slate-500">${pc.public_ip || '-'}</span>`;
         document.getElementById('gen-unit').textContent = pc.unit;
         document.getElementById('gen-ip').textContent = pc.public_ip || '-';
-        document.getElementById('gen-seen').textContent = lastSeen.toLocaleTimeString();
+        document.getElementById('gen-seen').textContent = new Date().toLocaleTimeString();
         document.getElementById('gen-cpu-val').textContent = Math.round(pc.cpu_load_percent||0)+'%';
         document.getElementById('gen-cpu-bar').style.width = (pc.cpu_load_percent||0)+'%';
         document.getElementById('gen-ram-val').textContent = Math.round(pc.ram_percent||0)+'%';
         document.getElementById('gen-ram-bar').style.width = (pc.ram_percent||0)+'%';
         
-        const health = calculateHealth(pc, isOffline);
+        const health = calculateHealth(pc);
         document.getElementById('health-score-val').textContent = health.score + '%';
         document.getElementById('health-icon-container').innerHTML = `<i data-lucide="${health.icon}" class="w-8 h-8 ${health.color}"></i>`;
         
@@ -237,59 +198,93 @@ document.addEventListener('DOMContentLoaded', () => {
         } else { grid.innerHTML = '<div class="col-span-full text-center text-slate-400 py-4">Sin datos extendidos</div>'; }
     }
 
-    function calculateHealth(pc, isOffline) {
-        if(isOffline) return {score: 0, color: 'text-rose-500', icon: 'alert-octagon'};
+    function calculateHealth(pc) {
         let score = 100;
-        if(pc.cpu_load_percent > 80) score -= 20;
-        if(pc.ram_percent > 90) score -= 15;
+        if(pc.status==='offline') score = 0;
+        else { if(pc.cpu_load_percent > 80) score -= 20; if(pc.disk_percent > 90) score -= 15; }
         let color = 'text-emerald-500', icon = 'check-circle';
         if(score < 80) { color='text-amber-500'; icon='alert-triangle'; }
         if(score < 50) { color='text-rose-500'; icon='alert-octagon'; }
         return {score, color, icon};
     }
 
+    // --- CARGA DE HISTORIAL (READ) ---
     async function updateHistoryTab(pc) {
         document.getElementById('form-loc').textContent = pc.pc_name;
         document.getElementById('form-unit').textContent = pc.unit;
+        
         const timeline = document.getElementById('history-timeline');
-        timeline.innerHTML = '<div class="text-center text-xs text-slate-400">Cargando bitácora...</div>';
+        timeline.innerHTML = '<div class="text-center text-xs text-slate-400">Cargando bitácora Supabase...</div>';
+        
         try {
             const res = await fetch('/api/history/all');
             const allLogs = await res.json();
+            
+            // Filtro local simple
             const logs = allLogs.filter(l => l.pc_name === pc.pc_name);
+            
             timeline.innerHTML = '';
             if(logs.length === 0) timeline.innerHTML = '<div class="text-center py-4 text-slate-400 italic">Sin registros</div>';
+            
             logs.forEach(log => {
                 const dateObj = new Date(log.timestamp);
                 const timeAgo = Math.floor((new Date() - dateObj) / (1000 * 60 * 60 * 24));
                 timeline.innerHTML += `<div class="timeline-item"><div class="timeline-dot"></div><div class="text-xs text-slate-400 mb-1">${dateObj.toLocaleDateString()} (Hace ${timeAgo} días)</div><div class="font-bold text-slate-800 text-sm">${log.action} - ${log.what}</div><p class="text-xs text-slate-600 bg-slate-50 p-2 rounded mt-1 border border-slate-100">${log.desc || log.description || ''}</p><div class="flex gap-4 text-[10px] text-slate-400 mt-2"><span>Sol: <b>${log.req || 'N/A'}</b></span><span>Ejec: <b>${log.exec || 'N/A'}</b></span>${String(log.solved)==='true'?'<span class="text-emerald-600 font-bold ml-auto">Resuelto</span>':''}</div></div>`;
             });
-        } catch(e) { timeline.innerHTML = '<div class="text-center text-red-400 text-xs">Error historial</div>'; }
+        } catch(e) { console.error(e); timeline.innerHTML = '<div class="text-center text-red-400 text-xs">Error cargando historial</div>'; }
     }
 
     window.toggleForm = () => document.getElementById('log-form-container').classList.toggle('hidden');
 
+    // --- GUARDADO DE LOGS (WRITE) - CORREGIDO PARA SUPABASE ---
     window.saveLog = async () => {
         if(!currentPc) return;
         const pc = pcDataStore[currentPc];
+        
+        const reqVal = document.getElementById('log-req').value || "Sistema";
+        const execVal = document.getElementById('log-exec').value || "Admin";
+        const actionVal = document.getElementById('log-action').value;
+        const whatVal = document.getElementById('log-what').value || "General";
+        const descVal = document.getElementById('log-desc').value || "Sin descripción";
+        const isSolved = document.getElementById('log-solved').checked;
+
+        if(!whatVal || !descVal) return alert("Complete campos obligatorios");
+
+        // Objeto simple para Supabase
         const newLog = {
             pc_name: pc.pc_name,
-            req: document.getElementById('log-req').value || "Sistema",
-            exec: document.getElementById('log-exec').value || "Admin",
-            action: document.getElementById('log-action').value,
-            what: document.getElementById('log-what').value || "General",
-            desc: document.getElementById('log-desc').value || "Sin descripción",
-            solved: document.getElementById('log-solved').checked ? "true" : "false"
+            req: reqVal,
+            exec: execVal,
+            action: actionVal,
+            what: whatVal,
+            desc: descVal,
+            solved: isSolved ? "true" : "false"
         };
+
+        const saveBtn = document.querySelector('#new-log-form button[onclick="saveLog()"]');
+        const originalText = saveBtn.textContent;
+        saveBtn.disabled = true; saveBtn.textContent = "Guardando...";
+
         try {
-            const res = await fetch('/api/history/add', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(newLog) });
+            const res = await fetch('/api/history/add', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify(newLog) 
+            });
+            
+            if(!res.ok) throw new Error("Error servidor");
             const json = await res.json();
+            
             if(json.status === 'success') {
+                alert("✅ Guardado en Supabase");
                 updateHistoryTab(pc);
                 toggleForm();
                 document.getElementById('new-log-form').reset();
+            } else {
+                alert("⚠️ Error: " + (json.message || 'Desconocido'));
             }
-        } catch(e) { alert("Error al guardar"); }
+        } catch(e) { alert("❌ Error de red"); }
+        finally { saveBtn.disabled = false; saveBtn.textContent = originalText; }
     }
 
     function updateLatencyChart(data) {
@@ -303,8 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('modal-tabs').onclick = (e) => { if(e.target.closest('.modal-tab')) switchTab(e.target.closest('.modal-tab').dataset.tab); };
     document.getElementById('search-bar').oninput = renderGrid;
     document.getElementById('unit-filter').onchange = renderGrid;
-    setInterval(updateData, 5000); 
-    updateData();
+    setInterval(updateData, 3000); updateData();
 });
 </script>
 {% endblock %}
