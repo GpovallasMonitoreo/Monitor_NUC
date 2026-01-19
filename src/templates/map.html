@@ -8,80 +8,347 @@
 
 <style>
     /* --- ESTILOS NUCLEO MANTENIDOS --- */
-    #app-container { position: relative; height: calc(100vh - 5rem); width: 100%; overflow: hidden; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; }
-    #map { height: 100%; width: 100%; z-index: 1; background: #e2e8f0; }
-    #sidebar { position: absolute; top: 0; bottom: 0; right: 0; width: 350px; background: #ffffff; box-shadow: -2px 0 10px rgba(0,0,0,0.1); z-index: 2000; display: flex; flex-direction: column; transition: transform 0.3s ease; border-left: 1px solid #e2e8f0; }
-    #sidebar.collapsed { transform: translateX(100%); }
-    #sidebar-toggle { position: absolute; top: 20px; right: 365px; z-index: 2001; background: #334155; color: white; border: none; width: 40px; height: 40px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; }
-    #sidebar.collapsed + #sidebar-toggle { right: 20px; }
+    #app-container { 
+        position: relative; 
+        height: calc(100vh - 5rem); 
+        width: 100%; 
+        overflow: hidden; 
+        background: #f1f5f9; 
+        border: 1px solid #cbd5e1; 
+        border-radius: 6px; 
+    }
+    #map { 
+        height: 100%; 
+        width: 100%; 
+        z-index: 1; 
+        background: #e2e8f0; 
+    }
+    #sidebar { 
+        position: absolute; 
+        top: 0; 
+        bottom: 0; 
+        right: 0; 
+        width: 350px; 
+        background: #ffffff; 
+        box-shadow: -2px 0 10px rgba(0,0,0,0.1); 
+        z-index: 2000; 
+        display: flex; 
+        flex-direction: column; 
+        transition: transform 0.3s ease; 
+        border-left: 1px solid #e2e8f0; 
+    }
+    #sidebar.collapsed { 
+        transform: translateX(100%); 
+    }
+    #sidebar-toggle { 
+        position: absolute; 
+        top: 20px; 
+        right: 365px; 
+        z-index: 2001; 
+        background: #334155; 
+        color: white; 
+        border: none; 
+        width: 40px; 
+        height: 40px; 
+        border-radius: 6px; 
+        cursor: pointer; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        transition: all 0.3s ease; 
+    }
+    #sidebar.collapsed + #sidebar-toggle { 
+        right: 20px; 
+    }
     
-    .sidebar-header { padding: 18px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
-    .sidebar-content { flex: 1; overflow-y: auto; padding: 15px; }
+    .sidebar-header { 
+        padding: 18px 20px; 
+        background: #f8fafc; 
+        border-bottom: 1px solid #e2e8f0; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+    }
+    .sidebar-content { 
+        flex: 1; 
+        overflow-y: auto; 
+        padding: 15px; 
+    }
     
     /* KPI CARDS */
-    .kpi-dashboard { position: absolute; top: 15px; left: 15px; z-index: 1000; display: flex; gap: 10px; }
-    .kpi-card { background: white; padding: 10px 15px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; min-width: 120px; }
-    .kpi-value { font-size: 1.25rem; font-weight: 800; display: block; }
+    .kpi-dashboard { 
+        position: absolute; 
+        top: 15px; 
+        left: 15px; 
+        z-index: 1000; 
+        display: flex; 
+        gap: 10px; 
+    }
+    .kpi-card { 
+        background: white; 
+        padding: 10px 15px; 
+        border-radius: 8px; 
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); 
+        border: 1px solid #e2e8f0; 
+        min-width: 120px; 
+    }
+    .kpi-value { 
+        font-size: 1.25rem; 
+        font-weight: 800; 
+        display: block; 
+    }
     
     /* MARKERS */
-    .nuc-marker { display: flex; justify-content: center; align-items: center; background: white; border-radius: 6px; border: 2px solid #64748b; width: 28px; height: 28px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-    .nuc-online { border-color: #10b981; color: #10b981; background: #f0fdf4; }
-    .nuc-offline { border-color: #ef4444; color: #ef4444; background: #fef2f2; }
-    .nuc-critical { border-color: #f59e0b; color: #f59e0b; animation: pulse 1.5s infinite; }
+    .nuc-marker { 
+        display: flex; 
+        justify-content: center; 
+        align-items: center; 
+        background: white; 
+        border-radius: 6px; 
+        border: 2px solid #64748b; 
+        width: 28px; 
+        height: 28px; 
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+    }
+    .nuc-online { 
+        border-color: #10b981; 
+        color: #10b981; 
+        background: #f0fdf4; 
+    }
+    .nuc-offline { 
+        border-color: #ef4444; 
+        color: #ef4444; 
+        background: #fef2f2; 
+    }
+    .nuc-critical { 
+        border-color: #f59e0b; 
+        color: #f59e0b; 
+        animation: pulse 1.5s infinite; 
+    }
     
-    @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); } 70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); } 100% { transform: scale(1); } }
+    @keyframes pulse { 
+        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); } 
+        70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); } 
+        100% { transform: scale(1); } 
+    }
     
-    .control-card { background: white; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
-    .card-header { padding: 12px 15px; background: #f8fafc; font-weight: 700; font-size: 0.8rem; cursor: pointer; display: flex; justify-content: space-between; }
-    .layer-toggle { padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; font-size: 0.75rem; }
+    .control-card { 
+        background: white; 
+        border: 1px solid #e2e8f0; 
+        border-radius: 8px; 
+        margin-bottom: 10px; 
+        overflow: hidden; 
+    }
+    .card-header { 
+        padding: 12px 15px; 
+        background: #f8fafc; 
+        font-weight: 700; 
+        font-size: 0.8rem; 
+        cursor: pointer; 
+        display: flex; 
+        justify-content: space-between; 
+    }
+    .layer-toggle { 
+        padding: 8px 15px; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        border-top: 1px solid #f1f5f9; 
+        font-size: 0.75rem; 
+    }
     
     /* SWITCH STYLES */
-    .switch { position: relative; width: 30px; height: 16px; }
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #cbd5e1; transition: .2s; border-radius: 20px; }
-    .slider:before { position: absolute; content: ""; height: 12px; width: 12px; left: 2px; bottom: 2px; background: white; transition: .2s; border-radius: 50%; }
-    input:checked + .slider { background: #4f46e5; }
-    input:checked + .slider:before { transform: translateX(14px); }
+    .switch { 
+        position: relative; 
+        width: 30px; 
+        height: 16px; 
+    }
+    .switch input { 
+        opacity: 0; 
+        width: 0; 
+        height: 0; 
+    }
+    .slider { 
+        position: absolute; 
+        cursor: pointer; 
+        top: 0; 
+        left: 0; 
+        right: 0; 
+        bottom: 0; 
+        background: #cbd5e1; 
+        transition: .2s; 
+        border-radius: 20px; 
+    }
+    .slider:before { 
+        position: absolute; 
+        content: ""; 
+        height: 12px; 
+        width: 12px; 
+        left: 2px; 
+        bottom: 2px; 
+        background: white; 
+        transition: .2s; 
+        border-radius: 50%; 
+    }
+    input:checked + .slider { 
+        background: #4f46e5; 
+    }
+    input:checked + .slider:before { 
+        transform: translateX(14px); 
+    }
 
     /* MODAL */
-    #incident-modal { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); z-index: 3000; display: none; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
-    .modal-box { background: white; padding: 24px; border-radius: 16px; width: 400px; }
+    #incident-modal { 
+        position: fixed; 
+        inset: 0; 
+        background: rgba(15, 23, 42, 0.7); 
+        z-index: 3000; 
+        display: none; 
+        justify-content: center; 
+        align-items: center; 
+        backdrop-filter: blur(4px); 
+    }
+    .modal-box { 
+        background: white; 
+        padding: 24px; 
+        border-radius: 16px; 
+        width: 400px; 
+    }
+
+    /* NUEVOS ESTILOS PARA FILTROS DE CALOR */
+    .layer-info { 
+        display: flex; 
+        align-items: center; 
+        gap: 10px; 
+    }
+    .color-dot { 
+        width: 10px; 
+        height: 10px; 
+        border-radius: 50%; 
+        display: inline-block; 
+    }
 </style>
 
 <div id="app-container">
     <div class="kpi-dashboard">
-        <div class="kpi-card"><span class="text-[10px] font-bold text-slate-400 uppercase">En Línea</span><span class="kpi-value text-emerald-600" id="kpi-online">0</span></div>
-        <div class="kpi-card"><span class="text-[10px] font-bold text-slate-400 uppercase">Alertas</span><span class="kpi-value text-rose-600" id="kpi-issues">0</span></div>
-        <div class="kpi-card"><span class="text-[10px] font-bold text-slate-400 uppercase">Zonas Afectadas</span><span class="kpi-value text-amber-500" id="kpi-zones">0</span></div>
+        <div class="kpi-card">
+            <span class="text-[10px] font-bold text-slate-400 uppercase">En Línea</span>
+            <span class="kpi-value text-emerald-600" id="kpi-online">0</span>
+        </div>
+        <div class="kpi-card">
+            <span class="text-[10px] font-bold text-slate-400 uppercase">Alertas</span>
+            <span class="kpi-value text-rose-600" id="kpi-issues">0</span>
+        </div>
+        <div class="kpi-card">
+            <span class="text-[10px] font-bold text-slate-400 uppercase">Zonas Afectadas</span>
+            <span class="kpi-value text-amber-500" id="kpi-zones">0</span>
+        </div>
+        <div class="kpi-card">
+            <span class="text-[10px] font-bold text-slate-400 uppercase">Velocidad Promedio</span>
+            <span class="kpi-value text-blue-600" id="avg-speed">--</span>
+        </div>
     </div>
 
     <div id="map"></div>
 
     <div id="sidebar">
         <div class="sidebar-header">
-            <div><h2 class="text-sm font-bold text-slate-800 uppercase">Control de Infraestructura</h2><small class="text-slate-400">CDMX - Latencia & Riesgo</small></div>
+            <div>
+                <h2 class="text-sm font-bold text-slate-800 uppercase">Control de Infraestructura</h2>
+                <small class="text-slate-400">CDMX - Latencia & Riesgo</small>
+            </div>
             <i class="fa-solid fa-server text-indigo-500"></i>
         </div>
         <div class="sidebar-content">
             <div class="control-card" style="border-left: 4px solid #4f46e5;">
                 <div class="card-header"><span>MODO DE MAPA</span></div>
-                <div class="layer-toggle"><span>Análisis Operativo</span><label class="switch"><input type="radio" name="vm" checked onchange="setMapMode('analysis')"><span class="slider"></span></label></div>
-                <div class="layer-toggle"><span>Mapa de Riesgos (Zonas)</span><label class="switch"><input type="radio" name="vm" onchange="setMapMode('risk')"><span class="slider"></span></label></div>
+                <div class="layer-toggle">
+                    <span>Análisis Operativo</span>
+                    <label class="switch">
+                        <input type="radio" name="vm" checked onchange="setMapMode('analysis')">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="layer-toggle">
+                    <span>Mapa de Riesgos (Zonas)</span>
+                    <label class="switch">
+                        <input type="radio" name="vm" onchange="setMapMode('risk')">
+                        <span class="slider"></span>
+                    </label>
+                </div>
             </div>
 
-            <div id="analysis-controls">
-                <div class="control-card">
-                    <div class="card-header"><span>CAPAS DE TELEMETRÍA</span></div>
-                    <div class="layer-toggle"><span><i class="fa-solid fa-wifi mr-2 text-blue-500"></i> Calidad de Red</span><label class="switch"><input type="radio" name="em" checked onchange="activateExclusiveMode('red')"><span class="slider"></span></label></div>
-                    <div class="layer-toggle"><span><i class="fa-solid fa-users mr-2 text-orange-500"></i> Afluencia Peatonal</span><label class="switch"><input type="radio" name="em" onchange="activateExclusiveMode('afluencia')"><span class="slider"></span></label></div>
-                    <div class="layer-toggle"><span><i class="fa-solid fa-bolt mr-2 text-rose-500"></i> Fallas Eléctricas</span><label class="switch"><input type="radio" name="em" onchange="activateExclusiveMode('fallas')"><span class="slider"></span></label></div>
+            <div class="control-card">
+                <div class="card-header"><span>FILTROS DE CALOR</span></div>
+                <div class="layer-toggle">
+                    <div class="layer-info">
+                        <span class="color-dot" style="background:#2563eb;"></span>
+                        <span>Red Internet</span>
+                    </div>
+                    <label class="switch">
+                        <input type="radio" name="exclusive-mode" checked onchange="activateHeatMode('red')">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="layer-toggle">
+                    <div class="layer-info">
+                        <span class="color-dot" style="background:#ef4444;"></span>
+                        <span>Afluencia Peatonal</span>
+                    </div>
+                    <label class="switch">
+                        <input type="radio" name="exclusive-mode" onchange="activateHeatMode('afluencia')">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="layer-toggle">
+                    <div class="layer-info">
+                        <span class="color-dot" style="background:#0f172a;"></span>
+                        <span>Fallas Eléctricas</span>
+                    </div>
+                    <label class="switch">
+                        <input type="radio" name="exclusive-mode" onchange="activateHeatMode('fallas')">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- NUEVO: Filtro de Hora para Afluencia -->
+            <div class="control-card" id="time-filter-container" style="display: none;">
+                <div class="card-header" onclick="toggleCard(this)">
+                    <span><i class="fa-solid fa-clock mr-2"></i> Filtro de Hora (Afluencia)</span>
+                    <i class="fa-solid fa-chevron-down text-slate-400 transition-transform"></i>
+                </div>
+                <div class="card-body hidden">
+                    <div style="padding: 15px;">
+                        <select id="heatmap-time-selector" class="w-full p-2 border border-slate-300 rounded text-sm bg-white" onchange="updateAfluenciaHeatmap(this.value)">
+                            <option value="off">Desactivado</option>
+                            <option value="6">06:00 AM - Inicio Jornada</option>
+                            <option value="9" selected>09:00 AM - Hora Pico</option>
+                            <option value="12">12:00 PM - Mediodía</option>
+                            <option value="15">03:00 PM - Tarde</option>
+                            <option value="18">06:00 PM - Salida Laboral</option>
+                            <option value="21">09:00 PM - Noche</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
             <div class="control-card">
                 <div class="card-header"><span>REFERENCIAS</span></div>
-                <div class="layer-toggle"><span>Metro CDMX</span><label class="switch"><input type="checkbox" checked onchange="toggleLayer('metro', this.checked)"><span class="slider"></span></label></div>
-                <div class="layer-toggle"><span>Sitios de Interés (POI)</span><label class="switch"><input type="checkbox" checked onchange="toggleLayer('poi', this.checked)"><span class="slider"></span></label></div>
+                <div class="layer-toggle">
+                    <span>Metro CDMX</span>
+                    <label class="switch">
+                        <input type="checkbox" checked onchange="toggleLayer('metro', this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="layer-toggle">
+                    <span>Sitios de Interés (POI)</span>
+                    <label class="switch">
+                        <input type="checkbox" checked onchange="toggleLayer('poi', this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
             </div>
 
             <div id="dynamic-panels"></div>
@@ -92,12 +359,22 @@
 
 <div id="incident-modal">
     <div class="modal-box">
-        <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation text-amber-500"></i> Reporte de Causa Externa</h3>
+        <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
+            <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> 
+            Reporte de Causa Externa
+        </h3>
         <p class="text-xs text-slate-500 mb-4">Equipo: <b id="modal-dev-name"></b></p>
         <div class="space-y-4">
-            <select id="inc-type" class="w-full p-2 border rounded-lg text-sm"><option value="energia">Corte de Energía (CFE)</option><option value="vandalismo">Vandalismo</option><option value="mantenimiento">Mantenimiento Local</option></select>
+            <select id="inc-type" class="w-full p-2 border rounded-lg text-sm">
+                <option value="energia">Corte de Energía (CFE)</option>
+                <option value="vandalismo">Vandalismo</option>
+                <option value="mantenimiento">Mantenimiento Local</option>
+            </select>
             <textarea id="inc-desc" rows="3" class="w-full p-2 border rounded-lg text-sm" placeholder="Detalles adicionales..."></textarea>
-            <div class="flex justify-end gap-2"><button onclick="closeModal()" class="px-4 py-2 text-xs font-bold text-slate-400">Cancelar</button><button onclick="submitIncident()" class="px-6 py-2 bg-rose-600 text-white rounded-lg text-xs font-bold shadow-lg">Registrar</button></div>
+            <div class="flex justify-end gap-2">
+                <button onclick="closeModal()" class="px-4 py-2 text-xs font-bold text-slate-400">Cancelar</button>
+                <button onclick="submitIncident()" class="px-6 py-2 bg-rose-600 text-white rounded-lg text-xs font-bold shadow-lg">Registrar</button>
+            </div>
         </div>
     </div>
 </div>
@@ -108,36 +385,166 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // DATOS DE REFERENCIA
-    const DATA_POI = [[19.4326, -99.1332, "Zócalo"], [19.4270, -99.1676, "Ángel Ind."]];
-    const PUNTOS_AFLUENCIA = [[19.434, -99.141, 0.9], [19.419, -99.161, 0.8]];
+    // --- DATOS ESTÁTICOS PARA HEATMAPS (Del segundo código) ---
+    const DATA_INTERMITENCIAS = [
+        [19.357, -99.299, 1.0], [19.388, -99.193, 0.9], [19.288, -99.167, 0.8], [19.278, -99.102, 0.75],
+        [19.309, -99.123, 0.7], [19.296, -99.192, 0.7], [19.160, -99.000, 0.9], [19.400, -99.100, 0.85],
+        [19.417, -99.114, 0.9], [19.443, -99.145, 1.0]
+    ];
+
+    const DATA_POI = [
+        [19.4678, -99.2132, "Tecamachalco", "house", "purple"],
+        [19.4687, -99.2155, "Parque de los Venados", "tree", "purple"],
+        [19.4326, -99.1332, "Zócalo CDMX", "landmark", "purple"],
+        [19.4385, -99.1764, "Monumento Revolución", "monument", "purple"],
+        [19.4380, -99.1687, "Ángel Independencia", "star", "purple"],
+        [19.4449, -99.1820, "Museo Soumaya", "building", "purple"]
+    ];
+
+    const PUNTOS_BASE_AFLUENCIA = [
+        [19.4326, -99.1332, 0.9], [19.4353, -99.1411, 0.85], [19.4290, -99.1380, 0.8],
+        [19.4240, -99.1650, 0.75], [19.4220, -99.1700, 0.7], [19.4330, -99.2000, 0.65], 
+        [19.4350, -99.2050, 0.6], [19.4110, -99.1800, 0.7], [19.4090, -99.1850, 0.65]
+    ];
 
     let map = null;
     let currentMode = 'analysis';
+    let afluenciaHeatmapLayers = {};
+    
+    // Capas extendidas con los filtros de calor
     const layers = {
-        high: L.layerGroup(), mid: L.layerGroup(), low: L.layerGroup(),
-        metro: L.layerGroup(), poi: L.layerGroup(),
-        afluencia: L.layerGroup(), fallas: L.layerGroup(),
-        'BioBox': L.layerGroup(), 'ViaVerde': L.layerGroup(), 'Ecovallas': L.layerGroup(), 'General': L.layerGroup(),
-        autoRiskZones: L.layerGroup()
+        // Capas originales del primer código
+        high: L.layerGroup(), 
+        mid: L.layerGroup(), 
+        low: L.layerGroup(),
+        metro: L.layerGroup(), 
+        poi: L.layerGroup(),
+        afluencia: L.layerGroup(), 
+        fallas: L.layerGroup(),
+        'BioBox': L.layerGroup(), 
+        'ViaVerde': L.layerGroup(), 
+        'Ecovallas': L.layerGroup(), 
+        'General': L.layerGroup(),
+        autoRiskZones: L.layerGroup(),
+        
+        // Nueva capa para fallas eléctricas (del segundo código)
+        fallas_electricas: L.layerGroup()
     };
     
-    const markerRegistry = {}; 
+    const markerRegistry = {};
 
     function init() {
+        // Mapa base
         map = L.map('map', { zoomControl: false }).setView([19.4326, -99.1332], 12);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
+        // Panes para capas
         map.createPane('riskPane').style.zIndex = 450;
         map.createPane('nucPane').style.zIndex = 650;
+        map.createPane('heatmapPane').style.zIndex = 500);
+        map.createPane('redPane').style.zIndex = 400;
 
-        initLayers();
+        // Inicializar todas las capas
+        initAllLayers();
         setMapMode('analysis');
         fetchLiveNucs();
         setInterval(fetchLiveNucs, 5000);
     }
 
-    // --- CORRECCIÓN: ACTUALIZACIÓN DE UBICACIÓN DINÁMICA ---
+    // --- INICIALIZAR TODAS LAS CAPAS ---
+    function initAllLayers() {
+        // 1. Red Internet (Del primer código)
+        if (typeof SPEEDTEST_DATA !== 'undefined') {
+            L.geoJson(SPEEDTEST_DATA, { 
+                style: { color: '#4f46e5', weight: 1, fillOpacity: 0.2 }, 
+                pane: 'riskPane' 
+            }).addTo(layers.high);
+        }
+        
+        // 2. Afluencia Heatmap (Del segundo código, mejorado)
+        initAfluenciaData();
+        
+        // 3. Fallas Eléctricas (Del segundo código)
+        initFallasElectricas();
+        
+        // 4. POIs (Del segundo código)
+        DATA_POI.forEach(p => {
+            const icon = L.divIcon({ 
+                html: `<i class="fa-solid fa-${p[3]}" style="color:${p[4]}; font-size:14px;"></i>`, 
+                className: 'custom-fa-icon', 
+                iconSize: [26, 26] 
+            });
+            L.marker([p[0], p[1]], {icon: icon}).bindPopup(`<b>${p[2]}</b>`).addTo(layers.poi);
+        });
+        
+        // 5. Líneas de Metro (Del segundo código)
+        const metroLines = [
+            {color: '#f06292', points: [[19.42, -99.12], [19.43, -99.14], [19.44, -99.15]]},
+            {color: '#fbbf24', points: [[19.45, -99.10], [19.44, -99.12], [19.41, -99.13]]}
+        ];
+        metroLines.forEach(line => {
+            L.polyline(line.points, {color: line.color, weight: 4}).addTo(layers.metro);
+        });
+    }
+
+    // --- DATOS DE AFLUENCIA (Del segundo código) ---
+    function initAfluenciaData() {
+        const horarios = [6, 9, 12, 15, 18, 21];
+        
+        horarios.forEach(hora => {
+            let factor = 0.5;
+            if(hora === 9 || hora === 18) factor = 1.0;
+            else if(hora === 6 || hora === 21) factor = 0.6;
+            else factor = 0.8;
+
+            const heatData = [];
+            PUNTOS_BASE_AFLUENCIA.forEach(punto => {
+                let intensidad = punto[2] * factor;
+                heatData.push([punto[0], punto[1], intensidad]);
+                for (let i = 0; i < 20; i++) {
+                    const nLat = punto[0] + (Math.random() - 0.5) * 0.02;
+                    const nLon = punto[1] + (Math.random() - 0.5) * 0.02;
+                    heatData.push([nLat, nLon, intensidad * 0.7]);
+                }
+            });
+
+            afluenciaHeatmapLayers[hora] = L.heatLayer(heatData, {
+                radius: 35, 
+                blur: 25, 
+                minOpacity: 0.4, 
+                pane: 'heatmapPane',
+                gradient: {0.4: 'blue', 0.7: 'yellow', 1.0: 'red'}
+            });
+        });
+        
+        // Capa por defecto para afluencia
+        if (afluenciaHeatmapLayers[9]) {
+            layers.afluencia.addLayer(afluenciaHeatmapLayers[9]);
+        }
+    }
+
+    // --- DATOS DE FALLAS ELÉCTRICAS (Del segundo código) ---
+    function initFallasElectricas() {
+        const heatData = [];
+        DATA_INTERMITENCIAS.forEach(punto => {
+            heatData.push([punto[0], punto[1], punto[2]]);
+            for (let i = 0; i < 30; i++) {
+                const nLat = punto[0] + (Math.random() - 0.5) * 0.04;
+                const nLon = punto[1] + (Math.random() - 0.5) * 0.04;
+                heatData.push([nLat, nLon, punto[2] * 0.6]);
+            }
+        });
+        
+        L.heatLayer(heatData, {
+            radius: 40, 
+            blur: 30, 
+            minOpacity: 0.5, 
+            pane: 'heatmapPane',
+            gradient: {0.0: 'orange', 0.5: 'red', 1.0: '#3f0000'}
+        }).addTo(layers.fallas_electricas);
+    }
+
+    // --- ACTUALIZACIÓN DINÁMICA DE NUCs (Del primer código) ---
     async function fetchLiveNucs() {
         try {
             const res = await fetch('/api/data');
@@ -150,17 +557,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const statusClass = dev.status === 'offline' ? 'nuc-offline' : (dev.cpu_load_percent > 85 ? 'nuc-critical' : 'nuc-online');
                 const newPos = [dev.lat, dev.lng];
 
-                // Si el marcador ya existe, actualizamos su posición e icono
                 if (markerRegistry[dev.pc_name]) {
                     const marker = markerRegistry[dev.pc_name];
-                    marker.setLatLng(newPos); // ACTUALIZA UBICACIÓN EN TIEMPO REAL
+                    marker.setLatLng(newPos);
                     marker.setIcon(L.divIcon({
                         className: 'custom-div-icon',
                         html: `<div class="nuc-marker ${statusClass}"><i class="fa-solid fa-desktop"></i></div>`,
                         iconSize: [28, 28]
                     }));
                 } else {
-                    // Si es nuevo, crearlo
                     const icon = L.divIcon({
                         className: 'custom-div-icon',
                         html: `<div class="nuc-marker ${statusClass}"><i class="fa-solid fa-desktop"></i></div>`,
@@ -178,10 +583,12 @@ document.addEventListener('DOMContentLoaded', () => {
             updateKPIs(devices);
             updateSidebars(devices);
             generateAutoZones(devices);
-        } catch (e) { console.error("Error actualización NUCs", e); }
+        } catch (e) { 
+            console.error("Error actualización NUCs", e); 
+        }
     }
 
-    // --- GENERACIÓN AUTOMÁTICA DE ZONAS DE INCIDENCIA ---
+    // --- GENERACIÓN AUTOMÁTICA DE ZONAS DE RIESGO (Del primer código) ---
     function generateAutoZones(devices) {
         layers.autoRiskZones.clearLayers();
         const issues = devices.filter(d => d.status === 'offline' || d.cpu_load_percent > 85);
@@ -189,7 +596,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         issues.forEach(d => {
             let zone = grouped.find(z => Math.abs(z.lat - d.lat) < 0.008 && Math.abs(z.lng - d.lng) < 0.008);
-            if (zone) zone.count++; else grouped.push({ lat: d.lat, lng: d.lng, count: 1 });
+            if (zone) zone.count++; 
+            else grouped.push({ lat: d.lat, lng: d.lng, count: 1 });
         });
 
         document.getElementById('kpi-zones').innerText = grouped.length;
@@ -198,78 +606,172 @@ document.addEventListener('DOMContentLoaded', () => {
             grouped.forEach(z => {
                 L.circle([z.lat, z.lng], {
                     radius: z.count > 1 ? 800 : 400,
-                    color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.2, weight: 1, pane: 'riskPane'
+                    color: '#ef4444', 
+                    fillColor: '#ef4444', 
+                    fillOpacity: 0.2, 
+                    weight: 1, 
+                    pane: 'riskPane'
                 }).addTo(layers.autoRiskZones).bindTooltip(`Zona Afectada: ${z.count} equipo(s)`, { permanent: false });
             });
             map.addLayer(layers.autoRiskZones);
         }
     }
 
-    // --- RESTAURACIÓN DE CAPAS ORIGINALES ---
-    function initLayers() {
-        // Red Internet (Simulada desde speedtest_data)
-        if (typeof SPEEDTEST_DATA !== 'undefined') {
-            L.geoJson(SPEEDTEST_DATA, { style: { color: '#4f46e5', weight: 1, fillOpacity: 0.2 }, pane: 'riskPane' }).addTo(layers.high);
-        }
-        // Afluencia Heatmap
-        const heatData = [];
-        PUNTOS_AFLUENCIA.forEach(p => { for(let i=0; i<15; i++) heatData.push([p[0]+(Math.random()-.5)*.02, p[1]+(Math.random()-.5)*.02, 0.5]); });
-        L.heatLayer(heatData, { radius: 30, blur: 20 }).addTo(layers.afluencia);
-        
-        // POI
-        DATA_POI.forEach(p => {
-            L.marker([p[0], p[1]], { icon: L.divIcon({ html: '<i class="fa-solid fa-location-dot text-indigo-500"></i>', className: 'custom-fa-icon', iconSize: [20, 20] }) })
-                .bindPopup(p[2]).addTo(layers.poi);
-        });
-    }
-
+    // --- FUNCIONES DE INTERFAZ ---
     window.setMapMode = (mode) => {
         currentMode = mode;
-        Object.values(layers).forEach(l => map.removeLayer(l));
+        
+        // Limpiar capas específicas
+        Object.values(layers).forEach(l => {
+            if (l !== layers.autoRiskZones && l !== layers.high && l !== layers.mid && l !== layers.low) {
+                map.removeLayer(l);
+            }
+        });
+        
         if (mode === 'analysis') {
-            map.addLayer(layers.poi); map.addLayer(layers.metro);
+            // Mostrar NUCs y referencias
+            map.addLayer(layers.poi); 
+            map.addLayer(layers.metro);
             ['BioBox', 'ViaVerde', 'Ecovallas', 'General'].forEach(k => map.addLayer(layers[k]));
+            
+            // Mantener capa de heatmap activa si está seleccionada
+            const activeHeatMode = document.querySelector('input[name="exclusive-mode"]:checked');
+            if (activeHeatMode) {
+                activateHeatMode(activeHeatMode.parentElement.nextElementSibling.querySelector('span').innerText.toLowerCase());
+            }
         } else if (mode === 'risk') {
+            // Mostrar zonas de riesgo y NUCs
             map.addLayer(layers.autoRiskZones);
             ['BioBox', 'ViaVerde', 'Ecovallas', 'General'].forEach(k => map.addLayer(layers[k]));
         }
     };
 
-    window.activateExclusiveMode = (m) => {
-        map.removeLayer(layers.high); map.removeLayer(layers.afluencia); map.removeLayer(layers.fallas);
-        if (m === 'red') map.addLayer(layers.high);
-        else if (m === 'afluencia') map.addLayer(layers.afluencia);
+    // NUEVA: Activar modo de calor (combinación de ambos códigos)
+    window.activateHeatMode = (mode) => {
+        // Mostrar/ocultar filtro de hora para afluencia
+        const timeFilter = document.getElementById('time-filter-container');
+        timeFilter.style.display = mode === 'afluencia' ? 'block' : 'none';
+        
+        // Remover capas de calor anteriores
+        map.removeLayer(layers.high);
+        map.removeLayer(layers.mid);
+        map.removeLayer(layers.low);
+        map.removeLayer(layers.afluencia);
+        map.removeLayer(layers.fallas_electricas);
+        
+        if (mode === 'red') {
+            // Red Internet
+            map.addLayer(layers.high);
+            map.addLayer(layers.mid);
+            map.addLayer(layers.low);
+        } else if (mode === 'afluencia') {
+            // Afluencia Peatonal
+            map.addLayer(layers.afluencia);
+            const timeSelector = document.getElementById('heatmap-time-selector');
+            updateAfluenciaHeatmap(timeSelector.value);
+        } else if (mode === 'fallas') {
+            // Fallas Eléctricas
+            map.addLayer(layers.fallas_electricas);
+        }
+        
+        // Asegurar que los NUCs siempre estén visibles
+        ['BioBox', 'ViaVerde', 'Ecovallas', 'General'].forEach(k => {
+            if (!map.hasLayer(layers[k])) {
+                map.addLayer(layers[k]);
+            }
+        });
     };
 
-    window.toggleLayer = (id, show) => { if(show) map.addLayer(layers[id]); else map.removeLayer(layers[id]); };
+    // NUEVA: Actualizar heatmap de afluencia según hora
+    window.updateAfluenciaHeatmap = (h) => {
+        layers.afluencia.clearLayers();
+        if (h !== 'off' && afluenciaHeatmapLayers[h]) {
+            layers.afluencia.addLayer(afluenciaHeatmapLayers[h]);
+        }
+    };
+
+    window.toggleLayer = (id, show) => { 
+        if(show) map.addLayer(layers[id]); 
+        else map.removeLayer(layers[id]); 
+    };
+    
     window.toggleSidebar = () => document.getElementById('sidebar').classList.toggle('collapsed');
+    
+    window.toggleCard = (h) => { 
+        const body = h.nextElementSibling;
+        body.classList.toggle('hidden'); 
+        const icon = h.querySelector('i.fa-chevron-down');
+        if (icon) icon.classList.toggle('fa-rotate-180');
+    };
+
     window.updateKPIs = (d) => {
         document.getElementById('kpi-online').innerText = d.filter(x => x.status !== 'offline').length;
         document.getElementById('kpi-issues').innerText = d.filter(x => x.status === 'offline').length;
+        
+        // Calcular velocidad promedio (del segundo código)
+        if (typeof SPEEDTEST_DATA !== 'undefined') {
+            let totalSpeed = 0, count = 0;
+            SPEEDTEST_DATA.features.forEach(f => {
+                if (f.properties && f.properties.download) {
+                    totalSpeed += f.properties.download;
+                    count++;
+                }
+            });
+            document.getElementById('avg-speed').innerText = count > 0 ? Math.round(totalSpeed / count) + " Mbps" : "N/A";
+        }
     };
     
     window.zoomToMarker = (name) => {
         const m = markerRegistry[name];
-        if(m) { map.flyTo(m.getLatLng(), 17); m.openPopup(); }
+        if(m) { 
+            map.flyTo(m.getLatLng(), 17); 
+            m.openPopup(); 
+        }
     };
 
     window.updateSidebars = (devices) => {
         const cont = document.getElementById('dynamic-panels');
         const groups = {};
-        devices.forEach(d => { const u = d.unit || 'General'; if(!groups[u]) groups[u]=[]; groups[u].push(d); });
+        devices.forEach(d => { 
+            const u = d.unit || 'General'; 
+            if(!groups[u]) groups[u] = []; 
+            groups[u].push(d); 
+        });
+        
         cont.innerHTML = '';
         Object.entries(groups).forEach(([u, devs]) => {
-            cont.innerHTML += `<div class="control-card"><div class="card-header" onclick="this.nextElementSibling.classList.toggle('hidden')">${u} (${devs.length})</div><div class="card-body hidden">
-                ${devs.map(d => `<div class="p-2 border-b text-[10px] cursor-pointer hover:bg-slate-50 flex items-center gap-2" onclick="zoomToMarker('${d.pc_name}')"><div class="w-2 h-2 rounded-full ${d.status==='offline'?'bg-rose-500':'bg-emerald-500'}"></div>${d.pc_name}</div>`).join('')}
-            </div></div>`;
+            cont.innerHTML += `
+                <div class="control-card">
+                    <div class="card-header" onclick="toggleCard(this)">
+                        ${u} (${devs.length})
+                        <i class="fa-solid fa-chevron-down text-slate-400"></i>
+                    </div>
+                    <div class="card-body hidden">
+                        ${devs.map(d => `
+                            <div class="p-2 border-b text-[10px] cursor-pointer hover:bg-slate-50 flex items-center gap-2" onclick="zoomToMarker('${d.pc_name}')">
+                                <div class="w-2 h-2 rounded-full ${d.status==='offline'?'bg-rose-500':'bg-emerald-500'}"></div>
+                                ${d.pc_name}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
         });
     };
 
-    // MODAL LÓGICA
-    window.openIncidentModal = (n) => { document.getElementById('modal-dev-name').innerText = n; document.getElementById('incident-modal').style.display='flex'; };
+    // MODAL LÓGICA (Del primer código)
+    window.openIncidentModal = (n) => { 
+        document.getElementById('modal-dev-name').innerText = n; 
+        document.getElementById('incident-modal').style.display='flex'; 
+    };
+    
     window.closeModal = () => document.getElementById('incident-modal').style.display='none';
-    window.submitIncident = () => { alert("Incidente registrado en zona."); closeModal(); };
+    
+    window.submitIncident = () => { 
+        alert("Incidente registrado en zona."); 
+        closeModal(); 
+    };
 
+    // Inicializar
     init();
 });
 </script>
