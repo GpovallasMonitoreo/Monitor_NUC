@@ -300,6 +300,33 @@
     
     /* Hover effects */
     .hover\:bg-slate-50:hover { background-color: #f8fafc; }
+    
+    /* LEGENDA DE COLOR DE RED */
+    .red-legend {
+        position: absolute;
+        bottom: 30px;
+        left: 15px;
+        z-index: 1000;
+        background: white;
+        padding: 10px 15px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        border: 1px solid #e2e8f0;
+        font-size: 0.75rem;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 5px;
+    }
+    
+    .legend-color {
+        width: 15px;
+        height: 15px;
+        border-radius: 3px;
+    }
 </style>
 
 <div id="app-container">
@@ -319,6 +346,27 @@
         <div class="kpi-card">
             <span style="font-size: 10px; font-weight: bold; color: #94a3b8; text-transform: uppercase;">Velocidad Promedio</span>
             <span class="kpi-value text-blue-600" id="avg-speed">--</span>
+        </div>
+    </div>
+
+    <!-- NUEVA: Leyenda de color de red -->
+    <div class="red-legend" id="red-legend" style="display: none;">
+        <div style="font-weight: bold; margin-bottom: 8px; font-size: 0.8rem;">Calidad de Red por Zona</div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #16a34a;"></div>
+            <span>Alta velocidad (>50 Mbps)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #eab308;"></div>
+            <span>Velocidad media (10-50 Mbps)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #ef4444;"></div>
+            <span>Baja velocidad (<10 Mbps)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #7c3aed;"></div>
+            <span>Sin datos</span>
         </div>
     </div>
 
@@ -424,6 +472,24 @@
                 </div>
             </div>
 
+            <!-- NUEVO: Mostrar velocidad por zona -->
+            <div class="control-card" id="speed-zones-panel">
+                <div class="card-header" onclick="toggleCard(this)">
+                    <span><i class="fa-solid fa-gauge-high mr-2"></i> Velocidad por Zona</span>
+                    <i class="fa-solid fa-chevron-down text-slate-400"></i>
+                </div>
+                <div class="card-body hidden">
+                    <div style="padding: 15px;">
+                        <div id="speed-zones-list" style="font-size: 0.8rem;">
+                            <!-- Aquí se cargarán las zonas dinámicamente -->
+                            <div style="text-align: center; color: #94a3b8; padding: 10px;">
+                                Cargando datos de velocidad...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div id="dynamic-panels"></div>
         </div>
     </div>
@@ -461,6 +527,8 @@
 let map = null;
 let currentMode = 'analysis';
 let afluenciaHeatmapLayers = {};
+let redZonesLayer = null; // NUEVO: Capa para zonas de red
+let riskZonesLayer = null; // NUEVO: Capa para zonas de riesgo superpuestas
 
 // Capas extendidas con los filtros de calor
 const layers = {
@@ -479,7 +547,11 @@ const layers = {
     autoRiskZones: L.layerGroup(),
     
     // Nueva capa para fallas eléctricas (del segundo código)
-    fallas_electricas: L.layerGroup()
+    fallas_electricas: L.layerGroup(),
+    
+    // NUEVAS CAPAS ADICIONALES
+    redZones: L.layerGroup(), // Para zonas de red con color
+    riskZonesOverlay: L.layerGroup() // Para zonas de riesgo superpuestas
 };
 
 const markerRegistry = {};
@@ -506,6 +578,29 @@ const PUNTOS_BASE_AFLUENCIA = [
     [19.4350, -99.2050, 0.6], [19.4110, -99.1800, 0.7], [19.4090, -99.1850, 0.65]
 ];
 
+// NUEVO: Datos de zonas predefinidas para CDMX
+const ZONAS_CDMX = [
+    { name: "Centro Histórico", bounds: [[19.428, -99.145], [19.445, -99.125]], speed: 45, color: "#eab308" },
+    { name: "Polanco", bounds: [[19.430, -99.210], [19.445, -99.195]], speed: 85, color: "#16a34a" },
+    { name: "Roma-Condesa", bounds: [[19.410, -99.175], [19.425, -99.155]], speed: 60, color: "#16a34a" },
+    { name: "Santa Fe", bounds: [[19.350, -99.280], [19.370, -99.260]], speed: 30, color: "#ef4444" },
+    { name: "Coyoacán", bounds: [[19.340, -99.170], [19.360, -99.150]], speed: 55, color: "#eab308" },
+    { name: "Nápoles", bounds: [[19.400, -99.185], [19.410, -99.170]], speed: 70, color: "#16a34a" },
+    { name: "Del Valle", bounds: [[19.370, -99.180], [19.390, -99.160]], speed: 48, color: "#eab308" },
+    { name: "Tlalpan", bounds: [[19.280, -99.170], [19.300, -99.150]], speed: 25, color: "#ef4444" },
+    { name: "Iztapalapa", bounds: [[19.350, -99.100], [19.370, -99.080]], speed: 15, color: "#ef4444" },
+    { name: "Xochimilco", bounds: [[19.250, -99.110], [19.270, -99.090]], speed: 20, color: "#ef4444" }
+];
+
+// NUEVO: Zonas de riesgo predefinidas
+const ZONAS_RIESGO = [
+    { name: "Riesgo Alto - Centro", center: [19.4326, -99.1332], radius: 1500, color: "#ef4444", opacity: 0.3, reason: "Alta densidad de equipos" },
+    { name: "Riesgo Medio - Polanco", center: [19.437, -99.202], radius: 1200, color: "#f59e0b", opacity: 0.25, reason: "Tráfico intenso" },
+    { name: "Riesgo Bajo - Santa Fe", center: [19.360, -99.270], radius: 2000, color: "#3b82f6", opacity: 0.2, reason: "Zona industrial" },
+    { name: "Riesgo Alto - Iztapalapa", center: [19.360, -99.090], radius: 1800, color: "#ef4444", opacity: 0.3, reason: "Infraestructura antigua" },
+    { name: "Riesgo Medio - Coyoacán", center: [19.350, -99.160], radius: 1000, color: "#f59e0b", opacity: 0.25, reason: "Crecimiento rápido" }
+];
+
 // --- FUNCIONES GLOBALES ---
 window.setMapMode = function(mode) {
     currentMode = mode;
@@ -523,6 +618,10 @@ window.setMapMode = function(mode) {
         map.addLayer(layers.metro);
         ['BioBox', 'ViaVerde', 'Ecovallas', 'General'].forEach(k => map.addLayer(layers[k]));
         
+        // NUEVO: Mostrar zonas de red y riesgo superpuestas
+        map.addLayer(layers.redZones);
+        map.addLayer(layers.riskZonesOverlay);
+        
         // Mantener capa de heatmap activa si está seleccionada
         const activeHeatMode = document.querySelector('input[name="exclusive-mode"]:checked');
         if (activeHeatMode) {
@@ -535,6 +634,9 @@ window.setMapMode = function(mode) {
         // Mostrar zonas de riesgo y NUCs
         map.addLayer(layers.autoRiskZones);
         ['BioBox', 'ViaVerde', 'Ecovallas', 'General'].forEach(k => map.addLayer(layers[k]));
+        
+        // NUEVO: Mantener zonas de riesgo superpuestas
+        map.addLayer(layers.riskZonesOverlay);
     }
 };
 
@@ -542,6 +644,10 @@ window.activateHeatMode = function(mode) {
     // Mostrar/ocultar filtro de hora para afluencia
     const timeFilter = document.getElementById('time-filter-container');
     timeFilter.style.display = mode === 'afluencia' ? 'block' : 'none';
+    
+    // Mostrar/ocultar leyenda de red
+    const redLegend = document.getElementById('red-legend');
+    redLegend.style.display = mode === 'red' ? 'block' : 'none';
     
     // Remover capas de calor anteriores
     map.removeLayer(layers.high);
@@ -555,6 +661,12 @@ window.activateHeatMode = function(mode) {
         map.addLayer(layers.high);
         map.addLayer(layers.mid);
         map.addLayer(layers.low);
+        
+        // NUEVO: Mostrar zonas de red con color
+        map.addLayer(layers.redZones);
+        
+        // Actualizar lista de velocidades por zona
+        updateSpeedZonesList();
     } else if (mode === 'afluencia') {
         // Afluencia Peatonal
         map.addLayer(layers.afluencia);
@@ -571,6 +683,11 @@ window.activateHeatMode = function(mode) {
             map.addLayer(layers[k]);
         }
     });
+    
+    // NUEVO: Asegurar que zonas de riesgo superpuestas estén visibles
+    if (!map.hasLayer(layers.riskZonesOverlay)) {
+        map.addLayer(layers.riskZonesOverlay);
+    }
 };
 
 window.updateAfluenciaHeatmap = function(h) {
@@ -618,13 +735,137 @@ window.submitIncident = function() {
     closeModal(); 
 };
 
+// NUEVA: Función para actualizar lista de velocidades por zona
+window.updateSpeedZonesList = function() {
+    const speedZonesList = document.getElementById('speed-zones-list');
+    if (!speedZonesList) return;
+    
+    let html = '';
+    ZONAS_CDMX.forEach(zone => {
+        let statusClass = '';
+        let statusText = '';
+        
+        if (zone.speed >= 50) {
+            statusClass = 'text-emerald-600';
+            statusText = 'Alta';
+        } else if (zone.speed >= 10) {
+            statusClass = 'text-amber-500';
+            statusText = 'Media';
+        } else {
+            statusClass = 'text-rose-600';
+            statusText = 'Baja';
+        }
+        
+        html += `
+            <div style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-weight: 600;">${zone.name}</span>
+                    <span class="${statusClass}" style="font-weight: 700;">${zone.speed} Mbps</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #64748b; margin-top: 2px;">
+                    <span>Calidad: ${statusText}</span>
+                    <span style="display: flex; align-items: center; gap: 4px;">
+                        <div style="width: 10px; height: 10px; border-radius: 2px; background-color: ${zone.color};"></div>
+                        Zona
+                    </span>
+                </div>
+            </div>
+        `;
+    });
+    
+    speedZonesList.innerHTML = html || '<div style="text-align: center; color: #94a3b8; padding: 10px;">No hay datos de velocidad disponibles</div>';
+};
+
+// NUEVA: Función para crear zonas de red con color
+function createRedZones() {
+    layers.redZones.clearLayers();
+    
+    ZONAS_CDMX.forEach(zone => {
+        // Crear rectángulo para la zona
+        const rectangle = L.rectangle(zone.bounds, {
+            color: zone.color,
+            fillColor: zone.color,
+            fillOpacity: 0.15,
+            weight: 2,
+            pane: 'riskPane'
+        }).addTo(layers.redZones);
+        
+        // Añadir popup con información de velocidad
+        rectangle.bindPopup(`
+            <div style="min-width: 200px;">
+                <h4 style="margin: 0 0 8px 0; font-weight: bold;">${zone.name}</h4>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span>Velocidad:</span>
+                    <span style="font-weight: bold; color: ${zone.speed >= 50 ? '#16a34a' : zone.speed >= 10 ? '#eab308' : '#ef4444'}">
+                        ${zone.speed} Mbps
+                    </span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span>Calidad:</span>
+                    <span style="font-weight: bold;">${zone.speed >= 50 ? 'Alta' : zone.speed >= 10 ? 'Media' : 'Baja'}</span>
+                </div>
+                <div style="margin-top: 8px; font-size: 0.8rem; color: #64748b;">
+                    ${zone.speed >= 50 ? '✅ Conexión óptima para operaciones' : 
+                      zone.speed >= 10 ? '⚠️ Conexión aceptable' : 
+                      '🔴 Posibles problemas de conectividad'}
+                </div>
+            </div>
+        `);
+        
+        // Añadir tooltip
+        rectangle.bindTooltip(`${zone.name}: ${zone.speed} Mbps`, {
+            permanent: false,
+            direction: 'top'
+        });
+    });
+}
+
+// NUEVA: Función para crear zonas de riesgo superpuestas
+function createRiskZonesOverlay() {
+    layers.riskZonesOverlay.clearLayers();
+    
+    ZONAS_RIESGO.forEach(zone => {
+        // Crear círculo para zona de riesgo
+        const circle = L.circle(zone.center, {
+            radius: zone.radius,
+            color: zone.color,
+            fillColor: zone.color,
+            fillOpacity: zone.opacity,
+            weight: 2,
+            pane: 'riskPane'
+        }).addTo(layers.riskZonesOverlay);
+        
+        // Añadir popup con información de riesgo
+        circle.bindPopup(`
+            <div style="min-width: 220px;">
+                <h4 style="margin: 0 0 8px 0; font-weight: bold; color: ${zone.color};">${zone.name}</h4>
+                <div style="margin-bottom: 8px; padding: 8px; background-color: #f8fafc; border-radius: 4px;">
+                    <span style="font-weight: 600;">Motivo:</span>
+                    <p style="margin: 4px 0 0 0; font-size: 0.9rem;">${zone.reason}</p>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+                    <span>Radio de afectación:</span>
+                    <span style="font-weight: bold;">${(zone.radius / 1000).toFixed(1)} km</span>
+                </div>
+            </div>
+        `);
+        
+        // Añadir tooltip
+        const riskLevel = zone.color === '#ef4444' ? 'Alto' : zone.color === '#f59e0b' ? 'Medio' : 'Bajo';
+        circle.bindTooltip(`${zone.name} - Riesgo ${riskLevel}`, {
+            permanent: false,
+            direction: 'top'
+        });
+    });
+}
+
 // --- FUNCIONES PRIVADAS ---
 function init() {
     // Mapa base
     map = L.map('map', { zoomControl: false }).setView([19.4326, -99.1332], 12);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
-    // Panes para capas (CORREGIDO: sin paréntesis extra)
+    // Panes para capas
     map.createPane('riskPane');
     map.getPane('riskPane').style.zIndex = 450;
     
@@ -639,6 +880,11 @@ function init() {
 
     // Inicializar todas las capas
     initAllLayers();
+    
+    // NUEVO: Crear zonas de red y riesgo
+    createRedZones();
+    createRiskZonesOverlay();
+    
     setMapMode('analysis');
     fetchLiveNucs();
     setInterval(fetchLiveNucs, 5000);
