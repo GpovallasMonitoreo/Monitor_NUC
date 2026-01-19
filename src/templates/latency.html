@@ -11,36 +11,31 @@
     .card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 1.25rem; transition: all 0.2s; position: relative; overflow: hidden; }
     .card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px -5px rgba(0,0,0,0.1); border-color: #6366f1; }
     .latency-grid { display: flex; gap: 2px; margin-top: 8px; height: 10px; width: 100%; }
-    .latency-block { flex: 1; background-color: #e2e8f0; border-radius: 1px; }
+    .latency-block { flex: 1; background-color: #e2e8f0; border-radius: 1px; height: 10px; }
     .lb-low { background-color: #10b981; } .lb-med { background-color: #f59e0b; } .lb-high { background-color: #ef4444; }
     .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
     .status-online { background: #10b981; box-shadow: 0 0 8px #10b981; } .status-offline { background: #ef4444; box-shadow: 0 0 8px #ef4444; } .status-warning { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
     
-    /* ALERTAS VISUALES CRÍTICAS */
-    @keyframes blink-red { 0% { border-color: #ef4444; box-shadow: 0 0 5px #ef4444; } 50% { border-color: transparent; box-shadow: none; } 100% { border-color: #ef4444; box-shadow: 0 0 5px #ef4444; } }
+    @keyframes blink-red { 0% { border-color: #ef4444; box-shadow: 0 0 5px #ef4444; } 50% { border-color: transparent; } 100% { border-color: #ef4444; box-shadow: 0 0 5px #ef4444; } }
     .critical-alert { border: 2px solid #ef4444 !important; animation: blink-red 1.5s infinite; }
     
-    #pc-modal-overlay { z-index: 999; } 
+    .latency-val-hidden { opacity: 0; }
     .modal-tab { padding: 1rem; border-bottom: 2px solid transparent; font-weight: 600; color: #64748b; cursor: pointer; }
     .modal-tab.active { color: #4f46e5; border-color: #4f46e5; background: #eff6ff; }
-    .timeline-item { position: relative; padding-left: 2rem; padding-bottom: 2rem; border-left: 2px solid #e2e8f0; }
-    .timeline-item:last-child { border-left: 2px solid transparent; }
-    .timeline-dot { position: absolute; left: -9px; top: 0; width: 16px; height: 16px; border-radius: 50%; background: white; border: 3px solid #cbd5e1; }
-    .latency-val-hidden { opacity: 0; }
 </style>
 
 <div class="p-6 max-w-[1800px] mx-auto">
     <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
         <div>
-            <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2"><i data-lucide="activity" class="text-indigo-600"></i> Estado de Activos</h2>
-            <p class="text-slate-500 text-xs mt-1">Monitoreo en tiempo real (Argos OS)</p>
+            <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2"><i data-lucide="activity" class="text-indigo-600"></i> Centro de Control de Activos</h2>
+            <p class="text-slate-500 text-xs mt-1">Datos en tiempo real para decisiones corporativas</p>
         </div>
         <div class="flex items-center gap-3">
-            <button onclick="exportAllToCSV()" class="bg-slate-800 hover:bg-black text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition">
-                <i data-lucide="database" class="w-4 h-4"></i> Exportar Todo (CSV)
+            <button onclick="exportAllToCSV()" class="bg-slate-900 hover:bg-black text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition shadow-lg">
+                <i data-lucide="download-cloud"></i> Descargar CSV Sensores (Full)
             </button>
-            <select id="unit-filter" class="p-2 text-sm border border-slate-300 rounded-lg focus:ring-indigo-500 outline-none"><option value="all">Todas las Unidades</option></select>
-            <input type="search" id="search-bar" placeholder="Buscar..." class="p-2 text-sm border border-slate-300 rounded-lg w-64 focus:ring-indigo-500 outline-none">
+            <select id="unit-filter" class="p-2.5 text-sm border border-slate-300 rounded-xl outline-none"></select>
+            <input type="search" id="search-bar" placeholder="Buscar PC o IP..." class="p-2.5 text-sm border border-slate-300 rounded-xl w-64 outline-none">
         </div>
     </div>
     
@@ -48,52 +43,62 @@
     <div id="pc-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
 </div>
 
-<div id="pc-modal-overlay" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div id="pc-modal-container" class="bg-white w-full max-w-6xl h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden transform scale-95 opacity-0 transition-all duration-300">
-        <div class="flex justify-between items-start p-6 border-b border-slate-100 bg-white sticky top-0 z-10">
-            <div><h2 id="modal-pc-name" class="text-2xl font-bold text-slate-800"></h2><div id="modal-status-line" class="mt-1 flex items-center gap-2 text-sm"></div></div>
-            <div class="flex gap-2">
-                <button onclick="exportToPDF()" class="text-indigo-600 hover:bg-indigo-50 px-3 py-2 rounded-lg text-sm font-bold border border-indigo-200 transition flex items-center gap-2"><i data-lucide="file-down" class="w-4 h-4"></i> Ficha PDF</button>
-                <button onclick="closeModal()" class="text-slate-400 hover:text-rose-500 hover:bg-rose-50 p-2 rounded-lg transition"><i data-lucide="x" class="w-6 h-6"></i></button>
+<div id="pc-modal-overlay" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm hidden items-center justify-center p-4 z-[999]">
+    <div id="pc-modal-container" class="bg-white w-full max-w-6xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden transform opacity-0 transition-all duration-300">
+        <div class="flex justify-between items-start p-8 border-b border-slate-100">
+            <div><h2 id="modal-pc-name" class="text-3xl font-black text-slate-800 tracking-tight"></h2><div id="modal-status-line" class="mt-1 flex items-center gap-3"></div></div>
+            <div class="flex gap-3">
+                <button onclick="exportToPDF()" class="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl text-sm font-bold border border-indigo-100 flex items-center gap-2 hover:bg-indigo-100 transition">
+                    <i data-lucide="file-text" class="w-4 h-4"></i> Generar Ficha PDF
+                </button>
+                <button onclick="closeModal()" class="text-slate-400 hover:bg-rose-50 hover:text-rose-500 p-2 rounded-xl transition"><i data-lucide="x" class="w-8 h-8"></i></button>
             </div>
         </div>
         
-        <div class="border-b border-slate-200 bg-white px-6">
-            <nav class="flex space-x-1" id="modal-tabs">
-                <button data-tab="general" class="modal-tab active">General</button>
-                <button data-tab="hardware" class="modal-tab">Hardware Completo</button>
-                <button data-tab="predictive" class="modal-tab">Diagnóstico IA</button>
-                <button data-tab="specs" class="modal-tab">Bitácora & NUC</button>
-            </nav>
-        </div>
+        <div class="border-b border-slate-200 px-8"><nav class="flex space-x-4" id="modal-tabs"><button data-tab="general" class="modal-tab active">General</button><button data-tab="hardware" class="modal-tab">Sensores</button><button data-tab="predictive" class="modal-tab">Diagnóstico IA</button><button data-tab="specs" class="modal-tab">Ficha NUC & Historial</button></nav></div>
         
         <div class="p-8 overflow-y-auto bg-slate-50 flex-1">
             <div id="tab-general" class="tab-content">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">IDENTIDAD</h4><div class="space-y-3 text-sm"><div class="flex justify-between"><span class="text-slate-500">Unidad</span><span id="gen-unit" class="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded"></span></div><div class="flex justify-between"><span class="text-slate-500">IP Pública</span><span id="gen-ip" class="font-mono text-slate-700"></span></div><div class="flex justify-between"><span class="text-slate-500">Última Señal</span><span id="gen-seen" class="text-slate-700 font-medium"></span></div></div></div>
-                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">RECURSOS CARGA</h4><div class="space-y-4"><div><div class="flex justify-between text-xs mb-1"><span>CPU</span><span id="gen-cpu-val" class="font-bold"></span></div><div class="w-full bg-slate-100 rounded-full h-1.5"><div id="gen-cpu-bar" class="h-1.5 rounded-full" style="width:0%"></div></div></div><div><div class="flex justify-between text-xs mb-1"><span>RAM</span><span id="gen-ram-val" class="font-bold"></span></div><div class="w-full bg-slate-100 rounded-full h-1.5"><div id="gen-ram-bar" class="h-1.5 rounded-full" style="width:0%"></div></div></div></div></div>
-                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center"><div id="health-icon-container" class="mb-1"></div><span id="health-score-val" class="text-4xl font-black text-slate-800">--%</span><span class="text-[10px] font-bold text-slate-400 uppercase">SCORE ESTABILIDAD</span></div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">IDENTIFICACIÓN</h4>
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center"><span class="text-slate-500 text-sm">Unidad</span><span id="gen-unit" class="font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg"></span></div>
+                            <div class="flex justify-between items-center"><span class="text-slate-500 text-sm">IP Pública</span><span id="gen-ip" class="font-mono text-slate-700 font-bold"></span></div>
+                            <div class="flex justify-between items-center"><span class="text-slate-500 text-sm">Actualización</span><span id="gen-seen" class="text-slate-400 text-xs"></span></div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">RECURSOS</h4>
+                        <div class="space-y-5">
+                            <div><div class="flex justify-between text-xs font-bold mb-1.5 text-slate-600"><span>CPU</span><span id="gen-cpu-val"></span></div><div class="w-full bg-slate-100 rounded-full h-2"><div id="gen-cpu-bar" class="h-2 rounded-full transition-all duration-500"></div></div></div>
+                            <div><div class="flex justify-between text-xs font-bold mb-1.5 text-slate-600"><span>RAM</span><span id="gen-ram-val"></span></div><div class="w-full bg-slate-100 rounded-full h-2"><div id="gen-ram-bar" class="h-2 rounded-full transition-all duration-500"></div></div></div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+                        <div id="health-icon-container" class="mb-2"></div>
+                        <span id="health-score-val" class="text-5xl font-black text-slate-800">--%</span>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Salud del Activo</span>
+                    </div>
                 </div>
-                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm h-[320px]"><h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">LATENCIA DE RED (MS)</h4><canvas id="latency-chart"></canvas></div>
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-[350px]"><h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">HISTORIAL DE LATENCIA</h4><canvas id="latency-chart"></canvas></div>
             </div>
             
-            <div id="tab-hardware" class="tab-content hidden"><div id="hardware-full-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div></div>
+            <div id="tab-hardware" class="tab-content hidden"><div id="hardware-full-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"></div></div>
             
             <div id="tab-predictive" class="tab-content hidden">
-                <div class="flex justify-between items-center mb-6"><h3 class="text-lg font-bold text-slate-800">Argos IA Diagnosis</h3><button onclick="runManualAnalysis()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition"><i data-lucide="zap" class="w-4 h-4"></i> Analizar Ahora</button></div>
-                <div id="ai-loading" class="hidden p-8 text-center"><i data-lucide="loader-2" class="w-8 h-8 animate-spin mx-auto text-indigo-600"></i></div>
-                <div id="ai-results" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><h4 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i data-lucide="search" class="text-indigo-500"></i>Anomalías Detectadas</h4><div id="ai-anomalies-list" class="space-y-3"></div></div>
-                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><h4 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i data-lucide="shield-check" class="text-emerald-500"></i>Plan de Acción</h4><div id="ai-recommendations-list" class="space-y-3"></div></div>
+                <div class="flex justify-between items-center mb-6"><h3 class="text-xl font-bold text-slate-800">Argos IA Analysis</h3><button onclick="runManualAnalysis()" class="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition hover:bg-indigo-700 shadow-md"><i data-lucide="brain"></i> Iniciar Escaneo</button></div>
+                <div id="ai-loading" class="hidden p-20 text-center"><i data-lucide="loader-2" class="w-12 h-12 animate-spin mx-auto text-indigo-600 mb-4"></i><p class="font-bold text-slate-500">Analizando métricas de rendimiento...</p></div>
+                <div id="ai-results" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="bg-white p-8 rounded-2xl border border-slate-200"><h4 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><i data-lucide="alert-circle" class="text-rose-500"></i>Hallazgos Críticos</h4><div id="ai-anomalies-list" class="space-y-4"></div></div>
+                    <div class="bg-white p-8 rounded-2xl border border-slate-200"><h4 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><i data-lucide="check-circle" class="text-emerald-500"></i>Recomendaciones</h4><div id="ai-recommendations-list" class="space-y-4"></div></div>
                 </div>
             </div>
             
             <div id="tab-specs" class="tab-content hidden">
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    <div class="lg:col-span-8 space-y-6">
-                        <div id="history-timeline" class="space-y-4"></div>
-                    </div>
-                    <div class="lg:col-span-4"><div class="bg-white p-6 rounded-xl border border-indigo-100 shadow-sm sticky top-0"><h3 class="font-bold text-slate-800 mb-4 pb-2 border-b flex items-center gap-2"><i data-lucide="cpu" class="w-4 h-4"></i> Ficha NUC</h3><div class="space-y-4 text-sm" id="specs-summary"></div></div></div>
+                    <div class="lg:col-span-4"><div class="bg-white p-8 rounded-2xl border border-indigo-100 shadow-sm"><h3 class="font-black text-slate-800 mb-6 pb-2 border-b flex items-center gap-2 text-lg"><i data-lucide="cpu"></i> HARDWARE NUC</h3><div id="specs-summary" class="space-y-3"></div></div></div>
+                    <div class="lg:col-span-8"><h3 class="font-bold text-lg mb-6 text-slate-800 flex items-center gap-2"><i data-lucide="clipboard-list"></i> Bitácora de Incidencias</h3><div id="history-timeline" class="space-y-4"></div></div>
                 </div>
             </div>
         </div>
@@ -117,8 +122,8 @@ document.addEventListener('DOMContentLoaded', () => {
             devices.forEach(dev => {
                 if(!dev.unit) dev.unit = "CENTRO";
                 if(!dev.latency_history) dev.latency_history = Array(12).fill(0);
-                const currentLat = dev.latency_ms || dev.latency || 0;
-                dev.latency_history.push(currentLat);
+                const lat = dev.latency_ms || dev.latency || 0;
+                dev.latency_history.push(lat);
                 if(dev.latency_history.length > 12) dev.latency_history.shift();
                 pcDataStore[dev.pc_name] = dev;
             });
@@ -126,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateFilters(devices);
             if(currentPc && pcDataStore[currentPc]) refreshModalData(false);
             document.getElementById('loading-indicator').style.display = 'none';
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error("Error API:", e); }
     }
 
     function renderGrid() {
@@ -143,154 +148,191 @@ document.addEventListener('DOMContentLoaded', () => {
             const cpu = pc.cpu_load_percent || 0;
             const ram = pc.ram_percent || 0;
 
-            // UMBRALES DE ALERTA CRÍTICA (BLINKING)
-            const isCritical = lat > 100 || cpu > 70 || ram > 80;
-            const criticalClass = isCritical ? 'critical-alert' : '';
+            const isCritical = lat > 100 || cpu > 70 || ram > 85;
             const statusClass = pc.status === 'offline' ? 'status-offline' : (isCritical ? 'status-warning' : 'status-online');
-            
-            // OCULTAR MS SI ES 0 AL INICIO
-            const latHiddenClass = lat === 0 ? 'latency-val-hidden' : '';
+            const alertClass = (isCritical && pc.status !== 'offline') ? 'critical-alert' : '';
 
-            let latencyBarHtml = '<div class="latency-grid">';
-            pc.latency_history.forEach(val => {
-                let colorClass = val > 100 ? 'lb-high' : (val > 50 ? 'lb-med' : 'lb-low');
-                latencyBarHtml += `<div class="latency-block ${val > 0 ? colorClass : 'bg-slate-100'}" title="${val}ms"></div>`;
+            // BARRA DE LATENCIA RESTAURADA
+            let blocks = '';
+            pc.latency_history.forEach(v => {
+                let color = 'bg-slate-100';
+                if(v > 0) color = v > 100 ? 'lb-high' : (v > 50 ? 'lb-med' : 'lb-low');
+                blocks += `<div class="latency-block ${color}" title="${v}ms"></div>`;
             });
-            latencyBarHtml += '</div>';
 
             const card = document.createElement('div');
-            card.className = `card cursor-pointer group ${criticalClass}`;
+            card.className = `card cursor-pointer ${alertClass}`;
             card.onclick = () => openModal(pc.pc_name);
             card.innerHTML = `
-                <div class="flex justify-between items-start mb-2">
+                <div class="flex justify-between items-start mb-3">
                     <div class="truncate">
-                        <h3 class="font-bold text-slate-800 text-sm truncate">${pc.pc_name}</h3>
-                        <span class="text-[10px] font-bold text-slate-400 uppercase">${pc.unit}</span>
+                        <h3 class="font-black text-slate-800 text-sm truncate">${pc.pc_name}</h3>
+                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">${pc.unit}</span>
                     </div>
                     <div class="status-dot ${statusClass}"></div>
                 </div>
-                <div class="flex justify-between items-end mt-1">
-                    <span class="text-2xl font-black text-slate-700 ${latHiddenClass}">${lat}<small class="text-[10px] ml-0.5">ms</small></span>
-                    <div class="text-right">
-                        <div class="text-[9px] font-bold text-slate-400 uppercase">CPU ${Math.round(cpu)}%</div>
-                        <div class="text-[9px] font-bold text-slate-400 uppercase">RAM ${Math.round(ram)}%</div>
+                <div class="flex justify-between items-end">
+                    <span class="text-2xl font-black text-slate-700 ${lat === 0 ? 'latency-val-hidden' : ''}">${lat}<small class="text-[10px] ml-0.5 text-slate-400 font-normal">ms</small></span>
+                    <div class="text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
+                        CPU ${Math.round(cpu)}% | RAM ${Math.round(ram)}%
                     </div>
                 </div>
-                ${latencyBarHtml}`;
+                <div class="latency-grid">${blocks}</div>`;
             container.appendChild(card);
         });
     }
 
-    // EXPORTACIÓN CSV GLOBAL (TODOS LOS SENSORES + ÚLTIMA CONEXIÓN)
+    // EXPORTACIÓN CSV COMPLETA (INCLUYE TODOS LOS SENSORES DETALLADOS)
     window.exportAllToCSV = () => {
-        let csv = "\uFEFFPC_Name,Unidad,IP,Status,Ultima_Conexion,CPU_%,RAM_%,Categoria,Sensor,Valor\n";
-        const now = new Date().toLocaleString();
-
+        let csv = "\uFEFFPC_Name,Unidad,IP,Status,CPU_Load,RAM_Load,Categoria,Sensor,Valor,Fecha_Registro\n";
+        const dateStr = new Date().toLocaleString();
+        
         Object.values(pcDataStore).forEach(pc => {
-            const rowBase = `"${pc.pc_name}","${pc.unit}","${pc.public_ip || ''}","${pc.status}","${pc.last_seen || now}","${pc.cpu_load_percent}%","${pc.ram_percent}%"`;
-            if (pc.extended_sensors) {
+            const base = `"${pc.pc_name}","${pc.unit}","${pc.public_ip || ''}","${pc.status}","${pc.cpu_load_percent}%","${pc.ram_percent}%"`;
+            if (pc.extended_sensors && typeof pc.extended_sensors === 'object') {
                 for (const [cat, sensors] of Object.entries(pc.extended_sensors)) {
-                    sensors.forEach(s => {
-                        csv += `${rowBase},"${cat}","${s.nombre || s.tipo}","${s.valor}"\n`;
-                    });
+                    if (Array.isArray(sensors)) {
+                        sensors.forEach(s => {
+                            csv += `${base},"${cat}","${s.nombre || s.tipo}","${s.valor}","${dateStr}"\n`;
+                        });
+                    }
                 }
             } else {
-                csv += `${rowBase},"N/A","N/A","N/A"\n`;
+                csv += `${base},"Sin Sensores","N/A","N/A","${dateStr}"\n`;
             }
         });
 
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.setAttribute("download", `Data_General_Argos_${new Date().getTime()}.csv`);
+        link.download = `Reporte_Decisiones_Sensores_${new Date().getTime()}.csv`;
         link.click();
+    };
+
+    // GENERAR PDF DE FICHA TÉCNICA
+    window.exportToPDF = () => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const pc = pcDataStore[currentPc];
+        if(!pc) return;
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(22);
+        doc.text(`Ficha Técnica: ${pc.pc_name}`, 15, 20);
+        
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Unidad: ${pc.unit} | IP: ${pc.public_ip} | Fecha: ${new Date().toLocaleString()}`, 15, 30);
+
+        const hardwareData = [];
+        if(pc.extended_sensors) {
+            for(const [cat, sensors] of Object.entries(pc.extended_sensors)) {
+                sensors.forEach(s => hardwareData.push([cat, s.nombre || s.tipo, s.valor]));
+            }
+        }
+
+        doc.autoTable({
+            startY: 40,
+            head: [['Categoría', 'Sensor', 'Valor']],
+            body: hardwareData,
+            theme: 'striped',
+            headStyles: { fillStyle: [79, 70, 229] }
+        });
+
+        doc.save(`Ficha_Argos_${pc.pc_name}.pdf`);
     };
 
     // DIAGNÓSTICO IA CON UMBRALES PREVENTIVOS
     window.runManualAnalysis = () => {
         const pc = pcDataStore[currentPc];
-        if(!pc) return;
-        
         const loader = document.getElementById('ai-loading');
-        const listA = document.getElementById('ai-anomalies-list');
-        const listR = document.getElementById('ai-recommendations-list');
-        
-        loader.classList.remove('hidden');
-        listA.innerHTML = ''; listR.innerHTML = '';
-        
+        const results = document.getElementById('ai-results');
+        loader.classList.remove('hidden'); results.classList.add('hidden');
+
         setTimeout(() => {
-            loader.classList.add('hidden');
-            let f = [], r = [];
+            loader.classList.add('hidden'); results.classList.remove('hidden');
+            const listA = document.getElementById('ai-anomalies-list');
+            const listR = document.getElementById('ai-recommendations-list');
+            listA.innerHTML = ''; listR.innerHTML = '';
+
+            let a = [], r = [];
             const lat = pc.latency_ms || pc.latency || 0;
 
-            if(lat > 50) { f.push("Latencia inestable detectada ("+lat+"ms)."); r.push("Verificar switch local."); }
-            if(pc.cpu_load_percent > 70) { f.push("Carga de CPU elevada."); r.push("Revisar procesos críticos."); }
-            if(pc.ram_percent > 85) { f.push("Memoria RAM saturada."); r.push("Liberar cache de aplicaciones."); }
-            
-            if(f.length === 0) { f.push("Sin anomalías."); r.push("Continuar monitoreo estándar."); }
+            if(lat > 50) { a.push("Inestabilidad de Red detectada (>50ms)"); r.push("Revisar cableado físico o carga del nodo local."); }
+            if(pc.cpu_load_percent > 70) { a.push("Saturación de CPU detectada"); r.push("Cerrar procesos redundantes en el host."); }
+            if(pc.ram_percent > 85) { a.push("Memoria RAM crítica"); r.push("Se recomienda reinicio preventivo del activo."); }
 
-            f.forEach(i => listA.innerHTML += `<div class="p-2 bg-amber-50 text-amber-800 text-xs rounded border border-amber-100 font-bold">${i}</div>`);
-            r.forEach(i => listR.innerHTML += `<div class="p-2 bg-emerald-50 text-emerald-800 text-xs rounded border border-emerald-100 font-medium">${i}</div>`);
+            if(a.length === 0) { a.push("Sin anomalías detectadas."); r.push("Mantener plan de monitoreo preventivo."); }
+
+            a.forEach(i => listA.innerHTML += `<div class="p-3 bg-rose-50 text-rose-700 text-xs rounded-xl border border-rose-100 font-bold">⚠️ ${i}</div>`);
+            r.forEach(i => listR.innerHTML += `<div class="p-3 bg-emerald-50 text-emerald-700 text-xs rounded-xl border border-emerald-100 font-medium">✅ ${i}</div>`);
             lucide.createIcons();
-        }, 1000);
+        }, 1200);
     };
 
-    // FICHA TÉCNICA FILTRADA (SOLO NUC / HOST)
+    // FILTRO DE FICHA NUC CORREGIDO (Captura Intel Celeron, Kingston, Memoria)
     function updateSpecsSummary(pc) {
         const container = document.getElementById('specs-summary');
         container.innerHTML = '';
-        const keywords = ['processor', 'cpu', 'motherboard', 'bios', 'memory', 'physical', 'disk', 'volumen', 'intel', 'host'];
+        // Keywords ampliadas para capturar lo que me mostraste
+        const keywords = ['intel', 'celeron', 'kingston', 'memory', 'physical', 'disk', 'ssd', 'cpu', 'motherboard', 'bios'];
         
         if(pc.extended_sensors) {
             for(const [cat, sensors] of Object.entries(pc.extended_sensors)) {
-                if(keywords.some(k => cat.toLowerCase().includes(k))) {
+                if(keywords.some(k => cat.toLowerCase().includes(k) || (sensors[0] && sensors[0].nombre.toLowerCase().includes(k)))) {
                     sensors.forEach(s => {
-                        container.innerHTML += `<div class="flex justify-between border-b border-slate-50 py-1.5"><span class="text-slate-500 text-xs">${s.nombre || s.tipo}</span><span class="font-bold text-slate-700 text-xs">${s.valor}</span></div>`;
+                        container.innerHTML += `
+                        <div class="flex justify-between border-b border-slate-50 py-2 items-center">
+                            <span class="text-slate-500 text-[11px] font-medium leading-tight pr-2">${s.nombre || s.tipo}</span>
+                            <span class="font-bold text-slate-800 text-[11px] text-right">${s.valor}</span>
+                        </div>`;
                     });
                 }
             }
-        } else { container.innerHTML = '<p class="text-slate-400 italic text-xs">Sin datos NUC.</p>'; }
+        }
+        if(container.innerHTML === '') container.innerHTML = '<p class="text-slate-400 text-xs italic">Cargando componentes del NUC...</p>';
     }
 
-    window.openModal = (pcName) => {
-        currentPc = pcName;
-        const modal = document.getElementById('pc-modal-container');
+    // GESTIÓN DEL MODAL
+    window.openModal = (name) => {
+        currentPc = name;
+        const mod = document.getElementById('pc-modal-container');
         const overlay = document.getElementById('pc-modal-overlay');
-        overlay.classList.replace('hidden', 'flex');
-        setTimeout(() => modal.classList.replace('opacity-0', 'opacity-100'), 10);
+        overlay.classList.remove('hidden'); overlay.classList.add('flex');
+        setTimeout(() => mod.classList.replace('opacity-0', 'opacity-100'), 50);
         switchTab('general');
         refreshModalData(true);
     };
 
     window.closeModal = () => {
-        const modal = document.getElementById('pc-modal-container');
-        const overlay = document.getElementById('pc-modal-overlay');
-        modal.classList.replace('opacity-100', 'opacity-0');
-        setTimeout(() => overlay.classList.replace('flex', 'hidden'), 300);
-        currentPc = null;
+        const mod = document.getElementById('pc-modal-container');
+        mod.classList.replace('opacity-100', 'opacity-0');
+        setTimeout(() => document.getElementById('pc-modal-overlay').classList.replace('flex', 'hidden'), 300);
     };
 
     function refreshModalData(fullUpdate) {
-        if(!currentPc) return;
         const pc = pcDataStore[currentPc];
+        if(!pc) return;
         document.getElementById('modal-pc-name').textContent = pc.pc_name;
-        document.getElementById('modal-status-line').innerHTML = `<span class="${pc.status==='online'?'text-emerald-500':'text-rose-500'} font-bold">${pc.status ? pc.status.toUpperCase() : 'OK'}</span> | ${pc.public_ip || '-'}`;
+        document.getElementById('modal-status-line').innerHTML = `<span class="px-3 py-1 rounded-full text-xs font-black ${pc.status==='online'?'bg-emerald-500 text-white':'bg-rose-500 text-white'}">${pc.status ? pc.status.toUpperCase() : 'OK'}</span><span class="text-slate-300">/</span><span class="font-mono font-bold text-slate-400 text-sm">${pc.public_ip || '-'}</span>`;
         
         document.getElementById('gen-unit').textContent = pc.unit;
         document.getElementById('gen-ip').textContent = pc.public_ip || '-';
-        document.getElementById('gen-seen').textContent = new Date().toLocaleTimeString();
+        document.getElementById('gen-seen').textContent = "Última señal: " + new Date().toLocaleTimeString();
         
-        document.getElementById('gen-cpu-val').textContent = Math.round(pc.cpu_load_percent||0)+'%';
-        document.getElementById('gen-cpu-bar').style.width = (pc.cpu_load_percent||0)+'%';
-        document.getElementById('gen-cpu-bar').className = `h-1.5 rounded-full ${pc.cpu_load_percent > 70 ? 'bg-rose-500' : 'bg-indigo-500'}`;
+        const cpu = pc.cpu_load_percent || 0;
+        const ram = pc.ram_percent || 0;
+        document.getElementById('gen-cpu-val').textContent = Math.round(cpu)+'%';
+        document.getElementById('gen-cpu-bar').style.width = cpu+'%';
+        document.getElementById('gen-cpu-bar').className = `h-2 rounded-full ${cpu > 70 ? 'bg-rose-500' : 'bg-indigo-500'}`;
         
-        document.getElementById('gen-ram-val').textContent = Math.round(pc.ram_percent||0)+'%';
-        document.getElementById('gen-ram-bar').style.width = (pc.ram_percent||0)+'%';
-        document.getElementById('gen-ram-bar').className = `h-1.5 rounded-full ${pc.ram_percent > 80 ? 'bg-rose-500' : 'bg-purple-500'}`;
+        document.getElementById('gen-ram-val').textContent = Math.round(ram)+'%';
+        document.getElementById('gen-ram-bar').style.width = ram+'%';
+        document.getElementById('gen-ram-bar').className = `h-2 rounded-full ${ram > 80 ? 'bg-rose-500' : 'bg-purple-500'}`;
         
-        const health = pc.status === 'offline' ? 0 : (100 - (pc.cpu_load_percent*0.4) - (pc.ram_percent*0.3)).toFixed(0);
-        document.getElementById('health-score-val').textContent = health + '%';
-        document.getElementById('health-icon-container').innerHTML = `<i data-lucide="${health > 80 ? 'check-circle' : 'alert-circle'}" class="w-8 h-8 ${health > 80 ? 'text-emerald-500' : 'text-rose-500'}"></i>`;
+        const score = pc.status === 'offline' ? 0 : (100 - (cpu * 0.4) - (ram * 0.3) - ((pc.latency_ms||0) * 0.2)).toFixed(0);
+        document.getElementById('health-score-val').textContent = Math.max(score, 0) + '%';
+        document.getElementById('health-icon-container').innerHTML = `<i data-lucide="${score > 75 ? 'check-circle' : 'alert-triangle'}" class="w-10 h-10 ${score > 75 ? 'text-emerald-500' : 'text-amber-500'}"></i>`;
         
         if(fullUpdate) {
             updateLatencyChart(pc.latency_history);
@@ -307,7 +349,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(pc.extended_sensors) {
             for(const [cat, sensors] of Object.entries(pc.extended_sensors)) {
                 sensors.forEach(s => {
-                    grid.innerHTML += `<div class="bg-white p-3 rounded border border-slate-100 shadow-sm"><span class="block text-slate-400 font-bold text-[9px] uppercase">${cat}</span><span class="block text-slate-600 truncate text-[10px]">${s.nombre||s.tipo}</span><span class="block text-sm font-mono font-bold text-slate-800">${s.valor}</span></div>`;
+                    grid.innerHTML += `<div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm"><span class="block text-[8px] font-black text-slate-400 uppercase mb-1">${cat}</span><span class="block text-slate-600 text-[10px] truncate mb-1">${s.nombre||s.tipo}</span><span class="block text-sm font-mono font-black text-indigo-700">${s.valor}</span></div>`;
                 });
             }
         }
@@ -315,22 +357,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function updateHistoryTab(pc) {
         const timeline = document.getElementById('history-timeline');
-        timeline.innerHTML = '<div class="text-xs text-slate-400">Consultando Supabase...</div>';
+        timeline.innerHTML = '<div class="p-4 text-slate-400 text-sm">Consultando bitácora de mantenimiento...</div>';
         try {
             const res = await fetch('/api/history/all');
             const data = await res.json();
             const filtered = data.filter(l => l.pc_name === pc.pc_name);
-            timeline.innerHTML = filtered.length ? '' : '<p class="text-slate-400 italic">Sin registros.</p>';
+            timeline.innerHTML = filtered.length ? '' : '<div class="text-slate-400 italic p-4 bg-slate-100 rounded-xl">Sin registros de mantenimiento para este activo.</div>';
             filtered.forEach(log => {
-                timeline.innerHTML += `<div class="timeline-item"><div class="timeline-dot"></div><div class="text-[10px] text-slate-400">${new Date(log.timestamp).toLocaleDateString()}</div><div class="font-bold text-slate-700 text-sm">${log.action}</div><p class="text-xs text-slate-500">${log.desc}</p></div>`;
+                timeline.innerHTML += `<div class="bg-white p-5 rounded-2xl border border-slate-200 relative mb-3 shadow-sm"><div class="font-black text-slate-800 text-sm mb-1">${log.action} - ${log.what}</div><p class="text-xs text-slate-500 mb-3">${log.desc}</p><div class="flex gap-4 text-[9px] font-bold text-indigo-500"><span>SOLICITÓ: ${log.req}</span><span>EJECUTÓ: ${log.exec}</span></div></div>`;
             });
-        } catch(e) { timeline.innerHTML = 'Error de carga.'; }
+        } catch(e) { timeline.innerHTML = 'Error de conexión con la bitácora.'; }
     }
 
     function updateLatencyChart(data) {
         if (charts.latency) charts.latency.destroy();
         const ctx = document.getElementById('latency-chart').getContext('2d');
-        charts.latency = new Chart(ctx, { type: 'line', data: { labels: Array(data.length).fill(''), datasets: [{ data: data, borderColor: '#6366f1', borderWidth: 2, tension: 0.4, pointRadius: 0, fill: true, backgroundColor: 'rgba(99,102,241,0.05)' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: {legend:false}, scales: {x:{display:false}, y:{beginAtZero:true, grid:{color:'#f1f5f9'}}} } });
+        charts.latency = new Chart(ctx, { type: 'line', data: { labels: Array(data.length).fill(''), datasets: [{ data: data, borderColor: '#4f46e5', borderWidth: 3, tension: 0.4, pointRadius: 0, fill: true, backgroundColor: 'rgba(79, 70, 229, 0.05)' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: {legend:false}, scales: {x:{display:false}, y:{beginAtZero:true, grid:{color:'#f1f5f9'}}} } });
     }
 
     window.switchTab = (id) => {
@@ -342,7 +384,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateFilters(devices) {
         const select = document.getElementById('unit-filter');
-        if(select.options.length > 1) return;
+        if(select.options.length > 0) return;
+        select.appendChild(new Option("Todas las Unidades", "all"));
         [...new Set(devices.map(d => d.unit))].forEach(u => select.appendChild(new Option(u, u)));
     }
 
