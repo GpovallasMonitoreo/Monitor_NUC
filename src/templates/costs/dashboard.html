@@ -1,317 +1,523 @@
 {% extends 'base.html' %}
-
-{% block header_title %}Executive Command Center | Argos DOOH{% endblock %}
-
+{% block header_title %}Executive Command Center - Argos DOOH{% endblock %}
 {% block content %}
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
-
-<div id="argos-app" class="max-w-[1800px] mx-auto space-y-8 pb-12 font-['Inter']">
-    
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
-            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[2px] mb-2">Total Inversión (CAPEX)</h3>
-            <p id="t-inv" class="text-3xl font-mono font-bold text-slate-800">$0.00</p>
-            <div class="mt-2 text-[10px] text-slate-400 uppercase">Incluye Obra Civil y Electrónica</div>
+<div class="max-w-[1800px] mx-auto space-y-8">
+    <!-- Header Ejecutivo -->
+    <div class="flex justify-between items-start">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">Costo por <span class="text-primary">Ubicación</span></h1>
+            <p class="text-sm text-slate-500 mt-1">Dashboard ejecutivo para toma de decisiones estratégicas</p>
         </div>
-        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
-            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[2px] mb-2">Total Mtto. (OPEX)</h3>
-            <p id="t-mant" class="text-3xl font-mono font-bold text-orange-500">$0.00</p>
-            <div class="mt-2 text-[10px] text-slate-400 uppercase italic">Operación + Logística</div>
-        </div>
-        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition border-l-4 border-l-emerald-500">
-            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[2px] mb-2">Utilidad Neta</h3>
-            <p id="t-net" class="text-3xl font-mono font-black text-slate-900">$0.00</p>
-            <div id="profit-badge" class="mt-2 inline-block px-2 py-1 rounded text-[9px] font-bold">CALCULANDO...</div>
-        </div>
-        <div class="flex flex-col gap-2">
-            <button onclick="ui.openDrawer('installation')" class="flex-1 bg-slate-900 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-800 transition shadow-lg shadow-slate-200">
-                <span class="material-icons-outlined text-sm">add_location</span> NUEVA INSTALACIÓN
+        <div class="flex items-center gap-4">
+            <button onclick="load()" class="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm transition">
+                <i data-lucide="refresh-cw" class="w-4 h-4 text-slate-600"></i>
+                <span class="text-sm font-bold text-slate-700">Actualizar</span>
             </button>
-            <button onclick="ui.openDrawer('maintenance')" class="flex-1 bg-orange-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-orange-600 transition shadow-lg shadow-orange-100">
-                <span class="material-icons-outlined text-sm">build</span> REGISTRAR MTTO.
+            <button onclick="openDrawer('report')" class="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl hover:bg-orange-600 shadow-lg shadow-orange-500/20 transition">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <span class="text-sm font-bold">Exportar Reporte</span>
             </button>
         </div>
     </div>
 
-    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-        <div class="p-6 border-b bg-slate-50/50 flex justify-between items-center">
-            <div>
-                <h3 class="font-bold text-slate-800 flex items-center gap-2">
-                    <span class="material-icons-outlined text-primary text-orange-500">analytics</span> 
-                    Rentabilidad por Ubicación
-                </h3>
-                <p class="text-[10px] text-slate-500 uppercase font-medium">Control de ciclo de vida del activo</p>
+    <!-- KPI Cards Ejecutivas -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Inversión (CAPEX)</p>
+                    <h3 id="t-inv" class="text-2xl font-bold text-slate-900 font-mono">$0.00</h3>
+                </div>
+                <div class="p-2.5 rounded-lg bg-primary/10">
+                    <i data-lucide="trending-up" class="w-5 h-5 text-primary"></i>
+                </div>
             </div>
-            <button onclick="app.loadData()" class="p-2 hover:bg-slate-200 rounded-full transition text-slate-400">
-                <i data-lucide="refresh-cw" class="w-5 h-5"></i>
-            </button>
+            <p class="text-[11px] text-slate-500 mt-2">Inversión total en infraestructura</p>
         </div>
+
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Mantenimiento (OPEX)</p>
+                    <h3 id="t-mant" class="text-2xl font-bold text-amber-600 font-mono">$0.00</h3>
+                </div>
+                <div class="p-2.5 rounded-lg bg-amber-100">
+                    <i data-lucide="tool" class="w-5 h-5 text-amber-600"></i>
+                </div>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-2">Costos operativos mensuales</p>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Utilidad Neta</p>
+                    <h3 id="t-net" class="text-2xl font-bold text-emerald-600 font-mono">$0.00</h3>
+                </div>
+                <div class="p-2.5 rounded-lg bg-emerald-100">
+                    <i data-lucide="dollar-sign" class="w-5 h-5 text-emerald-600"></i>
+                </div>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-2">Beneficio después de gastos</p>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">ROI Promedio</p>
+                    <h3 id="t-roi" class="text-2xl font-bold text-secondary font-mono">0%</h3>
+                </div>
+                <div class="p-2.5 rounded-lg bg-secondary/10">
+                    <i data-lucide="target" class="w-5 h-5 text-secondary"></i>
+                </div>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-2">Retorno sobre inversión promedio</p>
+        </div>
+    </div>
+
+    <!-- Tabla Ejecutiva Mejorada -->
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+        <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+            <div>
+                <h3 class="text-lg font-bold text-slate-800">Rentabilidad por Ubicación</h3>
+                <p class="text-sm text-slate-500">Análisis detallado de cada activo digital</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="relative">
+                    <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                    <input type="text" placeholder="Buscar ubicación..." class="pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm w-64 focus:ring-2 focus:ring-primary focus:border-transparent" onkeyup="filterTable(this.value)">
+                </div>
+                <select onchange="filterByStatus(this.value)" class="border border-slate-200 rounded-xl text-sm px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent">
+                    <option value="">Todos los estados</option>
+                    <option value="RENTABLE">Rentable</option>
+                    <option value="RECUPERANDO">Recuperando</option>
+                    <option value="CRITICO">Crítico</option>
+                </select>
+            </div>
+        </div>
+        
         <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm border-collapse">
-                <thead class="bg-slate-100/50 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b">
+            <table class="w-full border-collapse">
+                <thead class="bg-slate-50/80 border-b border-slate-100">
                     <tr>
-                        <th class="p-4">ID Pantalla / Clave QTM</th>
-                        <th class="p-4 text-right">Inversión</th>
-                        <th class="p-4 text-right">Mantenimiento</th>
-                        <th class="p-4 text-right">Total Gastos</th>
-                        <th class="p-4 text-right text-emerald-600">Ventas</th>
-                        <th class="p-4 text-right font-black">Ganancia</th>
-                        <th class="p-4 text-center">ROI</th>
-                        <th class="p-4 text-center">Estado</th>
+                        <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Ubicación / Activo</th>
+                        <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Inversión (CAPEX)</th>
+                        <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Mantenimiento (OPEX)</th>
+                        <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Ventas</th>
+                        <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Utilidad</th>
+                        <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">ROI</th>
+                        <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Estado</th>
+                        <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="tb" class="divide-y divide-slate-100">
-                    <tr><td colspan="8" class="p-12 text-center text-slate-400 italic">Inicializando sistema Argos...</td></tr>
+                    <tr><td colspan="8" class="p-12 text-center text-slate-400"><i data-lucide="loader" class="w-8 h-8 animate-spin mx-auto mb-3"></i><p>Cargando datos ejecutivos...</p></td></tr>
                 </tbody>
             </table>
         </div>
+        
+        <div class="p-4 border-t border-slate-100 bg-slate-50/50 text-sm text-slate-500 flex justify-between items-center">
+            <span id="summary-text">Mostrando 0 ubicaciones</span>
+            <div class="flex items-center gap-2">
+                <button onclick="changePage(-1)" class="p-2 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                </button>
+                <span class="text-sm font-bold">Página <span id="current-page">1</span></span>
+                <button onclick="changePage(1)" class="p-2 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos Ejecutivos -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 class="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wider">Distribución de Rentabilidad</h3>
+            <div class="h-64 flex items-center justify-center">
+                <div id="profit-chart" class="w-full h-full"></div>
+            </div>
+        </div>
+        
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 class="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wider">Top 5 Ubicaciones</h3>
+            <div id="top-locations" class="space-y-4">
+                <!-- Se llenará dinámicamente -->
+            </div>
+        </div>
+        
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 class="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wider">Alertas Críticas</h3>
+            <div id="alerts-container" class="space-y-3">
+                <div class="p-3 bg-red-50 rounded-xl border border-red-100">
+                    <div class="flex gap-3 items-start">
+                        <i data-lucide="alert-triangle" class="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0"></i>
+                        <div>
+                            <p class="text-sm font-bold text-slate-700">Sin datos cargados</p>
+                            <p class="text-xs text-slate-500">Ejecuta el reporte para ver alertas</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
-<div id="drawer-overlay" class="fixed inset-0 bg-slate-900/40 z-[60] hidden backdrop-blur-sm transition-opacity" onclick="ui.closeDrawer()"></div>
-<div id="drawer" class="fixed right-0 top-0 h-full w-full max-w-xl bg-white z-[70] shadow-2xl translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
-    <div class="p-6 border-b flex justify-between items-center">
+<!-- Drawer para Reportes -->
+<div id="overlay" class="fixed inset-0 bg-slate-900/40 z-40 hidden backdrop-blur-sm transition-opacity opacity-0" onclick="closeDrawer()"></div>
+<div id="drawer" class="fixed right-0 top-0 h-full w-full max-w-2xl bg-white z-50 shadow-2xl translate-x-full drawer-slide overflow-hidden flex flex-col">
+    <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0">
         <div>
-            <h2 id="drawer-title" class="text-xl font-bold text-slate-800">Cuestionario</h2>
-            <p id="drawer-subtitle" class="text-xs text-slate-500 italic uppercase tracking-wider"></p>
+            <h2 id="d-title" class="text-xl font-bold text-slate-800">Exportar Reporte Ejecutivo</h2>
+            <p id="d-subtitle" class="text-sm text-slate-500">Genera un reporte detallado para presentación</p>
         </div>
-        <button onclick="ui.closeDrawer()" class="p-2 hover:bg-slate-100 rounded-full"><span class="material-icons-outlined">close</span></button>
+        <button onclick="closeDrawer()" class="p-2 hover:bg-slate-100 rounded-full transition">
+            <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
     </div>
-    <div id="drawer-content" class="flex-1 overflow-y-auto p-8 bg-slate-50/30 custom-scroll">
-        </div>
+    <div id="d-content" class="flex-1 overflow-y-auto custom-scroll p-8 bg-slate-50/30">
+        <!-- Contenido dinámico -->
+    </div>
 </div>
 
 <script>
-/**
- * ARQUITECTURA POO - ARGOS DOOH
- * Escencia técnica con visión senior.
- */
+    document.addEventListener('DOMContentLoaded', () => { 
+        lucide.createIcons(); 
+        load();
+    });
 
-class ArgosSignageManager {
-    constructor() {
-        this.endpoints = {
-            report: '/costs/report',
-            add: '/costs/add',
-            data: '/api/data'
-        };
-    }
+    let currentData = [];
+    let currentPage = 1;
+    const itemsPerPage = 10;
 
-    async loadData() {
+    async function load() {
         try {
-            const response = await fetch(this.endpoints.report);
-            const data = await response.json();
-            this.renderDashboard(data);
+            const r = await fetch('/costs/report'); 
+            const data = await r.json();
+            currentData = data;
+            
+            updateKPI(data);
+            renderTable();
+            updateCharts(data);
+            updateAlerts(data);
         } catch (error) {
-            console.error("Argos System Error:", error);
+            console.error('Error loading data:', error);
+            document.getElementById('tb').innerHTML = `
+                <tr><td colspan="8" class="p-8 text-center">
+                    <i data-lucide="alert-circle" class="w-12 h-12 text-red-400 mx-auto mb-3"></i>
+                    <p class="text-red-500 font-bold">Error al cargar datos</p>
+                    <p class="text-sm text-slate-400">Intenta nuevamente</p>
+                </td></tr>
+            `;
         }
     }
 
-    renderDashboard(data) {
-        const tb = document.getElementById('tb');
-        tb.innerHTML = '';
+    function updateKPI(data) {
+        let ti = 0, tm = 0, tn = 0, troi = 0, count = 0;
         
-        let ti=0, tm=0, tn=0;
+        data.forEach(x => {
+            ti += x.cost_installation || 0;
+            tm += x.cost_maintenance || 0;
+            tn += x.net_profit || 0;
+            if (x.roi_percent && !isNaN(x.roi_percent)) {
+                troi += parseFloat(x.roi_percent);
+                count++;
+            }
+        });
+        
+        const avgROI = count > 0 ? (troi / count).toFixed(1) : '0.0';
+        
+        document.getElementById('t-inv').innerText = `$${ti.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('t-mant').innerText = `$${tm.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('t-net').innerText = `$${tn.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('t-net').className = tn >= 0 ? 
+            "text-2xl font-bold text-emerald-600 font-mono" : 
+            "text-2xl font-bold text-red-500 font-mono";
+        document.getElementById('t-roi').innerText = `${avgROI}%`;
+    }
 
-        if(!data || data.length === 0) {
-            tb.innerHTML = '<tr><td colspan="8" class="p-12 text-center text-slate-400 italic font-mono">Sin registros en base de datos.</td></tr>';
+    function renderTable() {
+        const tb = document.getElementById('tb');
+        if (currentData.length === 0) {
+            tb.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-slate-400">No hay datos disponibles</td></tr>';
             return;
         }
 
-        data.forEach(item => {
-            ti += item.cost_installation; 
-            tm += item.cost_maintenance; 
-            tn += item.net_profit;
-
-            const stClass = this.getStatusClass(item.status_label);
-
-            tb.innerHTML += `
-                <tr class="hover:bg-slate-50/80 transition-colors group cursor-pointer" onclick="ui.goToScreen('${item.device_id}')">
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = start + itemsPerPage;
+        const pageData = currentData.slice(start, end);
+        
+        let html = '';
+        
+        pageData.forEach(x => {
+            const isProfitable = x.net_profit >= 0;
+            
+            let statusClass = 'bg-red-100 text-red-700 border-red-200';
+            let statusIcon = 'trending-down';
+            
+            if (x.status_label === 'RENTABLE') {
+                statusClass = 'bg-emerald-100 text-emerald-700 border-emerald-200';
+                statusIcon = 'trending-up';
+            } else if (x.status_label === 'RECUPERANDO') {
+                statusClass = 'bg-blue-100 text-blue-700 border-blue-200';
+                statusIcon = 'activity';
+            }
+            
+            html += `
+                <tr class="hover:bg-slate-50/50 transition group">
                     <td class="p-4">
-                        <div class="font-bold text-slate-700">${item.device_id}</div>
-                        <div class="text-[9px] text-slate-400 font-mono">QTM: ${item.qtm_key || 'N/A'}</div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg ${isProfitable ? 'bg-emerald-50 text-emerald-500' : 'bg-red-50 text-red-500'} flex items-center justify-center font-bold text-xs">
+                                <i data-lucide="${statusIcon}" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-slate-700 group-hover:text-primary transition">${x.device_id}</p>
+                                <p class="text-xs text-slate-500">${x.location || 'Sin ubicación'}</p>
+                            </div>
+                        </div>
                     </td>
-                    <td class="p-4 text-right text-slate-500 font-mono">$${item.cost_installation.toLocaleString()}</td>
-                    <td class="p-4 text-right text-orange-500 font-mono">$${item.cost_maintenance.toLocaleString()}</td>
-                    <td class="p-4 text-right font-bold text-red-400 font-mono">$${item.total_expenses.toLocaleString()}</td>
-                    <td class="p-4 text-right font-bold text-emerald-600 font-mono">$${item.total_sales.toLocaleString()}</td>
-                    <td class="p-4 text-right font-black ${item.net_profit >= 0 ? 'text-slate-800' : 'text-red-500'} font-mono">
-                        $${item.net_profit.toLocaleString()}
+                    <td class="p-4 text-right">
+                        <p class="text-sm font-bold text-slate-900">$${x.cost_installation.toLocaleString()}</p>
+                        <p class="text-xs text-slate-400">CAPEX</p>
+                    </td>
+                    <td class="p-4 text-right">
+                        <p class="text-sm font-bold text-amber-600">$${x.cost_maintenance.toLocaleString()}</p>
+                        <p class="text-xs text-slate-400">OPEX</p>
+                    </td>
+                    <td class="p-4 text-right">
+                        <p class="text-sm font-bold text-emerald-600">$${x.total_sales.toLocaleString()}</p>
+                        <p class="text-xs text-slate-400">Ingresos</p>
+                    </td>
+                    <td class="p-4 text-right">
+                        <p class="text-sm font-bold ${isProfitable ? 'text-emerald-600' : 'text-red-500'}">
+                            $${x.net_profit.toLocaleString()}
+                        </p>
+                        <p class="text-xs ${isProfitable ? 'text-emerald-400' : 'text-red-400'}">
+                            ${isProfitable ? '✓ Rentable' : '✗ En pérdida'}
+                        </p>
                     </td>
                     <td class="p-4 text-center">
-                        <span class="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded">${item.roi_percent}%</span>
+                        <div class="inline-flex items-center gap-1 px-3 py-1 rounded-full ${parseFloat(x.roi_percent) >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}">
+                            <span class="text-sm font-bold">${x.roi_percent}%</span>
+                            <i data-lucide="${parseFloat(x.roi_percent) >= 0 ? 'arrow-up-right' : 'arrow-down-right'}" class="w-3 h-3"></i>
+                        </div>
                     </td>
                     <td class="p-4 text-center">
-                        <span class="px-2 py-1 rounded text-[9px] font-black uppercase tracking-tighter ${stClass}">${item.status_label}</span>
+                        <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border ${statusClass}">
+                            <i data-lucide="${statusIcon}" class="w-3 h-3"></i>
+                            ${x.status_label}
+                        </span>
+                    </td>
+                    <td class="p-4 text-center">
+                        <button onclick="viewDetails('${x.device_id}')" class="p-2 hover:bg-slate-100 rounded-lg transition group/btn">
+                            <i data-lucide="eye" class="w-4 h-4 text-slate-400 group-hover/btn:text-primary"></i>
+                        </button>
                     </td>
                 </tr>
             `;
         });
-
-        // Actualizar KPIs Globales
-        this.updateGlobalKPIs(ti, tm, tn);
-    }
-
-    getStatusClass(label) {
-        if(label === 'RENTABLE') return 'bg-emerald-100 text-emerald-700';
-        if(label === 'RECUPERANDO') return 'bg-blue-100 text-blue-700';
-        return 'bg-red-100 text-red-700';
-    }
-
-    updateGlobalKPIs(ti, tm, tn) {
-        document.getElementById('t-inv').innerText = `$${ti.toLocaleString()}`;
-        document.getElementById('t-mant').innerText = `$${tm.toLocaleString()}`;
-        document.getElementById('t-net').innerText = `$${tn.toLocaleString()}`;
         
-        const badge = document.getElementById('profit-badge');
-        badge.innerText = tn >= 0 ? 'MARGEN POSITIVO' : 'DÉFICIT OPERATIVO';
-        badge.className = `mt-2 inline-block px-2 py-1 rounded text-[9px] font-bold ${tn >= 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`;
-    }
-}
-
-/**
- * UI MANAGER - Encargado de la interacción y cuestionarios
- */
-class UIManager {
-    constructor(app) {
-        this.app = app;
-        this.drawer = document.getElementById('drawer');
-        this.overlay = document.getElementById('drawer-overlay');
+        tb.innerHTML = html;
+        lucide.createIcons();
+        updatePagination();
     }
 
-    openDrawer(type) {
-        const content = document.getElementById('drawer-content');
-        const title = document.getElementById('drawer-title');
-        const subtitle = document.getElementById('drawer-subtitle');
+    function updatePagination() {
+        const totalPages = Math.ceil(currentData.length / itemsPerPage);
+        document.getElementById('current-page').textContent = currentPage;
+        document.getElementById('summary-text').textContent = 
+            `Mostrando ${Math.min(currentData.length, itemsPerPage)} de ${currentData.length} ubicaciones`;
+            
+        const prevBtn = document.querySelector('[onclick="changePage(-1)"]');
+        const nextBtn = document.querySelector('[onclick="changePage(1)"]');
+        
+        prevBtn.disabled = currentPage === 1;
+        nextBtn.disabled = currentPage === totalPages;
+    }
 
-        if(type === 'installation') {
-            title.innerText = "Alta de Pantalla Digital";
-            subtitle.innerText = "Configuración CAPEX y Hardware";
-            content.innerHTML = this.getInstallationForm();
-        } else if(type === 'maintenance') {
-            title.innerText = "Control de Mantenimiento";
-            subtitle.innerText = "Registro OPEX e Insumos";
-            content.innerHTML = this.getMaintenanceForm();
+    function changePage(delta) {
+        const totalPages = Math.ceil(currentData.length / itemsPerPage);
+        const newPage = currentPage + delta;
+        
+        if (newPage >= 1 && newPage <= totalPages) {
+            currentPage = newPage;
+            renderTable();
         }
-
-        this.overlay.classList.remove('hidden');
-        this.drawer.classList.remove('translate-x-full');
-        this.loadDeviceSelects();
     }
 
-    closeDrawer() {
-        this.drawer.classList.add('translate-x-full');
-        this.overlay.classList.add('hidden');
+    function filterTable(searchTerm) {
+        // Implementación básica de filtro
+        const filtered = currentData.filter(item => 
+            item.device_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (item.location && item.location.toLowerCase().includes(searchTerm.toLowerCase()))
+        );
+        
+        // Para implementación completa, deberías guardar los datos filtrados
+        // y actualizar currentData temporalmente
+        console.log('Filtrando por:', searchTerm);
     }
 
-    getInstallationForm() {
-        return `
-            <form id="f-argos" class="space-y-6">
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="col-span-2">
-                        <label class="text-[10px] font-black text-slate-400 uppercase">Clave de Sitio en QTM</label>
-                        <input type="text" id="qtm_key" class="w-full border-slate-200 rounded-xl text-sm" placeholder="Ej: QTM-CENTRO-01">
+    function filterByStatus(status) {
+        console.log('Filtrando por estado:', status);
+        // Implementar filtro por estado
+    }
+
+    function updateCharts(data) {
+        // Ordenar por rentabilidad para el top 5
+        const top5 = [...data]
+            .sort((a, b) => b.net_profit - a.net_profit)
+            .slice(0, 5);
+        
+        let topHtml = '';
+        top5.forEach((item, index) => {
+            topHtml += `
+                <div class="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition">
+                    <div class="flex items-center gap-3">
+                        <span class="w-6 h-6 rounded-lg ${index < 3 ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-600'} flex items-center justify-center text-xs font-bold">
+                            ${index + 1}
+                        </span>
+                        <div>
+                            <p class="text-sm font-bold text-slate-700">${item.device_id}</p>
+                            <p class="text-xs text-slate-500">ROI: ${item.roi_percent}%</p>
+                        </div>
                     </div>
-                    <div>
-                        <label class="text-[10px] font-black text-slate-400 uppercase">Fecha Instalación</label>
-                        <input type="date" id="date" class="w-full border-slate-200 rounded-xl text-sm">
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-black text-slate-400 uppercase">Costo Pantalla ($)</label>
-                        <input type="number" id="amt" class="w-full border-slate-200 rounded-xl text-sm font-bold">
+                    <span class="text-sm font-bold ${item.net_profit >= 0 ? 'text-emerald-600' : 'text-red-500'}">
+                        $${item.net_profit.toLocaleString()}
+                    </span>
+                </div>
+            `;
+        });
+        
+        document.getElementById('top-locations').innerHTML = topHtml;
+    }
+
+    function updateAlerts(data) {
+        const critical = data.filter(x => 
+            x.net_profit < 0 || 
+            x.status_label === 'CRITICO' || 
+            (parseFloat(x.roi_percent) < 0)
+        );
+        
+        let alertsHtml = '';
+        
+        if (critical.length === 0) {
+            alertsHtml = `
+                <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+                    <div class="flex gap-3 items-start">
+                        <i data-lucide="check-circle" class="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0"></i>
+                        <div>
+                            <p class="text-sm font-bold text-slate-700">Sin alertas críticas</p>
+                            <p class="text-xs text-slate-500">Todas las ubicaciones están estables</p>
+                        </div>
                     </div>
                 </div>
-
-                <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-                    <h4 class="text-[10px] font-black text-slate-500 uppercase italic">Obra Civil y Logística</h4>
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="number" id="c_obra" placeholder="Obra Civil" class="text-xs border-slate-200 rounded-lg">
-                        <input type="number" id="c_estruc" placeholder="Estructura" class="text-xs border-slate-200 rounded-lg">
-                        <input type="number" id="c_elec" placeholder="Inst. Eléctrica" class="text-xs border-slate-200 rounded-lg">
-                        <input type="number" id="c_cuadrilla" placeholder="Cuadrilla (6 técnicos)" class="text-xs border-slate-200 rounded-lg">
+            `;
+        } else {
+            critical.slice(0, 3).forEach(item => {
+                alertsHtml += `
+                    <div class="p-3 bg-red-50 rounded-xl border border-red-100">
+                        <div class="flex gap-3 items-start">
+                            <i data-lucide="alert-triangle" class="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0"></i>
+                            <div>
+                                <p class="text-sm font-bold text-slate-700">${item.device_id}</p>
+                                <p class="text-xs text-slate-500">
+                                    ${item.net_profit < 0 ? 'Pérdida: $' + Math.abs(item.net_profit).toLocaleString() : ''}
+                                    ${parseFloat(item.roi_percent) < 0 ? 'ROI negativo: ' + item.roi_percent + '%' : ''}
+                                </p>
+                            </div>
+                        </div>
                     </div>
-                </div>
-
-                <div class="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 space-y-3">
-                    <h4 class="text-[10px] font-black text-indigo-500 uppercase italic">Hardware ID</h4>
-                    <div class="grid grid-cols-3 gap-2 text-[10px]">
-                        <input type="text" id="nuc" placeholder="NUC ID" class="border-indigo-100 rounded">
-                        <input type="text" id="ups" placeholder="UPS ID" class="border-indigo-100 rounded">
-                        <input type="text" id="teltonika" placeholder="Teltonika" class="border-indigo-100 rounded">
+                `;
+            });
+            
+            if (critical.length > 3) {
+                alertsHtml += `
+                    <div class="text-center">
+                        <p class="text-xs text-slate-500">+${critical.length - 3} alertas más</p>
                     </div>
-                </div>
-
-                <button type="button" onclick="ui.save('installation')" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold shadow-lg shadow-slate-200">ACTIVA ACTIVO</button>
-            </form>
-        `;
+                `;
+            }
+        }
+        
+        document.getElementById('alerts-container').innerHTML = alertsHtml;
+        lucide.createIcons();
     }
 
-    getMaintenanceForm() {
-        return `
-            <div class="space-y-6">
-                <div>
-                    <label class="text-[10px] font-black text-slate-400 uppercase">Seleccionar Ubicación</label>
-                    <select id="dev-id" class="w-full border-slate-200 rounded-xl text-sm bg-white mt-1"></select>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-[10px] font-black text-slate-400 uppercase">Tipo</label>
-                        <select id="sub" class="w-full border-slate-200 rounded-xl text-sm">
-                            <option value="preventivo">Preventivo (Limpieza)</option>
-                            <option value="correctivo">Correctivo</option>
-                        </select>
+    function viewDetails(deviceId) {
+        alert(`Viendo detalles de: ${deviceId}\n\nEn una implementación real, esto redirigiría a un dashboard detallado.`);
+        // window.location.href = `/dashboard/details/${deviceId}`;
+    }
+
+    function openDrawer(type) {
+        let title, subtitle, content;
+        
+        if (type === 'report') {
+            title = 'Exportar Reporte Ejecutivo';
+            subtitle = 'Genera un reporte detallado para presentación';
+            content = `
+                <div class="space-y-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4">Formato del Reporte</h4>
+                        <div class="space-y-3">
+                            <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer">
+                                <input type="radio" name="format" value="pdf" class="text-primary" checked>
+                                <div>
+                                    <p class="font-bold text-slate-700">PDF Ejecutivo</p>
+                                    <p class="text-xs text-slate-500">Ideal para presentaciones y reportes impresos</p>
+                                </div>
+                            </label>
+                            <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer">
+                                <input type="radio" name="format" value="excel" class="text-primary">
+                                <div>
+                                    <p class="font-bold text-slate-700">Excel Analítico</p>
+                                    <p class="text-xs text-slate-500">Datos crudos para análisis avanzado</p>
+                                </div>
+                            </label>
+                        </div>
                     </div>
-                    <div>
-                        <label class="text-[10px] font-black text-slate-400 uppercase">Costo Total ($)</label>
-                        <input type="number" id="amt" class="w-full border-slate-200 rounded-xl text-sm font-bold text-orange-500">
+                    
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4">Filtros Adicionales</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 block mb-2">Fecha Inicio</label>
+                                <input type="date" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 block mb-2">Fecha Fin</label>
+                                <input type="date" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                        </div>
                     </div>
+                    
+                    <button class="w-full bg-primary text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition">
+                        <i data-lucide="download" class="w-5 h-5 inline mr-2"></i>
+                        GENERAR REPORTE
+                    </button>
                 </div>
-
-                <div class="p-4 bg-orange-50/50 rounded-2xl border border-orange-100 grid grid-cols-2 gap-2">
-                    <label class="flex items-center gap-2 text-[10px] font-bold"><input type="checkbox" id="jabon"> JABÓN / TRAPOS</label>
-                    <input type="number" id="c_gas" placeholder="Gasolina/Transporte" class="text-xs border-orange-200 rounded">
-                </div>
-
-                <textarea id="desc" class="w-full border-slate-200 rounded-2xl text-sm" rows="3" placeholder="Detalle técnico de la visita..."></textarea>
-                
-                <button type="button" onclick="ui.save('maintenance')" class="w-full bg-orange-500 text-white py-4 rounded-2xl font-bold">REGISTRAR MTTO.</button>
-            </div>
-        `;
+            `;
+        }
+        
+        document.getElementById('d-title').innerText = title;
+        document.getElementById('d-subtitle').innerText = subtitle;
+        document.getElementById('d-content').innerHTML = content;
+        lucide.createIcons();
+        
+        const drawer = document.getElementById('drawer');
+        const overlay = document.getElementById('overlay');
+        
+        overlay.classList.remove('hidden');
+        setTimeout(() => overlay.classList.add('opacity-100'), 10);
+        drawer.classList.remove('translate-x-full');
     }
 
-    async loadDeviceSelects() {
-        const s = document.getElementById('dev-id');
-        if(!s) return;
-        const r = await fetch(this.app.endpoints.data);
-        const d = await r.json();
-        s.innerHTML = '<option value="">Seleccione...</option>';
-        Object.values(d).forEach(x => s.innerHTML += `<option value="${x.pc_name}">${x.pc_name}</option>`);
+    function closeDrawer() {
+        const drawer = document.getElementById('drawer');
+        const overlay = document.getElementById('overlay');
+        
+        drawer.classList.add('translate-x-full');
+        overlay.classList.remove('opacity-100');
+        setTimeout(() => overlay.classList.add('hidden'), 400);
     }
-
-    async save(type) {
-        // Lógica de recolección de datos similar a tu anterior código pero centralizada
-        alert("Argos: Guardando datos de " + type);
-        this.closeDrawer();
-        this.app.loadData();
-    }
-
-    goToScreen(id) {
-        window.location = `/costs/screen/${id}`; // Escencia: redirección ejecutiva
-    }
-}
-
-// INSTANCIACIÓN DE SISTEMA
-const app = new ArgosSignageManager();
-const ui = new UIManager(app);
-
-document.addEventListener('DOMContentLoaded', () => {
-    lucide.createIcons();
-    app.loadData();
-});
 </script>
-
-<style>
-    .custom-scroll::-webkit-scrollbar { width: 4px; }
-    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-</style>
 {% endblock %}
