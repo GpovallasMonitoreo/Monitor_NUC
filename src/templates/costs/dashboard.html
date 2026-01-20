@@ -1,329 +1,282 @@
 {% extends 'base.html' %}
-{% block header_title %}Control de Operaciones DOOH - Pro Dashboard{% endblock %}
+{% block header_title %}Executive DOOH Control Center{% endblock %}
 
 {% block content %}
 <style>
-    .glass-effect { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
-    .drawer { transition: transform 0.3s ease-in-out; }
-    .tab-active { border-bottom: 2px solid #4f46e5; color: #4f46e5; }
+    :root { --primary: #F97316; --secondary: #3B82F6; }
+    .executive-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid #e2e8f0; }
+    .executive-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px -8px rgba(0,0,0,0.1); border-color: var(--primary); }
+    .status-pill { font-size: 0.65rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
 </style>
 
-<div class="max-w-[1800px] mx-auto space-y-6 pb-20">
+<div id="app-container" class="max-w-[1800px] mx-auto space-y-8 pb-10">
     
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div class="bg-white p-6 rounded-2xl border shadow-sm hover:shadow-md transition">
-            <div class="flex justify-between items-start">
-                <div>
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Inversión Total (CAPEX)</h3>
-                    <p id="t-inv" class="text-3xl font-mono font-bold text-slate-800 mt-1">$0.00</p>
-                </div>
-                <div class="p-2 bg-indigo-50 rounded-lg text-indigo-600"><i data-lucide="trending-up"></i></div>
-            </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div class="executive-card bg-white p-8 rounded-2xl shadow-sm">
+            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">CAPEX Total Inversión</h3>
+            <p id="t-inv" class="text-3xl font-mono font-bold text-slate-800">$0.00</p>
+            <div class="mt-4 h-1 w-full bg-slate-100 rounded-full overflow-hidden"><div class="bg-slate-800 h-full w-2/3"></div></div>
         </div>
-        <div class="bg-white p-6 rounded-2xl border shadow-sm hover:shadow-md transition">
-            <div class="flex justify-between items-start">
-                <div>
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Gastos Op. (OPEX)</h3>
-                    <p id="t-mant" class="text-3xl font-mono font-bold text-amber-600 mt-1">$0.00</p>
-                </div>
-                <div class="p-2 bg-amber-50 rounded-lg text-amber-600"><i data-lucide="wrench"></i></div>
-            </div>
+        <div class="executive-card bg-white p-8 rounded-2xl shadow-sm border-l-4 border-l-amber-500">
+            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">OPEX Total Mantenimiento</h3>
+            <p id="t-mant" class="text-3xl font-mono font-bold text-amber-600">$0.00</p>
+            <div class="mt-4 h-1 w-full bg-slate-100 rounded-full overflow-hidden"><div class="bg-amber-100 h-full w-1/3"></div></div>
         </div>
-        <div class="bg-white p-6 rounded-2xl border shadow-sm hover:shadow-md transition">
-            <div class="flex justify-between items-start">
-                <div>
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Utilidad Neta Total</h3>
-                    <p id="t-net" class="text-3xl font-mono font-bold text-emerald-600 mt-1">$0.00</p>
-                </div>
-                <div class="p-2 bg-emerald-50 rounded-lg text-emerald-600"><i data-lucide="dollar-sign"></i></div>
-            </div>
-        </div>
-        <div class="bg-white p-6 rounded-2xl border shadow-sm hover:shadow-md transition">
-            <div class="flex justify-between items-start">
-                <div>
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Eficiencia ROI Promedio</h3>
-                    <p id="t-roi" class="text-3xl font-mono font-bold text-indigo-600 mt-1">0%</p>
-                </div>
-                <div class="p-2 bg-indigo-50 rounded-lg text-indigo-600"><i data-lucide="bar-chart-3"></i></div>
-            </div>
+        <div class="executive-card bg-white p-8 rounded-2xl shadow-sm border-l-4 border-l-emerald-500">
+            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Utilidad Neta Proyectada</h3>
+            <p id="t-net" class="text-3xl font-mono font-bold text-emerald-700">$0.00</p>
+            <div class="mt-4 h-1 w-full bg-slate-100 rounded-full overflow-hidden"><div class="bg-emerald-100 h-full w-1/2"></div></div>
         </div>
     </div>
 
-    <div class="flex gap-4 mb-4">
-        <button onclick="openDrawer('inst')" class="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg hover:bg-slate-700 transition font-medium">
-            <i data-lucide="plus-circle" class="w-4 h-4"></i> Nueva Instalación
-        </button>
-        <button onclick="openDrawer('mtto')" class="flex items-center gap-2 bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition font-medium">
-            <i data-lucide="tool" class="w-4 h-4"></i> Registrar Mantenimiento
-        </button>
-        <button onclick="openDrawer('sale')" class="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition font-medium">
-            <i data-lucide="banknote" class="w-4 h-4"></i> Registrar Venta/Pauta
-        </button>
+    <div class="flex flex-wrap gap-4 items-center justify-between bg-white p-4 rounded-xl border border-slate-200 shadow-sm italic">
+        <div class="flex gap-4 italic text-sm font-bold">
+            <button onclick="ui.openModal('installation')" class="flex items-center gap-2 hover:text-primary transition">
+                <i data-lucide="plus-square" class="w-4 h-4 text-primary"></i> Registrar Nueva Pantalla
+            </button>
+            <button onclick="ui.openModal('maintenance')" class="flex items-center gap-2 hover:text-amber-500 transition">
+                <i data-lucide="wrench" class="w-4 h-4 text-amber-500"></i> Registrar Mantenimiento
+            </button>
+        </div>
+        <button onclick="core.load()" class="p-2 hover:bg-slate-100 rounded-lg transition"><i data-lucide="refresh-cw" class="w-5 h-5 text-slate-400"></i></button>
     </div>
 
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div class="p-6 border-b flex justify-between items-center bg-slate-50/50">
-            <h3 class="font-bold text-slate-800 flex items-center gap-2">
-                <i data-lucide="monitor" class="w-5 h-5 text-indigo-600"></i> Inventario de Pantallas y Rentabilidad
-            </h3>
-            <div class="flex gap-2">
-                <input type="text" placeholder="Buscar ubicación..." class="text-sm border rounded-lg px-3 py-1">
-                <button onclick="load()" class="p-2 hover:bg-slate-200 rounded-full transition"><i data-lucide="refresh-cw" class="w-5 h-5 text-slate-500"></i></button>
-            </div>
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+        <div class="p-6 border-b bg-slate-50/50 flex justify-between items-center">
+            <h3 class="font-black text-slate-800 uppercase tracking-widest text-xs">Rentabilidad por Ubicación / Drill-down</h3>
         </div>
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto italic">
             <table class="w-full text-left text-sm">
-                <thead class="bg-slate-50 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b">
+                <thead class="bg-slate-100/50 text-slate-500 uppercase text-[10px] font-black border-b">
                     <tr>
-                        <th class="p-4">Ubicación / Clave QTM</th>
-                        <th class="p-4 text-right">Inversión (CAPEX)</th>
-                        <th class="p-4 text-right">Mtto (OPEX)</th>
-                        <th class="p-4 text-right">Ingresos</th>
-                        <th class="p-4 text-right">Margen</th>
-                        <th class="p-4 text-center">ROI</th>
-                        <th class="p-4 text-center">Estado Técnico</th>
-                        <th class="p-4">Acciones</th>
+                        <th class="p-5">Activo / Clave QTM</th>
+                        <th class="p-5 text-right">CAPEX (Inv)</th>
+                        <th class="p-5 text-right">OPEX (Mtto)</th>
+                        <th class="p-5 text-right text-emerald-600">Ventas</th>
+                        <th class="p-5 text-right font-black">Ganancia</th>
+                        <th class="p-5 text-center">ROI</th>
+                        <th class="p-5 text-center">Health Status</th>
                     </tr>
                 </thead>
-                <tbody id="tb" class="divide-y divide-slate-100 italic">
-                    </tbody>
+                <tbody id="tb" class="divide-y divide-slate-100">
+                    <tr><td colspan="7" class="p-20 text-center"><div class="animate-spin inline-block w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div></td></tr>
+                </tbody>
             </table>
         </div>
     </div>
 </div>
 
-<div id="drawer-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden transition-opacity" onclick="closeDrawer()"></div>
-
-<div id="main-drawer" class="fixed right-0 top-0 h-full w-full max-w-2xl bg-white z-50 shadow-2xl translate-x-full drawer overflow-y-auto">
-    <div class="p-6 border-b sticky top-0 bg-white z-10 flex justify-between items-center">
-        <div>
-            <h2 id="drawer-title" class="text-xl font-bold text-slate-800">Cuestionario Operativo</h2>
-            <p id="drawer-subtitle" class="text-xs text-slate-500 italic"></p>
+<div id="modal-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+        <div class="p-6 border-b flex justify-between items-center bg-slate-50">
+            <h2 id="modal-title" class="font-black uppercase tracking-tighter text-xl text-slate-800">Cuestionario Operativo</h2>
+            <button onclick="ui.closeModal()" class="text-slate-400 hover:text-red-500 transition"><i data-lucide="x-circle"></i></button>
         </div>
-        <button onclick="closeDrawer()" class="p-2 hover:bg-slate-100 rounded-full"><i data-lucide="x"></i></button>
+        <div id="modal-body" class="p-8 overflow-y-auto custom-scroll">
+            </div>
     </div>
-
-    <div id="drawer-content" class="p-8">
-        </div>
 </div>
 
 <script>
-    // Configuración de campos solicitados (Categorizados para el "Sentido Operativo")
-    const FORM_TEMPLATES = {
-        inst: {
-            title: 'Alta de Instalación y Obra Civil',
-            subtitle: 'Configuración inicial del activo (CAPEX)',
-            html: `
-                <form id="f-data" class="space-y-6">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="col-span-2">
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase">Clave de Sitio QTM / Nombre Inventario</label>
-                            <input type="text" id="qtm_key" class="w-full p-3 bg-slate-50 border rounded-xl" placeholder="Ej: QTM-CENTRO-01">
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase">Fecha Instalación Pantalla</label>
-                            <input type="date" id="date_inst" class="w-full p-3 border rounded-xl">
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase">Costo Pantalla ($)</label>
-                            <input type="number" id="c_pantalla" class="w-full p-3 border rounded-xl" placeholder="0.00">
-                        </div>
-                    </div>
-                    
-                    <div class="p-4 bg-indigo-50 rounded-2xl space-y-4 border border-indigo-100">
-                        <h4 class="text-xs font-bold text-indigo-800 uppercase italic">Desglose de Obra y Cuadrilla</h4>
-                        <div class="grid grid-cols-2 gap-4">
-                            <input type="number" id="c_obra" placeholder="Costo Obra Civil" class="p-2 border rounded-lg text-sm">
-                            <input type="number" id="c_estruc" placeholder="Costo Estructura" class="p-2 border rounded-lg text-sm">
-                            <input type="number" id="c_elec" placeholder="Inst. Eléctrica" class="p-2 border rounded-lg text-sm">
-                            <input type="number" id="c_medidor" placeholder="Medidor" class="p-2 border rounded-lg text-sm">
-                            <input type="number" id="c_legal" placeholder="Costos Legales/Alcaldía" class="p-2 border rounded-lg text-sm">
-                            <input type="number" id="c_cuadrilla" placeholder="Costo Cuadrilla (6 técnicos)" class="p-2 border rounded-lg text-sm">
-                        </div>
-                    </div>
-
-                    <div class="p-4 bg-slate-50 rounded-2xl space-y-4 border border-slate-200">
-                        <h4 class="text-xs font-bold text-slate-600 uppercase italic">Equipamiento Técnico Inicial</h4>
-                        <div class="grid grid-cols-3 gap-2">
-                            <input type="text" id="nuc" placeholder="NUC ID" class="p-2 border rounded text-xs">
-                            <input type="text" id="ups" placeholder="UPS Mod." class="p-2 border rounded text-xs">
-                            <input type="text" id="sending" placeholder="Sending Card" class="p-2 border rounded text-xs">
-                            <input type="text" id="modem" placeholder="Modem ID" class="p-2 border rounded text-xs">
-                            <input type="text" id="teltonika" placeholder="Teltonika ID" class="p-2 border rounded text-xs">
-                            <input type="text" id="sim" placeholder="SIM #" class="p-2 border rounded text-xs">
-                        </div>
-                    </div>
-
-                    <button type="button" onclick="saveData('installation')" class="w-full bg-slate-800 text-white py-4 rounded-2xl font-bold shadow-lg">Finalizar Registro CAPEX</button>
-                </form>
-            `
-        },
-        mtto: {
-            title: 'Reporte de Mantenimiento',
-            subtitle: 'Correctivos, Preventivos y Refacciones (OPEX)',
-            html: `
-                <form id="f-data" class="space-y-6">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="col-span-2">
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase">Seleccionar Pantalla</label>
-                            <select id="dev_id" class="w-full p-3 bg-slate-50 border rounded-xl select-devs"></select>
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase">Tipo de Mtto.</label>
-                            <select id="subtype" class="w-full p-3 border rounded-xl">
-                                <option value="preventivo">Preventivo (Limpieza)</option>
-                                <option value="correctivo">Correctivo (Falla)</option>
-                                <option value="renovacion">Renovación Tecnológica</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase">Costo Gasolina/Transporte</label>
-                            <input type="number" id="c_transporte" class="w-full p-3 border rounded-xl" placeholder="0.00">
-                        </div>
-                    </div>
-
-                    <div class="p-4 bg-amber-50 rounded-2xl border border-amber-200">
-                        <h4 class="text-xs font-bold text-amber-800 uppercase mb-2">Insumos y Mano de Obra</h4>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="flex items-center gap-2"><input type="checkbox" id="jabon"> <label class="text-xs italic">Jabón/Limpieza</label></div>
-                            <div class="flex items-center gap-2"><input type="checkbox" id="trapos"> <label class="text-xs italic">Trapos/Material</label></div>
-                            <input type="number" id="c_refacciones" placeholder="Costo Refacciones" class="p-2 border rounded-lg text-sm col-span-2">
-                            <input type="number" id="c_cuadrilla_mtto" placeholder="Costo Cuadrilla (4 pers.)" class="p-2 border rounded-lg text-sm col-span-2">
-                        </div>
-                    </div>
-
-                    <textarea id="desc" class="w-full p-3 border rounded-xl text-sm" rows="3" placeholder="Descripción de incidencias y estado actual del medio..."></textarea>
-                    
-                    <button type="button" onclick="saveData('maintenance')" class="w-full bg-amber-600 text-white py-4 rounded-2xl font-bold">Registrar Mantenimiento</button>
-                </form>
-            `
-        },
-        sale: {
-            title: 'Registro de Pauta / Ventas',
-            subtitle: 'Ingresos mensuales por pantalla',
-            html: `
-                <form id="f-data" class="space-y-6">
-                    <label class="block text-[10px] font-bold text-slate-400 uppercase">Ubicación</label>
-                    <select id="dev_id" class="w-full p-3 bg-slate-50 border rounded-xl select-devs"></select>
-                    
-                    <div class="grid grid-cols-2 gap-4">
-                        <input type="number" id="amount" placeholder="Monto Mensual" class="p-3 border rounded-xl font-bold text-emerald-600">
-                        <input type="date" id="date" class="p-3 border rounded-xl">
-                    </div>
-                    
-                    <div class="space-y-2">
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase">Costos Operativos Fijos asociados</label>
-                        <div class="grid grid-cols-2 gap-2 text-xs">
-                            <input type="number" id="c_luz" placeholder="Luz Mensual" class="p-2 border rounded">
-                            <input type="number" id="c_internet" placeholder="Internet Mensual" class="p-2 border rounded">
-                            <input type="number" id="c_suelo" placeholder="Uso de Suelo" class="p-2 border rounded">
-                            <input type="number" id="c_pauta" placeholder="Costo Programación Pauta" class="p-2 border rounded">
-                        </div>
-                    </div>
-
-                    <button type="button" onclick="saveData('sale')" class="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold italic">Guardar Ingreso Mensual</button>
-                </form>
-            `
-        }
-    };
-
-    // FUNCIONES DE CONTROL
-    function openDrawer(type) {
-        const template = FORM_TEMPLATES[type];
-        document.getElementById('drawer-title').innerText = template.title;
-        document.getElementById('drawer-subtitle').innerText = template.subtitle;
-        document.getElementById('drawer-content').innerHTML = template.html;
-        
-        document.getElementById('main-drawer').classList.remove('translate-x-full');
-        document.getElementById('drawer-overlay').classList.remove('hidden');
-        lucide.createIcons();
-        loadSelects(); // Carga las pantallas en los select
+/**
+ * CLASE CORE: Gestión de Datos y Cálculos
+ * Encapsula la lógica de negocio y la comunicación con el servidor.
+ */
+class ArgosCore {
+    constructor() {
+        this.data = [];
+        this.totals = { inv: 0, mtto: 0, net: 0 };
     }
 
-    function closeDrawer() {
-        document.getElementById('main-drawer').classList.add('translate-x-full');
-        document.getElementById('drawer-overlay').classList.add('hidden');
+    async load() {
+        const response = await fetch('/costs/report');
+        this.data = await response.json();
+        this.calculateTotals();
+        this.renderTable();
     }
 
-    async function load() {
-        // Simulación de carga (Aquí conectas con tu endpoint /costs/report)
-        const r = await fetch('/costs/report'); 
-        const data = await r.json();
+    calculateTotals() {
+        this.totals = this.data.reduce((acc, x) => ({
+            inv: acc.inv + x.cost_installation,
+            mtto: acc.mtto + x.cost_maintenance,
+            net: acc.net + x.net_profit
+        }), { inv: 0, mtto: 0, net: 0 });
+    }
+
+    renderTable() {
         const tb = document.getElementById('tb');
-        tb.innerHTML = '';
-        
-        data.forEach(x => {
-            tb.innerHTML += `
-                <tr class="hover:bg-indigo-50/30 transition cursor-pointer" onclick="window.location='/screen/${x.device_id}'">
-                    <td class="p-4 font-bold text-slate-700">
-                        ${x.device_id} <br>
-                        <span class="text-[9px] text-slate-400 font-mono tracking-tighter">QTM-REF: ${x.qtm_key || 'N/A'}</span>
-                    </td>
-                    <td class="p-4 text-right font-mono">$${x.cost_installation.toLocaleString()}</td>
-                    <td class="p-4 text-right font-mono text-amber-600">$${x.cost_maintenance.toLocaleString()}</td>
-                    <td class="p-4 text-right font-mono text-emerald-600">$${x.total_sales.toLocaleString()}</td>
-                    <td class="p-4 text-right font-black ${x.net_profit >= 0 ? 'text-slate-800' : 'text-red-500'}">
-                        $${x.net_profit.toLocaleString()}
-                    </td>
-                    <td class="p-4 text-center">
-                        <div class="text-[10px] font-bold text-indigo-500 bg-indigo-50 rounded px-1">${x.roi_percent}%</div>
-                    </td>
-                    <td class="p-4 text-center">
-                        <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase ${x.status_label === 'RENTABLE' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">
-                            ${x.status_label}
-                        </span>
-                    </td>
-                    <td class="p-4">
-                        <button class="p-2 hover:bg-white rounded border shadow-sm"><i data-lucide="eye" class="w-4 h-4 text-slate-400"></i></button>
-                    </td>
-                </tr>
+        tb.innerHTML = this.data.length === 0 ? '<tr><td colspan="7" class="p-10 text-center">Sin datos</td></tr>' : '';
+
+        this.data.forEach(x => {
+            const row = document.createElement('tr');
+            row.className = "hover:bg-slate-50 transition cursor-pointer group border-l-4 border-l-transparent hover:border-l-primary";
+            // La "Redirección" solicitada:
+            row.onclick = () => window.location.href = `/screen/${x.device_id}`;
+            
+            row.innerHTML = `
+                <td class="p-5">
+                    <div class="font-bold text-slate-800">${x.device_id}</div>
+                    <div class="text-[10px] text-slate-400 font-mono">QTM-ACTIVE-ID</div>
+                </td>
+                <td class="p-5 text-right font-mono text-slate-500">$${x.cost_installation.toLocaleString()}</td>
+                <td class="p-5 text-right font-mono text-amber-600">$${x.cost_maintenance.toLocaleString()}</td>
+                <td class="p-5 text-right font-mono font-bold text-emerald-600">$${x.total_sales.toLocaleString()}</td>
+                <td class="p-5 text-right font-mono font-black ${x.net_profit >= 0 ? 'text-slate-800' : 'text-red-500'}">
+                    $${x.net_profit.toLocaleString()}
+                </td>
+                <td class="p-5 text-center">
+                    <span class="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded">${x.roi_percent}%</span>
+                </td>
+                <td class="p-5 text-center">
+                    <span class="status-pill px-3 py-1 rounded-full ${this.getStatusClass(x.status_label)}">
+                        ${x.status_label}
+                    </span>
+                </td>
             `;
+            tb.appendChild(row);
         });
-        lucide.createIcons();
-        // Actualizar KPIs de la cabecera... (ti, tm, tn)
+
+        this.updateKPIs();
     }
 
-    async function saveData(type) {
-        // Recopilación masiva de datos del formulario actual
-        const formData = {};
-        document.querySelectorAll('#f-data input, #f-data select, #f-data textarea').forEach(el => {
-            formData[el.id] = el.type === 'checkbox' ? el.checked : el.value;
-        });
+    getStatusClass(label) {
+        if(label === 'RENTABLE') return 'bg-emerald-100 text-emerald-700';
+        if(label === 'RECUPERANDO') return 'bg-blue-100 text-blue-700';
+        return 'bg-red-100 text-red-700';
+    }
 
-        const payload = {
-            type: type,
-            data: formData,
-            timestamp: new Date().toISOString()
-        };
+    updateKPIs() {
+        const invEl = document.getElementById('t-inv');
+        const mantEl = document.getElementById('t-mant');
+        const netEl = document.getElementById('t-net');
 
-        console.log("Enviando a Argos Backend:", payload);
+        invEl.innerText = `$${this.totals.inv.toLocaleString()}`;
+        mantEl.innerText = `$${this.totals.mtto.toLocaleString()}`;
+        netEl.innerText = `$${this.totals.net.toLocaleString()}`;
+        netEl.className = this.totals.net >= 0 
+            ? "text-3xl font-mono font-bold text-emerald-700" 
+            : "text-3xl font-mono font-bold text-red-500";
+    }
+}
+
+/**
+ * CLASE UI: Gestión de Interfaz y Formularios
+ * Controla la visualización de cuestionarios y modales.
+ */
+class ArgosUI {
+    constructor() {
+        this.overlay = document.getElementById('modal-overlay');
+        this.body = document.getElementById('modal-body');
+        this.title = document.getElementById('modal-title');
+    }
+
+    openModal(type) {
+        this.overlay.classList.remove('hidden');
+        this.overlay.classList.add('flex');
         
-        const res = await fetch('/costs/add_evolved', {
+        if(type === 'installation') this.renderInstallationForm();
+        if(type === 'maintenance') this.renderMaintenanceForm();
+        
+        lucide.createIcons();
+    }
+
+    closeModal() {
+        this.overlay.classList.add('hidden');
+        this.overlay.classList.remove('flex');
+    }
+
+    renderInstallationForm() {
+        this.title.innerText = "Alta Integral de Pantalla (CAPEX)";
+        this.body.innerHTML = `
+            <form onsubmit="ui.handleSubmit(event, 'installation')" class="grid grid-cols-2 gap-8 italic">
+                <div class="space-y-4">
+                    <h4 class="font-black text-primary text-xs uppercase tracking-widest border-b pb-2">Identificación</h4>
+                    <input type="text" name="qtm_key" placeholder="Clave de Sitio QTM" class="w-full p-3 border-slate-200 rounded-xl bg-slate-50" required>
+                    <input type="text" name="name" placeholder="Nombre en Inventario" class="w-full p-3 border-slate-200 rounded-xl">
+                    <input type="date" name="date" class="w-full p-3 border-slate-200 rounded-xl">
+                </div>
+                <div class="space-y-4">
+                    <h4 class="font-black text-slate-400 text-xs uppercase tracking-widest border-b pb-2">Inversión Obra Civil</h4>
+                    <input type="number" name="c_pantalla" placeholder="Costo Pantalla" class="w-full p-3 border-slate-200 rounded-xl">
+                    <input type="number" name="c_obra" placeholder="Costo Obra Civil" class="w-full p-3 border-slate-200 rounded-xl">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" name="c_elec" placeholder="Inst. Eléctrica" class="p-3 border-slate-200 rounded-xl text-xs">
+                        <input type="number" name="c_medidor" placeholder="Medidor" class="p-3 border-slate-200 rounded-xl text-xs">
+                    </div>
+                </div>
+                <div class="col-span-2 bg-slate-900 p-6 rounded-2xl text-white space-y-4 shadow-xl">
+                    <h4 class="font-black text-primary text-xs uppercase tracking-widest italic">Hardware y Electrónica Central</h4>
+                    <div class="grid grid-cols-4 gap-4">
+                        <input type="text" name="nuc" placeholder="NUC ID" class="bg-slate-800 border-none rounded-lg p-2 text-xs">
+                        <input type="text" name="ups" placeholder="UPS" class="bg-slate-800 border-none rounded-lg p-2 text-xs">
+                        <input type="text" name="sending" placeholder="Sending Card" class="bg-slate-800 border-none rounded-lg p-2 text-xs">
+                        <input type="text" name="teltonika" placeholder="Teltonika" class="bg-slate-800 border-none rounded-lg p-2 text-xs">
+                    </div>
+                </div>
+                <button class="col-span-2 bg-primary text-white font-black py-4 rounded-2xl shadow-lg hover:bg-orange-600 transition uppercase italic">Activar Activo en Red</button>
+            </form>
+        `;
+    }
+
+    renderMaintenanceForm() {
+        this.title.innerText = "Registro de Mantenimiento y OPEX";
+        this.body.innerHTML = `
+            <form onsubmit="ui.handleSubmit(event, 'maintenance')" class="space-y-6 italic">
+                <div class="grid grid-cols-2 gap-4">
+                    <select name="dev_id" class="p-4 border-slate-200 rounded-2xl bg-slate-50 font-bold" required>
+                        <option value="">Seleccionar Pantalla...</option>
+                        ${core.data.map(x => `<option value="${x.device_id}">${x.device_id}</option>`).join('')}
+                    </select>
+                    <select name="subtype" class="p-4 border-slate-200 rounded-2xl">
+                        <option value="preventivo">Preventivo (Limpieza)</option>
+                        <option value="correctivo">Correctivo (Electrónica)</option>
+                    </select>
+                </div>
+                <div class="p-6 bg-amber-50 rounded-2xl border border-amber-100 grid grid-cols-3 gap-4">
+                    <div class="flex items-center gap-2 text-xs font-bold"><input type="checkbox" name="jabon"> Jabón</div>
+                    <div class="flex items-center gap-2 text-xs font-bold"><input type="checkbox" name="trapos"> Trapos</div>
+                    <input type="number" name="gasolina" placeholder="Gasolina" class="border-amber-200 rounded-lg p-2 text-xs">
+                </div>
+                <textarea name="desc" placeholder="Estado actual del medio y descripción de incidencia..." class="w-full p-4 border-slate-200 rounded-2xl" rows="3"></textarea>
+                <button class="w-full bg-slate-800 text-white font-black py-4 rounded-2xl hover:bg-slate-900 transition italic">Registrar Intervención de Cuadrilla (4 Técnicos)</button>
+            </form>
+        `;
+    }
+
+    async handleSubmit(e, type) {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const data = Object.fromEntries(fd.entries());
+        
+        console.log(`POO System: Saving ${type}`, data);
+        
+        const res = await fetch('/costs/add', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(payload)
+            body: JSON.stringify({
+                type: type,
+                amount: data.c_pantalla || data.gasolina || 0,
+                description: data.desc || `Registro de ${type}`,
+                device_id: data.dev_id || data.qtm_key,
+                date: data.date || new Date().toISOString().split('T')[0]
+            })
         });
 
         if(res.ok) {
-            alert("Información Operativa Actualizada con Éxito");
-            closeDrawer();
-            load();
+            alert("Operación Exitosa");
+            this.closeModal();
+            core.load();
         }
     }
+}
 
-    async function loadSelects() {
-        const selects = document.querySelectorAll('.select-devs');
-        if(selects.length === 0) return;
-        const r = await fetch('/api/data'); const d = await r.json();
-        selects.forEach(s => {
-            s.innerHTML = '<option value="">Seleccionar Medio...</option>';
-            Object.values(d).forEach(x => s.innerHTML += `<option value="${x.pc_name}">${x.pc_name}</option>`);
-        });
-    }
+// INSTANCIACIÓN DE OBJETOS ARGOS
+const core = new ArgosCore();
+const ui = new ArgosUI();
 
-    document.addEventListener('DOMContentLoaded', () => {
-        lucide.createIcons();
-        load();
-    });
+document.addEventListener('DOMContentLoaded', () => {
+    lucide.createIcons();
+    core.load();
+});
 </script>
 {% endblock %}
