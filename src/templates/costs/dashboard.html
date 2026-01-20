@@ -13,10 +13,44 @@
                 <i data-lucide="refresh-cw" class="w-4 h-4 text-slate-600"></i>
                 <span class="text-sm font-bold text-slate-700">Actualizar</span>
             </button>
-            <button onclick="openDrawer('report')" class="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl hover:bg-orange-600 shadow-lg shadow-orange-500/20 transition">
-                <i data-lucide="download" class="w-4 h-4"></i>
-                <span class="text-sm font-bold">Exportar Reporte</span>
-            </button>
+            
+            <!-- Botones de Formularios Ejecutivos -->
+            <div class="flex gap-2">
+                <button onclick="openDrawer('sitio')" class="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm transition">
+                    <i data-lucide="map-pin" class="w-4 h-4 text-secondary"></i>
+                    <span class="text-sm font-bold text-slate-700">1. Sitio</span>
+                </button>
+                
+                <button onclick="openDrawer('cronologia')" class="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm transition">
+                    <i data-lucide="calendar" class="w-4 h-4 text-primary"></i>
+                    <span class="text-sm font-bold text-slate-700">2. Cronología</span>
+                </button>
+                
+                <button onclick="openDrawer('capex')" class="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm transition">
+                    <i data-lucide="dollar-sign" class="w-4 h-4 text-amber-600"></i>
+                    <span class="text-sm font-bold text-slate-700">3. CAPEX</span>
+                </button>
+                
+                <button onclick="openDrawer('inventario')" class="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm transition">
+                    <i data-lucide="cpu" class="w-4 h-4 text-slate-600"></i>
+                    <span class="text-sm font-bold text-slate-700">4. Inventario</span>
+                </button>
+                
+                <button onclick="openDrawer('opex')" class="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm transition">
+                    <i data-lucide="repeat" class="w-4 h-4 text-emerald-600"></i>
+                    <span class="text-sm font-bold text-slate-700">5. OPEX</span>
+                </button>
+                
+                <button onclick="openDrawer('mantenimiento')" class="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm transition">
+                    <i data-lucide="tool" class="w-4 h-4 text-red-500"></i>
+                    <span class="text-sm font-bold text-slate-700">6. Mantenimiento</span>
+                </button>
+                
+                <button onclick="openDrawer('ciclo-vida')" class="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm transition">
+                    <i data-lucide="trending-up" class="w-4 h-4 text-purple-600"></i>
+                    <span class="text-sm font-bold text-slate-700">7. Ciclo Vida</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -129,47 +163,15 @@
             </div>
         </div>
     </div>
-
-    <!-- Gráficos Ejecutivos -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <h3 class="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wider">Distribución de Rentabilidad</h3>
-            <div class="h-64 flex items-center justify-center">
-                <div id="profit-chart" class="w-full h-full"></div>
-            </div>
-        </div>
-        
-        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <h3 class="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wider">Top 5 Ubicaciones</h3>
-            <div id="top-locations" class="space-y-4">
-                <!-- Se llenará dinámicamente -->
-            </div>
-        </div>
-        
-        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <h3 class="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wider">Alertas Críticas</h3>
-            <div id="alerts-container" class="space-y-3">
-                <div class="p-3 bg-red-50 rounded-xl border border-red-100">
-                    <div class="flex gap-3 items-start">
-                        <i data-lucide="alert-triangle" class="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0"></i>
-                        <div>
-                            <p class="text-sm font-bold text-slate-700">Sin datos cargados</p>
-                            <p class="text-xs text-slate-500">Ejecuta el reporte para ver alertas</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
-<!-- Drawer para Reportes -->
+<!-- Drawer para Formularios -->
 <div id="overlay" class="fixed inset-0 bg-slate-900/40 z-40 hidden backdrop-blur-sm transition-opacity opacity-0" onclick="closeDrawer()"></div>
-<div id="drawer" class="fixed right-0 top-0 h-full w-full max-w-2xl bg-white z-50 shadow-2xl translate-x-full drawer-slide overflow-hidden flex flex-col">
+<div id="drawer" class="fixed right-0 top-0 h-full w-full max-w-4xl bg-white z-50 shadow-2xl translate-x-full drawer-slide overflow-hidden flex flex-col">
     <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0">
         <div>
-            <h2 id="d-title" class="text-xl font-bold text-slate-800">Exportar Reporte Ejecutivo</h2>
-            <p id="d-subtitle" class="text-sm text-slate-500">Genera un reporte detallado para presentación</p>
+            <h2 id="d-title" class="text-xl font-bold text-slate-800">Formulario</h2>
+            <p id="d-subtitle" class="text-sm text-slate-500"></p>
         </div>
         <button onclick="closeDrawer()" class="p-2 hover:bg-slate-100 rounded-full transition">
             <i data-lucide="x" class="w-5 h-5"></i>
@@ -181,6 +183,673 @@
 </div>
 
 <script>
+    // Configuración de todos los formularios
+    const FORMS = {
+        sitio: {
+            title: "1. Identificación y Metadatos del Sitio",
+            subtitle: "Información base para el inventario y localización",
+            html: `
+                <div class="space-y-8">
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="info" class="w-4 h-4 text-secondary"></i>
+                            Información Base del Sitio
+                        </h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Clave de sitio en QTM *</label>
+                                <input type="text" placeholder="Ej: QTM-2024-001" class="w-full border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-secondary">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Nombre en inventario *</label>
+                                <input type="text" placeholder="Ej: Torre Reforma LED A" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="activity" class="w-4 h-4 text-primary"></i>
+                            Estado Actual del Medio
+                        </h4>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Situación general de componentes</label>
+                                <select class="w-full border-slate-200 rounded-xl text-sm">
+                                    <option>Óptimo - Todos los componentes funcionando</option>
+                                    <option>Regular - Algunos componentes requieren atención</option>
+                                    <option>Crítico - Componentes principales fallando</option>
+                                    <option>Inactivo - Medio fuera de servicio</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Estado del NUC</label>
+                                <div class="grid grid-cols-3 gap-3">
+                                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" class="rounded text-primary"> Encendido</label>
+                                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" class="rounded text-primary"> Conectado</label>
+                                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" class="rounded text-primary"> Actualizado</label>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="trending-up" class="w-4 h-4 text-emerald-600"></i>
+                            Rentabilidad Mensual
+                        </h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Rentabilidad mensual actual ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Proyección mensual ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Observaciones sobre rentabilidad</label>
+                            <textarea placeholder="Factores que afectan la rentabilidad..." class="w-full border-slate-200 rounded-xl text-sm p-3" rows="3"></textarea>
+                        </div>
+                    </section>
+
+                    <button class="w-full bg-secondary text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-500/20 hover:bg-blue-600 transition">
+                        <i data-lucide="save" class="w-5 h-5 inline mr-2"></i>
+                        GUARDAR METADATOS DEL SITIO
+                    </button>
+                </div>
+            `
+        },
+
+        cronologia: {
+            title: "2. Cronología y Logística de Instalación",
+            subtitle: "Fechas críticas y tiempos de despliegue",
+            html: `
+                <div class="space-y-8">
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="clock" class="w-4 h-4 text-primary"></i>
+                            Fechas Críticas de Instalación
+                        </h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Primera instalación *</label>
+                                <input type="date" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Fecha de instalación pantalla *</label>
+                                <input type="date" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Fecha de retiro</label>
+                                <input type="date" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Fecha de reubicación</label>
+                                <input type="date" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="package" class="w-4 h-4 text-amber-600"></i>
+                            Logística y Tiempos de Despliegue
+                        </h4>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div class="col-span-2">
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Tiempo estimado instalación</label>
+                                <div class="flex items-center gap-3">
+                                    <input type="number" value="15" class="w-24 border-slate-200 rounded-xl text-sm text-center">
+                                    <span class="text-sm text-slate-600">días por pantalla</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Estado logístico</label>
+                                <select class="w-full border-slate-200 rounded-xl text-sm">
+                                    <option>Pendiente</option>
+                                    <option>En proceso</option>
+                                    <option>Completado</option>
+                                    <option>Retrasado</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Notas sobre logística</label>
+                            <textarea placeholder="Detalles específicos del despliegue..." class="w-full border-slate-200 rounded-xl text-sm p-3" rows="3"></textarea>
+                        </div>
+                    </section>
+
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="users" class="w-4 h-4 text-slate-600"></i>
+                            Recursos Humanos Asignados
+                        </h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Jefe de proyecto</label>
+                                <input type="text" placeholder="Nombre del responsable" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Equipo técnico (6 personas)</label>
+                                <input type="text" placeholder="Nombres de técnicos" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                        </div>
+                    </section>
+
+                    <button class="w-full bg-primary text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition">
+                        <i data-lucide="calendar-check" class="w-5 h-5 inline mr-2"></i>
+                        GUARDAR CRONOLOGÍA
+                    </button>
+                </div>
+            `
+        },
+
+        capex: {
+            title: "3. Costos de Implementación Inicial (CAPEX)",
+            subtitle: "Inversión única para la puesta en marcha",
+            html: `
+                <div class="space-y-8">
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="monitor" class="w-4 h-4 text-primary"></i>
+                            Costo Principal - Pantalla
+                        </h4>
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Costo de Pantalla ($) *</label>
+                            <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm text-lg font-mono">
+                            <p class="text-xs text-slate-400 mt-2">Incluye pantalla LED y componentes visuales principales</p>
+                        </div>
+                    </section>
+
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="building-2" class="w-4 h-4 text-secondary"></i>
+                            Infraestructura y Obra Civil
+                        </h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Obra civil ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                                <p class="text-xs text-slate-400 mt-1 italic">Nota: El costo puede variar</p>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Costo estructura ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Instalación eléctrica ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Medidor ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="users" class="w-4 h-4 text-amber-600"></i>
+                            Recursos Humanos y Legales
+                        </h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Cuadrilla instalación ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                                <p class="text-xs text-slate-400 mt-1">6 técnicos</p>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Costos legales ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                                <p class="text-xs text-slate-400 mt-1">Negociaciones con alcaldía</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="star" class="w-4 h-4 text-purple-600"></i>
+                            Implementaciones Especiales
+                        </h4>
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Costo especial ($)</label>
+                            <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm bg-purple-50">
+                            <p class="text-xs text-slate-400 mt-1 italic">Datos predefinidos sujetos a cambio</p>
+                        </div>
+                        <div class="mt-4">
+                            <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Descripción especial</label>
+                            <textarea placeholder="Detalle de implementaciones especiales..." class="w-full border-slate-200 rounded-xl text-sm p-3" rows="2"></textarea>
+                        </div>
+                    </section>
+
+                    <div class="bg-slate-800 text-white p-6 rounded-2xl">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="text-sm font-bold">TOTAL CAPEX</p>
+                                <p class="text-2xl font-bold font-mono" id="capex-total">$0.00</p>
+                            </div>
+                            <button class="bg-white text-slate-800 font-bold px-6 py-3 rounded-xl hover:bg-slate-100 transition">
+                                CALCULAR TOTAL
+                            </button>
+                        </div>
+                    </div>
+
+                    <button class="w-full bg-primary text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition">
+                        <i data-lucide="save" class="w-5 h-5 inline mr-2"></i>
+                        GUARDAR CAPEX
+                    </button>
+                </div>
+            `
+        },
+
+        inventario: {
+            title: "4. Inventario de Hardware y Software",
+            subtitle: "Desglose técnico de componentes y licencias",
+            html: `
+                <div class="space-y-8">
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="cpu" class="w-4 h-4 text-secondary"></i>
+                            Electrónica Central
+                        </h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">NUC ID/Modelo</label>
+                                <input type="text" placeholder="Ej: NUC11PAHi7" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">UPS Modelo</label>
+                                <input type="text" placeholder="Ej: APC SMT1500" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Sending Card</label>
+                                <input type="text" placeholder="Modelo y número" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Procesador</label>
+                                <input type="text" placeholder="Especificaciones" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="wifi" class="w-4 h-4 text-primary"></i>
+                            Conectividad
+                        </h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Módem</label>
+                                <input type="text" placeholder="Modelo y proveedor" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">SIM #</label>
+                                <input type="text" placeholder="Número de SIM" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Teltonika</label>
+                                <input type="text" placeholder="Modelo y configuración" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">HDMI/Conectores</label>
+                                <input type="text" placeholder="Tipo y cantidad" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="package" class="w-4 h-4 text-emerald-600"></i>
+                            Refacciones y Stock
+                        </h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Stock de repuestos</label>
+                                <input type="text" placeholder="Lista de repuestos disponibles" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Costo electrónica refacciones ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="key" class="w-4 h-4 text-purple-600"></i>
+                            Software y Licencias
+                        </h4>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Broadsign (Broadsing)</label>
+                                <input type="text" placeholder="Licencia y versión" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">TeamViewer</label>
+                                    <input type="text" placeholder="Licencia" class="w-full border-slate-200 rounded-xl text-sm">
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Costo licencia anual ($)</label>
+                                    <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <button class="w-full bg-secondary text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-500/20 hover:bg-blue-600 transition">
+                        <i data-lucide="cpu" class="w-5 h-5 inline mr-2"></i>
+                        GUARDAR INVENTARIO TÉCNICO
+                    </button>
+                </div>
+            `
+        },
+
+        opex: {
+            title: "5. Gastos Operativos y Recurrentes (OPEX)",
+            subtitle: "Costos del 'día a día' y servicios mensuales/anuales",
+            html: `
+                <div class="space-y-8">
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="home" class="w-4 h-4 text-primary"></i>
+                            Costos de Ubicación y Servicios
+                        </h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Costo de renta mensual ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                                <p class="text-xs text-slate-400 mt-1 italic">Pendiente conseguir el costo</p>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Costo uso de suelo ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Internet mensual ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Luz mensual ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="truck" class="w-4 h-4 text-amber-600"></i>
+                            Logística y Transporte
+                        </h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Gasolina ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Transporte camioneta ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-2">Costo de gasolina y costo de transporte de camioneta</p>
+                    </section>
+
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="clipboard-list" class="w-4 h-4 text-emerald-600"></i>
+                            Servicios Técnicos
+                        </h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Costo de SRD ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Programación de pauta ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="repeat" class="w-4 h-4 text-slate-600"></i>
+                            Frecuencia de Pagos
+                        </h4>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Mensual</label>
+                                <p class="text-sm font-mono text-slate-700" id="opex-monthly">$0.00</p>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Anual</label>
+                                <p class="text-sm font-mono text-slate-700" id="opex-yearly">$0.00</p>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Total OPEX</label>
+                                <p class="text-lg font-bold font-mono text-primary" id="opex-total">$0.00</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <button class="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 transition">
+                        <i data-lucide="calculator" class="w-5 h-5 inline mr-2"></i>
+                        CALCULAR Y GUARDAR OPEX
+                    </button>
+                </div>
+            `
+        },
+
+        mantenimiento: {
+            title: "6. Mantenimiento y Control de Incidencias",
+            subtitle: "Gestión de la salud del activo y soporte técnico",
+            html: `
+                <div class="space-y-8">
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="shield" class="w-4 h-4 text-emerald-600"></i>
+                            Mantenimiento Preventivo
+                        </h4>
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="flex items-center gap-2 text-sm mb-3">
+                                        <input type="checkbox" class="rounded text-primary">
+                                        Limpieza General
+                                    </label>
+                                    <label class="flex items-center gap-2 text-sm">
+                                        <input type="checkbox" class="rounded text-primary">
+                                        Incluye Jabón y Trapos
+                                    </label>
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Costo bimestral ($)</label>
+                                    <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="wrench" class="w-4 h-4 text-amber-600"></i>
+                            Mantenimiento Correctivo
+                        </h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Costo electrónica ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Costo refacciones ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Conteo de visitas</label>
+                            <div class="flex items-center gap-4">
+                                <input type="number" placeholder="0" class="w-32 border-slate-200 rounded-xl text-sm text-center">
+                                <span class="text-sm text-slate-600">veces (este costo se suma al total)</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="users" class="w-4 h-4 text-primary"></i>
+                            Recursos Humanos - Cuadrilla
+                        </h4>
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Cuadrilla de 4 personas ($)</label>
+                            <input type="number" placeholder="Costo total por mantenimiento" class="w-full border-slate-200 rounded-xl text-sm">
+                            <p class="text-xs text-slate-400 mt-2">Personal especializado para mantenimiento</p>
+                        </div>
+                    </section>
+
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="alert-triangle" class="w-4 h-4 text-red-500"></i>
+                            Gestión de Incidencias
+                        </h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Número de reincidencias</label>
+                                <input type="number" placeholder="0" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Tipo principal</label>
+                                <select class="w-full border-slate-200 rounded-xl text-sm">
+                                    <option>Eléctricas</option>
+                                    <option>Hardware</option>
+                                    <option>Software</option>
+                                    <option>Conectividad</option>
+                                    <option>Vandalismo</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Todas las incidencias registradas</label>
+                            <textarea placeholder="Lista detallada de incidencias que abarquen esa ubicación..." 
+                                      class="w-full border-slate-200 rounded-xl text-sm p-3" rows="4"></textarea>
+                        </div>
+                    </section>
+
+                    <button class="w-full bg-red-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-red-500/20 hover:bg-red-600 transition">
+                        <i data-lucide="shield-alert" class="w-5 h-5 inline mr-2"></i>
+                        REGISTRAR MANTENIMIENTO
+                    </button>
+                </div>
+            `
+        },
+
+        'ciclo-vida': {
+            title: "7. Ciclo de Vida y Proyecciones Financieras",
+            subtitle: "Análisis de costos totales y renovación tecnológica",
+            html: `
+                <div class="space-y-8">
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="dollar-sign" class="w-4 h-4 text-primary"></i>
+                            Costos Totales Consolidados
+                        </h4>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Costo actual total ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm font-mono text-lg">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Costo aproximado anual ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Costo anual real ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="refresh-cw" class="w-4 h-4 text-secondary"></i>
+                            Renovación Tecnológica - Pantallas
+                        </h4>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Cambio completo de pantallas</label>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="flex items-center gap-2 text-sm">
+                                            <input type="checkbox" class="rounded text-primary">
+                                            Cambio de pantallas
+                                        </label>
+                                        <label class="flex items-center gap-2 text-sm">
+                                            <input type="checkbox" class="rounded text-primary">
+                                            Cambio de electrónica
+                                        </label>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Fecha estimada</label>
+                                        <input type="date" class="w-full border-slate-200 rounded-xl text-sm">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="cpu" class="w-4 h-4 text-purple-600"></i>
+                            Renovación de Equipos
+                        </h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Cambio de electrónica ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Cambio de equipos ($)</label>
+                                <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Costo total renovación ($)</label>
+                            <input type="number" placeholder="0.00" class="w-full border-slate-200 rounded-xl text-sm bg-purple-50">
+                        </div>
+                    </section>
+
+                    <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="trending-up" class="w-4 h-4 text-emerald-600"></i>
+                            Proyecciones Financieras
+                        </h4>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">ROI proyectado a 5 años (%)</label>
+                                <input type="number" placeholder="0" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Vida útil restante (años)</label>
+                                <input type="number" placeholder="0" class="w-full border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase mb-2 block">Notas estratégicas</label>
+                                <textarea placeholder="Consideraciones para decisiones futuras..." 
+                                          class="w-full border-slate-200 rounded-xl text-sm p-3" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </section>
+
+                    <button class="w-full bg-purple-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-purple-500/20 hover:bg-purple-700 transition">
+                        <i data-lucide="trending-up" class="w-5 h-5 inline mr-2"></i>
+                        GUARDAR PROYECCIONES
+                    </button>
+                </div>
+            `
+        }
+    };
+
     document.addEventListener('DOMContentLoaded', () => { 
         lucide.createIcons(); 
         load();
@@ -190,16 +859,38 @@
     let currentPage = 1;
     const itemsPerPage = 10;
 
+    function openDrawer(type) {
+        const config = FORMS[type];
+        document.getElementById('d-title').innerText = config.title;
+        document.getElementById('d-subtitle').innerText = config.subtitle;
+        document.getElementById('d-content').innerHTML = config.html;
+        lucide.createIcons();
+        
+        const drawer = document.getElementById('drawer');
+        const overlay = document.getElementById('overlay');
+        
+        overlay.classList.remove('hidden');
+        setTimeout(() => overlay.classList.add('opacity-100'), 10);
+        drawer.classList.remove('translate-x-full');
+    }
+
+    function closeDrawer() {
+        const drawer = document.getElementById('drawer');
+        const overlay = document.getElementById('overlay');
+        
+        drawer.classList.add('translate-x-full');
+        overlay.classList.remove('opacity-100');
+        setTimeout(() => overlay.classList.add('hidden'), 400);
+    }
+
+    // Funciones del dashboard (mantenidas del código anterior)
     async function load() {
         try {
             const r = await fetch('/costs/report'); 
             const data = await r.json();
             currentData = data;
-            
             updateKPI(data);
             renderTable();
-            updateCharts(data);
-            updateAlerts(data);
         } catch (error) {
             console.error('Error loading data:', error);
             document.getElementById('tb').innerHTML = `
@@ -347,177 +1038,15 @@
 
     function filterTable(searchTerm) {
         // Implementación básica de filtro
-        const filtered = currentData.filter(item => 
-            item.device_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (item.location && item.location.toLowerCase().includes(searchTerm.toLowerCase()))
-        );
-        
-        // Para implementación completa, deberías guardar los datos filtrados
-        // y actualizar currentData temporalmente
         console.log('Filtrando por:', searchTerm);
     }
 
     function filterByStatus(status) {
         console.log('Filtrando por estado:', status);
-        // Implementar filtro por estado
-    }
-
-    function updateCharts(data) {
-        // Ordenar por rentabilidad para el top 5
-        const top5 = [...data]
-            .sort((a, b) => b.net_profit - a.net_profit)
-            .slice(0, 5);
-        
-        let topHtml = '';
-        top5.forEach((item, index) => {
-            topHtml += `
-                <div class="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition">
-                    <div class="flex items-center gap-3">
-                        <span class="w-6 h-6 rounded-lg ${index < 3 ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-600'} flex items-center justify-center text-xs font-bold">
-                            ${index + 1}
-                        </span>
-                        <div>
-                            <p class="text-sm font-bold text-slate-700">${item.device_id}</p>
-                            <p class="text-xs text-slate-500">ROI: ${item.roi_percent}%</p>
-                        </div>
-                    </div>
-                    <span class="text-sm font-bold ${item.net_profit >= 0 ? 'text-emerald-600' : 'text-red-500'}">
-                        $${item.net_profit.toLocaleString()}
-                    </span>
-                </div>
-            `;
-        });
-        
-        document.getElementById('top-locations').innerHTML = topHtml;
-    }
-
-    function updateAlerts(data) {
-        const critical = data.filter(x => 
-            x.net_profit < 0 || 
-            x.status_label === 'CRITICO' || 
-            (parseFloat(x.roi_percent) < 0)
-        );
-        
-        let alertsHtml = '';
-        
-        if (critical.length === 0) {
-            alertsHtml = `
-                <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-100">
-                    <div class="flex gap-3 items-start">
-                        <i data-lucide="check-circle" class="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0"></i>
-                        <div>
-                            <p class="text-sm font-bold text-slate-700">Sin alertas críticas</p>
-                            <p class="text-xs text-slate-500">Todas las ubicaciones están estables</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-        } else {
-            critical.slice(0, 3).forEach(item => {
-                alertsHtml += `
-                    <div class="p-3 bg-red-50 rounded-xl border border-red-100">
-                        <div class="flex gap-3 items-start">
-                            <i data-lucide="alert-triangle" class="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0"></i>
-                            <div>
-                                <p class="text-sm font-bold text-slate-700">${item.device_id}</p>
-                                <p class="text-xs text-slate-500">
-                                    ${item.net_profit < 0 ? 'Pérdida: $' + Math.abs(item.net_profit).toLocaleString() : ''}
-                                    ${parseFloat(item.roi_percent) < 0 ? 'ROI negativo: ' + item.roi_percent + '%' : ''}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            if (critical.length > 3) {
-                alertsHtml += `
-                    <div class="text-center">
-                        <p class="text-xs text-slate-500">+${critical.length - 3} alertas más</p>
-                    </div>
-                `;
-            }
-        }
-        
-        document.getElementById('alerts-container').innerHTML = alertsHtml;
-        lucide.createIcons();
     }
 
     function viewDetails(deviceId) {
-        alert(`Viendo detalles de: ${deviceId}\n\nEn una implementación real, esto redirigiría a un dashboard detallado.`);
-        // window.location.href = `/dashboard/details/${deviceId}`;
-    }
-
-    function openDrawer(type) {
-        let title, subtitle, content;
-        
-        if (type === 'report') {
-            title = 'Exportar Reporte Ejecutivo';
-            subtitle = 'Genera un reporte detallado para presentación';
-            content = `
-                <div class="space-y-6">
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200">
-                        <h4 class="text-sm font-bold text-slate-800 mb-4">Formato del Reporte</h4>
-                        <div class="space-y-3">
-                            <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer">
-                                <input type="radio" name="format" value="pdf" class="text-primary" checked>
-                                <div>
-                                    <p class="font-bold text-slate-700">PDF Ejecutivo</p>
-                                    <p class="text-xs text-slate-500">Ideal para presentaciones y reportes impresos</p>
-                                </div>
-                            </label>
-                            <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer">
-                                <input type="radio" name="format" value="excel" class="text-primary">
-                                <div>
-                                    <p class="font-bold text-slate-700">Excel Analítico</p>
-                                    <p class="text-xs text-slate-500">Datos crudos para análisis avanzado</p>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200">
-                        <h4 class="text-sm font-bold text-slate-800 mb-4">Filtros Adicionales</h4>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="text-xs font-bold text-slate-500 block mb-2">Fecha Inicio</label>
-                                <input type="date" class="w-full border-slate-200 rounded-xl text-sm">
-                            </div>
-                            <div>
-                                <label class="text-xs font-bold text-slate-500 block mb-2">Fecha Fin</label>
-                                <input type="date" class="w-full border-slate-200 rounded-xl text-sm">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <button class="w-full bg-primary text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition">
-                        <i data-lucide="download" class="w-5 h-5 inline mr-2"></i>
-                        GENERAR REPORTE
-                    </button>
-                </div>
-            `;
-        }
-        
-        document.getElementById('d-title').innerText = title;
-        document.getElementById('d-subtitle').innerText = subtitle;
-        document.getElementById('d-content').innerHTML = content;
-        lucide.createIcons();
-        
-        const drawer = document.getElementById('drawer');
-        const overlay = document.getElementById('overlay');
-        
-        overlay.classList.remove('hidden');
-        setTimeout(() => overlay.classList.add('opacity-100'), 10);
-        drawer.classList.remove('translate-x-full');
-    }
-
-    function closeDrawer() {
-        const drawer = document.getElementById('drawer');
-        const overlay = document.getElementById('overlay');
-        
-        drawer.classList.add('translate-x-full');
-        overlay.classList.remove('opacity-100');
-        setTimeout(() => overlay.classList.add('hidden'), 400);
+        alert(`Viendo detalles de: ${deviceId}`);
     }
 </script>
 {% endblock %}
