@@ -19,34 +19,46 @@ class SupabaseService:
         
         logger.info("✅ Conexión a Supabase establecida (Modo Batch + Agregación)")
 
-    # --- MÉTODOS DE MONITOREO (ORIGINALES - NO TOCAR) ---
     def buffer_metric(self, device_id, latency, packet_loss=0, extra_data=None):
+        """
+        Guarda métricas en buffer para envío masivo.
+        Acepta 'extra_data' con min_latency, max_latency, etc.
+        """
         row = {
             "device_id": device_id,
             "latency_ms": int(latency) if latency is not None else 0,
             "packet_loss": int(packet_loss),
             "created_at": datetime.utcnow().isoformat()
         }
+        
+        # Mapear datos extra a las columnas de SQL
         if extra_data:
             row['min_latency'] = extra_data.get('min')
             row['max_latency'] = extra_data.get('max')
             row['sample_count'] = extra_data.get('samples', 1)
         
         self.buffer.append(row)
+        
         if len(self.buffer) >= self.BATCH_SIZE:
             self._flush_buffer()
 
     def _flush_buffer(self):
         try:
             if not self.buffer: return
+            
             data_to_send = self.buffer
+            # Insertamos en raw_metrics
             self.client.table("raw_metrics").insert(data_to_send).execute()
+            
+            # Limpiamos buffer solo si tuvo éxito
             self.buffer = [] 
+            
         except Exception as e:
             logger.error(f"❌ Error enviando batch a Supabase: {e}")
             self.buffer = []
 
     def upsert_device_status(self, device_data: dict):
+        """Actualiza el inventario (Tabla devices)"""
         try:
             self.client.table("devices").upsert(device_data).execute()
             return True
@@ -67,63 +79,57 @@ class SupabaseService:
             logger.error(f"Error leyendo historial: {e}")
             return []
 
+    # ==============================================================================
+    # NUEVOS MÉTODOS PARA GESTIÓN DE INCIDENCIAS Y ACTIVOS
+    # ==============================================================================
+
+    def register_manual_asset(self, asset_data: dict):
+        """
+        Registra un nuevo activo desde el Dashboard (Formulario Nueva Instalación).
+        Guarda en la tabla 'devices' con metadatos financieros.
+        """
+        try:
+            # Aseguramos campos mínimos
+            payload = {
+                "pc_name": asset_data.get('pc_name'),     # Usado como Nombre Comercial o ID Técnico
+                "device_id": asset_data.get('qtm_id'),    # Clave QTM única
+                "status": "registered",                   # Estado inicial (aún no reporta telemetría)
+                "specs": asset_data.get('specs'),         # JSON o String con specs
+                "investment": asset_data.get('investment', 0), # CAPEX
+                "location": asset_data.get('location', ''),
+                "last_seen": datetime.utcnow().isoformat()
+            }
+            # Upsert usando device_id (Clave QTM) como llave si es posible, o pc_name
+            self.client.table("devices").upsert(payload).execute()
+            return True
+        except Exception as e:
+            logger.error(f"❌ Error registrando activo manual: {e}")
+            return False
+
+    def get_device_incidents(self, qtm_id_or_site):
+        """
+        Busca en la tabla de incidencias (Tickets de Discord)
+        Filtrando por 'sitio' o 'detalles_equipo'
+        """
+        try:
+            # Asumimos que la tabla se llama 'incidencias' o 'tickets'
+            # Buscamos coincidencias en el campo Sitio o ID
+            response = self.client.table("incidencias")\
+                .select("*")\
+                .or_(f"sitio.eq.{qtm_id_or_site},detalles_equipo.ilike.%{qtm_id_or_site}%")\
+                .order("fecha_creacion", desc=True)\
+                .execute()
+            
+            return response.data
+        except Exception as e:
+            logger.error(f"❌ Error obteniendo incidencias para {qtm_id_or_site}: {e}")
+            return []
+
     def run_nightly_cleanup(self):
+        """Borra datos crudos viejos (Mantenimiento)"""
         try:
             cutoff = (datetime.now() - timedelta(days=30)).isoformat()
             self.client.table("raw_metrics").delete().lt("created_at", cutoff).execute()
             logger.info("🧹 Limpieza mensual ejecutada.")
         except Exception as e:
             logger.error(f"Error en limpieza: {e}")
-
-    # --- NUEVOS MÉTODOS PARA GESTIÓN DE PANTALLAS E INCIDENCIAS ---
-
-    def get_all_assets(self):
-        """Obtiene el inventario de pantallas para el Dashboard"""
-        try:
-            # Asumimos que tienes una tabla 'assets' o 'inventario_pantallas'
-            # Si no existe, la crea o usa 'devices' con filtros
-            response = self.client.table("assets").select("*").execute()
-            return response.data
-        except Exception as e:
-            logger.error(f"Error obteniendo assets: {e}")
-            return []
-
-    def get_asset_by_id(self, asset_id):
-        """Obtiene detalle de una pantalla específica"""
-        try:
-            # Busca por columna 'qtm' o 'id'
-            response = self.client.table("assets").select("*").eq("qtm", asset_id).execute()
-            if response.data:
-                return response.data[0]
-            return None
-        except Exception as e:
-            logger.error(f"Error buscando asset {asset_id}: {e}")
-            return None
-
-    def register_new_asset(self, asset_data):
-        """Registra una nueva instalación (Nueva Pantalla)"""
-        try:
-            # asset_data debe coincidir con las columnas de tu tabla 'assets' en Supabase
-            response = self.client.table("assets").insert(asset_data).execute()
-            return response.data
-        except Exception as e:
-            logger.error(f"Error registrando asset: {e}")
-            return None
-
-    def get_incidents_by_site(self, site_name, limit=20):
-        """
-        Obtiene las incidencias reportadas (Discord -> Supabase).
-        Usa el campo 'Sitio' o 'id_tecnologia' para filtrar.
-        """
-        try:
-            # Nota: Ajusta 'incidencias' al nombre real de tu tabla de tickets en Supabase
-            response = self.client.table("incidencias")\
-                .select("*")\
-                .ilike("sitio", f"%{site_name}%")\
-                .order("fecha_creacion", desc=True)\
-                .limit(limit)\
-                .execute()
-            return response.data
-        except Exception as e:
-            logger.error(f"Error obteniendo incidencias para {site_name}: {e}")
-            return []
