@@ -1,523 +1,532 @@
 {% extends 'base.html' %}
-{% block header_title %}Executive Command Center - Argos DOOH{% endblock %}
+
+{% block title %}Argos - Costos y Rentabilidad{% endblock %}
+
+{% block header_title %}Finanzas y Rentabilidad{% endblock %}
+
 {% block content %}
-<div class="max-w-[1800px] mx-auto space-y-8">
-    <!-- Header Ejecutivo -->
-    <div class="flex justify-between items-start">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+
+<style>
+    .text-primary { color: #F97316; }
+    .bg-primary { background-color: #F97316; }
+    .border-primary { border-color: #F97316; }
+    .drawer-slide { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+</style>
+
+<div class="max-w-[1600px] mx-auto">
+
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-            <h1 class="text-2xl font-bold text-slate-900">Costo por <span class="text-primary">Ubicación</span></h1>
-            <p class="text-sm text-slate-500 mt-1">Dashboard ejecutivo para toma de decisiones estratégicas</p>
+            <h2 class="text-lg font-bold text-slate-800">Centro de Comando Financiero</h2>
+            <p class="text-sm text-slate-500">Análisis de CAPEX, OPEX y Rentabilidad por Activo.</p>
         </div>
-        <div class="flex items-center gap-4">
-            <button onclick="load()" class="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm transition">
-                <i data-lucide="refresh-cw" class="w-4 h-4 text-slate-600"></i>
-                <span class="text-sm font-bold text-slate-700">Actualizar</span>
+        <div class="flex gap-3">
+            <button onclick="app.ui.openDrawer('sales')" class="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition shadow-md hover:shadow-lg">
+                <span class="material-icons-outlined text-sm">attach_money</span> REGISTRAR VENTA
             </button>
-            <button onclick="openDrawer('report')" class="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl hover:bg-orange-600 shadow-lg shadow-orange-500/20 transition">
-                <i data-lucide="download" class="w-4 h-4"></i>
-                <span class="text-sm font-bold">Exportar Reporte</span>
+            <button onclick="app.ui.openDrawer('inst')" class="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-lg hover:bg-slate-800 transition shadow-md hover:shadow-lg">
+                <span class="material-icons-outlined text-sm">add</span> NUEVA INSTALACIÓN
             </button>
         </div>
     </div>
 
-    <!-- KPI Cards Ejecutivas -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Inversión (CAPEX)</p>
-                    <h3 id="t-inv" class="text-2xl font-bold text-slate-900 font-mono">$0.00</h3>
-                </div>
-                <div class="p-2.5 rounded-lg bg-primary/10">
-                    <i data-lucide="trending-up" class="w-5 h-5 text-primary"></i>
-                </div>
-            </div>
-            <p class="text-[11px] text-slate-500 mt-2">Inversión total en infraestructura</p>
-        </div>
-
-        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Mantenimiento (OPEX)</p>
-                    <h3 id="t-mant" class="text-2xl font-bold text-amber-600 font-mono">$0.00</h3>
-                </div>
-                <div class="p-2.5 rounded-lg bg-amber-100">
-                    <i data-lucide="tool" class="w-5 h-5 text-amber-600"></i>
-                </div>
-            </div>
-            <p class="text-[11px] text-slate-500 mt-2">Costos operativos mensuales</p>
-        </div>
-
-        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Utilidad Neta</p>
-                    <h3 id="t-net" class="text-2xl font-bold text-emerald-600 font-mono">$0.00</h3>
-                </div>
-                <div class="p-2.5 rounded-lg bg-emerald-100">
-                    <i data-lucide="dollar-sign" class="w-5 h-5 text-emerald-600"></i>
-                </div>
-            </div>
-            <p class="text-[11px] text-slate-500 mt-2">Beneficio después de gastos</p>
-        </div>
-
-        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">ROI Promedio</p>
-                    <h3 id="t-roi" class="text-2xl font-bold text-secondary font-mono">0%</h3>
-                </div>
-                <div class="p-2.5 rounded-lg bg-secondary/10">
-                    <i data-lucide="target" class="w-5 h-5 text-secondary"></i>
-                </div>
-            </div>
-            <p class="text-[11px] text-slate-500 mt-2">Retorno sobre inversión promedio</p>
-        </div>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8" id="kpi-container">
+        <div class="animate-pulse bg-white h-24 rounded-2xl border border-slate-200"></div>
+        <div class="animate-pulse bg-white h-24 rounded-2xl border border-slate-200"></div>
+        <div class="animate-pulse bg-white h-24 rounded-2xl border border-slate-200"></div>
+        <div class="animate-pulse bg-white h-24 rounded-2xl border border-slate-200"></div>
     </div>
 
-    <!-- Tabla Ejecutiva Mejorada -->
-    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-        <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-            <div>
-                <h3 class="text-lg font-bold text-slate-800">Rentabilidad por Ubicación</h3>
-                <p class="text-sm text-slate-500">Análisis detallado de cada activo digital</p>
-            </div>
-            <div class="flex items-center gap-3">
-                <div class="relative">
-                    <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400"></i>
-                    <input type="text" placeholder="Buscar ubicación..." class="pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm w-64 focus:ring-2 focus:ring-primary focus:border-transparent" onkeyup="filterTable(this.value)">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <div class="lg:col-span-8 space-y-6">
+            
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Flujo de Caja</h3>
+                        <p class="text-xs text-slate-400">Ventas vs Mantenimiento (Mensual)</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <span class="flex items-center gap-1 text-[10px] font-bold text-slate-500"><div class="w-2 h-2 rounded-full bg-emerald-500"></div> Ventas</span>
+                        <span class="flex items-center gap-1 text-[10px] font-bold text-slate-500"><div class="w-2 h-2 rounded-full bg-orange-500"></div> Costos</span>
+                    </div>
                 </div>
-                <select onchange="filterByStatus(this.value)" class="border border-slate-200 rounded-xl text-sm px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent">
-                    <option value="">Todos los estados</option>
-                    <option value="RENTABLE">Rentable</option>
-                    <option value="RECUPERANDO">Recuperando</option>
-                    <option value="CRITICO">Crítico</option>
-                </select>
+                <div class="h-72 w-full">
+                    <canvas id="rentabilityChart"></canvas>
+                </div>
             </div>
-        </div>
-        
-        <div class="overflow-x-auto">
-            <table class="w-full border-collapse">
-                <thead class="bg-slate-50/80 border-b border-slate-100">
-                    <tr>
-                        <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Ubicación / Activo</th>
-                        <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Inversión (CAPEX)</th>
-                        <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Mantenimiento (OPEX)</th>
-                        <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Ventas</th>
-                        <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Utilidad</th>
-                        <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">ROI</th>
-                        <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Estado</th>
-                        <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="tb" class="divide-y divide-slate-100">
-                    <tr><td colspan="8" class="p-12 text-center text-slate-400"><i data-lucide="loader" class="w-8 h-8 animate-spin mx-auto mb-3"></i><p>Cargando datos ejecutivos...</p></td></tr>
-                </tbody>
-            </table>
-        </div>
-        
-        <div class="p-4 border-t border-slate-100 bg-slate-50/50 text-sm text-slate-500 flex justify-between items-center">
-            <span id="summary-text">Mostrando 0 ubicaciones</span>
-            <div class="flex items-center gap-2">
-                <button onclick="changePage(-1)" class="p-2 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                    <i data-lucide="chevron-left" class="w-4 h-4"></i>
-                </button>
-                <span class="text-sm font-bold">Página <span id="current-page">1</span></span>
-                <button onclick="changePage(1)" class="p-2 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                    <i data-lucide="chevron-right" class="w-4 h-4"></i>
-                </button>
-            </div>
-        </div>
-    </div>
 
-    <!-- Gráficos Ejecutivos -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <h3 class="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wider">Distribución de Rentabilidad</h3>
-            <div class="h-64 flex items-center justify-center">
-                <div id="profit-chart" class="w-full h-full"></div>
-            </div>
-        </div>
-        
-        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <h3 class="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wider">Top 5 Ubicaciones</h3>
-            <div id="top-locations" class="space-y-4">
-                <!-- Se llenará dinámicamente -->
-            </div>
-        </div>
-        
-        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <h3 class="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wider">Alertas Críticas</h3>
-            <div id="alerts-container" class="space-y-3">
-                <div class="p-3 bg-red-50 rounded-xl border border-red-100">
-                    <div class="flex gap-3 items-start">
-                        <i data-lucide="alert-triangle" class="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0"></i>
-                        <div>
-                            <p class="text-sm font-bold text-slate-700">Sin datos cargados</p>
-                            <p class="text-xs text-slate-500">Ejecuta el reporte para ver alertas</p>
-                        </div>
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center bg-slate-50/50 gap-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800">Inventario de Pantallas</h2>
+                        <p class="text-xs text-slate-500">Gestión de costos y rentabilidad.</p>
+                    </div>
+                    
+                    <div class="relative w-full sm:w-64">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <span class="material-icons-outlined text-slate-400 text-lg">search</span>
+                        </span>
+                        <input type="text" id="searchInput" onkeyup="app.searchAssets()" placeholder="Buscar por Nombre o QTM..." 
+                               class="pl-10 pr-4 py-2 w-full border border-slate-200 rounded-lg text-sm focus:ring-orange-500 focus:border-orange-500 transition shadow-sm">
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse" id="assets-table">
+                        <thead class="bg-slate-50/80 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                            <tr>
+                                <th class="p-4">Sitio / Clave QTM</th>
+                                <th class="p-4">Especificaciones</th>
+                                <th class="p-4 text-right">Inversión (CAPEX)</th>
+                                <th class="p-4 text-right">Rentabilidad (Est.)</th>
+                                <th class="p-4 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-sm" id="table-body">
+                            </tbody>
+                    </table>
+                    <div id="no-results" class="hidden p-8 text-center text-slate-400 text-sm">
+                        No se encontraron pantallas con ese criterio.
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
-<!-- Drawer para Reportes -->
-<div id="overlay" class="fixed inset-0 bg-slate-900/40 z-40 hidden backdrop-blur-sm transition-opacity opacity-0" onclick="closeDrawer()"></div>
-<div id="drawer" class="fixed right-0 top-0 h-full w-full max-w-2xl bg-white z-50 shadow-2xl translate-x-full drawer-slide overflow-hidden flex flex-col">
-    <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0">
-        <div>
-            <h2 id="d-title" class="text-xl font-bold text-slate-800">Exportar Reporte Ejecutivo</h2>
-            <p id="d-subtitle" class="text-sm text-slate-500">Genera un reporte detallado para presentación</p>
-        </div>
-        <button onclick="closeDrawer()" class="p-2 hover:bg-slate-100 rounded-full transition">
-            <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-    </div>
-    <div id="d-content" class="flex-1 overflow-y-auto custom-scroll p-8 bg-slate-50/30">
-        <!-- Contenido dinámico -->
-    </div>
-</div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', () => { 
-        lucide.createIcons(); 
-        load();
-    });
-
-    let currentData = [];
-    let currentPage = 1;
-    const itemsPerPage = 10;
-
-    async function load() {
-        try {
-            const r = await fetch('/costs/report'); 
-            const data = await r.json();
-            currentData = data;
+        <div class="lg:col-span-4 space-y-6">
             
-            updateKPI(data);
-            renderTable();
-            updateCharts(data);
-            updateAlerts(data);
-        } catch (error) {
-            console.error('Error loading data:', error);
-            document.getElementById('tb').innerHTML = `
-                <tr><td colspan="8" class="p-8 text-center">
-                    <i data-lucide="alert-circle" class="w-12 h-12 text-red-400 mx-auto mb-3"></i>
-                    <p class="text-red-500 font-bold">Error al cargar datos</p>
-                    <p class="text-sm text-slate-400">Intenta nuevamente</p>
-                </td></tr>
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 class="text-sm font-bold text-slate-800 mb-2 uppercase tracking-wider">Distribución CAPEX</h3>
+                <p class="text-xs text-slate-400 mb-6">Desglose de inversión inicial.</p>
+                <div class="h-48 relative flex justify-center">
+                    <canvas id="capexChart"></canvas>
+                </div>
+                <div class="mt-6 space-y-3">
+                    <div class="flex justify-between items-center text-xs border-b border-slate-50 pb-2">
+                        <div class="flex items-center gap-2"><div class="w-3 h-3 rounded bg-blue-500"></div> <span class="text-slate-600 font-medium">Pantallas y Electrónica</span></div>
+                        <span class="font-bold text-slate-800">55%</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs border-b border-slate-50 pb-2">
+                        <div class="flex items-center gap-2"><div class="w-3 h-3 rounded bg-orange-500"></div> <span class="text-slate-600 font-medium">Obra Civil</span></div>
+                        <span class="font-bold text-slate-800">30%</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <div class="flex items-center gap-2"><div class="w-3 h-3 rounded bg-purple-500"></div> <span class="text-slate-600 font-medium">Legal y Gestoría</span></div>
+                        <span class="font-bold text-slate-800">15%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Alertas Activas</h3>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-100 text-red-600 animate-pulse">EN VIVO</span>
+                </div>
+                <div class="space-y-3" id="alerts-container">
+                    </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="overlay" class="fixed inset-0 bg-slate-900/40 z-40 hidden backdrop-blur-sm transition-opacity opacity-0" onclick="app.ui.closeDrawer()"></div>
+
+<div id="drawer" class="fixed right-0 top-0 h-full w-full max-w-2xl bg-white z-50 shadow-2xl translate-x-full drawer-slide overflow-hidden flex flex-col">
+    <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
+        <div>
+            <h2 id="d-title" class="text-xl font-bold text-slate-800">Título Formulario</h2>
+            <p id="d-subtitle" class="text-xs text-slate-500">Descripción del proceso</p>
+        </div>
+        <button onclick="app.ui.closeDrawer()" class="p-2 hover:bg-slate-100 rounded-full transition text-slate-500"><span class="material-icons-outlined">close</span></button>
+    </div>
+    <div id="d-content" class="flex-1 overflow-y-auto custom-scroll p-8 bg-slate-50/50">
+        </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    /**
+     * SERVICIO DE DATOS (CONECTADO AL BACKEND FLASK)
+     */
+    class DataService {
+        constructor() {
+            this.baseUrl = '/api'; // URL relativa de tu servidor Flask
+        }
+
+        async fetchData() {
+            try {
+                // 1. Obtener Dispositivos desde la API
+                const response = await fetch(`${this.baseUrl}/data`);
+                const data = await response.json();
+                
+                // Transformar el objeto de respuesta en un array para la tabla
+                const assets = Object.values(data).map(d => ({
+                    id: d.device_id || d.pc_name || 'N/A',
+                    name: d.pc_name || 'Sin Nombre',
+                    qtm: d.device_id || 'N/A', 
+                    // Costos vienen del registro en Supabase
+                    investment: parseFloat(d.investment) || 0,
+                    monthly_revenue: 0, // Pendiente de conectar módulo de ventas
+                    monthly_cost: (parseFloat(d.investment) || 0) * 0.01, // Estimado OPEX (1% del CAPEX)
+                    status: d.status || 'offline',
+                    specs: d.specs || 'N/A'
+                }));
+
+                // Calcular KPIs financieros basados en datos reales
+                let kpis = { capex: 0, sales_annual: 0, opex_monthly: 0, incidents: 0 };
+                assets.forEach(a => {
+                    kpis.capex += a.investment;
+                    kpis.opex_monthly += a.monthly_cost;
+                    if(a.status !== 'ok' && a.status !== 'registered' && a.status !== 'online') kpis.incidents++;
+                });
+
+                // Mockup financials (Gráficas) - En el futuro conectar a endpoint de ventas
+                const financials = {
+                    months: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
+                    sales: [450, 480, 520, 510, 590, 620],
+                    maintenance: [120, 115, 130, 125, 140, 110]
+                };
+
+                return { assets, kpis, financials };
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                return { assets: [], kpis: {}, financials: {} };
+            }
+        }
+
+        // Registrar nuevo activo en el Backend (Supabase)
+        async registerAsset(newAsset) {
+            try {
+                const response = await fetch(`${this.baseUrl}/device/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newAsset)
+                });
+                const res = await response.json();
+                return res.status === 'success';
+            } catch (error) {
+                console.error("Error registering:", error);
+                return false;
+            }
+        }
+    }
+
+    /**
+     * GESTOR DE INTERFAZ (UI & Formularios)
+     */
+    class UIManager {
+        constructor() {
+            this.forms = {
+                inst: {
+                    title: "Nueva Instalación (Alta de Equipo)",
+                    subtitle: "Genera automáticamente el registro y detalles de la pantalla.",
+                    html: `
+                        <form id="form-register" class="space-y-6">
+                            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                                <h4 class="text-xs font-black text-slate-400 uppercase mb-3 tracking-wide">1. Identificación</h4>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="col-span-2">
+                                        <label class="block text-[10px] font-bold text-slate-500 mb-1">Nombre Comercial *</label>
+                                        <input type="text" id="reg-name" placeholder="Ej: Espectacular Periférico" class="w-full border-slate-200 rounded-lg text-sm" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-500 mb-1">Clave QTM (ID) *</label>
+                                        <input type="text" id="reg-qtm" placeholder="QTM-XXXX" class="w-full border-slate-200 rounded-lg text-sm" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-500 mb-1">Tipo / Specs</label>
+                                        <input type="text" id="reg-specs" placeholder="Ej: P4 Outdoor" class="w-full border-slate-200 rounded-lg text-sm">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h4 class="text-xs font-black text-orange-500 uppercase mb-3 tracking-wide">2. Inversión Inicial (CAPEX)</h4>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <input type="number" id="reg-cost-screen" placeholder="Costo Pantalla ($)" class="col-span-2 w-full border-slate-200 rounded-lg text-sm bg-orange-50/30">
+                                    <input type="number" id="reg-cost-civil" placeholder="Obra Civil ($)" class="w-full border-slate-200 rounded-lg text-sm">
+                                    <input type="number" id="reg-cost-elec" placeholder="Electrónica ($)" class="w-full border-slate-200 rounded-lg text-sm">
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-2 italic">* Estos costos se sumarán al Dashboard Financiero global.</p>
+                            </div>
+
+                            <div class="pt-4 border-t border-slate-200 mt-4">
+                                <button type="button" onclick="app.handleRegistration()" class="w-full bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-black transition shadow-lg flex justify-center gap-2">
+                                    <span class="material-icons-outlined">save</span> GENERAR REGISTRO DE PANTALLA
+                                </button>
+                            </div>
+                        </form>
+                    `
+                },
+                sales: {
+                    title: "Registro de Venta Publicitaria",
+                    subtitle: "Ingreso de pauta para cálculo de ROI y Rentabilidad.",
+                    html: `
+                        <form id="form-sales" class="space-y-6">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Ubicación / Pantalla</label>
+                                <select class="w-full border-slate-200 rounded-xl text-sm bg-slate-50 focus:ring-emerald-500">
+                                    <option>Seleccionar Ubicación...</option>
+                                    <option value="REF-01">Torre Reforma LED A</option>
+                                </select>
+                            </div>
+                            <div class="bg-emerald-50/50 p-5 rounded-xl border border-emerald-100">
+                                <h4 class="text-xs font-black text-emerald-600 uppercase mb-3">Detalle de Campaña</h4>
+                                <div class="space-y-3">
+                                    <input type="text" placeholder="Cliente / Agencia" class="w-full border-emerald-200 rounded-lg text-sm">
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <input type="date" class="w-full border-emerald-200 rounded-lg text-sm text-emerald-800">
+                                        <input type="date" class="w-full border-emerald-200 rounded-lg text-sm text-emerald-800">
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="w-full bg-emerald-600 text-white font-bold py-4 rounded-xl hover:bg-emerald-700 transition">CONFIRMAR VENTA</button>
+                        </form>
+                    `
+                }
+            };
+        }
+
+        renderKPIs(data) {
+            const container = document.getElementById('kpi-container');
+            container.innerHTML = `
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Inversión Activos (CAPEX)</p>
+                    <div class="flex items-end gap-2">
+                        <h3 class="text-2xl font-bold text-slate-900 font-mono">$${(data.capex/1000000).toFixed(2)}M</h3>
+                        <span class="text-[10px] text-slate-400 font-medium mb-1">Acumulado</span>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Ventas Anuales</p>
+                    <div class="flex items-end gap-2">
+                        <h3 class="text-2xl font-bold text-emerald-600 font-mono">$${(data.sales_annual/1000000).toFixed(1)}M</h3>
+                        <span class="text-xs font-bold text-emerald-500 pb-1 mb-1">▲ 15%</span>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Gasto Operativo (Mensual)</p>
+                    <h3 class="text-2xl font-bold text-amber-600 font-mono">$${(data.opex_monthly/1000).toFixed(1)}k</h3>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Estado de Red</p>
+                    <div class="flex items-center gap-2 mt-1">
+                        <h3 class="text-2xl font-bold text-red-500 font-mono">0${data.incidents}</h3>
+                        <span class="text-xs text-red-400 font-medium italic">Incidencias Activas</span>
+                    </div>
+                </div>
             `;
         }
-    }
 
-    function updateKPI(data) {
-        let ti = 0, tm = 0, tn = 0, troi = 0, count = 0;
-        
-        data.forEach(x => {
-            ti += x.cost_installation || 0;
-            tm += x.cost_maintenance || 0;
-            tn += x.net_profit || 0;
-            if (x.roi_percent && !isNaN(x.roi_percent)) {
-                troi += parseFloat(x.roi_percent);
-                count++;
-            }
-        });
-        
-        const avgROI = count > 0 ? (troi / count).toFixed(1) : '0.0';
-        
-        document.getElementById('t-inv').innerText = `$${ti.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-        document.getElementById('t-mant').innerText = `$${tm.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-        document.getElementById('t-net').innerText = `$${tn.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-        document.getElementById('t-net').className = tn >= 0 ? 
-            "text-2xl font-bold text-emerald-600 font-mono" : 
-            "text-2xl font-bold text-red-500 font-mono";
-        document.getElementById('t-roi').innerText = `${avgROI}%`;
-    }
-
-    function renderTable() {
-        const tb = document.getElementById('tb');
-        if (currentData.length === 0) {
-            tb.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-slate-400">No hay datos disponibles</td></tr>';
-            return;
-        }
-
-        const start = (currentPage - 1) * itemsPerPage;
-        const end = start + itemsPerPage;
-        const pageData = currentData.slice(start, end);
-        
-        let html = '';
-        
-        pageData.forEach(x => {
-            const isProfitable = x.net_profit >= 0;
+        renderTable(assets) {
+            const tbody = document.getElementById('table-body');
+            const noResults = document.getElementById('no-results');
             
-            let statusClass = 'bg-red-100 text-red-700 border-red-200';
-            let statusIcon = 'trending-down';
-            
-            if (x.status_label === 'RENTABLE') {
-                statusClass = 'bg-emerald-100 text-emerald-700 border-emerald-200';
-                statusIcon = 'trending-up';
-            } else if (x.status_label === 'RECUPERANDO') {
-                statusClass = 'bg-blue-100 text-blue-700 border-blue-200';
-                statusIcon = 'activity';
+            if (assets.length === 0) {
+                tbody.innerHTML = '';
+                noResults.classList.remove('hidden');
+                return;
             }
             
-            html += `
-                <tr class="hover:bg-slate-50/50 transition group">
+            noResults.classList.add('hidden');
+            tbody.innerHTML = assets.map(asset => {
+                // Definir clases de estado
+                let statusClass = 'bg-slate-100 text-slate-600';
+                let statusText = 'OFFLINE';
+                
+                if (asset.status === 'ok' || asset.status === 'online') {
+                    statusClass = 'bg-emerald-100 text-emerald-700';
+                    statusText = 'ONLINE';
+                } else if (asset.status === 'registered') {
+                    statusClass = 'bg-blue-100 text-blue-700';
+                    statusText = 'REGISTRADO';
+                } else {
+                    statusClass = 'bg-amber-100 text-amber-700';
+                    statusText = asset.status.toUpperCase();
+                }
+
+                const rentability = asset.monthly_revenue > 0 
+                    ? ((asset.monthly_revenue - asset.monthly_cost) / asset.monthly_revenue * 100).toFixed(1) 
+                    : '0.0';
+                
+                return `
+                <tr class="hover:bg-slate-50/50 transition border-b border-slate-50 group">
                     <td class="p-4">
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-lg ${isProfitable ? 'bg-emerald-50 text-emerald-500' : 'bg-red-50 text-red-500'} flex items-center justify-center font-bold text-xs">
-                                <i data-lucide="${statusIcon}" class="w-4 h-4"></i>
+                            <div class="w-10 h-10 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-xs group-hover:bg-orange-500 group-hover:text-white transition">
+                                ${asset.id.substring(0, 3)}
                             </div>
                             <div>
-                                <p class="text-sm font-bold text-slate-700 group-hover:text-primary transition">${x.device_id}</p>
-                                <p class="text-xs text-slate-500">${x.location || 'Sin ubicación'}</p>
+                                <p class="text-sm font-bold text-slate-700">${asset.name}</p>
+                                <p class="text-[10px] font-mono text-slate-400">${asset.qtm}</p>
                             </div>
                         </div>
                     </td>
-                    <td class="p-4 text-right">
-                        <p class="text-sm font-bold text-slate-900">$${x.cost_installation.toLocaleString()}</p>
-                        <p class="text-xs text-slate-400">CAPEX</p>
+                    <td class="p-4 text-xs">
+                        <span class="block font-bold text-slate-600">${asset.specs}</span>
+                        <span class="px-2 py-0.5 rounded ${statusClass} text-[10px] font-bold inline-block mt-1">${statusText}</span>
                     </td>
-                    <td class="p-4 text-right">
-                        <p class="text-sm font-bold text-amber-600">$${x.cost_maintenance.toLocaleString()}</p>
-                        <p class="text-xs text-slate-400">OPEX</p>
-                    </td>
-                    <td class="p-4 text-right">
-                        <p class="text-sm font-bold text-emerald-600">$${x.total_sales.toLocaleString()}</p>
-                        <p class="text-xs text-slate-400">Ingresos</p>
-                    </td>
-                    <td class="p-4 text-right">
-                        <p class="text-sm font-bold ${isProfitable ? 'text-emerald-600' : 'text-red-500'}">
-                            $${x.net_profit.toLocaleString()}
-                        </p>
-                        <p class="text-xs ${isProfitable ? 'text-emerald-400' : 'text-red-400'}">
-                            ${isProfitable ? '✓ Rentable' : '✗ En pérdida'}
-                        </p>
-                    </td>
+                    <td class="p-4 text-right font-mono text-xs font-bold text-slate-600">$${asset.investment.toLocaleString()}</td>
+                    <td class="p-4 text-right"><span class="font-mono font-bold text-emerald-600 text-sm">${rentability}%</span></td>
                     <td class="p-4 text-center">
-                        <div class="inline-flex items-center gap-1 px-3 py-1 rounded-full ${parseFloat(x.roi_percent) >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}">
-                            <span class="text-sm font-bold">${x.roi_percent}%</span>
-                            <i data-lucide="${parseFloat(x.roi_percent) >= 0 ? 'arrow-up-right' : 'arrow-down-right'}" class="w-3 h-3"></i>
-                        </div>
-                    </td>
-                    <td class="p-4 text-center">
-                        <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border ${statusClass}">
-                            <i data-lucide="${statusIcon}" class="w-3 h-3"></i>
-                            ${x.status_label}
-                        </span>
-                    </td>
-                    <td class="p-4 text-center">
-                        <button onclick="viewDetails('${x.device_id}')" class="p-2 hover:bg-slate-100 rounded-lg transition group/btn">
-                            <i data-lucide="eye" class="w-4 h-4 text-slate-400 group-hover/btn:text-primary"></i>
+                        <button onclick="app.openScreenDetails('${asset.id}')" class="inline-flex items-center gap-1 text-xs bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-800 hover:text-white hover:border-slate-800 transition shadow-sm">
+                            Ver Detalle <span class="material-icons-outlined text-[10px]">open_in_new</span>
                         </button>
                     </td>
-                </tr>
-            `;
-        });
-        
-        tb.innerHTML = html;
-        lucide.createIcons();
-        updatePagination();
-    }
+                </tr>`;
+            }).join('');
+        }
 
-    function updatePagination() {
-        const totalPages = Math.ceil(currentData.length / itemsPerPage);
-        document.getElementById('current-page').textContent = currentPage;
-        document.getElementById('summary-text').textContent = 
-            `Mostrando ${Math.min(currentData.length, itemsPerPage)} de ${currentData.length} ubicaciones`;
-            
-        const prevBtn = document.querySelector('[onclick="changePage(-1)"]');
-        const nextBtn = document.querySelector('[onclick="changePage(1)"]');
-        
-        prevBtn.disabled = currentPage === 1;
-        nextBtn.disabled = currentPage === totalPages;
-    }
+        renderCharts(data) {
+            // Limpiar si existen
+            if(window.rentChart) window.rentChart.destroy();
+            if(window.capexChart) window.capexChart.destroy();
 
-    function changePage(delta) {
-        const totalPages = Math.ceil(currentData.length / itemsPerPage);
-        const newPage = currentPage + delta;
-        
-        if (newPage >= 1 && newPage <= totalPages) {
-            currentPage = newPage;
-            renderTable();
+            // 1. Gráfica Barras
+            const ctxRent = document.getElementById('rentabilityChart').getContext('2d');
+            window.rentChart = new Chart(ctxRent, {
+                type: 'bar',
+                data: { 
+                    labels: data.months, 
+                    datasets: [
+                        { label: 'Ventas', data: data.sales, backgroundColor: '#10B981', borderRadius: 4 }, 
+                        { label: 'Costos', data: data.maintenance, backgroundColor: '#F97316', borderRadius: 4 }
+                    ] 
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { legend: { display: false } }, 
+                    scales: { y: { display: false }, x: { grid: { display: false } } } 
+                }
+            });
+
+            // 2. Gráfica Donut
+            const ctxCapex = document.getElementById('capexChart').getContext('2d');
+            window.capexChart = new Chart(ctxCapex, {
+                type: 'doughnut',
+                data: { 
+                    labels: ['Pantallas', 'Obra', 'Legal'], 
+                    datasets: [{ 
+                        data: [55, 30, 15], 
+                        backgroundColor: ['#3B82F6', '#F97316', '#8B5CF6'], 
+                        borderWidth: 0 
+                    }] 
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    cutout: '75%', 
+                    plugins: { legend: { display: false } } 
+                }
+            });
+        }
+
+        openDrawer(type) {
+            const drawer = document.getElementById('drawer');
+            const overlay = document.getElementById('overlay');
+            const config = this.forms[type];
+            document.getElementById('d-title').innerText = config.title;
+            document.getElementById('d-subtitle').innerText = config.subtitle;
+            document.getElementById('d-content').innerHTML = config.html;
+            overlay.classList.remove('hidden');
+            setTimeout(() => overlay.classList.add('opacity-100'), 10);
+            drawer.classList.remove('translate-x-full');
+        }
+
+        closeDrawer() {
+            const drawer = document.getElementById('drawer');
+            const overlay = document.getElementById('overlay');
+            drawer.classList.add('translate-x-full');
+            overlay.classList.remove('opacity-100');
+            setTimeout(() => overlay.classList.add('hidden'), 400);
         }
     }
 
-    function filterTable(searchTerm) {
-        // Implementación básica de filtro
-        const filtered = currentData.filter(item => 
-            item.device_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (item.location && item.location.toLowerCase().includes(searchTerm.toLowerCase()))
-        );
-        
-        // Para implementación completa, deberías guardar los datos filtrados
-        // y actualizar currentData temporalmente
-        console.log('Filtrando por:', searchTerm);
-    }
+    /**
+     * CONTROLADOR PRINCIPAL
+     */
+    class ArgosApp {
+        constructor() {
+            this.db = new DataService();
+            this.ui = new UIManager();
+            this.currentAssets = [];
+        }
 
-    function filterByStatus(status) {
-        console.log('Filtrando por estado:', status);
-        // Implementar filtro por estado
-    }
-
-    function updateCharts(data) {
-        // Ordenar por rentabilidad para el top 5
-        const top5 = [...data]
-            .sort((a, b) => b.net_profit - a.net_profit)
-            .slice(0, 5);
-        
-        let topHtml = '';
-        top5.forEach((item, index) => {
-            topHtml += `
-                <div class="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition">
-                    <div class="flex items-center gap-3">
-                        <span class="w-6 h-6 rounded-lg ${index < 3 ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-600'} flex items-center justify-center text-xs font-bold">
-                            ${index + 1}
-                        </span>
-                        <div>
-                            <p class="text-sm font-bold text-slate-700">${item.device_id}</p>
-                            <p class="text-xs text-slate-500">ROI: ${item.roi_percent}%</p>
-                        </div>
-                    </div>
-                    <span class="text-sm font-bold ${item.net_profit >= 0 ? 'text-emerald-600' : 'text-red-500'}">
-                        $${item.net_profit.toLocaleString()}
-                    </span>
-                </div>
-            `;
-        });
-        
-        document.getElementById('top-locations').innerHTML = topHtml;
-    }
-
-    function updateAlerts(data) {
-        const critical = data.filter(x => 
-            x.net_profit < 0 || 
-            x.status_label === 'CRITICO' || 
-            (parseFloat(x.roi_percent) < 0)
-        );
-        
-        let alertsHtml = '';
-        
-        if (critical.length === 0) {
-            alertsHtml = `
-                <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-100">
-                    <div class="flex gap-3 items-start">
-                        <i data-lucide="check-circle" class="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0"></i>
-                        <div>
-                            <p class="text-sm font-bold text-slate-700">Sin alertas críticas</p>
-                            <p class="text-xs text-slate-500">Todas las ubicaciones están estables</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-        } else {
-            critical.slice(0, 3).forEach(item => {
-                alertsHtml += `
-                    <div class="p-3 bg-red-50 rounded-xl border border-red-100">
-                        <div class="flex gap-3 items-start">
-                            <i data-lucide="alert-triangle" class="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0"></i>
-                            <div>
-                                <p class="text-sm font-bold text-slate-700">${item.device_id}</p>
-                                <p class="text-xs text-slate-500">
-                                    ${item.net_profit < 0 ? 'Pérdida: $' + Math.abs(item.net_profit).toLocaleString() : ''}
-                                    ${parseFloat(item.roi_percent) < 0 ? 'ROI negativo: ' + item.roi_percent + '%' : ''}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
+        async init() {
+            const data = await this.db.fetchData();
+            this.currentAssets = data.assets;
             
-            if (critical.length > 3) {
-                alertsHtml += `
-                    <div class="text-center">
-                        <p class="text-xs text-slate-500">+${critical.length - 3} alertas más</p>
-                    </div>
-                `;
+            this.ui.renderKPIs(data.kpis);
+            this.ui.renderTable(data.assets);
+            this.ui.renderCharts(data.financials);
+            
+            // Alertas simuladas (se pueden conectar a backend igual)
+            const alertsContainer = document.getElementById('alerts-container');
+            alertsContainer.innerHTML = `
+                <div class="flex gap-3 items-start p-3 bg-red-50/50 rounded-xl border border-red-100 cursor-pointer hover:bg-red-50 transition">
+                    <span class="material-icons-outlined text-red-500 text-lg">error_outline</span>
+                    <div><p class="text-[11px] font-bold text-slate-700">Fallo de Envío</p><p class="text-[9px] text-slate-500 uppercase">Santa Fe - Mupi B</p></div>
+                </div>
+            `;
+        }
+
+        searchAssets() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = this.currentAssets.filter(asset => 
+                asset.name.toLowerCase().includes(query) || 
+                asset.id.toLowerCase().includes(query) ||
+                asset.qtm.toLowerCase().includes(query)
+            );
+            this.ui.renderTable(filtered);
+        }
+
+        async handleRegistration() {
+            const name = document.getElementById('reg-name').value;
+            const qtm = document.getElementById('reg-qtm').value;
+            const specs = document.getElementById('reg-specs').value || 'P4 Outdoor';
+            
+            const c1 = parseFloat(document.getElementById('reg-cost-screen').value) || 0;
+            const c2 = parseFloat(document.getElementById('reg-cost-civil').value) || 0;
+            const c3 = parseFloat(document.getElementById('reg-cost-elec').value) || 0;
+            const totalInvest = c1 + c2 + c3;
+
+            if(!name || !qtm) {
+                Swal.fire({ icon: 'error', title: 'Faltan datos', text: 'Nombre y Clave QTM obligatorios', confirmButtonColor: '#0F172A' });
+                return;
+            }
+
+            const newAsset = {
+                name: name,
+                qtm: qtm,
+                specs: specs,
+                investment: totalInvest,
+                location: "Manual"
+            };
+
+            const success = await this.db.registerAsset(newAsset);
+
+            if (success) {
+                this.init(); 
+                this.ui.closeDrawer();
+                Swal.fire({ icon: 'success', title: '¡Pantalla Registrada!', text: `Guardada correctamente en Supabase.`, confirmButtonColor: '#F97316' });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo conectar con el servidor.' });
             }
         }
-        
-        document.getElementById('alerts-container').innerHTML = alertsHtml;
-        lucide.createIcons();
-    }
 
-    function viewDetails(deviceId) {
-        alert(`Viendo detalles de: ${deviceId}\n\nEn una implementación real, esto redirigiría a un dashboard detallado.`);
-        // window.location.href = `/dashboard/details/${deviceId}`;
-    }
-
-    function openDrawer(type) {
-        let title, subtitle, content;
-        
-        if (type === 'report') {
-            title = 'Exportar Reporte Ejecutivo';
-            subtitle = 'Genera un reporte detallado para presentación';
-            content = `
-                <div class="space-y-6">
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200">
-                        <h4 class="text-sm font-bold text-slate-800 mb-4">Formato del Reporte</h4>
-                        <div class="space-y-3">
-                            <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer">
-                                <input type="radio" name="format" value="pdf" class="text-primary" checked>
-                                <div>
-                                    <p class="font-bold text-slate-700">PDF Ejecutivo</p>
-                                    <p class="text-xs text-slate-500">Ideal para presentaciones y reportes impresos</p>
-                                </div>
-                            </label>
-                            <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer">
-                                <input type="radio" name="format" value="excel" class="text-primary">
-                                <div>
-                                    <p class="font-bold text-slate-700">Excel Analítico</p>
-                                    <p class="text-xs text-slate-500">Datos crudos para análisis avanzado</p>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200">
-                        <h4 class="text-sm font-bold text-slate-800 mb-4">Filtros Adicionales</h4>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="text-xs font-bold text-slate-500 block mb-2">Fecha Inicio</label>
-                                <input type="date" class="w-full border-slate-200 rounded-xl text-sm">
-                            </div>
-                            <div>
-                                <label class="text-xs font-bold text-slate-500 block mb-2">Fecha Fin</label>
-                                <input type="date" class="w-full border-slate-200 rounded-xl text-sm">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <button class="w-full bg-primary text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition">
-                        <i data-lucide="download" class="w-5 h-5 inline mr-2"></i>
-                        GENERAR REPORTE
-                    </button>
-                </div>
-            `;
+        openScreenDetails(screenId) {
+            const url = `detalle-pantalla.html?id=${screenId}`;
+            window.open(url, '_blank');
         }
-        
-        document.getElementById('d-title').innerText = title;
-        document.getElementById('d-subtitle').innerText = subtitle;
-        document.getElementById('d-content').innerHTML = content;
-        lucide.createIcons();
-        
-        const drawer = document.getElementById('drawer');
-        const overlay = document.getElementById('overlay');
-        
-        overlay.classList.remove('hidden');
-        setTimeout(() => overlay.classList.add('opacity-100'), 10);
-        drawer.classList.remove('translate-x-full');
     }
 
-    function closeDrawer() {
-        const drawer = document.getElementById('drawer');
-        const overlay = document.getElementById('overlay');
-        
-        drawer.classList.add('translate-x-full');
-        overlay.classList.remove('opacity-100');
-        setTimeout(() => overlay.classList.add('hidden'), 400);
-    }
+    const app = new ArgosApp();
+    document.addEventListener('DOMContentLoaded', () => app.init());
 </script>
 {% endblock %}
