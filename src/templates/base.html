@@ -1,98 +1,611 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="light">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Argos Monitor{% endblock %}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Argos DOOH - Panel Financiero</title>
+    
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#F97316",    // Naranja: Energía/Hardware
+                        secondary: "#3B82F6",  // Azul: Operación/Tecnología
+                        accent: "#8B5CF6",     // Morado: Legal
+                        success: "#10B981",    // Verde: Ventas/ROI
+                        dark: "#0F172A",
+                    },
+                    fontFamily: { body: ["Inter", "sans-serif"] },
+                },
+            },
+        };
+    </script>
     <style>
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f5f9; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        .nav-active { background-color: #4f46e5 !important; color: white !important; }
-        .nav-active i { color: white !important; }
-        #inventory-menu, #costs-menu { transition: all 0.3s ease-in-out; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .drawer-slide { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .nav-active { background-color: #1e293b !important; color: white !important; border-left: 4px solid #F97316; }
+        /* Animación para menús desplegables */
         .rotate-180 { transform: rotate(180deg); }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased h-screen flex overflow-hidden">
 
-    <aside class="w-64 bg-slate-900 text-white flex flex-col flex-shrink-0 transition-all duration-300 shadow-xl z-20">
+<body class="bg-slate-50 text-slate-800 font-body h-screen flex overflow-hidden">
+
+    <aside class="w-64 bg-slate-900 text-white flex flex-col flex-shrink-0 shadow-xl z-30 transition-all duration-300">
         <div class="h-16 flex items-center px-6 border-b border-slate-800 bg-slate-950">
-            <i data-lucide="activity" class="text-indigo-500 mr-3 w-6 h-6"></i>
-            <span class="font-bold text-xl tracking-tight">ARGOS</span>
+            <i data-lucide="activity" class="text-primary mr-3 w-6 h-6"></i>
+            <span class="font-bold text-xl tracking-tight">ARGOS <span class="text-primary text-sm">DOOH</span></span>
         </div>
 
-        <nav class="flex-1 overflow-y-auto py-6">
+        <nav class="flex-1 overflow-y-auto py-6 custom-scroll">
             <ul class="space-y-2 px-3">
-                <li><a href="/" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200"><i data-lucide="layout-grid" class="w-5 h-5 mr-3"></i><span class="font-medium">Inicio</span></a></li>
+                <li>
+                    <a href="/" class="flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all group">
+                        <i data-lucide="layout-grid" class="w-5 h-5 mr-3 group-hover:text-primary"></i>
+                        <span class="font-medium">Inicio</span>
+                    </a>
+                </li>
+                
                 <li class="px-3 pt-4 pb-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">Operaciones</li>
-                <li><a href="/monitor" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200"><i data-lucide="activity" class="w-5 h-5 mr-3"></i><span class="font-medium">Monitor</span></a></li>
-                <li><a href="/latency" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200"><i data-lucide="wifi" class="w-5 h-5 mr-3"></i><span class="font-medium">Latencia</span></a></li>
-                <li><a href="/map" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200"><i data-lucide="map" class="w-5 h-5 mr-3"></i><span class="font-medium">Mapa</span></a></li>
+                <li><a href="/monitor" class="flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all"><i data-lucide="activity" class="w-5 h-5 mr-3"></i>Monitor</a></li>
+                <li><a href="/latency" class="flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all"><i data-lucide="wifi" class="w-5 h-5 mr-3"></i>Latencia</a></li>
 
                 <li class="px-3 pt-4 pb-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">Gestión</li>
                 <li>
-                    <button onclick="toggleMenu('inventory')" class="w-full flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200 outline-none">
-                        <i data-lucide="package" class="w-5 h-5 mr-3"></i><span class="font-medium">Biblioteca</span><i data-lucide="chevron-down" id="arrow-inventory" class="w-4 h-4 ml-auto transition-transform duration-300"></i>
+                    <button onclick="toggleMenu('inventory')" class="w-full flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all outline-none justify-between">
+                        <div class="flex items-center"><i data-lucide="package" class="w-5 h-5 mr-3"></i><span class="font-medium">Biblioteca</span></div>
+                        <i data-lucide="chevron-down" id="arrow-inventory" class="w-4 h-4 transition-transform duration-300"></i>
                     </button>
-                    <ul id="menu-inventory" class="hidden mt-1 space-y-1 px-2">
-                        <li><a href="/inventory/manuals" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="book-open" class="w-4 h-4 mr-3"></i> Manuales</a></li>
-                        <li><a href="/inventory/specs" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="file-text" class="w-4 h-4 mr-3"></i> Fichas</a></li>
-                        <li><a href="/inventory/logs" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="clipboard-list" class="w-4 h-4 mr-3"></i> Bitácora</a></li>
+                    <ul id="menu-inventory" class="hidden mt-1 space-y-1 px-2 bg-slate-800/50 rounded-lg pb-2">
+                        <li><a href="#" class="flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white"><i data-lucide="book-open" class="w-4 h-4 mr-3"></i> Manuales</a></li>
+                        <li><a href="#" class="flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white"><i data-lucide="file-text" class="w-4 h-4 mr-3"></i> Fichas</a></li>
                     </ul>
                 </li>
 
                 <li class="px-3 pt-4 pb-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">Finanzas</li>
                 <li>
-                    <button onclick="toggleMenu('costs')" class="w-full flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200 outline-none">
-                        <i data-lucide="dollar-sign" class="w-5 h-5 mr-3 group-hover:text-emerald-400"></i><span class="font-medium">Costos</span><i data-lucide="chevron-down" id="arrow-costs" class="w-4 h-4 ml-auto transition-transform duration-300"></i>
+                    <button onclick="toggleMenu('costs')" class="w-full flex items-center px-3 py-2.5 rounded-lg text-white bg-slate-800 transition-all outline-none justify-between border-l-4 border-primary">
+                        <div class="flex items-center"><i data-lucide="dollar-sign" class="w-5 h-5 mr-3 text-primary"></i><span class="font-medium">Costos</span></div>
+                        <i data-lucide="chevron-down" id="arrow-costs" class="w-4 h-4 transition-transform duration-300 rotate-180"></i>
                     </button>
-                    <ul id="menu-costs" class="hidden mt-1 space-y-1 px-2">
-                        <li><a href="/costs/installations" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="monitor-speaker" class="w-4 h-4 mr-3"></i> Instalaciones</a></li>
-                        <li><a href="/costs/maintenance" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="wrench" class="w-4 h-4 mr-3"></i> Mantenimiento</a></li>
-                        <li><a href="/costs/sales" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="banknote" class="w-4 h-4 mr-3"></i> Ventas</a></li>
-                        <li><a href="/costs/dashboard" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="pie-chart" class="w-4 h-4 mr-3"></i> Costo Ubicación</a></li>
+                    <ul id="menu-costs" class="mt-1 space-y-1 px-2 bg-slate-800/50 rounded-lg pb-2">
+                        <li><a href="#" class="flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-white font-bold"><i data-lucide="pie-chart" class="w-4 h-4 mr-3"></i> Dashboard</a></li>
+                        <li><a href="#" class="flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white"><i data-lucide="monitor-speaker" class="w-4 h-4 mr-3"></i> Instalaciones</a></li>
+                        <li><a href="#" class="flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white"><i data-lucide="banknote" class="w-4 h-4 mr-3"></i> Ventas</a></li>
                     </ul>
                 </li>
             </ul>
         </nav>
+        
+        <div class="p-4 border-t border-slate-800 bg-slate-950">
+            <div class="flex items-center gap-3">
+                <div class="h-9 w-9 rounded-lg bg-gradient-to-br from-primary to-orange-600 flex items-center justify-center font-bold text-white text-xs shadow-lg">AD</div>
+                <div>
+                    <p class="text-xs font-bold text-white">Admin_Argos</p>
+                    <p class="text-[10px] text-slate-400">Gerente Operaciones</p>
+                </div>
+            </div>
+        </div>
     </aside>
 
-    <div class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-50">
-        <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-8 shadow-sm z-10">
-            <h1 class="text-xl font-bold text-slate-800 tracking-tight">{% block header_title %}Vista General{% endblock %}</h1>
-            <div class="flex items-center space-x-6">
-                <div class="flex items-center bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
-                    <span class="relative flex h-2.5 w-2.5 mr-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span></span>
-                    <span class="text-xs font-semibold text-slate-600">Sistema Operativo</span>
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-50 relative">
+        
+        <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-8 shadow-sm z-20">
+            <div>
+                <h1 class="text-xl font-bold text-slate-800 tracking-tight">Costos y Rentabilidad</h1>
+                <p class="text-[10px] text-slate-400 font-medium">ANÁLISIS FINANCIERO DE ACTIVOS</p>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button onclick="app.ui.openDrawer('sales')" class="hidden md:flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition shadow-md shadow-emerald-500/20 hover:shadow-lg">
+                    <span class="material-icons-outlined text-sm">attach_money</span> REGISTRAR VENTA
+                </button>
+                
+                <button onclick="app.ui.openDrawer('inst')" class="hidden md:flex items-center gap-2 px-4 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg hover:bg-slate-700 transition shadow-md hover:shadow-lg">
+                    <span class="material-icons-outlined text-sm">add</span> NUEVA INSTALACIÓN
+                </button>
+
+                <div class="h-8 w-px bg-slate-200 mx-2"></div>
+
+                <div class="flex items-center bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 cursor-help" title="Conexión Establecida">
+                    <span class="relative flex h-2.5 w-2.5 mr-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    <span class="text-[10px] font-bold text-emerald-700">API: ONLINE</span>
                 </div>
             </div>
         </header>
-        <main class="flex-1 overflow-y-auto p-8 scroll-smooth">{% block content %}{% endblock %}</main>
+
+        <main class="flex-1 overflow-y-auto p-6 scroll-smooth custom-scroll">
+            
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8" id="kpi-container">
+                <div class="animate-pulse bg-white h-24 rounded-2xl"></div>
+                <div class="animate-pulse bg-white h-24 rounded-2xl"></div>
+                <div class="animate-pulse bg-white h-24 rounded-2xl"></div>
+                <div class="animate-pulse bg-white h-24 rounded-2xl"></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                <div class="lg:col-span-8 space-y-6">
+                    
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Flujo de Caja: Ventas vs Mantenimiento</h3>
+                                <p class="text-xs text-slate-400">Comparativa mensual de ingresos brutos contra OPEX recurrente.</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <span class="flex items-center gap-1 text-[10px] font-bold text-slate-500"><div class="w-2 h-2 rounded-full bg-emerald-500"></div> Ventas</span>
+                                <span class="flex items-center gap-1 text-[10px] font-bold text-slate-500"><div class="w-2 h-2 rounded-full bg-orange-500"></div> Costos</span>
+                            </div>
+                        </div>
+                        <div class="h-72 w-full">
+                            <canvas id="rentabilityChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center bg-slate-50/50 gap-4">
+                            <div>
+                                <h2 class="text-lg font-bold text-slate-800">Inventario de Pantallas</h2>
+                                <p class="text-xs text-slate-500">Gestión de costos, estado y rentabilidad por sitio.</p>
+                            </div>
+                            
+                            <div class="relative w-full sm:w-64">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <span class="material-icons-outlined text-slate-400 text-lg">search</span>
+                                </span>
+                                <input type="text" id="searchInput" onkeyup="app.searchAssets()" placeholder="Buscar por Nombre o QTM..." 
+                                       class="pl-10 pr-4 py-2 w-full border border-slate-200 rounded-lg text-sm focus:ring-primary focus:border-primary transition shadow-sm">
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse" id="assets-table">
+                                <thead class="bg-slate-50/80 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                                    <tr>
+                                        <th class="p-4">Sitio / Clave QTM</th>
+                                        <th class="p-4">Especificaciones</th>
+                                        <th class="p-4 text-right">Inversión (CAPEX)</th>
+                                        <th class="p-4 text-right">Rentabilidad (Est.)</th>
+                                        <th class="p-4 text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-sm" id="table-body">
+                                    </tbody>
+                            </table>
+                            <div id="no-results" class="hidden p-8 text-center text-slate-400 text-sm">
+                                No se encontraron pantallas con ese criterio.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-4 space-y-6">
+                    
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h3 class="text-sm font-bold text-slate-800 mb-2 uppercase tracking-wider">Distribución CAPEX</h3>
+                        <p class="text-xs text-slate-400 mb-6">Desglose de inversión inicial por categoría.</p>
+                        <div class="h-48 relative flex justify-center">
+                            <canvas id="capexChart"></canvas>
+                        </div>
+                        <div class="mt-6 space-y-3">
+                            <div class="flex justify-between items-center text-xs border-b border-slate-50 pb-2">
+                                <div class="flex items-center gap-2"><div class="w-3 h-3 rounded bg-secondary"></div> <span class="text-slate-600 font-medium">Pantallas y Electrónica</span></div>
+                                <span class="font-bold text-slate-800">55%</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs border-b border-slate-50 pb-2">
+                                <div class="flex items-center gap-2"><div class="w-3 h-3 rounded bg-primary"></div> <span class="text-slate-600 font-medium">Obra Civil</span></div>
+                                <span class="font-bold text-slate-800">30%</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs">
+                                <div class="flex items-center gap-2"><div class="w-3 h-3 rounded bg-accent"></div> <span class="text-slate-600 font-medium">Legal y Gestoría</span></div>
+                                <span class="font-bold text-slate-800">15%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Alertas Activas</h3>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-100 text-red-600 animate-pulse">EN VIVO</span>
+                        </div>
+                        <div class="space-y-3" id="alerts-container">
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="overlay" class="fixed inset-0 bg-slate-900/40 z-40 hidden backdrop-blur-sm transition-opacity opacity-0" onclick="app.ui.closeDrawer()"></div>
+    
+    <div id="drawer" class="fixed right-0 top-0 h-full w-full max-w-2xl bg-white z-50 shadow-2xl translate-x-full drawer-slide overflow-hidden flex flex-col">
+        <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
+            <div>
+                <h2 id="d-title" class="text-xl font-bold text-slate-800">Título Formulario</h2>
+                <p id="d-subtitle" class="text-xs text-slate-500">Descripción del proceso</p>
+            </div>
+            <button onclick="app.ui.closeDrawer()" class="p-2 hover:bg-slate-100 rounded-full transition text-slate-500"><span class="material-icons-outlined">close</span></button>
+        </div>
+        <div id="d-content" class="flex-1 overflow-y-auto custom-scroll p-8 bg-slate-50/50">
+            </div>
     </div>
 
     <script>
-        lucide.createIcons();
+        // Función global para el menú desplegable
         function toggleMenu(id) {
-            document.getElementById('menu-'+id).classList.toggle('hidden');
-            document.getElementById('arrow-'+id).classList.toggle('rotate-180');
+            const menu = document.getElementById('menu-'+id);
+            const arrow = document.getElementById('arrow-'+id);
+            if(menu && arrow) {
+                menu.classList.toggle('hidden');
+                arrow.classList.toggle('rotate-180');
+            }
         }
-        document.addEventListener("DOMContentLoaded", function() {
-            const currentPath = window.location.pathname;
-            document.querySelectorAll('.nav-link').forEach(link => {
-                const href = link.getAttribute('href');
-                if (href === currentPath) {
-                    link.classList.add('nav-active');
-                    if (currentPath.startsWith('/inventory')) toggleMenu('inventory');
-                    if (currentPath.startsWith('/costs')) toggleMenu('costs');
+
+        /**
+         * SERVICIO DE DATOS (CONECTADO AL BACKEND FLASK)
+         */
+        class DataService {
+            constructor() {
+                this.baseUrl = '/api'; // URL relativa de tu servidor Flask
+            }
+
+            async fetchData() {
+                try {
+                    // 1. Obtener Dispositivos desde la API
+                    const response = await fetch(`${this.baseUrl}/data`);
+                    const data = await response.json();
+                    
+                    // Transformar el objeto de respuesta en un array para la tabla
+                    // Aquí AÑADIMOS los costos reales desde la DB (investment)
+                    const assets = Object.values(data).map(d => ({
+                        id: d.device_id || d.pc_name || 'N/A',
+                        name: d.pc_name || 'Sin Nombre',
+                        qtm: d.device_id || 'N/A', 
+                        // Costos vienen del registro
+                        investment: parseFloat(d.investment) || 0,
+                        monthly_revenue: 0, // En el futuro conectar a tabla ventas
+                        monthly_cost: (parseFloat(d.investment) || 0) * 0.01, // Estimado OPEX (1% del CAPEX como placeholder)
+                        status: d.status || 'offline',
+                        specs: d.specs || 'N/A'
+                    }));
+
+                    // 2. Calcular KPIs Financieros (Costos Reales)
+                    let kpis = { capex: 0, sales_annual: 0, opex_monthly: 0, incidents: 0 };
+                    assets.forEach(a => {
+                        kpis.capex += a.investment; // Suma total de inversión
+                        kpis.opex_monthly += a.monthly_cost; // Suma total de gasto operativo
+                        if(a.status !== 'ok' && a.status !== 'registered') kpis.incidents++;
+                    });
+
+                    // Mockup financials (Gráficas) - En el futuro conectar a endpoint de ventas
+                    const financials = {
+                        months: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
+                        sales: [450, 480, 520, 510, 590, 620],
+                        maintenance: [120, 115, 130, 125, 140, 110]
+                    };
+
+                    return { assets, kpis, financials };
+                } catch (error) {
+                    console.error("Error fetching data:", error);
+                    return { assets: [], kpis: {}, financials: {} };
                 }
-            });
-        });
+            }
+
+            // Registrar nuevo activo en el Backend (Supabase)
+            async registerAsset(newAsset) {
+                try {
+                    const response = await fetch(`${this.baseUrl}/device/register`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(newAsset)
+                    });
+                    const res = await response.json();
+                    return res.status === 'success';
+                } catch (error) {
+                    console.error("Error registering:", error);
+                    return false;
+                }
+            }
+        }
+
+        /**
+         * GESTOR DE INTERFAZ (UI & Formularios)
+         */
+        class UIManager {
+            constructor() {
+                this.forms = {
+                    inst: {
+                        title: "Nueva Instalación (Alta de Equipo)",
+                        subtitle: "Genera automáticamente el registro y detalles de la pantalla.",
+                        html: `
+                            <form id="form-register" class="space-y-6">
+                                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                                    <h4 class="text-xs font-black text-slate-400 uppercase mb-3 tracking-wide">1. Identificación</h4>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div class="col-span-2">
+                                            <label class="block text-[10px] font-bold text-slate-500 mb-1">Nombre Comercial *</label>
+                                            <input type="text" id="reg-name" placeholder="Ej: Espectacular Periférico" class="w-full border-slate-200 rounded-lg text-sm" required>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-slate-500 mb-1">Clave QTM (ID) *</label>
+                                            <input type="text" id="reg-qtm" placeholder="QTM-XXXX" class="w-full border-slate-200 rounded-lg text-sm" required>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-slate-500 mb-1">Tipo / Specs</label>
+                                            <input type="text" id="reg-specs" placeholder="Ej: P4 Outdoor" class="w-full border-slate-200 rounded-lg text-sm">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 class="text-xs font-black text-primary uppercase mb-3 tracking-wide">2. Inversión Inicial (CAPEX)</h4>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <input type="number" id="reg-cost-screen" placeholder="Costo Pantalla ($)" class="col-span-2 w-full border-slate-200 rounded-lg text-sm bg-orange-50/30">
+                                        <input type="number" id="reg-cost-civil" placeholder="Obra Civil ($)" class="w-full border-slate-200 rounded-lg text-sm">
+                                        <input type="number" id="reg-cost-elec" placeholder="Electrónica ($)" class="w-full border-slate-200 rounded-lg text-sm">
+                                    </div>
+                                    <p class="text-[10px] text-slate-400 mt-2 italic">* Estos costos se sumarán al Dashboard Financiero global.</p>
+                                </div>
+
+                                <div class="pt-4 border-t border-slate-200 mt-4">
+                                    <button type="button" onclick="app.handleRegistration()" class="w-full bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-black transition shadow-lg flex justify-center gap-2">
+                                        <span class="material-icons-outlined">save</span> GENERAR REGISTRO DE PANTALLA
+                                    </button>
+                                </div>
+                            </form>
+                        `
+                    },
+                    sales: {
+                        title: "Registro de Venta Publicitaria",
+                        subtitle: "Ingreso de pauta para cálculo de ROI y Rentabilidad.",
+                        html: `
+                            <form id="form-sales" class="space-y-6">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Ubicación / Pantalla</label>
+                                    <select class="w-full border-slate-200 rounded-xl text-sm bg-slate-50 focus:ring-emerald-500">
+                                        <option>Seleccionar Ubicación...</option>
+                                        <option value="REF-01">Torre Reforma LED A</option>
+                                    </select>
+                                </div>
+                                <div class="bg-emerald-50/50 p-5 rounded-xl border border-emerald-100">
+                                    <h4 class="text-xs font-black text-emerald-600 uppercase mb-3">Detalle de Campaña</h4>
+                                    <div class="space-y-3">
+                                        <input type="text" placeholder="Cliente / Agencia" class="w-full border-emerald-200 rounded-lg text-sm">
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <input type="date" class="w-full border-emerald-200 rounded-lg text-sm text-emerald-800">
+                                            <input type="date" class="w-full border-emerald-200 rounded-lg text-sm text-emerald-800">
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="w-full bg-emerald-600 text-white font-bold py-4 rounded-xl hover:bg-emerald-700 transition">CONFIRMAR VENTA</button>
+                            </form>
+                        `
+                    }
+                };
+            }
+
+            renderKPIs(data) {
+                const container = document.getElementById('kpi-container');
+                container.innerHTML = `
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Inversión Activos (CAPEX)</p>
+                        <div class="flex items-end gap-2">
+                            <h3 class="text-2xl font-bold text-slate-900 font-mono">$${(data.capex/1000000).toFixed(2)}M</h3>
+                            <span class="text-[10px] text-slate-400 font-medium mb-1">Acumulado</span>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Ventas Anuales</p>
+                        <div class="flex items-end gap-2">
+                            <h3 class="text-2xl font-bold text-emerald-600 font-mono">$${(data.sales_annual/1000000).toFixed(1)}M</h3>
+                            <span class="text-xs font-bold text-emerald-500 pb-1 mb-1">▲ 15%</span>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Gasto Operativo (Mensual)</p>
+                        <h3 class="text-2xl font-bold text-amber-600 font-mono">$${(data.opex_monthly/1000).toFixed(1)}k</h3>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Estado de Red</p>
+                        <div class="flex items-center gap-2 mt-1">
+                            <h3 class="text-2xl font-bold text-red-500 font-mono">0${data.incidents}</h3>
+                            <span class="text-xs text-red-400 font-medium italic">Incidencias Activas</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderTable(assets) {
+                const tbody = document.getElementById('table-body');
+                const noResults = document.getElementById('no-results');
+                
+                if (assets.length === 0) {
+                    tbody.innerHTML = '';
+                    noResults.classList.remove('hidden');
+                    return;
+                }
+                
+                noResults.classList.add('hidden');
+                tbody.innerHTML = assets.map(asset => {
+                    const statusClass = asset.status === 'ok' || asset.status === 'registered' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700';
+                    const rentability = asset.monthly_revenue > 0 
+                        ? ((asset.monthly_revenue - asset.monthly_cost) / asset.monthly_revenue * 100).toFixed(1) 
+                        : '0.0';
+                    
+                    return `
+                    <tr class="hover:bg-slate-50/50 transition border-b border-slate-50 group">
+                        <td class="p-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-xs group-hover:bg-primary group-hover:text-white transition">
+                                    ${asset.id.split('-')[0] || 'N/A'}
+                                </div>
+                                <div>
+                                    <p class="text-sm font-bold text-slate-700">${asset.name}</p>
+                                    <p class="text-[10px] font-mono text-slate-400">${asset.qtm}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="p-4 text-xs">
+                            <span class="block font-bold text-slate-600">${asset.specs}</span>
+                            <span class="px-2 py-0.5 rounded ${statusClass} text-[10px] font-bold inline-block mt-1">${asset.status.toUpperCase()}</span>
+                        </td>
+                        <td class="p-4 text-right font-mono text-xs font-bold text-slate-600">$${asset.investment.toLocaleString()}</td>
+                        <td class="p-4 text-right"><span class="font-mono font-bold text-emerald-600 text-sm">${rentability}%</span></td>
+                        <td class="p-4 text-center">
+                            <button onclick="app.openScreenDetails('${asset.id}')" class="inline-flex items-center gap-1 text-xs bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-800 hover:text-white hover:border-slate-800 transition shadow-sm">
+                                Ver Detalle <span class="material-icons-outlined text-[10px]">open_in_new</span>
+                            </button>
+                        </td>
+                    </tr>`;
+                }).join('');
+            }
+
+            renderCharts(data) {
+                // Gráficas Financieras
+                if(window.rentChart) window.rentChart.destroy();
+                const ctxRent = document.getElementById('rentabilityChart').getContext('2d');
+                window.rentChart = new Chart(ctxRent, {
+                    type: 'bar',
+                    data: { labels: data.months, datasets: [{ label: 'Ventas', data: data.sales, backgroundColor: '#10B981', borderRadius: 4 }, { label: 'Costos', data: data.maintenance, backgroundColor: '#F97316', borderRadius: 4 }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { display: false }, x: { grid: { display: false } } } }
+                });
+
+                if(window.capexChart) window.capexChart.destroy();
+                const ctxCapex = document.getElementById('capexChart').getContext('2d');
+                window.capexChart = new Chart(ctxCapex, {
+                    type: 'doughnut',
+                    data: { labels: ['Pantallas', 'Obra', 'Legal'], datasets: [{ data: [55, 30, 15], backgroundColor: ['#3B82F6', '#F97316', '#8B5CF6'], borderWidth: 0 }] },
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } } }
+                });
+            }
+
+            openDrawer(type) {
+                const drawer = document.getElementById('drawer');
+                const overlay = document.getElementById('overlay');
+                const config = this.forms[type];
+                document.getElementById('d-title').innerText = config.title;
+                document.getElementById('d-subtitle').innerText = config.subtitle;
+                document.getElementById('d-content').innerHTML = config.html;
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.add('opacity-100'), 10);
+                drawer.classList.remove('translate-x-full');
+            }
+
+            closeDrawer() {
+                const drawer = document.getElementById('drawer');
+                const overlay = document.getElementById('overlay');
+                drawer.classList.add('translate-x-full');
+                overlay.classList.remove('opacity-100');
+                setTimeout(() => overlay.classList.add('hidden'), 400);
+            }
+        }
+
+        /**
+         * CONTROLADOR PRINCIPAL
+         */
+        class ArgosApp {
+            constructor() {
+                this.db = new DataService();
+                this.ui = new UIManager();
+                this.currentAssets = []; // Cache para buscador
+            }
+
+            async init() {
+                // Obtener datos reales
+                const data = await this.db.fetchData();
+                this.currentAssets = data.assets;
+                
+                this.ui.renderKPIs(data.kpis);
+                this.ui.renderTable(data.assets);
+                this.ui.renderCharts(data.financials);
+                
+                // Mostrar alertas dummy por ahora (podrías conectarlas también)
+                const alertsContainer = document.getElementById('alerts-container');
+                alertsContainer.innerHTML = `
+                    <div class="flex gap-3 items-start p-3 bg-red-50/50 rounded-xl border border-red-100 cursor-pointer hover:bg-red-50 transition">
+                        <span class="material-icons-outlined text-red-500 text-lg">error_outline</span>
+                        <div><p class="text-[11px] font-bold text-slate-700">Fallo de Envío</p><p class="text-[9px] text-slate-500 uppercase">Santa Fe - Mupi B</p></div>
+                    </div>
+                `;
+                
+                lucide.createIcons();
+            }
+
+            // BÚSQUEDA EN TIEMPO REAL
+            searchAssets() {
+                const query = document.getElementById('searchInput').value.toLowerCase();
+                const filtered = this.currentAssets.filter(asset => 
+                    asset.name.toLowerCase().includes(query) || 
+                    asset.id.toLowerCase().includes(query) ||
+                    asset.qtm.toLowerCase().includes(query)
+                );
+                this.ui.renderTable(filtered);
+            }
+
+            // REGISTRO DE NUEVA INSTALACIÓN (CONECTADO A SUPABASE)
+            async handleRegistration() {
+                const name = document.getElementById('reg-name').value;
+                const qtm = document.getElementById('reg-qtm').value;
+                const specs = document.getElementById('reg-specs').value || 'P4 Outdoor';
+                
+                const c1 = parseFloat(document.getElementById('reg-cost-screen').value) || 0;
+                const c2 = parseFloat(document.getElementById('reg-cost-civil').value) || 0;
+                const c3 = parseFloat(document.getElementById('reg-cost-elec').value) || 0;
+                const totalInvest = c1 + c2 + c3;
+
+                if(!name || !qtm) {
+                    Swal.fire({ icon: 'error', title: 'Faltan datos', text: 'Nombre y Clave QTM obligatorios', confirmButtonColor: '#0F172A' });
+                    return;
+                }
+
+                // Objeto para la API Python
+                const newAsset = {
+                    name: name,
+                    qtm: qtm,
+                    specs: specs,
+                    investment: totalInvest,
+                    location: "Manual"
+                };
+
+                // Enviamos al Backend
+                const success = await this.db.registerAsset(newAsset);
+
+                if (success) {
+                    this.init(); // Recargamos la tabla y KPIs
+                    this.ui.closeDrawer();
+                    Swal.fire({ 
+                        icon: 'success', 
+                        title: '¡Pantalla Registrada!', 
+                        text: `Se ha guardado en Supabase.`,
+                        confirmButtonColor: '#F97316'
+                    });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo conectar con el servidor.' });
+                }
+            }
+
+            // ABRIR DETALLE (Genera URL dinámica para detalle-pantalla.html)
+            openScreenDetails(screenId) {
+                const url = `detalle-pantalla.html?id=${screenId}`;
+                window.open(url, '_blank');
+            }
+        }
+
+        const app = new ArgosApp();
+        document.addEventListener('DOMContentLoaded', () => app.init());
     </script>
-    {% block scripts %}{% endblock %}
 </body>
 </html>
