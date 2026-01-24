@@ -4,20 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Argos Monitor{% endblock %}</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    
     <style>
+        /* Estilos para scrollbars y estados activos */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
         .nav-active { background-color: #4f46e5 !important; color: white !important; }
         .nav-active i { color: white !important; }
-        #inventory-menu, #costs-menu { transition: all 0.3s ease-in-out; }
+        #menu-inventory { transition: all 0.3s ease-in-out; }
         .rotate-180 { transform: rotate(180deg); }
     </style>
 </head>
+
 <body class="bg-slate-50 text-slate-800 font-sans antialiased h-screen flex overflow-hidden">
 
     <aside class="w-64 bg-slate-900 text-white flex flex-col flex-shrink-0 transition-all duration-300 shadow-xl z-20">
@@ -28,16 +33,40 @@
 
         <nav class="flex-1 overflow-y-auto py-6">
             <ul class="space-y-2 px-3">
-                <li><a href="/" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200"><i data-lucide="layout-grid" class="w-5 h-5 mr-3"></i><span class="font-medium">Inicio</span></a></li>
+                <li>
+                    <a href="/" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200">
+                        <i data-lucide="layout-grid" class="w-5 h-5 mr-3"></i>
+                        <span class="font-medium">Inicio</span>
+                    </a>
+                </li>
+
                 <li class="px-3 pt-4 pb-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">Operaciones</li>
-                <li><a href="/monitor" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200"><i data-lucide="activity" class="w-5 h-5 mr-3"></i><span class="font-medium">Monitor</span></a></li>
-                <li><a href="/latency" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200"><i data-lucide="wifi" class="w-5 h-5 mr-3"></i><span class="font-medium">Latencia</span></a></li>
-                <li><a href="/map" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200"><i data-lucide="map" class="w-5 h-5 mr-3"></i><span class="font-medium">Mapa</span></a></li>
+                
+                <li>
+                    <a href="/monitor" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200">
+                        <i data-lucide="activity" class="w-5 h-5 mr-3"></i>
+                        <span class="font-medium">Monitor</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/latency" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200">
+                        <i data-lucide="wifi" class="w-5 h-5 mr-3"></i>
+                        <span class="font-medium">Latencia</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/map" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200">
+                        <i data-lucide="map" class="w-5 h-5 mr-3"></i>
+                        <span class="font-medium">Mapa</span>
+                    </a>
+                </li>
 
                 <li class="px-3 pt-4 pb-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">Gestión</li>
                 <li>
                     <button onclick="toggleMenu('inventory')" class="w-full flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200 outline-none">
-                        <i data-lucide="package" class="w-5 h-5 mr-3"></i><span class="font-medium">Biblioteca</span><i data-lucide="chevron-down" id="arrow-inventory" class="w-4 h-4 ml-auto transition-transform duration-300"></i>
+                        <i data-lucide="package" class="w-5 h-5 mr-3"></i>
+                        <span class="font-medium">Biblioteca</span>
+                        <i data-lucide="chevron-down" id="arrow-inventory" class="w-4 h-4 ml-auto transition-transform duration-300"></i>
                     </button>
                     <ul id="menu-inventory" class="hidden mt-1 space-y-1 px-2">
                         <li><a href="/inventory/manuals" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="book-open" class="w-4 h-4 mr-3"></i> Manuales</a></li>
@@ -46,17 +75,13 @@
                     </ul>
                 </li>
 
-                <li class="px-3 pt-4 pb-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">Finanzas</li>
+                <li class="px-3 pt-4 pb-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">Módulos Externos</li>
                 <li>
-                    <button onclick="toggleMenu('costs')" class="w-full flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200 outline-none">
-                        <i data-lucide="dollar-sign" class="w-5 h-5 mr-3 group-hover:text-emerald-400"></i><span class="font-medium">Costos</span><i data-lucide="chevron-down" id="arrow-costs" class="w-4 h-4 ml-auto transition-transform duration-300"></i>
-                    </button>
-                    <ul id="menu-costs" class="hidden mt-1 space-y-1 px-2">
-                        <li><a href="/costs/installations" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="monitor-speaker" class="w-4 h-4 mr-3"></i> Instalaciones</a></li>
-                        <li><a href="/costs/maintenance" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="wrench" class="w-4 h-4 mr-3"></i> Mantenimiento</a></li>
-                        <li><a href="/costs/sales" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="banknote" class="w-4 h-4 mr-3"></i> Ventas</a></li>
-                        <li><a href="/costs/dashboard" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="pie-chart" class="w-4 h-4 mr-3"></i> Costo Ubicación</a></li>
-                    </ul>
+                    <a href="/techview" target="_blank" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200">
+                        <i data-lucide="dollar-sign" class="w-5 h-5 mr-3 group-hover:text-emerald-400"></i>
+                        <span class="font-medium">TechView (Costos)</span>
+                        <i data-lucide="external-link" class="w-4 h-4 ml-auto opacity-50"></i>
+                    </a>
                 </li>
             </ul>
         </nav>
@@ -67,28 +92,46 @@
             <h1 class="text-xl font-bold text-slate-800 tracking-tight">{% block header_title %}Vista General{% endblock %}</h1>
             <div class="flex items-center space-x-6">
                 <div class="flex items-center bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
-                    <span class="relative flex h-2.5 w-2.5 mr-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span></span>
+                    <span class="relative flex h-2.5 w-2.5 mr-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                    </span>
                     <span class="text-xs font-semibold text-slate-600">Sistema Operativo</span>
                 </div>
             </div>
         </header>
-        <main class="flex-1 overflow-y-auto p-8 scroll-smooth">{% block content %}{% endblock %}</main>
+
+        <main class="flex-1 overflow-y-auto p-8 scroll-smooth">
+            {% block content %}{% endblock %}
+        </main>
     </div>
 
     <script>
         lucide.createIcons();
+
+        // Función para colapsar menús
         function toggleMenu(id) {
-            document.getElementById('menu-'+id).classList.toggle('hidden');
-            document.getElementById('arrow-'+id).classList.toggle('rotate-180');
+            const menu = document.getElementById('menu-'+id);
+            const arrow = document.getElementById('arrow-'+id);
+            if(menu && arrow) {
+                menu.classList.toggle('hidden');
+                arrow.classList.toggle('rotate-180');
+            }
         }
+
+        // Lógica para resaltar el menú activo automáticamente
         document.addEventListener("DOMContentLoaded", function() {
             const currentPath = window.location.pathname;
             document.querySelectorAll('.nav-link').forEach(link => {
                 const href = link.getAttribute('href');
+                // Si la URL coincide exactamente
                 if (href === currentPath) {
                     link.classList.add('nav-active');
-                    if (currentPath.startsWith('/inventory')) toggleMenu('inventory');
-                    if (currentPath.startsWith('/costs')) toggleMenu('costs');
+                    
+                    // Si estamos dentro de biblioteca, abrir el menú
+                    if (currentPath.startsWith('/inventory')) {
+                        toggleMenu('inventory');
+                    }
                 }
             });
         });
