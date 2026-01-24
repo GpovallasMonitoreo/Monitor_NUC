@@ -1,11 +1,10 @@
 from flask import Blueprint, render_template, request, jsonify
-# Importamos el servicio de Supabase
 from src.services.supabase_service import SupabaseService 
 
 bp = Blueprint('views', __name__)
 db_service = SupabaseService()
 
-# --- RUTAS PRINCIPALES (PLATAFORMA MONITOREO) ---
+# --- RUTAS PRINCIPALES ---
 @bp.route('/')
 def home():
     return render_template('index.html')
@@ -40,30 +39,33 @@ def inventory_logs():
     return render_template('inventory/logs.html')
 
 # ==========================================
-# NUEVO MÓDULO: TECHVIEW (COSTOS)
+# MÓDULO TECHVIEW (COSTOS & FINANZAS)
 # ==========================================
 
 @bp.route('/techview')
 def techview_home():
-    """
-    Ruta Principal de la nueva pestaña.
-    Carga el Dashboard Financiero General (dashboard_finanzas.html).
-    """
+    """Dashboard General Financiero"""
     return render_template('dashboard_finanzas.html')
 
 @bp.route('/techview/detail')
 def techview_detail():
     """
-    Vista de Detalle por Pantalla.
-    Carga la calculadora específica (techview.html).
-    Ejemplo: /techview/detail?device_id=REF-01
+    Dashboard individual por ubicación.
+    Contiene: CAPEX, OPEX, Mantenimiento, Ciclo de Vida.
     """
     device_id = request.args.get('device_id', 'REF-01')
     return render_template('techview.html', device_id=device_id)
 
+@bp.route('/techview/proposal')
+def techview_proposal():
+    """
+    NUEVA SECCIÓN: Propuesta de Instalación.
+    Para evaluar proyectos antes de que sean activos.
+    """
+    return render_template('proposal.html')
+
 @bp.route('/api/techview/inventory')
 def api_inventory_list():
-    """API para llenar tablas y buscadores con datos reales de Supabase"""
     try:
         response = db_service.client.table("devices").select("device_id, pc_name, status, ip_address").execute()
         return jsonify(response.data)
