@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DOOH Manager - Site Analysis</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Noto+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script id="tailwind-config">
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                colors: {
+                    "primary": "#17cfcf",
+                    "primary-dark": "#12a5a5",
+                    "background-light": "#f6f7f9",
+                    "background-dark": "#171c26",
+                    "card-light": "#ffffff",
+                    "card-dark": "#1f2633",
+                    "border-light": "#e7f3f3",
+                    "border-dark": "#2d3642",
+                    "text-main": "#0e1b1b",
+                    "text-secondary": "#4e9797",
+                },
+                fontFamily: {
+                    "display": ["Space Grotesk", "sans-serif"],
+                    "body": ["Noto Sans", "sans-serif"],
+                    "mono": ["Space Grotesk", "monospace"],
+                },
+                borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+            },
+        },
+    }
+</script>
+<style>
+    /* Custom Scrollbar for the Ledger */
+    .ledger-scroll::-webkit-scrollbar { width: 6px; }
+    .ledger-scroll::-webkit-scrollbar-track { background: transparent; }
+    .ledger-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+    .dark .ledger-scroll::-webkit-scrollbar-thumb { background-color: #475569; }
+    .chart-bar { transition: height 1s ease-out; }
+</style>
+</head>
+
+<body class="bg-background-light dark:bg-background-dark font-display text-text-main dark:text-gray-100 transition-colors duration-200">
+<div class="flex min-h-screen flex-col">
+
+<header class="sticky top-0 z-50 flex items-center justify-between whitespace-nowrap border-b border-solid border-border-light dark:border-border-dark bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md px-6 py-3">
+    <div class="flex items-center gap-8">
+        <div class="flex items-center gap-4 text-text-main dark:text-white cursor-pointer" onclick="window.location.href='/techview'">
+            <div class="size-8 text-primary">
+                <svg class="w-full h-full" fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                    <path clip-rule="evenodd" d="M24 18.4228L42 11.475V34.3663C42 34.7796 41.7457 35.1504 41.3601 35.2992L24 42V18.4228Z" fill="currentColor" fill-rule="evenodd"></path>
+                    <path clip-rule="evenodd" d="M24 8.18819L33.4123 11.574L24 15.2071L14.5877 11.574L24 8.18819ZM9 15.8487L21 20.4805V37.6263L9 32.9945V15.8487ZM27 37.6263V20.4805L39 15.8487V32.9945L27 37.6263ZM25.354 2.29885C24.4788 1.98402 23.5212 1.98402 22.646 2.29885L4.98454 8.65208C3.7939 9.08038 3 10.2097 3 11.475V34.3663C3 36.0196 4.01719 37.5026 5.55962 38.098L22.9197 44.7987C23.6149 45.0671 24.3851 45.0671 25.0803 44.7987L42.4404 38.098C43.9828 37.5026 45 36.0196 45 34.3663V11.475C45 10.2097 44.2061 9.08038 43.0155 8.65208L25.354 2.29885Z" fill="currentColor" fill-rule="evenodd"></path>
+                </svg>
+            </div>
+            <h2 class="text-xl font-bold tracking-tight">DOOH Manager</h2>
+        </div>
+        <nav class="hidden md:flex items-center gap-6">
+            <a class="text-sm font-medium hover:text-primary transition-colors" href="/techview">Dashboard</a>
+            <a class="text-sm font-medium text-primary border-b-2 border-primary pb-0.5" href="#">Site Analysis</a>
+        </nav>
+    </div>
+    
+    <div class="flex items-center gap-4">
+        <button onclick="window.close()" class="flex items-center gap-2 px-4 h-9 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-bold text-xs transition-colors">
+            <span class="material-symbols-outlined text-[16px]">close</span> Close View
+        </button>
+        <div class="size-10 rounded-full bg-cover bg-center ring-2 ring-border-light dark:ring-border-dark bg-gray-200"></div>
+    </div>
+</header>
+
+<main class="flex-1 overflow-hidden">
+<div class="container mx-auto max-w-[1600px] h-[calc(100vh-65px)] flex flex-col p-4 md:p-6 gap-4">
+
+    <div class="flex flex-col gap-2 shrink-0">
+        <div class="flex items-center gap-2 text-sm text-text-secondary">
+            <a class="hover:text-primary" href="#">Network Overview</a>
+            <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+            <span class="font-medium text-text-main dark:text-white" id="header-device-id">{{ device_id }}</span>
+        </div>
+        <div class="flex flex-wrap items-end justify-between gap-4 pb-2 border-b border-border-light dark:border-border-dark">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-bold tracking-tight text-text-main dark:text-white" id="header-device-name">Cargando...</h1>
+                <p class="text-text-secondary mt-1 flex items-center gap-2 text-sm font-mono">
+                    <span class="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider" id="header-status">Online</span>
+                    Last Synced: Just now
+                </p>
+            </div>
+            <div class="flex gap-3">
+                <button class="flex items-center gap-2 px-4 h-10 rounded-lg bg-primary hover:bg-primary-dark text-white font-bold text-sm shadow-md shadow-primary/20 transition-all">
+                    <span class="material-symbols-outlined text-[18px]">edit_document</span>
+                    Edit Ledger
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
+        
+        <div class="lg:col-span-4 xl:col-span-3 flex flex-col bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-border-light dark:border-border-dark bg-gray-50/50 dark:bg-gray-800/50 flex justify-between items-center">
+                <h3 class="font-bold text-lg">Operational Ledger</h3>
+                <span class="material-symbols-outlined text-text-secondary text-[20px]">history</span>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto ledger-scroll p-4 space-y-8">
+                <div class="relative pl-4 border-l-2 border-border-light dark:border-border-dark space-y-6">
+                    <div class="relative">
+                        <div class="absolute -left-[21px] top-1 size-3 rounded-full bg-primary ring-4 ring-white dark:ring-card-dark"></div>
+                        <h4 class="text-sm font-bold text-text-secondary uppercase tracking-wider mb-2">Lifecycle</h4>
+                        <div class="bg-background-light dark:bg-background-dark p-3 rounded-lg border border-border-light dark:border-border-dark">
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-text-secondary">Installation</span>
+                                <span class="font-mono font-medium">12 Jan 2024</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-text-secondary">Contract End</span>
+                                <span class="font-mono font-medium">12 Jan 2029</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <h4 class="text-sm font-bold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[16px]">router</span>
+                        Hardware Inventory
+                    </h4>
+                    <div class="bg-background-light dark:bg-background-dark rounded-lg border border-border-light dark:border-border-dark divide-y divide-border-light dark:divide-border-dark" id="hardware-list">
+                        <div class="p-3 text-center text-xs text-text-secondary">Cargando inventario...</div>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <h4 class="text-sm font-bold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[16px]">engineering</span>
+                        Last Maintenance
+                    </h4>
+                    <div class="bg-background-light dark:bg-background-dark rounded-lg border border-border-light dark:border-border-dark p-3">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-bold text-text-secondary">Preventivo</span>
+                            <span class="font-mono text-xs font-bold">$1,200</span>
+                        </div>
+                        <div class="flex justify-between items-center border-t border-border-light pt-2">
+                            <span class="text-xs font-bold text-text-secondary">Total YTD</span>
+                            <span class="font-mono text-sm font-black" id="ledger-manto-total">$0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-8 xl:col-span-9 flex flex-col gap-6 overflow-y-auto ledger-scroll pr-2">
+            
+            <div class="grid grid-cols-1 md:grid-cols-12 bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm overflow-hidden min-h-[240px]">
+                <div class="md:col-span-8 bg-gray-900 relative group flex items-center justify-center">
+                    <span class="material-symbols-outlined text-6xl text-white/20">image_not_supported</span>
+                    <div class="absolute bottom-4 left-4 text-white">
+                        <p class="text-xs opacity-80 uppercase tracking-widest font-bold mb-1">Live Feed</p>
+                        <h3 class="text-xl font-bold" id="card-name">...</h3>
+                    </div>
+                </div>
+                <div class="md:col-span-4 p-6 flex flex-col justify-center">
+                    <h4 class="text-lg font-bold mb-4 border-b border-border-light dark:border-border-dark pb-2">Technical Specs</h4>
+                    <div class="space-y-3">
+                        <div class="flex justify-between"><span class="text-xs text-text-secondary">Resolution</span><span class="text-sm font-bold font-mono">1920x1080</span></div>
+                        <div class="flex justify-between"><span class="text-xs text-text-secondary">Pixel Pitch</span><span class="text-sm font-bold font-mono">P4 Outdoor</span></div>
+                        <div class="flex justify-between"><span class="text-xs text-text-secondary">Status</span><span class="text-sm font-bold text-green-500 uppercase">Operational</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                <div class="bg-card-light dark:bg-card-dark p-5 rounded-xl border border-border-light dark:border-border-dark shadow-sm">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-bold text-text-secondary uppercase tracking-wider">CAPEX (Inversión)</span>
+                        <span class="material-symbols-outlined text-text-secondary bg-gray-100 dark:bg-gray-800 rounded p-1 text-[16px]">account_balance</span>
+                    </div>
+                    <div class="text-2xl font-black font-mono text-text-main dark:text-white mb-1" id="kpi-capex">$0</div>
+                </div>
+                
+                <div class="bg-card-light dark:bg-card-dark p-5 rounded-xl border border-border-light dark:border-border-dark shadow-sm">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-bold text-text-secondary uppercase tracking-wider">OPEX (Mensual)</span>
+                        <span class="material-symbols-outlined text-orange-500 bg-orange-100 dark:bg-orange-900/30 rounded p-1 text-[16px]">trending_down</span>
+                    </div>
+                    <div class="text-2xl font-black font-mono text-orange-600 mb-1" id="kpi-opex">$0</div>
+                </div>
+
+                <div class="bg-card-light dark:bg-card-dark p-5 rounded-xl border border-border-light dark:border-border-dark shadow-sm">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-bold text-text-secondary uppercase tracking-wider">Ventas (Mensual)</span>
+                        <span class="material-symbols-outlined text-green-500 bg-green-100 dark:bg-green-900/30 rounded p-1 text-[16px]">payments</span>
+                    </div>
+                    <div class="text-2xl font-black font-mono text-primary mb-1" id="kpi-sales">$0</div>
+                </div>
+
+                <div class="bg-card-light dark:bg-card-dark p-5 rounded-xl border border-border-light dark:border-border-dark shadow-sm">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-bold text-text-secondary uppercase tracking-wider">ROI Estimado</span>
+                        <span class="material-symbols-outlined text-purple-500 bg-purple-100 dark:bg-purple-900/30 rounded p-1 text-[16px]">query_stats</span>
+                    </div>
+                    <div class="text-2xl font-black font-mono text-text-main dark:text-white mb-1" id="kpi-roi">--</div>
+                    <div class="text-xs text-text-secondary">Meses</div>
+                </div>
+            </div>
+
+            <div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-lg">Profitability Forecast</h3>
+                </div>
+                <div class="h-64 w-full">
+                    <canvas id="siteChart"></canvas>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+</main>
+</div>
+
+<script>
+    const deviceId = "{{ device_id }}"; // Jinja2 inyecta el ID aquí
+
+    async function initDashboard() {
+        try {
+            console.log("Cargando datos para:", deviceId);
+            
+            // 1. Cargar Datos Financieros y Técnicos
+            const res = await fetch(`/api/techview/device/${encodeURIComponent(deviceId)}`);
+            if(!res.ok) throw new Error("API Error");
+            const data = await res.json();
+
+            // 2. Llenar Header
+            document.getElementById('header-device-id').innerText = deviceId;
+            document.getElementById('header-device-name').innerText = data.device?.pc_name || deviceId;
+            document.getElementById('card-name').innerText = data.device?.pc_name || "Sin Nombre";
+            
+            const status = data.device?.status || 'unknown';
+            const statusBadge = document.getElementById('header-status');
+            statusBadge.innerText = status.toUpperCase();
+            if(status === 'online') {
+                statusBadge.className = "bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider";
+            } else {
+                statusBadge.className = "bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider";
+            }
+
+            // 3. Llenar KPIs
+            const fmt = n => `$${n.toLocaleString('en-US', {maximumFractionDigits: 0})}`;
+            
+            document.getElementById('kpi-capex').innerText = fmt(data.totals.capex);
+            document.getElementById('kpi-opex').innerText = fmt(data.totals.opex);
+            document.getElementById('kpi-sales').innerText = fmt(data.totals.revenue);
+            
+            const margin = data.totals.revenue - data.totals.opex;
+            const roi = margin > 0 ? (data.totals.capex / margin).toFixed(1) : "--";
+            document.getElementById('kpi-roi').innerText = roi;
+
+            // 4. Llenar Hardware (Ledger)
+            // Aquí idealmente filtraríamos el array de 'breakdown' buscando 'hardware'
+            const hwList = document.getElementById('hardware-list');
+            hwList.innerHTML = `
+                <div class="p-3 flex justify-between items-center">
+                    <div class="flex flex-col"><span class="text-sm font-bold">Player</span><span class="text-xs text-text-secondary">NUC Standard</span></div>
+                    <span class="material-symbols-outlined text-green-500 text-[18px]">check_circle</span>
+                </div>
+            `;
+
+            // 5. Renderizar Gráfica
+            renderChart(data.totals.revenue, data.totals.opex);
+
+        } catch (e) {
+            console.error("Error Dashboard:", e);
+        }
+    }
+
+    function renderChart(revenue, opex) {
+        const ctx = document.getElementById('siteChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Mensual Promedio'],
+                datasets: [
+                    { label: 'Ingresos', data: [revenue], backgroundColor: '#17cfcf', borderRadius: 4 },
+                    { label: 'Costos (OPEX)', data: [opex], backgroundColor: '#cbd5e1', borderRadius: 4 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: { legend: { position: 'bottom' } },
+                scales: { x: { beginAtZero: true, grid: {display: false} }, y: { grid: {display: false} } }
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', initDashboard);
+</script>
+</body>
+</html>
