@@ -4,43 +4,21 @@
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>Argos DOOH - Executive Command Center</title>
-    
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
-
     <script>
         tailwind.config = {
             darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        primary: "#F97316",    
-                        secondary: "#3B82F6",  
-                        accent: "#8B5CF6",     
-                        success: "#10B981",    
-                        dark: "#0F172A",
-                    },
-                    fontFamily: { body: ["Inter", "sans-serif"] },
-                },
-            },
+            theme: { extend: { colors: { primary: "#F97316", secondary: "#3B82F6", accent: "#8B5CF6", success: "#10B981", dark: "#0F172A" }, fontFamily: { body: ["Inter", "sans-serif"] } } }
         };
     </script>
     <style>
         .custom-scroll::-webkit-scrollbar { width: 6px; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .drawer-slide { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-        
-        /* CORRECCIÓN DE TEXTO SOBREPUESTO */
-        .truncate-col {
-            display: block;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 220px; 
-        }
+        .truncate-col { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
     </style>
 </head>
 
@@ -48,42 +26,16 @@
 
     <header class="bg-white border-b border-slate-200 h-16 flex flex-shrink-0 items-center justify-between px-8 shadow-sm z-20">
         <div class="flex items-center gap-4">
-            <div class="size-10 bg-slate-900 rounded-lg flex items-center justify-center text-primary shadow-lg">
-                <i data-lucide="activity" class="w-6 h-6"></i>
-            </div>
-            <div>
-                <h1 class="text-xl font-bold text-slate-800 tracking-tight">Finanzas y Rentabilidad</h1>
-                <p class="text-[10px] text-slate-400 font-medium">VISTA GENERAL DEL SISTEMA</p>
-            </div>
+            <div class="size-10 bg-slate-900 rounded-lg flex items-center justify-center text-primary shadow-lg"><i data-lucide="activity" class="w-6 h-6"></i></div>
+            <div><h1 class="text-xl font-bold text-slate-800 tracking-tight">Finanzas y Rentabilidad</h1><p class="text-[10px] text-slate-400 font-medium">VISTA GENERAL</p></div>
         </div>
-        
         <div class="flex items-center gap-3">
-            <button onclick="app.ui.openDrawer('sales')" class="hidden md:flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition shadow-md shadow-emerald-500/20 hover:shadow-lg">
-                <span class="material-icons-outlined text-sm">attach_money</span> REGISTRAR VENTA
-            </button>
-            
-            <a href="/techview/proposal" class="hidden md:flex items-center gap-2 px-4 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg hover:bg-slate-700 transition shadow-md hover:shadow-lg">
-                <span class="material-icons-outlined text-sm">add</span> NUEVA INSTALACIÓN
-            </a>
-
-            <div class="h-8 w-px bg-slate-200 mx-2"></div>
-
-            <div class="flex items-center bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 cursor-help">
-                <span class="relative flex h-2.5 w-2.5 mr-2">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                </span>
-                <span class="text-[10px] font-bold text-emerald-700">DB: ONLINE</span>
-            </div>
-            
-            <a href="/" class="ml-2 p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition">
-                <span class="material-icons-outlined">logout</span>
-            </a>
+            <a href="/techview/proposal" class="hidden md:flex items-center gap-2 px-4 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg hover:bg-slate-700 transition shadow-md"><span class="material-icons-outlined text-sm">add</span> NUEVA INSTALACIÓN</a>
+            <a href="/" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg font-bold text-xs transition"><span class="material-icons-outlined text-sm">logout</span> Volver</a>
         </div>
     </header>
 
     <main class="flex-1 overflow-y-auto p-6 scroll-smooth custom-scroll w-full max-w-[1920px] mx-auto">
-        
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8" id="kpi-container">
             <div class="animate-pulse bg-white h-32 rounded-2xl border border-slate-100"></div>
             <div class="animate-pulse bg-white h-32 rounded-2xl border border-slate-100"></div>
@@ -92,316 +44,106 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
             <div class="lg:col-span-8 space-y-6">
-                
                 <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                     <div class="flex justify-between items-center mb-6">
-                        <div>
-                            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Flujo de Caja: Ventas vs Mantenimiento</h3>
-                            <p class="text-xs text-slate-400">Comparativa mensual de ingresos brutos contra OPEX recurrente.</p>
-                        </div>
-                        <div class="flex gap-2">
-                            <span class="flex items-center gap-1 text-[10px] font-bold text-slate-500"><div class="w-2 h-2 rounded-full bg-emerald-500"></div> Ventas</span>
-                            <span class="flex items-center gap-1 text-[10px] font-bold text-slate-500"><div class="w-2 h-2 rounded-full bg-orange-500"></div> Costos</span>
-                        </div>
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Flujo de Caja</h3>
                     </div>
-                    <div class="h-72 w-full">
-                        <canvas id="rentabilityChart"></canvas>
-                    </div>
+                    <div class="h-72 w-full"><canvas id="rentabilityChart"></canvas></div>
                 </div>
-
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                     <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                        <div>
-                            <h2 class="text-lg font-bold text-slate-800">Inventario de Pantallas</h2>
-                            <p class="text-xs text-slate-500">Gestión de especificaciones, estado y rentabilidad individual.</p>
-                        </div>
-                        
-                        <div class="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5 focus-within:ring-2 focus-within:ring-primary/20 transition shadow-sm w-64">
+                        <h2 class="text-lg font-bold text-slate-800">Inventario</h2>
+                        <div class="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5 w-64">
                             <span class="material-icons-outlined text-slate-400 text-lg">search</span>
-                            <input type="text" id="inventory-search" placeholder="Buscar Pantalla, QTM o ID..." class="border-none bg-transparent p-0 text-sm w-full focus:ring-0 placeholder-slate-400">
+                            <input type="text" id="inventory-search" placeholder="Buscar..." class="border-none bg-transparent p-0 text-sm w-full focus:ring-0">
                         </div>
                     </div>
                     <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse" id="assets-table">
+                        <table class="w-full text-left border-collapse">
                             <thead class="bg-slate-50/80 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                                <tr>
-                                    <th class="p-4 w-1/3">Sitio / Clave QTM</th>
-                                    <th class="p-4">Especificaciones</th>
-                                    <th class="p-4 text-right">Inversión (CAPEX)</th>
-                                    <th class="p-4 text-right">Rentabilidad</th>
-                                    <th class="p-4 text-center">Acciones</th>
-                                </tr>
+                                <tr><th class="p-4 w-1/3">Sitio / ID</th><th class="p-4">Estado</th><th class="p-4 text-center">Acciones</th></tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-100 text-sm" id="table-body">
-                                </tbody>
+                            <tbody class="divide-y divide-slate-100 text-sm" id="table-body"></tbody>
                         </table>
                     </div>
                 </div>
             </div>
-
             <div class="lg:col-span-4 space-y-6">
                 <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <h3 class="text-sm font-bold text-slate-800 mb-2 uppercase tracking-wider">Distribución CAPEX</h3>
-                    <p class="text-xs text-slate-400 mb-6">Desglose de inversión inicial por categoría.</p>
-                    <div class="h-48 relative flex justify-center">
-                        <canvas id="capexChart"></canvas>
-                    </div>
-                    <div class="mt-6 space-y-3">
-                        <div class="flex justify-between items-center text-xs border-b border-slate-50 pb-2">
-                            <div class="flex items-center gap-2"><div class="w-3 h-3 rounded bg-secondary"></div> <span class="text-slate-600 font-medium">Pantallas y Electrónica</span></div>
-                            <span class="font-bold text-slate-800">55%</span>
-                        </div>
-                        <div class="flex justify-between items-center text-xs border-b border-slate-50 pb-2">
-                            <div class="flex items-center gap-2"><div class="w-3 h-3 rounded bg-primary"></div> <span class="text-slate-600 font-medium">Obra Civil</span></div>
-                            <span class="font-bold text-slate-800">30%</span>
-                        </div>
-                        <div class="flex justify-between items-center text-xs">
-                            <div class="flex items-center gap-2"><div class="w-3 h-3 rounded bg-accent"></div> <span class="text-slate-600 font-medium">Legal y Gestoría</span></div>
-                            <span class="font-bold text-slate-800">15%</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Alertas Activas</h3>
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-100 text-red-600 animate-pulse">EN VIVO</span>
-                    </div>
-                    <div class="space-y-3" id="alerts-container">
-                        </div>
+                    <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">Alertas Activas</h3>
+                    <div class="space-y-3" id="alerts-container"></div>
                 </div>
             </div>
         </div>
     </main>
 
-    <div id="overlay" class="fixed inset-0 bg-slate-900/40 z-40 hidden backdrop-blur-sm transition-opacity opacity-0" onclick="app.ui.closeDrawer()"></div>
-    <div id="drawer" class="fixed right-0 top-0 h-full w-full max-w-2xl bg-white z-50 shadow-2xl translate-x-full drawer-slide overflow-hidden flex flex-col">
-        <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
-            <div>
-                <h2 id="d-title" class="text-xl font-bold text-slate-800">Título Formulario</h2>
-                <p id="d-subtitle" class="text-xs text-slate-500">Descripción del proceso</p>
-            </div>
-            <button onclick="app.ui.closeDrawer()" class="p-2 hover:bg-slate-100 rounded-full transition text-slate-500"><span class="material-icons-outlined">close</span></button>
-        </div>
-        <div id="d-content" class="flex-1 overflow-y-auto custom-scroll p-8 bg-slate-50/50"></div>
-    </div>
-
     <script>
-        class SupabaseService {
-            constructor() {
-                this.mockKPIs = { capex: 2630000, sales_annual: 3200000, opex_monthly: 124500, incidents: 4 };
-                this.mockFinancials = {
-                    months: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
-                    sales: [450, 480, 520, 510, 590, 620],
-                    maintenance: [120, 115, 130, 125, 140, 110]
-                };
-            }
-            async fetchData() {
-                let assets = [];
+        class DashboardApp {
+            constructor() { this.allAssets = []; }
+
+            async init() {
                 try {
-                    const res = await fetch('/api/techview/inventory');
-                    if(!res.ok) throw new Error("API Fail");
-                    const devices = await res.json();
-                    assets = devices.map(d => ({
-                        id: d.device_id,
-                        name: d.pc_name || 'Dispositivo Sin Nombre',
-                        qtm: `QTM-${d.device_id.slice(-4)}`,
-                        investment: Math.floor(Math.random() * 1000000) + 500000,
-                        monthly_revenue: Math.floor(Math.random() * 50000) + 30000,
-                        monthly_cost: 12000,
-                        status: d.status || 'offline',
-                        specs: 'P3.9 Outdoor'
-                    }));
-                } catch (e) {
-                    // Fallback para evitar pantalla blanca
-                    assets = [
-                        { id: 'REF-01', name: 'Torre Reforma LED Principal', qtm: 'QTM-001', investment: 1200000, monthly_revenue: 85000, monthly_cost: 12000, status: 'ok', specs: 'P3.9 Outdoor' },
-                        { id: 'SAT-04', name: 'Mupi Satélite Norte', qtm: 'QTM-042', investment: 450000, monthly_revenue: 32000, monthly_cost: 4500, status: 'warning', specs: 'P2.5 Indoor' }
-                    ];
-                }
-                return { assets, kpis: this.mockKPIs, financials: this.mockFinancials };
-            }
-        }
+                    // Cargar KPIs
+                    const kpiRes = await fetch('/api/techview/dashboard');
+                    const kpiData = await kpiRes.json();
+                    this.renderKPIs(kpiData.kpis);
+                    this.renderChart(kpiData.financials);
 
-        class UIManager {
-            constructor() {
-                this.forms = {
-                    sales: {
-                        title: "Registro de Venta Publicitaria",
-                        subtitle: "Ingreso de pauta para cálculo de ROI.",
-                        html: `<form class="space-y-4">
-                                <label class="block"><span class="text-xs font-bold text-slate-500">Cliente</span><input type="text" class="w-full rounded-lg border-slate-200"></label>
-                                <label class="block"><span class="text-xs font-bold text-slate-500">Monto</span><input type="number" class="w-full rounded-lg border-slate-200"></label>
-                                <button type="button" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-lg">Guardar</button>
-                               </form>`
-                    }
-                };
+                    // Cargar Inventario
+                    const invRes = await fetch('/api/techview/inventory');
+                    this.allAssets = await invRes.json();
+                    this.renderTable(this.allAssets);
+                    this.renderAlerts(kpiData.kpis.active_alerts);
+
+                    // Buscador
+                    document.getElementById('inventory-search').addEventListener('input', (e) => {
+                        const term = e.target.value.toLowerCase();
+                        this.renderTable(this.allAssets.filter(a => a.pc_name?.toLowerCase().includes(term) || a.device_id.toLowerCase().includes(term)));
+                    });
+                    
+                    lucide.createIcons();
+                } catch (e) { console.error("Error init dashboard", e); }
             }
 
-            renderKPIs(data) {
-                const container = document.getElementById('kpi-container');
-                container.innerHTML = `
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Inversión Activos (CAPEX)</p>
-                        <h3 class="text-2xl font-bold text-slate-900 font-mono">$${(data.capex/1000000).toFixed(2)}M</h3>
-                    </div>
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Ventas Anuales</p>
-                        <h3 class="text-2xl font-bold text-emerald-600 font-mono">$${(data.sales_annual/1000000).toFixed(1)}M</h3>
-                    </div>
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Gasto Operativo (Mensual)</p>
-                        <h3 class="text-2xl font-bold text-amber-600 font-mono">$${(data.opex_monthly/1000).toFixed(1)}k</h3>
-                    </div>
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Estado de Red</p>
-                        <h3 class="text-2xl font-bold text-red-500 font-mono">0${data.incidents}</h3>
-                    </div>
+            renderKPIs(kpis) {
+                const fmt = n => `$${(n/1000000).toFixed(2)}M`;
+                document.getElementById('kpi-container').innerHTML = `
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm"><p class="text-[10px] font-bold text-slate-400 uppercase mb-1">CAPEX Total</p><h3 class="text-2xl font-bold text-slate-900 font-mono">${fmt(kpis.capex)}</h3></div>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm"><p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Ventas Anuales</p><h3 class="text-2xl font-bold text-emerald-600 font-mono">${fmt(kpis.sales_annual)}</h3></div>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm"><p class="text-[10px] font-bold text-slate-400 uppercase mb-1">OPEX Mensual</p><h3 class="text-2xl font-bold text-amber-600 font-mono">$${(kpis.opex_monthly/1000).toFixed(1)}k</h3></div>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm"><p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Alertas</p><h3 class="text-2xl font-bold text-red-500 font-mono">${kpis.active_alerts}</h3></div>
                 `;
             }
 
             renderTable(assets) {
                 const tbody = document.getElementById('table-body');
-                if(assets.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-slate-400 text-sm">No se encontraron pantallas.</td></tr>';
-                    return;
-                }
-                tbody.innerHTML = assets.map(asset => {
-                    const statusClass = (asset.status === 'ok' || asset.status === 'online') ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700';
-                    const rentability = ((asset.monthly_revenue - asset.monthly_cost) / asset.monthly_revenue * 100).toFixed(1);
-                    
-                    return `
-                    <tr class="hover:bg-slate-50/50 transition border-b border-slate-50 group">
-                        <td class="p-4">
-                            <div class="flex items-center gap-3 w-full max-w-[300px]">
-                                <div class="size-10 shrink-0 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-xs group-hover:bg-primary group-hover:text-white transition">
-                                    ${asset.id.substring(0,3)}
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-sm font-bold text-slate-700 truncate-col" title="${asset.name}">${asset.name}</p>
-                                    <p class="text-[10px] font-mono text-slate-400">${asset.qtm}</p>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="p-4 text-xs">
-                            <div class="flex flex-col gap-1">
-                                <span class="font-bold text-slate-600">${asset.specs}</span>
-                                <span class="w-fit px-2 py-0.5 rounded ${statusClass} text-[10px] font-bold uppercase">${asset.status}</span>
-                            </div>
-                        </td>
-                        <td class="p-4 text-right font-mono text-xs font-bold text-slate-600">$${asset.investment.toLocaleString()}</td>
-                        <td class="p-4 text-right">
-                             <div class="flex flex-col items-end">
-                                <span class="font-mono font-bold text-emerald-600 text-sm">${rentability}%</span>
-                                <span class="text-[10px] text-slate-400">Margen Op.</span>
-                             </div>
-                        </td>
-                        <td class="p-4 text-center">
-                            <a href="/techview/detail?device_id=${asset.id}" class="inline-flex items-center gap-1 text-xs bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-800 hover:text-white hover:border-slate-800 transition shadow-sm">
-                                Gestionar <span class="material-icons-outlined text-[10px]">arrow_forward</span>
-                            </a>
-                        </td>
+                tbody.innerHTML = assets.map(a => `
+                    <tr class="hover:bg-slate-50 transition border-b border-slate-50">
+                        <td class="p-4"><div class="truncate-col font-bold text-slate-700" title="${a.pc_name}">${a.pc_name || 'Sin Nombre'}</div><div class="text-[10px] text-slate-400 font-mono">${a.device_id}</div></td>
+                        <td class="p-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${a.status==='online'?'bg-emerald-100 text-emerald-700':'bg-red-100 text-red-700'}">${a.status}</span></td>
+                        <td class="p-4 text-center"><a href="/techview/detail?device_id=${a.device_id}" class="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition text-xs">Gestionar</a></td>
                     </tr>
-                    `;
-                }).join('');
+                `).join('');
             }
 
-            renderAlerts() {
+            renderAlerts(count) {
                 const container = document.getElementById('alerts-container');
-                container.innerHTML = `
-                    <div class="flex gap-3 items-start p-3 bg-red-50/50 rounded-xl border border-red-100 cursor-pointer hover:bg-red-50 transition">
-                        <span class="material-icons-outlined text-red-500 text-lg">error_outline</span>
-                        <div><p class="text-[11px] font-bold text-slate-700">Fallo de Envío</p></div>
-                    </div>
-                `;
+                container.innerHTML = count > 0 
+                    ? `<div class="p-3 bg-red-50 border border-red-100 rounded-lg text-red-700 text-xs font-bold flex gap-2"><span class="material-icons-outlined text-sm">warning</span> Se detectaron ${count} pantallas desconectadas.</div>`
+                    : `<div class="p-3 bg-emerald-50 border border-emerald-100 rounded-lg text-emerald-700 text-xs font-bold flex gap-2"><span class="material-icons-outlined text-sm">check_circle</span> Sistema operando normalmente.</div>`;
             }
 
-            openDrawer(type) {
-                const drawer = document.getElementById('drawer');
-                const overlay = document.getElementById('overlay');
-                if (this.forms[type]) {
-                    document.getElementById('d-title').innerText = this.forms[type].title;
-                    document.getElementById('d-subtitle').innerText = this.forms[type].subtitle;
-                    document.getElementById('d-content').innerHTML = this.forms[type].html;
-                    overlay.classList.remove('hidden');
-                    setTimeout(() => overlay.classList.add('opacity-100'), 10);
-                    drawer.classList.remove('translate-x-full');
-                }
-            }
-
-            closeDrawer() {
-                const drawer = document.getElementById('drawer');
-                const overlay = document.getElementById('overlay');
-                drawer.classList.add('translate-x-full');
-                overlay.classList.remove('opacity-100');
-                setTimeout(() => overlay.classList.add('hidden'), 400);
-            }
-        }
-
-        class ChartManager {
-            renderCharts(data) {
-                new Chart(document.getElementById('rentabilityChart').getContext('2d'), {
+            renderChart(fin) {
+                new Chart(document.getElementById('rentabilityChart'), {
                     type: 'bar',
-                    data: {
-                        labels: data.months,
-                        datasets: [
-                            { label: 'Ventas', data: data.sales, backgroundColor: '#10B981', borderRadius: 6 },
-                            { label: 'Costos', data: data.maintenance, backgroundColor: '#F97316', borderRadius: 6 }
-                        ]
-                    },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-                });
-                
-                new Chart(document.getElementById('capexChart').getContext('2d'), {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Pantallas', 'Obra', 'Legal'],
-                        datasets: [{ data: [55, 30, 15], backgroundColor: ['#3B82F6', '#F97316', '#8B5CF6'] }]
-                    },
-                    options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } } }
+                    data: { labels: fin.months, datasets: [{label: 'Ventas', data: fin.sales, backgroundColor: '#10B981'}, {label: 'Costos', data: fin.maintenance, backgroundColor: '#F97316'}] },
+                    options: { responsive: true, maintainAspectRatio: false }
                 });
             }
         }
-
-        // --- CLASE PRINCIPAL ---
-        class ArgosApp {
-            constructor() {
-                this.db = new SupabaseService();
-                this.ui = new UIManager();
-                this.charts = new ChartManager();
-                this.allAssets = []; // Store for filtering
-            }
-
-            async init() {
-                console.log('Argos OS: Iniciando...');
-                const data = await this.db.fetchData();
-                this.allAssets = data.assets; // Guardamos copia para filtrar
-                
-                this.ui.renderKPIs(data.kpis);
-                this.ui.renderTable(this.allAssets);
-                this.ui.renderAlerts();
-                this.charts.renderCharts(data.financials);
-                lucide.createIcons();
-
-                // EVENTO DE BÚSQUEDA
-                document.getElementById('inventory-search').addEventListener('input', (e) => {
-                    const term = e.target.value.toLowerCase();
-                    const filtered = this.allAssets.filter(asset => 
-                        asset.name.toLowerCase().includes(term) || 
-                        asset.qtm.toLowerCase().includes(term) || 
-                        asset.id.toLowerCase().includes(term)
-                    );
-                    this.ui.renderTable(filtered);
-                });
-            }
-        }
-
-        // --- INICIALIZACIÓN AL FINAL ---
-        const app = new ArgosApp(); 
+        const app = new DashboardApp();
         document.addEventListener('DOMContentLoaded', () => app.init());
-
     </script>
 </body>
 </html>
