@@ -1,388 +1,138 @@
 <!DOCTYPE html>
-<html lang="es" class="light">
+<html lang="es">
 <head>
     <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>Argos TechView - Gestión Detallada</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
-    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Argos TechView - Detalle</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <script>
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        primary: "#F97316", "primary-dark": "#c2410c", secondary: "#3B82F6",
-                        surface: "#ffffff", background: "#F8FAFC", dark: "#0F172A",
-                    },
-                    fontFamily: { body: ["Inter", "sans-serif"] },
-                },
-            },
-        };
-    </script>
-    <style>
-        .tab-content { display: none; animation: fadeIn 0.3s ease; }
-        .tab-content.active { display: block; }
-        .nav-tab.active { color: #F97316; border-bottom: 2px solid #F97316; font-weight: 700; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        /* Estilo inputs */
-        .cost-input { @apply w-full rounded-lg border-slate-200 text-sm focus:ring-primary focus:border-primary transition; }
-        .section-title { @apply font-bold text-slate-800 border-b border-slate-100 pb-2 mb-4 flex items-center gap-2; }
-    </style>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+    <style>.tab-content{display:none}.tab-content.active{display:block}.nav-tab.active{border-bottom:2px solid #F97316;color:#F97316;font-weight:700}</style>
 </head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
 
-<body class="bg-slate-50 text-slate-800 font-body min-h-screen flex flex-col">
-
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-        <div class="max-w-[1920px] mx-auto px-6 py-4 flex justify-between items-center">
-            <div class="flex items-center gap-4">
-                <div class="flex items-center gap-2 cursor-pointer" onclick="window.location.href='/techview'">
-                    <div class="size-10 bg-slate-900 rounded-lg flex items-center justify-center text-primary shadow-lg">
-                        <span class="material-symbols-outlined">grid_view</span>
-                    </div>
-                    <div>
-                        <h2 class="text-lg font-bold text-slate-900">Argos <span class="text-primary">TechView</span></h2>
-                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Gestión de Costos</p>
-                    </div>
-                </div>
-                <div class="hidden md:flex items-center gap-2 text-xs text-slate-400 ml-6 border-l pl-6">
-                    <span class="font-bold text-slate-800 bg-orange-50 px-3 py-1 rounded border border-orange-100">{{ device_id }}</span>
-                </div>
-            </div>
-            <button onclick="saveAll()" class="bg-primary hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-bold text-xs shadow-lg transition flex items-center gap-2">
-                <span class="material-symbols-outlined text-sm">save</span> Guardar Todo
-            </button>
+    <header class="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+        <div>
+            <h2 class="text-lg font-bold text-slate-900">Gestión: <span class="text-primary">{{ device_id }}</span></h2>
         </div>
-
-        <div class="bg-white border-t border-slate-100 px-6">
-            <div class="flex gap-8 overflow-x-auto">
-                <button onclick="switchTab('resumen')" class="nav-tab active py-4 text-sm flex gap-2"><span class="material-symbols-outlined">analytics</span> Resumen & KPIs</button>
-                <button onclick="switchTab('capex')" class="nav-tab py-4 text-sm flex gap-2"><span class="material-symbols-outlined">domain_add</span> 1. CAPEX (Inversión)</button>
-                <button onclick="switchTab('opex')" class="nav-tab py-4 text-sm flex gap-2"><span class="material-symbols-outlined">receipt_long</span> 2. OPEX (Mensual)</button>
-                <button onclick="switchTab('manto')" class="nav-tab py-4 text-sm flex gap-2"><span class="material-symbols-outlined">build</span> 3. Mantenimiento</button>
-                <button onclick="switchTab('ciclo')" class="nav-tab py-4 text-sm flex gap-2"><span class="material-symbols-outlined">restart_alt</span> 4. Ciclo de Vida</button>
-            </div>
+        <div class="flex gap-3">
+            <button onclick="saveAll()" class="bg-primary hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-bold text-xs flex gap-2"><span class="material-icons-outlined text-sm">save</span> GUARDAR TODO</button>
+            <a href="/techview" class="bg-slate-100 text-slate-600 px-4 py-2 rounded-lg font-bold text-xs">CERRAR</a>
         </div>
     </header>
 
-    <main class="flex-1 w-full max-w-[1920px] mx-auto p-6">
+    <div class="bg-white border-b border-slate-100 px-6">
+        <div class="flex gap-6 overflow-x-auto">
+            <button onclick="switchTab('resumen')" class="nav-tab active py-4 text-sm">Resumen</button>
+            <button onclick="switchTab('capex')" class="nav-tab py-4 text-sm">1. CAPEX</button>
+            <button onclick="switchTab('opex')" class="nav-tab py-4 text-sm">2. OPEX</button>
+            <button onclick="switchTab('manto')" class="nav-tab py-4 text-sm">3. Mantenimiento</button>
+        </div>
+    </div>
 
+    <main class="p-6 max-w-7xl mx-auto w-full">
         <div id="tab-resumen" class="tab-content active space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <p class="text-xs font-bold text-slate-400 uppercase">Costo Total Activo (CAPEX)</p>
-                    <div class="flex items-end gap-2 mt-1">
-                        <span class="text-3xl font-black text-slate-900" id="kpi-capex">$0</span>
-                    </div>
-                </div>
-                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <p class="text-xs font-bold text-slate-400 uppercase">Gasto Operativo Mensual (OPEX)</p>
-                    <div class="flex items-end gap-2 mt-1">
-                        <span class="text-3xl font-black text-orange-600" id="kpi-opex">$0</span>
-                        <span class="text-xs text-slate-400">/ mes</span>
-                    </div>
-                </div>
-                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <p class="text-xs font-bold text-slate-400 uppercase">Rentabilidad (Mensual)</p>
-                    <div class="flex items-end gap-2 mt-1">
-                        <span class="text-3xl font-black text-emerald-600" id="kpi-profit">$0</span>
-                        <span class="text-xs font-bold bg-emerald-100 text-emerald-700 px-2 rounded" id="kpi-roi">ROI: --</span>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-80">
-                <canvas id="summaryChart"></canvas>
+            <div class="grid grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-xl border shadow-sm"><p class="text-xs text-slate-400 font-bold">CAPEX Total</p><h3 class="text-3xl font-black text-slate-800" id="kpi-capex">$0</h3></div>
+                <div class="bg-white p-6 rounded-xl border shadow-sm"><p class="text-xs text-slate-400 font-bold">OPEX Mensual</p><h3 class="text-3xl font-black text-orange-600" id="kpi-opex">$0</h3></div>
+                <div class="bg-white p-6 rounded-xl border shadow-sm"><p class="text-xs text-slate-400 font-bold">Venta Mensual</p><h3 class="text-3xl font-black text-emerald-600" id="kpi-sales">$0</h3></div>
             </div>
         </div>
 
         <div id="tab-capex" class="tab-content space-y-6">
-            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg mb-4">
-                <p class="text-sm font-bold text-blue-900">Inversión Inicial (CAPEX)</p>
-                <p class="text-xs text-blue-700">Costos únicos de activación.</p>
-            </div>
-            
-            <form id="form-capex" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <h4 class="section-title"><span class="material-symbols-outlined text-primary">foundation</span> Infraestructura</h4>
-                    <div class="space-y-3">
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Pantalla LED</span>
-                            <input type="number" class="cost-input" data-type="CAPEX" data-cat="Infraestructura" data-con="Pantalla"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Obra Civil (Base)</span>
-                            <input type="number" class="cost-input" data-type="CAPEX" data-cat="Infraestructura" data-con="Obra Civil"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Costo Estructura</span>
-                            <input type="number" class="cost-input" data-type="CAPEX" data-cat="Infraestructura" data-con="Estructura"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Instalación Eléctrica</span>
-                            <input type="number" class="cost-input" data-type="CAPEX" data-cat="Infraestructura" data-con="Inst. Eléctrica"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Medidor CFE</span>
-                            <input type="number" class="cost-input" data-type="CAPEX" data-cat="Infraestructura" data-con="Medidor"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Instalación Datos</span>
-                            <input type="number" class="cost-input" data-type="CAPEX" data-cat="Infraestructura" data-con="Inst. Datos"></label>
-                    </div>
+            <form class="grid grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-xl border shadow-sm">
+                    <h4 class="font-bold border-b pb-2 mb-4">Infraestructura</h4>
+                    <label class="block mb-2 text-xs font-bold text-slate-500">Pantalla LED <input type="number" class="w-full border-slate-200 rounded text-sm mt-1 cost-input" data-type="CAPEX" data-cat="Infraestructura" data-con="Pantalla"></label>
+                    <label class="block mb-2 text-xs font-bold text-slate-500">Obra Civil <input type="number" class="w-full border-slate-200 rounded text-sm mt-1 cost-input" data-type="CAPEX" data-cat="Infraestructura" data-con="Obra Civil"></label>
+                    <label class="block mb-2 text-xs font-bold text-slate-500">Instalación Eléctrica <input type="number" class="w-full border-slate-200 rounded text-sm mt-1 cost-input" data-type="CAPEX" data-cat="Infraestructura" data-con="Instalacion Electrica"></label>
                 </div>
-
-                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <h4 class="section-title"><span class="material-symbols-outlined text-primary">memory</span> Electrónica Inicial</h4>
-                    <div class="grid grid-cols-2 gap-4">
-                        <label class="block"><span class="text-xs font-bold text-slate-500">NUC (Player)</span>
-                            <input type="number" class="cost-input" data-type="CAPEX" data-cat="Electrónica" data-con="NUC"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">UPS</span>
-                            <input type="number" class="cost-input" data-type="CAPEX" data-cat="Electrónica" data-con="UPS"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Sending Card</span>
-                            <input type="number" class="cost-input" data-type="CAPEX" data-cat="Electrónica" data-con="Sending Card"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Procesador Video</span>
-                            <input type="number" class="cost-input" data-type="CAPEX" data-cat="Electrónica" data-con="Procesador"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Módem Inalámbrico</span>
-                            <input type="number" class="cost-input" data-type="CAPEX" data-cat="Electrónica" data-con="Modem Inalambrico"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Módem SIM</span>
-                            <input type="number" class="cost-input" data-type="CAPEX" data-cat="Electrónica" data-con="Modem SIM"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Teltonika</span>
-                            <input type="number" class="cost-input" data-type="CAPEX" data-cat="Electrónica" data-con="Teltonika"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Cables HDMI</span>
-                            <input type="number" class="cost-input" data-type="CAPEX" data-cat="Electrónica" data-con="HDMI"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Cámara</span>
-                            <input type="number" class="cost-input" data-type="CAPEX" data-cat="Electrónica" data-con="Camara"></label>
-                    </div>
-                </div>
-
-                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div>
-                        <h4 class="section-title"><span class="material-symbols-outlined text-primary">engineering</span> Mano de Obra</h4>
-                        <div class="space-y-3">
-                            <label class="block"><span class="text-xs font-bold text-slate-500">Cuadrilla (6 pax / 15 días)</span>
-                                <input type="number" class="cost-input" data-type="CAPEX" data-cat="Mano Obra" data-con="Cuadrilla"></label>
-                            <label class="block"><span class="text-xs font-bold text-slate-500">Gasolina y Transporte</span>
-                                <input type="number" class="cost-input" data-type="CAPEX" data-cat="Mano Obra" data-con="Gasolina"></label>
-                        </div>
-                    </div>
-                    <div>
-                        <h4 class="section-title"><span class="material-symbols-outlined text-primary">gavel</span> Legal & Admin</h4>
-                        <div class="space-y-3">
-                            <label class="block"><span class="text-xs font-bold text-slate-500">Negociaciones / Legal</span>
-                                <input type="number" class="cost-input" data-type="CAPEX" data-cat="Legal" data-con="Gestoria"></label>
-                            <label class="block"><span class="text-xs font-bold text-slate-500">Primera Instalación</span>
-                                <input type="number" class="cost-input" data-type="CAPEX" data-cat="Legal" data-con="1ra Instalacion"></label>
-                            <label class="block"><span class="text-xs font-bold text-slate-500">Admin (Clave QTM)</span>
-                                <input type="number" class="cost-input" data-type="CAPEX" data-cat="Admin" data-con="Clave QTM"></label>
-                        </div>
-                    </div>
+                <div class="bg-white p-6 rounded-xl border shadow-sm">
+                    <h4 class="font-bold border-b pb-2 mb-4">Electrónica & Legal</h4>
+                    <label class="block mb-2 text-xs font-bold text-slate-500">NUC / Player <input type="number" class="w-full border-slate-200 rounded text-sm mt-1 cost-input" data-type="CAPEX" data-cat="Electronica" data-con="NUC"></label>
+                    <label class="block mb-2 text-xs font-bold text-slate-500">Gestoría Legal <input type="number" class="w-full border-slate-200 rounded text-sm mt-1 cost-input" data-type="CAPEX" data-cat="Legal" data-con="Permisos"></label>
                 </div>
             </form>
         </div>
 
         <div id="tab-opex" class="tab-content space-y-6">
-            <div class="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r-lg mb-4">
-                <p class="text-sm font-bold text-orange-900">Gastos Operativos (OPEX)</p>
-                <p class="text-xs text-orange-700">Costos mensuales fijos y recurrentes.</p>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <h4 class="section-title">Suministros y Rentas</h4>
-                    <div class="space-y-3">
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Pago Luz Mensual (CFE)</span>
-                            <input type="number" class="cost-input" data-type="OPEX" data-cat="Suministros" data-con="Luz" data-rec="monthly"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Internet (SIM/Cable)</span>
-                            <input type="number" class="cost-input" data-type="OPEX" data-cat="Suministros" data-con="Internet" data-rec="monthly"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Renta Espacio</span>
-                            <input type="number" class="cost-input" data-type="OPEX" data-cat="Suministros" data-con="Renta Sitio" data-rec="monthly"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Costo Uso de Suelo</span>
-                            <input type="number" class="cost-input" data-type="OPEX" data-cat="Suministros" data-con="Uso Suelo" data-rec="monthly"></label>
-                    </div>
+            <form class="grid grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-xl border shadow-sm">
+                    <h4 class="font-bold border-b pb-2 mb-4">Suministros (Mensual)</h4>
+                    <label class="block mb-2 text-xs font-bold text-slate-500">Luz CFE <input type="number" class="w-full border-slate-200 rounded text-sm mt-1 cost-input" data-type="OPEX" data-cat="Suministros" data-con="Luz" data-rec="monthly"></label>
+                    <label class="block mb-2 text-xs font-bold text-slate-500">Internet <input type="number" class="w-full border-slate-200 rounded text-sm mt-1 cost-input" data-type="OPEX" data-cat="Suministros" data-con="Internet" data-rec="monthly"></label>
+                    <label class="block mb-2 text-xs font-bold text-slate-500">Renta Sitio <input type="number" class="w-full border-slate-200 rounded text-sm mt-1 cost-input" data-type="OPEX" data-cat="Suministros" data-con="Renta" data-rec="monthly"></label>
                 </div>
-
-                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <h4 class="section-title">Software y Licencias</h4>
-                    <div class="space-y-3">
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Licencia Anual (Broadsign/TV)</span>
-                            <input type="number" class="cost-input" data-type="OPEX" data-cat="Software" data-con="Licencias" data-rec="annual"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Programación Pauta</span>
-                            <input type="number" class="cost-input" data-type="OPEX" data-cat="Software" data-con="Pauta" data-rec="monthly"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Costo SRD</span>
-                            <input type="number" class="cost-input" data-type="OPEX" data-cat="Software" data-con="SRD" data-rec="monthly"></label>
-                    </div>
-                    
-                    <div class="mt-6 pt-6 border-t border-slate-100">
-                        <h4 class="section-title text-emerald-600">Ingresos (Ventas)</h4>
-                        <label class="block"><span class="text-xs font-bold text-emerald-700">Venta Mensual Publicidad</span>
-                            <input type="number" class="cost-input border-emerald-200 bg-emerald-50 font-bold" data-type="REVENUE" data-cat="Ventas" data-con="Publicidad" data-rec="monthly"></label>
-                    </div>
+                <div class="bg-white p-6 rounded-xl border shadow-sm">
+                    <h4 class="font-bold border-b pb-2 mb-4 text-emerald-600">Ingresos</h4>
+                    <label class="block mb-2 text-xs font-bold text-emerald-700">Venta Mensual <input type="number" class="w-full border-emerald-200 rounded text-sm mt-1 cost-input font-bold" data-type="REVENUE" data-cat="Ventas" data-con="Publicidad" data-rec="monthly"></label>
                 </div>
+            </form>
+        </div>
+        
+        <div id="tab-manto" class="tab-content">
+            <div class="bg-white p-6 rounded-xl border shadow-sm">
+                <h4 class="font-bold border-b pb-2 mb-4">Costos Preventivos</h4>
+                <label class="block mb-2 text-xs font-bold text-slate-500">Visita Bimestral <input type="number" class="w-full border-slate-200 rounded text-sm mt-1 cost-input" data-type="MAINTENANCE" data-cat="Preventivo" data-con="Visita" data-rec="bimonthly"></label>
             </div>
         </div>
-
-        <div id="tab-manto" class="tab-content space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <h4 class="section-title">Mantenimiento Preventivo</h4>
-                    <div class="space-y-3">
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Costo Bimestral (Cuadrilla)</span>
-                            <input type="number" class="cost-input" data-type="MAINTENANCE" data-cat="Preventivo" data-con="Cuadrilla" data-rec="bimonthly"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Insumos (Jabón/Trapos)</span>
-                            <input type="number" class="cost-input" data-type="MAINTENANCE" data-cat="Preventivo" data-con="Insumos" data-rec="bimonthly"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Gasolina y Transporte</span>
-                            <input type="number" class="cost-input" data-type="MAINTENANCE" data-cat="Preventivo" data-con="Gasolina" data-rec="bimonthly"></label>
-                    </div>
-                </div>
-                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <h4 class="section-title text-red-600">Mantenimiento Correctivo</h4>
-                    <p class="text-xs text-slate-400 mb-4">Costos no planeados por incidencias.</p>
-                    <div class="space-y-3">
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Costo Cuadrilla Extra</span>
-                            <input type="number" class="cost-input" data-type="MAINTENANCE" data-cat="Correctivo" data-con="Cuadrilla Extra"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Refacciones (Repuestos)</span>
-                            <input type="number" class="cost-input" data-type="MAINTENANCE" data-cat="Correctivo" data-con="Refacciones"></label>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="tab-ciclo" class="tab-content space-y-6">
-            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                <h4 class="section-title">Ciclo de Vida y Contingencias</h4>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                        <label class="block mb-2"><span class="text-xs font-bold text-slate-500">Retiro / Reubicación</span>
-                            <input type="number" class="cost-input" data-type="LIFECYCLE" data-cat="Retiro" data-con="Maniobra"></label>
-                        <p class="text-[10px] text-slate-400">Costo de maniobra de retiro.</p>
-                    </div>
-                    <div>
-                        <label class="block mb-2"><span class="text-xs font-bold text-slate-500">Renovación Tecnológica</span>
-                            <input type="number" class="cost-input" data-type="LIFECYCLE" data-cat="Renovacion" data-con="Hardware Nuevo"></label>
-                        <p class="text-[10px] text-slate-400">Cambio completo de activos.</p>
-                    </div>
-                    <div>
-                        <label class="block mb-2"><span class="text-xs font-bold text-slate-500">Implementaciones Especiales</span>
-                            <input type="number" class="cost-input" data-type="LIFECYCLE" data-cat="Especial" data-con="Sensores/Camaras"></label>
-                    </div>
-                </div>
-            </div>
-        </div>
-
     </main>
 
     <script>
-        // 1. TABS
+        const deviceId = "{{ device_id }}";
+        
         function switchTab(id) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
-            document.getElementById('tab-' + id).classList.add('active');
-            event.currentTarget.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(e => e.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(e => e.classList.remove('active'));
+            document.getElementById('tab-'+id).classList.add('active');
+            event.target.classList.add('active');
         }
 
-        // 2. CLASE PRINCIPAL
-        class TechViewApp {
-            constructor() {
-                this.deviceId = new URLSearchParams(window.location.search).get('device_id') || 'REF-01';
-                this.inputs = document.querySelectorAll('.cost-input');
-                this.init();
-            }
-
-            async init() {
-                // Agregar listeners
-                this.inputs.forEach(input => {
-                    input.addEventListener('input', () => this.calculateLocalTotals());
-                });
+        async function loadData() {
+            try {
+                const res = await fetch(`/api/techview/device/${deviceId}`);
+                const data = await res.json();
                 
-                // Cargar datos reales
-                await this.loadData();
-            }
-
-            async loadData() {
-                try {
-                    // Llamada a API (que conecta a supabase_service.py)
-                    const res = await fetch(`/api/techview/device/${encodeURIComponent(this.deviceId)}`);
-                    const data = await res.json();
-
-                    // Si hay datos breakdown, rellenar inputs específicos
-                    if(data.breakdown && data.breakdown.items) {
-                        data.breakdown.items.forEach(item => {
-                            // Buscar input que coincida con category/concept
-                            // Selector: input[data-cat="X"][data-con="Y"]
-                            const sel = `.cost-input[data-cat="${item.category}"][data-con="${item.concept}"]`;
-                            const input = document.querySelector(sel);
-                            if(input) input.value = item.amount;
-                        });
-                    }
-                    this.calculateLocalTotals();
-                } catch(e) { console.error("Error loading data", e); }
-            }
-
-            calculateLocalTotals() {
-                let capex = 0, opex = 0, revenue = 0;
-
-                this.inputs.forEach(input => {
-                    const val = parseFloat(input.value) || 0;
-                    const type = input.dataset.type;
-                    const rec = input.dataset.rec;
-
-                    if (type === 'CAPEX') capex += val;
-                    if (type === 'OPEX' && rec === 'monthly') opex += val;
-                    if (type === 'OPEX' && rec === 'annual') opex += (val / 12);
-                    if (type === 'MAINTENANCE' && rec === 'bimonthly') opex += (val / 2);
-                    if (type === 'REVENUE') revenue += val;
-                });
-
-                // Render KPIs
-                document.getElementById('kpi-capex').innerText = `$${capex.toLocaleString()}`;
-                document.getElementById('kpi-opex').innerText = `$${opex.toLocaleString()}`;
+                // Llenar inputs si existen datos
+                if(data.breakdown) {
+                    data.breakdown.forEach(item => {
+                        const input = document.querySelector(`.cost-input[data-type="${item.cost_type}"][data-con="${item.concept}"]`);
+                        if(input) input.value = item.amount;
+                    });
+                }
                 
-                const profit = revenue - opex;
-                document.getElementById('kpi-profit').innerText = `$${profit.toLocaleString()}`;
-                
-                const roi = profit > 0 ? (capex / profit).toFixed(1) : "Inf";
-                document.getElementById('kpi-roi').innerText = `ROI: ${roi} Meses`;
+                // Actualizar KPIs
+                document.getElementById('kpi-capex').innerText = `$${data.totals.capex.toLocaleString()}`;
+                document.getElementById('kpi-opex').innerText = `$${data.totals.opex.toLocaleString()}`;
+                document.getElementById('kpi-sales').innerText = `$${data.totals.revenue.toLocaleString()}`;
+            } catch(e) { console.error(e); }
+        }
 
-                this.updateChart(revenue, opex);
-            }
-
-            updateChart(sales, cost) {
-                const ctx = document.getElementById('summaryChart');
-                if(window.myChart) window.myChart.destroy();
-                window.myChart = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: ['Flujo Mensual'],
-                        datasets: [
-                            { label: 'Ingresos', data: [sales], backgroundColor: '#10B981' },
-                            { label: 'Egresos (OPEX)', data: [cost], backgroundColor: '#F97316' }
-                        ]
-                    },
-                    options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y' }
-                });
-            }
-
-            async saveAll() {
-                // Recorrer todos los inputs y enviar a la API
-                const promises = Array.from(this.inputs).map(async input => {
-                    const val = parseFloat(input.value);
-                    if (val > 0) { // Solo guardar valores reales
-                        const payload = {
-                            device_id: this.deviceId,
+        async function saveAll() {
+            const inputs = document.querySelectorAll('.cost-input');
+            const promises = Array.from(inputs).map(input => {
+                const val = parseFloat(input.value);
+                if(val > 0) {
+                    return fetch('/api/techview/save', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            device_id: deviceId,
                             cost_type: input.dataset.type,
                             category: input.dataset.cat,
                             concept: input.dataset.con,
                             recurrence: input.dataset.rec || 'one_time',
                             amount: val
-                        };
-                        return fetch('/api/techview/save', {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify(payload)
-                        });
-                    }
-                });
-
-                await Promise.all(promises);
-                alert("Costos guardados en Supabase correctamente.");
-            }
+                        })
+                    });
+                }
+            });
+            await Promise.all(promises);
+            alert('Datos guardados en Supabase.');
+            loadData(); // Recargar para actualizar KPIs
         }
 
-        // Inicializar al final
-        const app = new TechViewApp();
+        document.addEventListener('DOMContentLoaded', loadData);
     </script>
 </body>
 </html>
