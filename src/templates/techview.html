@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="es" class="light">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Argos TechView - Ingeniería de Costos</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#F97316",    
+                        "primary-dark": "#c2410c",
+                        secondary: "#3B82F6",  
+                        background: "#F8FAFC",
+                        dark: "#0F172A",
+                    },
+                    fontFamily: { body: ["Inter", "sans-serif"] },
+                },
+            },
+        };
+    </script>
+    <style>
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .icon-filled { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .progress-bar { transition: width 1s ease-in-out; }
+        /* Animación Modal */
+        #inventory-modal { transition: opacity 0.3s ease; }
+        #inventory-modal.hidden { opacity: 0; pointer-events: none; }
+    </style>
+</head>
+
+<body class="bg-slate-50 text-slate-800 font-body min-h-screen flex flex-col">
+
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-[1600px] mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2 cursor-pointer" onclick="window.location.href='/techview'">
+                    <div class="size-10 bg-slate-900 rounded-lg flex items-center justify-center text-primary shadow-lg">
+                        <span class="material-symbols-outlined icon-filled">grid_view</span>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold leading-tight tracking-tight text-slate-900">Argos <span class="text-primary">TechView</span></h2>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Módulo de Ingeniería</p>
+                    </div>
+                </div>
+
+                <div class="hidden md:flex items-center gap-2 text-xs text-slate-400 ml-6 border-l border-slate-200 pl-6">
+                    <span class="hover:text-primary cursor-pointer" onclick="openInventory()">Inventario Global</span>
+                    <span class="material-symbols-outlined text-[10px]">chevron_right</span>
+                    <span class="text-primary font-bold bg-orange-50 px-2 py-1 rounded cursor-pointer border border-orange-100 hover:bg-orange-100 transition" onclick="openInventory()" title="Clic para cambiar pantalla">
+                        <span id="screen-id-display">{{ device_id }}</span>
+                        <span class="material-symbols-outlined text-[10px] ml-1 align-middle">expand_more</span>
+                    </span>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <a href="/" class="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-bold text-xs transition shadow-md">
+                    <span class="material-symbols-outlined text-sm">arrow_back</span>
+                    Volver a Argos
+                </a>
+                <button onclick="window.close()" class="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 font-bold text-xs transition">
+                    <span class="material-symbols-outlined text-sm">close</span>
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 w-full max-w-[1600px] mx-auto px-6 py-8 flex flex-col gap-8">
+        
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-black tracking-tight text-slate-900 mb-2">Plan de Renovación Tecnológica</h1>
+                <p class="text-slate-500 max-w-2xl text-sm">
+                    Simulación de costos para el activo seleccionado. Los valores se calculan en tiempo real.
+                </p>
+            </div>
+            <button class="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-orange-600 text-white rounded-xl font-bold text-sm transition shadow-lg shadow-orange-500/30">
+                <span class="material-symbols-outlined icon-filled">save</span>
+                Guardar Presupuesto
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
+                <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <span class="material-symbols-outlined text-6xl text-slate-900">payments</span>
+                </div>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Costo Total Proyecto</p>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-3xl font-black text-slate-900" id="total-cost-display">$0</span>
+                </div>
+                <div class="mt-3 inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                    <span>Incluye Logística y Mano de Obra</span>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
+                <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <span class="material-symbols-outlined text-6xl text-emerald-500">trending_up</span>
+                </div>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Retorno de Inversión (ROI)</p>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-3xl font-black text-slate-900" id="roi-display">--</span>
+                    <span class="text-sm font-medium text-slate-400">Meses</span>
+                </div>
+                <div class="mt-3 flex items-center gap-1 text-xs font-bold text-emerald-600">
+                    <span class="material-symbols-outlined text-sm">arrow_upward</span>
+                    <span>Proyección estimada</span>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
+                <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <span class="material-symbols-outlined text-6xl text-blue-500">bolt</span>
+                </div>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Ahorro Energético</p>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-3xl font-black text-slate-900">2,450</span>
+                    <span class="text-sm font-medium text-slate-400">kWh/año</span>
+                </div>
+                <div class="mt-3 w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                    <div class="bg-blue-500 h-full rounded-full progress-bar" style="width: 65%"></div>
+                </div>
+            </div>
+
+             <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
+                <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <span class="material-symbols-outlined text-6xl text-slate-900">calendar_month</span>
+                </div>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Tiempo Ejecución</p>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-3xl font-black text-slate-900">4</span>
+                    <span class="text-sm font-medium text-slate-400">Días Totales</span>
+                </div>
+                <div class="mt-3 flex -space-x-2">
+                    <div class="size-6 rounded-full bg-primary border-2 border-white text-[10px] text-white flex items-center justify-center font-bold">1</div>
+                    <div class="size-6 rounded-full bg-primary/60 border-2 border-white text-[10px] text-white flex items-center justify-center font-bold">2</div>
+                    <div class="size-6 rounded-full bg-primary/30 border-2 border-white text-[10px] text-white flex items-center justify-center font-bold">3</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+            
+            <div class="xl:col-span-8 flex flex-col gap-6">
+                
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 class="text-lg font-bold flex items-center gap-2 text-slate-800 mb-4">
+                        <span class="material-symbols-outlined text-primary">compare_arrows</span>
+                        Comparativa de Equipamiento 
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-0 border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                        <div class="p-6 bg-slate-50 border-b md:border-b-0 md:border-r border-slate-200">
+                            <div class="flex justify-between items-start mb-4">
+                                <span class="px-3 py-1 rounded-full bg-slate-200 text-[10px] font-bold text-slate-600">ACTUAL (LEGACY)</span>
+                                <span class="material-symbols-outlined text-slate-300">history</span>
+                            </div>
+                            <div class="aspect-video w-full rounded-lg bg-slate-200 mb-6 flex items-center justify-center text-slate-400">
+                                <span class="material-symbols-outlined text-4xl">broken_image</span>
+                            </div>
+                            <div class="space-y-4">
+                                <div><p class="text-xs text-slate-400">Modelo</p><p class="text-base font-bold text-slate-700">Hardware Detectado</p></div>
+                                <div class="grid grid-cols-2 gap-4 text-sm">
+                                    <div><p class="text-xs text-slate-400">Estado</p><p class="font-bold text-red-500">Crítico</p></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-6 bg-white relative">
+                            <div class="absolute top-0 left-0 w-full h-1 bg-primary"></div>
+                            <div class="flex justify-between items-start mb-4">
+                                <span class="px-3 py-1 rounded-full bg-primary text-white text-[10px] font-bold shadow-md shadow-orange-500/20">PROPUESTA 2024</span>
+                                <span class="material-symbols-outlined text-primary icon-filled">stars</span>
+                            </div>
+                            <div class="aspect-video w-full rounded-lg bg-slate-900 mb-6 flex items-center justify-center text-primary relative overflow-hidden">
+                                <div class="absolute inset-0 bg-gradient-to-tr from-orange-500/20 to-blue-500/20"></div>
+                                <span class="material-symbols-outlined text-4xl relative z-10">screenshot_monitor</span>
+                            </div>
+                            <div class="space-y-4">
+                                <div><p class="text-xs text-slate-400">Modelo</p><p class="text-base font-bold text-slate-900">OLED 55" High-Bright Pro</p></div>
+                                <div class="grid grid-cols-2 gap-4 text-sm">
+                                    <div><p class="text-xs text-slate-400">Brillo</p><p class="font-bold text-primary">2500 nits</p></div>
+                                    <div><p class="text-xs text-slate-400">Procesador</p><p class="font-bold text-primary">NUC i5 11th Gen</p></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="xl:col-span-4 flex flex-col gap-6">
+                
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-fit sticky top-24">
+                    <div class="p-6 border-b border-slate-100 bg-slate-50 rounded-t-2xl">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="material-symbols-outlined text-primary">calculate</span>
+                            <h3 class="font-bold text-lg text-slate-800">Calculadora de Costos</h3>
+                        </div>
+                        <p class="text-xs text-slate-400">Edite los valores para recalcular el ROI en tiempo real.</p>
+                    </div>
+                    
+                    <div class="p-6 flex flex-col gap-5">
+                        <form id="cost-calculator" class="space-y-4">
+                            <label class="block group">
+                                <span class="text-xs font-bold text-slate-600 mb-1 block">Desmontaje (Mano de Obra)</span>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">$</span>
+                                    <input class="cost-input w-full bg-slate-50 border-slate-200 rounded-lg pl-6 pr-3 py-2 text-sm font-bold text-right text-slate-700 focus:ring-primary focus:border-primary outline-none transition" type="number" value="1200" data-cost="desmontaje"/>
+                                </div>
+                            </label>
+                            <label class="block group">
+                                <span class="text-xs font-bold text-slate-600 mb-1 block">Nuevas Pantallas (Hardware)</span>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">$</span>
+                                    <input class="cost-input w-full bg-slate-50 border-slate-200 rounded-lg pl-6 pr-3 py-2 text-sm font-bold text-right text-slate-700 focus:ring-primary focus:border-primary outline-none transition" type="number" value="38000" data-cost="pantallas"/>
+                                </div>
+                            </label>
+                            <label class="block group">
+                                <span class="text-xs font-bold text-slate-600 mb-1 block">Electrónica (NUC + UPS)</span>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">$</span>
+                                    <input class="cost-input w-full bg-slate-50 border-slate-200 rounded-lg pl-6 pr-3 py-2 text-sm font-bold text-right text-slate-700 focus:ring-primary focus:border-primary outline-none transition" type="number" value="4500" data-cost="electronica"/>
+                                </div>
+                            </label>
+                            <label class="block group">
+                                <span class="text-xs font-bold text-slate-600 mb-1 block">Instalación y Pruebas</span>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">$</span>
+                                    <input class="cost-input w-full bg-slate-50 border-slate-200 rounded-lg pl-6 pr-3 py-2 text-sm font-bold text-right text-slate-700 focus:ring-primary focus:border-primary outline-none transition" type="number" value="1500" data-cost="instalacion"/>
+                                </div>
+                            </label>
+                        </form>
+
+                        <div class="pt-6 border-t border-slate-100 mt-2">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-xs text-slate-400 font-bold uppercase">Subtotal Hardware</span>
+                                <span class="text-sm font-bold text-slate-600" id="subtotal-display">$0</span>
+                            </div>
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="text-xs text-slate-400 font-bold uppercase">Servicios</span>
+                                <span class="text-sm font-bold text-slate-600" id="services-display">$0</span>
+                            </div>
+                            <div class="flex justify-between items-center p-4 bg-slate-900 rounded-xl shadow-lg">
+                                <span class="text-xs font-bold text-slate-400 uppercase">Costo Total</span>
+                                <span class="font-black text-xl text-primary" id="final-total-display">$0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <div id="inventory-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeInventory()"></div>
+        
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden relative z-10 flex flex-col m-4">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="font-bold text-lg text-slate-800">Seleccionar Pantalla</h3>
+                <button onclick="closeInventory()" class="p-2 hover:bg-slate-100 rounded-full transition"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            
+            <div class="p-4 bg-slate-50 border-b border-slate-100">
+                <input type="text" id="inventory-search" placeholder="Buscar por Nombre, ID o IP..." class="w-full border-slate-200 rounded-lg p-3 text-sm focus:ring-primary focus:border-primary outline-none">
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-0">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 text-slate-500 font-semibold sticky top-0">
+                        <tr>
+                            <th class="px-6 py-3">ID / Nombre</th>
+                            <th class="px-6 py-3">Estado</th>
+                            <th class="px-6 py-3 text-right">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventory-list" class="divide-y divide-slate-100">
+                        <tr><td colspan="3" class="p-6 text-center text-slate-400">Cargando inventario...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. CALCULADORA ---
+        const inputs = document.querySelectorAll('.cost-input');
+        
+        function updateTotals() {
+            let subtotalHardware = 0;
+            let subtotalServices = 0;
+
+            inputs.forEach(input => {
+                const val = parseFloat(input.value) || 0;
+                const type = input.dataset.cost;
+
+                if (type === 'pantallas' || type === 'electronica') {
+                    subtotalHardware += val;
+                } else {
+                    subtotalServices += val;
+                }
+            });
+
+            const total = subtotalHardware + subtotalServices;
+            
+            // Formateador de moneda
+            const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+
+            document.getElementById('subtotal-display').innerText = fmt.format(subtotalHardware);
+            document.getElementById('services-display').innerText = fmt.format(subtotalServices);
+            document.getElementById('final-total-display').innerText = fmt.format(total);
+            document.getElementById('total-cost-display').innerText = fmt.format(total);
+
+            // ROI (Simulado: Ingreso Promedio $3,500/mes)
+            const monthlyRevenue = 3500; 
+            const roiMonths = (total / monthlyRevenue).toFixed(1);
+            document.getElementById('roi-display').innerText = roiMonths;
+        }
+
+        inputs.forEach(input => input.addEventListener('input', updateTotals));
+        
+        // --- 2. MODAL INVENTARIO ---
+        const modal = document.getElementById('inventory-modal');
+        let inventoryData = [];
+
+        function openInventory() {
+            modal.classList.remove('hidden');
+            loadInventory();
+        }
+
+        function closeInventory() {
+            modal.classList.add('hidden');
+        }
+
+        async function loadInventory() {
+            if(inventoryData.length > 0) return; // Ya cargado
+
+            try {
+                const res = await fetch('/api/techview/inventory');
+                inventoryData = await res.json();
+                renderInventory(inventoryData);
+            } catch (e) {
+                console.error("Error cargando inventario", e);
+            }
+        }
+
+        function renderInventory(data) {
+            const tbody = document.getElementById('inventory-list');
+            tbody.innerHTML = '';
+            
+            data.forEach(device => {
+                const statusColor = device.status === 'online' ? 'text-emerald-500' : 'text-red-500';
+                
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition";
+                tr.innerHTML = `
+                    <td class="px-6 py-4">
+                        <p class="font-bold text-slate-800">${device.pc_name || 'Sin Nombre'}</p>
+                        <p class="text-xs text-slate-400 font-mono">${device.device_id}</p>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="flex items-center gap-2 text-xs font-bold uppercase ${statusColor}">
+                            <span class="size-2 rounded-full bg-current"></span> ${device.status || 'Unknown'}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <button onclick="selectDevice('${device.device_id}')" class="px-3 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-primary hover:text-white hover:border-primary transition shadow-sm">
+                            Seleccionar
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Buscador básico
+        document.getElementById('inventory-search').addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const filtered = inventoryData.filter(d => 
+                (d.pc_name && d.pc_name.toLowerCase().includes(term)) || 
+                (d.device_id && d.device_id.toLowerCase().includes(term))
+            );
+            renderInventory(filtered);
+        });
+
+        function selectDevice(id) {
+            // Recargar la página con el nuevo ID (simulando cambio de contexto)
+            window.location.href = `/techview?device_id=${id}`;
+        }
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', updateTotals);
+    </script>
+</body>
+</html>
