@@ -34,12 +34,13 @@
         .drawer-slide { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         .nav-active { background-color: #1e293b !important; color: white !important; border-left: 4px solid #F97316; }
         
-        /* CORRECCIÓN DE TEXTO SOBREPUESTO */
-        .cell-truncate {
+        /* CORRECCIÓN CRÍTICA PARA TEXTO SOBREPUESTO */
+        .truncate-col {
+            display: block;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 250px; /* Ancho máximo forzado */
+            max-width: 200px; /* Ajusta este ancho si es necesario */
         }
     </style>
 </head>
@@ -68,7 +69,7 @@
 
             <div class="h-8 w-px bg-slate-200 mx-2"></div>
 
-            <div class="flex items-center bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 cursor-help" title="Conexión Establecida">
+            <div class="flex items-center bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 cursor-help">
                 <span class="relative flex h-2.5 w-2.5 mr-2">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
@@ -85,7 +86,11 @@
     <main class="flex-1 overflow-y-auto p-6 scroll-smooth custom-scroll w-full max-w-[1920px] mx-auto">
         
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8" id="kpi-container">
-            </div>
+            <div class="animate-pulse bg-white h-32 rounded-2xl border border-slate-100"></div>
+            <div class="animate-pulse bg-white h-32 rounded-2xl border border-slate-100"></div>
+            <div class="animate-pulse bg-white h-32 rounded-2xl border border-slate-100"></div>
+            <div class="animate-pulse bg-white h-32 rounded-2xl border border-slate-100"></div>
+        </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
@@ -121,7 +126,8 @@
                         <table class="w-full text-left border-collapse" id="assets-table">
                             <thead class="bg-slate-50/80 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-wider">
                                 <tr>
-                                    <th class="p-4 w-5/12">Sitio / Clave QTM</th> <th class="p-4">Especificaciones</th>
+                                    <th class="p-4 w-1/3">Sitio / Clave QTM</th>
+                                    <th class="p-4">Especificaciones</th>
                                     <th class="p-4 text-right">Inversión (CAPEX)</th>
                                     <th class="p-4 text-right">Rentabilidad</th>
                                     <th class="p-4 text-center">Acciones</th>
@@ -211,9 +217,10 @@
                         specs: 'P3.9 Outdoor'
                     }));
                 } catch (e) {
-                    // Fallback
+                    console.log("Usando datos locales por error API");
                     assets = [
-                        { id: 'REF-01', name: 'Torre Reforma LED Principal', qtm: 'QTM-001', investment: 1200000, monthly_revenue: 85000, monthly_cost: 12000, status: 'ok', specs: 'P3.9 Outdoor' }
+                        { id: 'REF-01', name: 'Torre Reforma LED Principal', qtm: 'QTM-001', investment: 1200000, monthly_revenue: 85000, monthly_cost: 12000, status: 'ok', specs: 'P3.9 Outdoor' },
+                        { id: 'SAT-04', name: 'Mupi Satélite Norte', qtm: 'QTM-042', investment: 450000, monthly_revenue: 32000, monthly_cost: 4500, status: 'warning', specs: 'P2.5 Indoor' }
                     ];
                 }
                 return { assets, kpis: this.mockKPIs, financials: this.mockFinancials };
@@ -226,7 +233,11 @@
                     sales: {
                         title: "Registro de Venta Publicitaria",
                         subtitle: "Ingreso de pauta para cálculo de ROI.",
-                        html: `<form>...</form>` // Simplificado para brevedad, insertar HTML de ventas aquí
+                        html: `<form class="space-y-4">
+                                <label class="block"><span class="text-xs font-bold text-slate-500">Cliente</span><input type="text" class="w-full rounded-lg border-slate-200"></label>
+                                <label class="block"><span class="text-xs font-bold text-slate-500">Monto</span><input type="number" class="w-full rounded-lg border-slate-200"></label>
+                                <button type="button" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-lg">Guardar</button>
+                               </form>`
                     }
                 };
             }
@@ -262,11 +273,12 @@
                     return `
                     <tr class="hover:bg-slate-50/50 transition border-b border-slate-50 group">
                         <td class="p-4">
-                            <div class="flex items-center gap-3 w-full">
-                                <div class="w-10 h-10 shrink-0 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-xs group-hover:bg-primary group-hover:text-white transition">
+                            <div class="flex items-center gap-3 w-full max-w-[300px]">
+                                <div class="size-10 shrink-0 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-xs group-hover:bg-primary group-hover:text-white transition">
                                     ${asset.id.substring(0,3)}
                                 </div>
-                                <div class="min-w-0 flex-1"> <p class="text-sm font-bold text-slate-700 cell-truncate" title="${asset.name}">${asset.name}</p>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-bold text-slate-700 truncate-col" title="${asset.name}">${asset.name}</p>
                                     <p class="text-[10px] font-mono text-slate-400">${asset.qtm}</p>
                                 </div>
                             </div>
@@ -303,17 +315,33 @@
                     </div>
                 `;
             }
-            // ... (openDrawer y closeDrawer se mantienen igual)
-            openDrawer(type) { /* ... */ }
-            closeDrawer() { 
-                document.getElementById('drawer').classList.add('translate-x-full'); 
-                document.getElementById('overlay').classList.add('hidden');
+
+            openDrawer(type) {
+                const drawer = document.getElementById('drawer');
+                const overlay = document.getElementById('overlay');
+                if (this.forms[type]) {
+                    document.getElementById('d-title').innerText = this.forms[type].title;
+                    document.getElementById('d-subtitle').innerText = this.forms[type].subtitle;
+                    document.getElementById('d-content').innerHTML = this.forms[type].html;
+                    overlay.classList.remove('hidden');
+                    setTimeout(() => overlay.classList.add('opacity-100'), 10);
+                    drawer.classList.remove('translate-x-full');
+                }
+            }
+
+            closeDrawer() {
+                const drawer = document.getElementById('drawer');
+                const overlay = document.getElementById('overlay');
+                drawer.classList.add('translate-x-full');
+                overlay.classList.remove('opacity-100');
+                setTimeout(() => overlay.classList.add('hidden'), 400);
             }
         }
 
         class ChartManager {
             renderCharts(data) {
-                new Chart(document.getElementById('rentabilityChart').getContext('2d'), {
+                const ctxRent = document.getElementById('rentabilityChart').getContext('2d');
+                new Chart(ctxRent, {
                     type: 'bar',
                     data: {
                         labels: data.months,
@@ -322,21 +350,22 @@
                             { label: 'Costos', data: data.maintenance, backgroundColor: '#F97316', borderRadius: 6 }
                         ]
                     },
-                    options: { responsive: true, maintainAspectRatio: false }
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
                 });
                 
-                new Chart(document.getElementById('capexChart').getContext('2d'), {
+                const ctxCapex = document.getElementById('capexChart').getContext('2d');
+                new Chart(ctxCapex, {
                     type: 'doughnut',
                     data: {
                         labels: ['Pantallas', 'Obra', 'Legal'],
                         datasets: [{ data: [55, 30, 15], backgroundColor: ['#3B82F6', '#F97316', '#8B5CF6'] }]
                     },
-                    options: { responsive: true, maintainAspectRatio: false, cutout: '75%' }
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } } }
                 });
             }
         }
 
-        const app = new ArgosApp();
+        // --- INICIALIZACIÓN ---
         class ArgosApp {
             constructor() {
                 this.db = new SupabaseService();
@@ -344,6 +373,7 @@
                 this.charts = new ChartManager();
             }
             async init() {
+                console.log('Argos OS: Iniciando...');
                 const data = await this.db.fetchData();
                 this.ui.renderKPIs(data.kpis);
                 this.ui.renderTable(data.assets);
@@ -351,8 +381,13 @@
                 this.charts.renderCharts(data.financials);
                 lucide.createIcons();
             }
+            get ui() { return this._ui; }
+            set ui(val) { this._ui = val; }
         }
+
+        const app = new ArgosApp(); // Instanciamos AQUÍ, después de definir la clase
         document.addEventListener('DOMContentLoaded', () => app.init());
+
     </script>
 </body>
 </html>
