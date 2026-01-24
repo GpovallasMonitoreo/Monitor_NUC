@@ -4,55 +4,46 @@ from src.services.supabase_service import SupabaseService
 bp = Blueprint('views', __name__)
 db_service = SupabaseService()
 
-# ==========================================
-# RUTAS ORIGINALES DEL MONITOR (NO BORRAR)
-# ==========================================
-
+# --- RUTAS PRINCIPALES (NO TOCAR) ---
 @bp.route('/')
-def home():
-    return render_template('index.html')
-
+def home(): return render_template('index.html')
 @bp.route('/monitor')
-def monitor():
-    return render_template('monitor.html')
-
+def monitor(): return render_template('monitor.html')
 @bp.route('/latency')
-def latency():
-    return render_template('latency.html')
-
+def latency(): return render_template('latency.html')
 @bp.route('/map')
-def map_view():
-    return render_template('map.html')
-
-# --- INVENTARIO ---
+def map_view(): return render_template('map.html')
 @bp.route('/inventory')
-def inventory_main():
-    return render_template('inventory/main.html')
-
+def inventory_main(): return render_template('inventory/main.html')
 @bp.route('/inventory/manuals')
-def inventory_manuals():
-    return render_template('inventory/manuals.html')
-
+def inventory_manuals(): return render_template('inventory/manuals.html')
 @bp.route('/inventory/specs')
-def inventory_specs():
-    return render_template('inventory/specs.html')
-
+def inventory_specs(): return render_template('inventory/specs.html')
 @bp.route('/inventory/logs')
-def inventory_logs():
-    return render_template('inventory/logs.html')
+def inventory_logs(): return render_template('inventory/logs.html')
 
 # ==========================================
-# MÓDULO TECHVIEW (FINANZAS & COSTOS)
+# MÓDULO TECHVIEW (COMPLETO)
 # ==========================================
 
 @bp.route('/techview')
 def techview_home():
+    """Dashboard General Financiero"""
     return render_template('dashboard_finanzas.html')
 
 @bp.route('/techview/detail')
 def techview_detail():
+    """Formulario de Edición de Costos"""
     device_id = request.args.get('device_id', 'REF-01')
     return render_template('techview.html', device_id=device_id)
+
+@bp.route('/techview/analysis')
+def techview_analysis():
+    """
+    NUEVO: Dashboard Visual Premium (Site Analysis).
+    """
+    device_id = request.args.get('device_id', 'REF-01')
+    return render_template('site_analysis.html', device_id=device_id)
 
 @bp.route('/techview/proposal')
 def techview_proposal():
@@ -62,36 +53,25 @@ def techview_proposal():
 
 @bp.route('/api/techview/dashboard')
 def api_dashboard():
-    """Datos Dashboard Global"""
     data = db_service.get_financial_overview()
-    # Si la data viene vacía, el método del servicio ya retorna una estructura segura
+    if not data: return jsonify({"kpis": {}, "financials": {}})
     return jsonify(data)
 
 @bp.route('/api/techview/device/<path:device_id>')
 def api_device(device_id):
-    """Detalle por Dispositivo"""
     data = db_service.get_device_detail(device_id)
+    if not data: return jsonify({"totals": {}, "eco": {}})
     return jsonify(data)
 
 @bp.route('/api/techview/inventory')
 def api_inventory():
-    """Lista Inventario"""
     try:
         res = db_service.client.table("devices").select("device_id, pc_name, status, ip_address").execute()
-        return jsonify(res.data if res.data else [])
-    except Exception as e:
-        print(f"API Inventory Error: {e}")
-        return jsonify([]) # Retornar lista vacía, no error 500
+        return jsonify(res.data or [])
+    except: return jsonify([])
 
 @bp.route('/api/techview/save', methods=['POST'])
 def api_save():
-    """Guardar Costos"""
     success = db_service.save_cost_entry(request.json)
     if success: return jsonify({"status": "ok"}), 200
     return jsonify({"status": "error"}), 500
-
-@bp.route('/techview/site_analysis')
-def site_analysis():
-    """Vista de detalle 'Premium' por pantalla"""
-    device_id = request.args.get('device_id', 'REF-01')
-    return render_template('site_analysis.html', device_id=device_id)
