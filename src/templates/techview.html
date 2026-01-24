@@ -4,239 +4,313 @@
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>Argos TechView - Detalle de Activo</title>
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
-    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <script>
         tailwind.config = {
-            theme: { extend: { colors: { primary: "#F97316", secondary: "#3B82F6" } } }
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#F97316",    
+                        "primary-dark": "#c2410c",
+                        secondary: "#3B82F6",  
+                        background: "#F8FAFC",
+                        dark: "#0F172A",
+                    },
+                    fontFamily: { body: ["Inter", "sans-serif"] },
+                },
+            },
         };
     </script>
     <style>
-        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .icon-filled { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .progress-bar { transition: width 1s ease-in-out; }
+        
+        /* ESTILOS TABS */
+        .tab-content { display: none; animation: fadeIn 0.4s ease; }
         .tab-content.active { display: block; }
-        .nav-tab.active { border-bottom: 2px solid #F97316; color: #F97316; font-weight: 700; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .tab-btn.active { border-bottom: 3px solid #F97316; color: #F97316; font-weight: 700; background: #fff7ed; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
 
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 px-6 py-4 flex justify-between items-center shadow-sm">
-        <div class="flex items-center gap-4">
-            <div class="size-10 bg-slate-900 rounded-lg flex items-center justify-center text-primary">
-                <span class="material-icons-outlined">settings_input_component</span>
+<body class="bg-slate-50 text-slate-800 font-body min-h-screen flex flex-col">
+
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-[1600px] mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <div class="size-10 bg-slate-900 rounded-lg flex items-center justify-center text-primary shadow-lg">
+                        <span class="material-symbols-outlined icon-filled">grid_view</span>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold leading-tight tracking-tight text-slate-900">Argos <span class="text-primary">TechView</span></h2>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Módulo de Ingeniería</p>
+                    </div>
+                </div>
+                <div class="hidden md:flex items-center gap-2 text-xs text-slate-400 ml-6 border-l border-slate-200 pl-6">
+                    <span>Inventario Global</span>
+                    <span class="material-symbols-outlined text-[10px]">chevron_right</span>
+                    <span class="text-primary font-bold bg-orange-50 px-2 py-1 rounded border border-orange-100">{{ device_id }}</span>
+                </div>
             </div>
-            <div>
-                <h2 class="text-lg font-bold text-slate-900">Gestión de Activo: <span class="text-primary">{{ device_id }}</span></h2>
-                <p class="text-[10px] uppercase font-bold text-slate-400">Configuración Financiera & Técnica</p>
+
+            <div class="flex gap-3">
+                <button class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600 font-bold text-xs transition shadow-sm">
+                    <span class="material-symbols-outlined text-sm">picture_as_pdf</span>
+                    Exportar Reporte
+                </button>
+                <button onclick="window.location.href='/techview'" class="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 font-bold text-xs transition">
+                    <span class="material-symbols-outlined text-sm">close</span>
+                    Cerrar
+                </button>
             </div>
-        </div>
-        <div class="flex gap-2">
-            <button onclick="window.location.href='/techview'" class="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 font-bold text-xs transition">
-                <span class="material-icons-outlined text-sm">close</span> Cerrar Pantalla
-            </button>
         </div>
     </header>
 
-    <div class="bg-white border-b border-slate-200 px-6">
-        <div class="flex gap-8 overflow-x-auto">
-            <button onclick="switchTab('resumen')" class="nav-tab active py-4 text-sm text-slate-500 hover:text-slate-800 transition relative">Resumen & KPIs</button>
-            <button onclick="switchTab('capex')" class="nav-tab py-4 text-sm text-slate-500 hover:text-slate-800 transition relative">1. CAPEX (Inversión)</button>
-            <button onclick="switchTab('opex')" class="nav-tab py-4 text-sm text-slate-500 hover:text-slate-800 transition relative">2. OPEX & Ventas</button>
-            <button onclick="switchTab('manto')" class="nav-tab py-4 text-sm text-slate-500 hover:text-slate-800 transition relative">3. Mantenimiento</button>
-            <button onclick="switchTab('ciclo')" class="nav-tab py-4 text-sm text-slate-500 hover:text-slate-800 transition relative">4. Ciclo de Vida</button>
-        </div>
-    </div>
-
-    <main class="flex-1 p-6 max-w-[1600px] mx-auto w-full">
+    <main class="flex-1 w-full max-w-[1600px] mx-auto px-6 py-8 flex flex-col gap-8">
         
-        <div id="tab-resumen" class="tab-content active space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <p class="text-xs font-bold text-slate-400 uppercase">Rentabilidad Mensual</p>
-                    <div class="flex items-end gap-2 mt-1">
-                        <span class="text-3xl font-black text-emerald-600" id="kpi-rentabilidad">$0.00</span>
-                        <span class="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 rounded">Neto</span>
-                    </div>
-                    <p class="text-[10px] text-slate-400 mt-2">Ventas - (OPEX + Manto Promedio)</p>
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-black tracking-tight text-slate-900 mb-2">Gestión Integral de Activo</h1>
+                <p class="text-slate-500 max-w-2xl text-sm">
+                    Administración de costos CAPEX, OPEX y Ciclo de Vida para la ubicación seleccionada.
+                </p>
+            </div>
+            <button class="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-orange-600 text-white rounded-xl font-bold text-sm transition shadow-lg shadow-orange-500/30">
+                <span class="material-symbols-outlined icon-filled">save</span>
+                Guardar Cambios
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
+                <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <span class="material-symbols-outlined text-6xl text-slate-900">payments</span>
                 </div>
-                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <p class="text-xs font-bold text-slate-400 uppercase">Costo Total Acumulado</p>
-                    <div class="flex items-end gap-2 mt-1">
-                        <span class="text-3xl font-black text-slate-800" id="kpi-total-cost">$0.00</span>
-                    </div>
-                    <p class="text-[10px] text-slate-400 mt-2">CAPEX + (OPEX x Meses Activo)</p>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Costo Total Proyecto</p>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-3xl font-black text-slate-900" id="total-cost-display">$0</span>
                 </div>
-                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <p class="text-xs font-bold text-slate-400 uppercase">Estado Salud Financiera</p>
-                    <div class="flex items-end gap-2 mt-1">
-                        <span class="text-3xl font-black text-primary">ROI: <span id="kpi-roi">--</span></span>
-                        <span class="text-xs text-slate-400">Meses</span>
-                    </div>
-                    <p class="text-[10px] text-slate-400 mt-2">Tiempo retorno de inversión</p>
+                <div class="mt-3 inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                    <span>CAPEX + OPEX Acumulado</span>
                 </div>
             </div>
 
-            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-96">
-                <h3 class="font-bold text-sm text-slate-700 mb-4">Proyección Anual: Costos vs Ventas</h3>
-                <canvas id="summaryChart"></canvas>
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
+                <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <span class="material-symbols-outlined text-6xl text-emerald-500">trending_up</span>
+                </div>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Rentabilidad Mensual</p>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-3xl font-black text-emerald-600" id="monthly-margin-display">$0</span>
+                </div>
+                <div class="mt-3 flex items-center gap-1 text-xs font-bold text-emerald-600">
+                    <span class="material-symbols-outlined text-sm">arrow_upward</span>
+                    <span>Margen Operativo</span>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
+                <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <span class="material-symbols-outlined text-6xl text-blue-500">bolt</span>
+                </div>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Retorno Inversión (ROI)</p>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-3xl font-black text-slate-900" id="roi-display">--</span>
+                    <span class="text-sm font-medium text-slate-400">Meses</span>
+                </div>
+                <div class="mt-3 w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                    <div class="bg-blue-500 h-full rounded-full progress-bar" style="width: 65%"></div>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
+                <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <span class="material-symbols-outlined text-6xl text-slate-900">calendar_month</span>
+                </div>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Estado Salud</p>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-3xl font-black text-slate-900">Ok</span>
+                </div>
+                <div class="mt-3 flex -space-x-2">
+                    <div class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold">Sin Incidencias</div>
+                </div>
             </div>
         </div>
 
-        <div id="tab-capex" class="tab-content space-y-6">
-            <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl mb-6">
-                <p class="text-xs text-blue-800"><strong>Definición:</strong> Costos únicos de activación pagados una sola vez.</p>
+        <div class="w-full bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="flex border-b border-slate-100 overflow-x-auto">
+                <button onclick="switchTab('resumen')" class="tab-btn active px-6 py-4 text-sm text-slate-600 hover:text-primary transition flex items-center gap-2 whitespace-nowrap">
+                    <span class="material-symbols-outlined text-lg">dashboard</span> Resumen
+                </button>
+                <button onclick="switchTab('capex')" class="tab-btn px-6 py-4 text-sm text-slate-600 hover:text-primary transition flex items-center gap-2 whitespace-nowrap">
+                    <span class="material-symbols-outlined text-lg">domain_add</span> 1. CAPEX (Inversión)
+                </button>
+                <button onclick="switchTab('opex')" class="tab-btn px-6 py-4 text-sm text-slate-600 hover:text-primary transition flex items-center gap-2 whitespace-nowrap">
+                    <span class="material-symbols-outlined text-lg">receipt_long</span> 2. OPEX (Gastos)
+                </button>
+                <button onclick="switchTab('manto')" class="tab-btn px-6 py-4 text-sm text-slate-600 hover:text-primary transition flex items-center gap-2 whitespace-nowrap">
+                    <span class="material-symbols-outlined text-lg">build</span> 3. Mantenimiento
+                </button>
+                <button onclick="switchTab('ciclo')" class="tab-btn px-6 py-4 text-sm text-slate-600 hover:text-primary transition flex items-center gap-2 whitespace-nowrap">
+                    <span class="material-symbols-outlined text-lg">restart_alt</span> 4. Ciclo de Vida
+                </button>
             </div>
-            
-            <form id="form-capex" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-white p-6 rounded-xl border border-slate-200">
-                    <h4 class="font-bold text-slate-800 border-b border-slate-100 pb-2 mb-4">1. Infraestructura</h4>
-                    <div class="space-y-3">
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Costo Pantalla LED</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm input-calc" data-group="capex"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Obra Civil (Base)</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm input-calc" data-group="capex"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Estructura Metal</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm input-calc" data-group="capex"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Inst. Eléctrica & Datos</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm input-calc" data-group="capex"></label>
+
+            <div class="p-8 bg-slate-50 min-h-[500px]">
+                
+                <div id="tab-resumen" class="tab-content active">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div class="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                            <h3 class="font-bold text-slate-800 mb-4">Proyección Financiera Anual</h3>
+                            <canvas id="summaryChart" height="250"></canvas>
+                        </div>
+                        <div class="space-y-6">
+                            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                                <h3 class="font-bold text-slate-800 mb-4">Estado del Medio</h3>
+                                <div class="space-y-4">
+                                    <div class="flex justify-between text-sm"><span class="text-slate-500">Hardware</span> <span class="font-bold">NUC 11th Gen</span></div>
+                                    <div class="flex justify-between text-sm"><span class="text-slate-500">Panel</span> <span class="font-bold">P3.9 Outdoor</span></div>
+                                    <div class="flex justify-between text-sm"><span class="text-slate-500">Garantía</span> <span class="font-bold text-emerald-600">Vigente (8 Meses)</span></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="bg-white p-6 rounded-xl border border-slate-200">
-                    <h4 class="font-bold text-slate-800 border-b border-slate-100 pb-2 mb-4">2. Electrónica Inicial</h4>
-                    <div class="space-y-3">
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Kit Procesamiento (NUC+Sending)</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm input-calc" data-group="capex"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Conectividad (Módems/Teltonika)</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm input-calc" data-group="capex"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Seguridad (Cámaras/UPS)</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm input-calc" data-group="capex"></label>
+                <div id="tab-capex" class="tab-content">
+                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg">
+                        <p class="text-sm text-blue-900 font-bold">Inversión Inicial (Activos Fijos)</p>
+                        <p class="text-xs text-blue-700">Costos únicos para la activación del sitio.</p>
                     </div>
-                </div>
-
-                <div class="bg-white p-6 rounded-xl border border-slate-200 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <h4 class="font-bold text-slate-800 border-b border-slate-100 pb-2 mb-4">3. Mano de Obra (Instalación)</h4>
-                        <label class="block mb-2"><span class="text-xs font-bold text-slate-500">Cuadrilla (6 técnicos / 15 días)</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm input-calc" data-group="capex"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Viáticos & Gasolina</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm input-calc" data-group="capex"></label>
-                    </div>
-                    <div>
-                        <h4 class="font-bold text-slate-800 border-b border-slate-100 pb-2 mb-4">4. Legal & Admin</h4>
-                        <label class="block mb-2"><span class="text-xs font-bold text-slate-500">Gestoría Alcaldía / Permisos</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm input-calc" data-group="capex"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Alta QTM / Admin</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm input-calc" data-group="capex"></label>
-                    </div>
-                </div>
-            </form>
-            <div class="bg-slate-900 text-white p-4 rounded-xl flex justify-between items-center">
-                <span>Total CAPEX (Inversión)</span>
-                <span class="text-xl font-bold" id="total-capex">$0.00</span>
-            </div>
-        </div>
-
-        <div id="tab-opex" class="tab-content space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-white p-6 rounded-xl border border-slate-200">
-                    <h4 class="font-bold text-slate-800 mb-4">Gastos Mensuales (OPEX)</h4>
-                    <div class="space-y-3">
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Renta Sitio / Uso de Suelo</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm input-calc" data-group="opex"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Luz (CFE)</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm input-calc" data-group="opex"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Internet (Total Play/SIM)</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm input-calc" data-group="opex"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Licencias (Broadsign/TeamViewer)</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm input-calc" data-group="opex"></label>
-                    </div>
-                    <div class="mt-4 pt-4 border-t border-slate-100 flex justify-between font-bold text-primary">
-                        <span>Total OPEX Mensual</span>
-                        <span id="total-opex">$0.00</span>
-                    </div>
-                </div>
-
-                <div class="bg-white p-6 rounded-xl border border-slate-200">
-                    <h4 class="font-bold text-slate-800 mb-4">Registro de Ventas</h4>
-                    <div class="space-y-4">
-                        <div class="p-3 bg-emerald-50 rounded-lg border border-emerald-100">
-                            <label class="block mb-2"><span class="text-xs font-bold text-emerald-700">Ingreso Mensual Promedio</span> <input type="number" class="w-full rounded-lg border-emerald-200 text-sm font-bold text-emerald-800 input-calc" data-group="sales"></label>
+                    <form class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                            <h4 class="font-bold text-slate-800 border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary">foundation</span> Infraestructura
+                            </h4>
+                            <div class="space-y-4">
+                                <label class="block"><span class="text-xs font-bold text-slate-500 uppercase">Pantalla LED ($)</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm mt-1 input-calc" data-group="capex"></label>
+                                <label class="block"><span class="text-xs font-bold text-slate-500 uppercase">Obra Civil / Base ($)</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm mt-1 input-calc" data-group="capex"></label>
+                                <label class="block"><span class="text-xs font-bold text-slate-500 uppercase">Estructura Metal ($)</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm mt-1 input-calc" data-group="capex"></label>
+                                <label class="block"><span class="text-xs font-bold text-slate-500 uppercase">Inst. Eléctrica ($)</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm mt-1 input-calc" data-group="capex"></label>
+                            </div>
                         </div>
                         
-                        <div class="mt-4">
-                            <h5 class="text-xs font-bold text-slate-500 uppercase mb-2">Campañas Activas</h5>
-                            <table class="w-full text-xs text-left">
-                                <thead class="border-b"><tr><th>Cliente</th><th>Fin</th><th class="text-right">Monto</th></tr></thead>
-                                <tbody>
-                                    <tr><td class="py-2">Coca-Cola</td><td>Dic 2025</td><td class="text-right font-bold">$15,000</td></tr>
-                                    <tr><td class="py-2">Nike</td><td>Nov 2025</td><td class="text-right font-bold">$12,500</td></tr>
-                                </tbody>
-                            </table>
-                            <button class="mt-3 w-full py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700">Registrar Nueva Venta</button>
+                        <div class="space-y-8">
+                            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                                <h4 class="font-bold text-slate-800 border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-primary">memory</span> Electrónica
+                                </h4>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <label class="block"><span class="text-xs font-bold text-slate-500 uppercase">Kit NUC + Sending</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm mt-1 input-calc" data-group="capex"></label>
+                                    <label class="block"><span class="text-xs font-bold text-slate-500 uppercase">Conectividad</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm mt-1 input-calc" data-group="capex"></label>
+                                </div>
+                            </div>
+                            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                                <h4 class="font-bold text-slate-800 border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-primary">engineering</span> Mano de Obra & Legal
+                                </h4>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <label class="block"><span class="text-xs font-bold text-slate-500 uppercase">Cuadrilla Instalación</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm mt-1 input-calc" data-group="capex"></label>
+                                    <label class="block"><span class="text-xs font-bold text-slate-500 uppercase">Gestoría Permisos</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm mt-1 input-calc" data-group="capex"></label>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="tab-opex" class="tab-content">
+                    <div class="bg-orange-50 border-l-4 border-orange-500 p-4 mb-6 rounded-r-lg">
+                        <p class="text-sm text-orange-900 font-bold">Gastos Operativos (Recurrentes)</p>
+                        <p class="text-xs text-orange-700">Costos mensuales obligatorios para mantener la pantalla activa.</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                            <h4 class="font-bold text-slate-800 border-b border-slate-100 pb-3 mb-4">Suministros y Rentas</h4>
+                            <div class="space-y-4">
+                                <label class="block"><span class="text-xs font-bold text-slate-500">Renta Mensual Sitio ($)</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm mt-1 input-calc" data-group="opex"></label>
+                                <label class="block"><span class="text-xs font-bold text-slate-500">Luz CFE ($)</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm mt-1 input-calc" data-group="opex"></label>
+                                <label class="block"><span class="text-xs font-bold text-slate-500">Internet (ISP/SIM) ($)</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm mt-1 input-calc" data-group="opex"></label>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                            <h4 class="font-bold text-slate-800 border-b border-slate-100 pb-3 mb-4">Ventas e Ingresos</h4>
+                            <div class="bg-emerald-50 p-4 rounded-lg border border-emerald-100 mb-4">
+                                <label class="block"><span class="text-xs font-bold text-emerald-800">Ingreso Mensual Promedio ($)</span> <input type="number" class="w-full rounded-lg border-emerald-200 text-sm mt-1 font-bold text-emerald-700 input-calc" data-group="sales"></label>
+                            </div>
+                            <p class="text-xs text-slate-400">Ingrese el promedio de facturación mensual para calcular el ROI.</p>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <div id="tab-manto" class="tab-content space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-white p-6 rounded-xl border border-slate-200">
-                    <h4 class="font-bold text-slate-800 mb-4">Registrar Visita Técnica</h4>
-                    <div class="grid grid-cols-2 gap-3 mb-3">
-                        <select class="rounded-lg border-slate-200 text-sm w-full"><option>Preventivo (Limpieza)</option><option>Correctivo (Fallo)</option></select>
-                        <input type="date" class="rounded-lg border-slate-200 text-sm w-full">
-                    </div>
-                    <div class="space-y-3">
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Costo Cuadrilla</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Insumos/Refacciones</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm"></label>
-                        <label class="block"><span class="text-xs font-bold text-slate-500">Viáticos</span> <input type="number" class="w-full rounded-lg border-slate-200 text-sm"></label>
-                    </div>
-                    <button class="mt-4 w-full py-3 bg-slate-800 text-white font-bold rounded-lg hover:bg-black">Guardar Visita</button>
-                </div>
-
-                <div class="bg-white p-6 rounded-xl border border-slate-200">
-                    <h4 class="font-bold text-slate-800 mb-4">Historial de Gastos</h4>
-                    <div class="overflow-y-auto max-h-64">
-                        <table class="w-full text-xs text-left">
-                            <thead class="bg-slate-50 sticky top-0"><tr><th class="p-2">Fecha</th><th class="p-2">Tipo</th><th class="p-2 text-right">Total</th></tr></thead>
-                            <tbody class="divide-y">
-                                <tr><td class="p-2">12 Ene</td><td class="p-2"><span class="bg-yellow-100 text-yellow-800 px-1 rounded">Prev</span></td><td class="p-2 text-right font-bold">$1,200</td></tr>
-                                <tr><td class="p-2">05 Feb</td><td class="p-2"><span class="bg-red-100 text-red-800 px-1 rounded">Corr</span></td><td class="p-2 text-right font-bold">$4,500</td></tr>
+                <div id="tab-manto" class="tab-content">
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-center mb-6">
+                            <h4 class="font-bold text-slate-800">Registro de Visitas</h4>
+                            <button class="px-4 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg">Nueva Visita</button>
+                        </div>
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-slate-50 text-slate-500">
+                                <tr>
+                                    <th class="p-3">Fecha</th>
+                                    <th class="p-3">Tipo</th>
+                                    <th class="p-3">Descripción</th>
+                                    <th class="p-3 text-right">Costo</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr><td class="p-3">12/01/2024</td><td class="p-3"><span class="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded text-xs font-bold">Preventivo</span></td><td class="p-3">Limpieza Bimestral</td><td class="p-3 text-right">$1,500</td></tr>
+                                <tr><td class="p-3">05/02/2024</td><td class="p-3"><span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-bold">Correctivo</span></td><td class="p-3">Cambio Fuente Poder</td><td class="p-3 text-right">$3,200</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <div id="tab-ciclo" class="tab-content space-y-6">
-            <div class="bg-white p-6 rounded-xl border border-slate-200">
-                <h4 class="font-bold text-slate-800 mb-4">Gestión de Retiro / Reubicación</h4>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                        <p class="font-bold text-sm mb-2">Días Inactiva (Downtime)</p>
-                        <input type="number" placeholder="0" class="w-full rounded-lg border-slate-200 mb-2">
-                        <p class="text-[10px] text-slate-400">Días que la pantalla no generó ingresos.</p>
-                    </div>
-                    <div class="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                        <p class="font-bold text-sm mb-2">Fecha de Retiro</p>
-                        <input type="date" class="w-full rounded-lg border-slate-200 mb-2">
-                    </div>
-                    <div class="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                        <p class="font-bold text-sm mb-2">Motivo</p>
-                        <select class="w-full rounded-lg border-slate-200"><option>Fin de Contrato</option><option>Renovación Tecnológica</option><option>Clausura</option></select>
+                <div id="tab-ciclo" class="tab-content">
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <h4 class="font-bold text-slate-800 mb-6">Plan de Renovación y Retiro</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="p-4 border border-slate-200 rounded-lg">
+                                <label class="block text-xs font-bold text-slate-500 mb-2">Fecha Instalación</label>
+                                <input type="date" class="w-full border-slate-200 rounded-lg text-sm">
+                            </div>
+                            <div class="p-4 border border-slate-200 rounded-lg">
+                                <label class="block text-xs font-bold text-slate-500 mb-2">Vida Útil Estimada</label>
+                                <select class="w-full border-slate-200 rounded-lg text-sm"><option>3 Años</option><option>5 Años</option></select>
+                            </div>
+                            <div class="p-4 border border-slate-200 rounded-lg bg-red-50 border-red-100">
+                                <label class="block text-xs font-bold text-red-500 mb-2">Fecha Retiro (Real)</label>
+                                <input type="date" class="w-full border-red-200 rounded-lg text-sm">
+                            </div>
+                        </div>
                     </div>
                 </div>
+
             </div>
         </div>
-
     </main>
 
     <script>
-        // Lógica de Tabs
-        function switchTab(tabId) {
+        // Lógica de Pestañas
+        function switchTab(id) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
-            
-            document.getElementById('tab-' + tabId).classList.add('active');
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + id).classList.add('active');
             event.currentTarget.classList.add('active');
         }
 
-        // Cálculo Automático de KPIs
+        // Lógica de Cálculo en Tiempo Real
         const inputs = document.querySelectorAll('.input-calc');
-        inputs.forEach(inp => inp.addEventListener('input', calculateKPIs));
+        inputs.forEach(input => input.addEventListener('input', calculateTotals));
 
-        function calculateKPIs() {
+        function calculateTotals() {
             let capex = 0;
             let opex = 0;
             let sales = 0;
@@ -245,47 +319,46 @@
             document.querySelectorAll('[data-group="opex"]').forEach(i => opex += Number(i.value));
             document.querySelectorAll('[data-group="sales"]').forEach(i => sales += Number(i.value));
 
-            // Mantenimiento promedio estimado (Hardcoded para demo, debería venir de DB)
-            const avgMaint = 1500; 
+            // Actualizar KPIs Superiores
+            document.getElementById('total-cost-display').innerText = "$" + capex.toLocaleString();
+            
+            const monthlyMargin = sales - opex;
+            document.getElementById('monthly-margin-display').innerText = "$" + monthlyMargin.toLocaleString();
+            
+            const roi = monthlyMargin > 0 ? (capex / monthlyMargin).toFixed(1) : "--";
+            document.getElementById('roi-display').innerText = roi;
 
-            // Cálculos
-            const monthlyMargin = sales - (opex + avgMaint);
-            const roiMonths = monthlyMargin > 0 ? (capex / monthlyMargin).toFixed(1) : "Inf";
-            
-            // Render
-            document.getElementById('total-capex').innerText = "$" + capex.toLocaleString();
-            document.getElementById('total-opex').innerText = "$" + opex.toLocaleString();
-            document.getElementById('kpi-rentabilidad').innerText = "$" + monthlyMargin.toLocaleString();
-            document.getElementById('kpi-total-cost').innerText = "$" + (capex + (opex * 12)).toLocaleString(); // Proyección anual simple
-            document.getElementById('kpi-roi').innerText = roiMonths;
-            
-            // Update Chart
-            updateChart(sales, opex + avgMaint);
+            // Actualizar Gráfica
+            updateChart(sales, opex);
         }
 
-        // Chart Inicial
-        let myChart;
-        function updateChart(income, outcome) {
+        let summaryChart;
+        function updateChart(sales, expenses) {
             const ctx = document.getElementById('summaryChart');
-            if(myChart) myChart.destroy();
-            
-            myChart = new Chart(ctx, {
+            if(summaryChart) summaryChart.destroy();
+
+            summaryChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: ['Mensual Promedio'],
                     datasets: [
-                        { label: 'Ingresos', data: [income], backgroundColor: '#10B981' },
-                        { label: 'Egresos (OPEX+Manto)', data: [outcome], backgroundColor: '#F97316' }
+                        { label: 'Ingresos', data: [sales], backgroundColor: '#10B981', barPercentage: 0.5 },
+                        { label: 'Gastos (OPEX)', data: [expenses], backgroundColor: '#EF4444', barPercentage: 0.5 }
                     ]
                 },
-                options: { responsive: true, maintainAspectRatio: false }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    scales: { x: { beginAtZero: true } }
+                }
             });
         }
-        
+
         // Init
         document.addEventListener('DOMContentLoaded', () => {
-            calculateKPIs();
-            updateChart(0, 0);
+            calculateTotals();
+            updateChart(0,0);
         });
     </script>
 </body>
