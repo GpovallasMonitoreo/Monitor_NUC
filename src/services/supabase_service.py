@@ -19,90 +19,73 @@ class SupabaseService:
         
         logger.info("✅ Conexión a Supabase establecida (Modo Batch + Agregación)")
 
-    # --- TUS FUNCIONES EXISTENTES (Buffer, Flush, etc.) ---
     def buffer_metric(self, device_id, latency, packet_loss=0, extra_data=None):
+        """
+        Guarda métricas en buffer para envío masivo.
+        Acepta 'extra_data' con min_latency, max_latency, etc.
+        """
         row = {
             "device_id": device_id,
             "latency_ms": int(latency) if latency is not None else 0,
             "packet_loss": int(packet_loss),
             "created_at": datetime.utcnow().isoformat()
         }
+        
+        # Mapear datos extra a las columnas de SQL
         if extra_data:
             row['min_latency'] = extra_data.get('min')
             row['max_latency'] = extra_data.get('max')
             row['sample_count'] = extra_data.get('samples', 1)
+        
         self.buffer.append(row)
+        
         if len(self.buffer) >= self.BATCH_SIZE:
             self._flush_buffer()
 
     def _flush_buffer(self):
         try:
             if not self.buffer: return
-            self.client.table("raw_metrics").insert(self.buffer).execute()
+            
+            data_to_send = self.buffer
+            # Insertamos en raw_metrics
+            self.client.table("raw_metrics").insert(data_to_send).execute()
+            
+            # Limpiamos buffer solo si tuvo éxito
             self.buffer = [] 
+            
         except Exception as e:
-            logger.error(f"❌ Error batch Supabase: {e}")
+            logger.error(f"❌ Error enviando batch a Supabase: {e}")
+            # Estrategia simple: Si falla, limpiamos igual para no atascar la memoria RAM
+            # En producción podrías implementar lógica de reintento
             self.buffer = []
 
     def upsert_device_status(self, device_data: dict):
+        """Actualiza el inventario (Tabla devices)"""
         try:
             self.client.table("devices").upsert(device_data).execute()
             return True
         except Exception as e:
-            logger.error(f"❌ Error Upsert: {e}")
+            logger.error(f"❌ Error Supabase Upsert: {e}")
             return False
 
-    # --- NUEVA LÓGICA: GESTIÓN DE INCIDENCIAS Y MAPEO ---
-    def get_device_incidents(self, qtm_id_or_site):
-        """
-        Obtiene incidencias mapeando los campos extraños de Discord a un formato limpio.
-        """
+    def get_device_history(self, device_id, limit=50):
         try:
-            # Mapeo de campos (Tu diccionario original)
-            mapeo_campos = {
-                "Ticket": "ticket_id", "ticket_id": "ticket_id", "Sitio": "sitio",
-                "ID_TECNOLOGIA": "id_tecnologia", "Unidad de negocio": "unidad_negocio",
-                "Motivo_Capturado": "motivo_capturado", "Estatus": "estatus",
-                "Prioridad": "prioridad", "Incidencia": "incidencia",
-                "Solución Brindada": "solucion_brindada", "Costo_Estimado": "costo_estimado",
-                "Fecha_Creacion": "fecha_creacion", "Foto_URL": "foto_url"
-            }
-
-            # Consulta a la tabla donde guardas lo de Discord (ej. 'incidencias')
-            response = self.client.table("incidencias")\
+            response = self.client.table("raw_metrics")\
                 .select("*")\
-                .or_(f"sitio.eq.{qtm_id_or_site},detalles_equipo.ilike.%{qtm_id_or_site}%")\
-                .order("fecha_creacion", desc=True)\
+                .eq("device_id", device_id)\
+                .order("created_at", desc=True)\
+                .limit(limit)\
                 .execute()
-            
-            # Limpiar datos usando el mapeo
-            clean_tickets = []
-            for raw_ticket in response.data:
-                clean_t = {}
-                for key, val in raw_ticket.items():
-                    # Si la llave está en el mapeo, usamos el nombre bonito, si no, la original
-                    clean_key = mapeo_campos.get(key, key)
-                    clean_t[clean_key] = val
-                clean_tickets.append(clean_t)
-                
-            return clean_tickets
+            return response.data
         except Exception as e:
-            logger.error(f"❌ Error obteniendo incidencias: {e}")
+            logger.error(f"Error leyendo historial: {e}")
             return []
 
-    def register_manual_asset(self, asset_data: dict):
-        """Registra activo desde Dashboard"""
+    def run_nightly_cleanup(self):
+        """Borra datos crudos viejos (Mantenimiento)"""
         try:
-            payload = {
-                "pc_name": asset_data.get('pc_name'),
-                "device_id": asset_data.get('qtm_id'),
-                "status": "registered",
-                "specs": asset_data.get('specs'),
-                "investment": asset_data.get('investment', 0),
-                "last_seen": datetime.utcnow().isoformat()
-            }
-            self.client.table("devices").upsert(payload).execute()
-            return True
+            cutoff = (datetime.now() - timedelta(days=30)).isoformat()
+            self.client.table("raw_metrics").delete().lt("created_at", cutoff).execute()
+            logger.info("🧹 Limpieza mensual ejecutada.")
         except Exception as e:
-            logger.error(f"❌ Error registro manual: {e}")
-            return False
+            logger.error(f"Error en limpieza: {e}")
