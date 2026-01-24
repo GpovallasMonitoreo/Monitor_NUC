@@ -4,13 +4,10 @@ from src.services.supabase_service import SupabaseService
 bp = Blueprint('views', __name__)
 db_service = SupabaseService()
 
-# ==========================================
-# RUTAS ORIGINALES DE MONITOREO (NO BORRAR)
-# ==========================================
-
+# --- RUTAS PRINCIPALES DEL MONITOR (NO BORRAR) ---
 @bp.route('/')
 def home():
-    return render_template('index.html') # O tu template principal
+    return render_template('index.html')
 
 @bp.route('/monitor')
 def monitor():
@@ -42,54 +39,58 @@ def inventory_logs():
     return render_template('inventory/logs.html')
 
 # ==========================================
-# MÓDULO TECHVIEW (FINANZAS & COSTOS)
+# MÓDULO TECHVIEW (COSTOS & FINANZAS)
 # ==========================================
 
 @bp.route('/techview')
 def techview_home():
-    """Dashboard General Financiero"""
+    """Dashboard General"""
     return render_template('dashboard_finanzas.html')
 
 @bp.route('/techview/detail')
 def techview_detail():
-    """Detalle de una pantalla (Calculadora)"""
+    """Calculadora por Pantalla"""
     device_id = request.args.get('device_id', 'REF-01')
     return render_template('techview.html', device_id=device_id)
 
 @bp.route('/techview/proposal')
 def techview_proposal():
-    """Nueva Propuesta de Instalación"""
+    """Nueva Propuesta"""
     return render_template('proposal.html')
 
 # --- API ENDPOINTS (JSON) ---
 
 @bp.route('/api/techview/dashboard')
 def api_dashboard():
-    """KPIs globales reales"""
+    """Datos para el Dashboard Principal"""
     data = db_service.get_financial_overview()
-    if data: return jsonify(data)
-    return jsonify({"kpis": {"capex": 0, "sales": 0}, "financials": {}}), 200
+    # Siempre devolver JSON, incluso si es vacío, para evitar Error 500 en frontend
+    if not data:
+        return jsonify({
+            "kpis": {"capex": 0, "sales_annual": 0, "opex_monthly": 0, "incidents": 0, "active_alerts": 0},
+            "financials": {"months": [], "sales": [], "maintenance": []}
+        })
+    return jsonify(data)
 
 @bp.route('/api/techview/device/<path:device_id>')
 def api_device(device_id):
-    """Datos financieros de un dispositivo"""
+    """Datos detallados de dispositivo"""
     data = db_service.get_device_financials(device_id)
-    if data: return jsonify(data)
-    return jsonify({"error": "No data"}), 404
+    if not data: return jsonify({"breakdown": [], "totals": {}})
+    return jsonify(data)
 
 @bp.route('/api/techview/inventory')
 def api_inventory():
-    """Lista de dispositivos para tablas y buscadores"""
+    """Lista de dispositivos para el buscador"""
     try:
-        # Traemos datos técnicos básicos
-        res = db_service.client.table("devices").select("device_id, pc_name, status, ip_address, disconnect_count").execute()
+        res = db_service.client.table("devices").select("device_id, pc_name, status, ip_address").execute()
         return jsonify(res.data)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify([]) # Retornar lista vacía en error
 
 @bp.route('/api/techview/save', methods=['POST'])
 def api_save():
-    """Guardar costo en DB"""
+    """Guardar cambios"""
     success = db_service.save_cost_entry(request.json)
-    if success: return jsonify({"status": "saved"}), 200
+    if success: return jsonify({"status": "ok"}), 200
     return jsonify({"status": "error"}), 500
