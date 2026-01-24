@@ -89,3 +89,9 @@ def api_save():
     success = db_service.save_cost_entry(request.json)
     if success: return jsonify({"status": "ok"}), 200
     return jsonify({"status": "error"}), 500
+
+@bp.route('/techview/site_analysis')
+def site_analysis():
+    """Vista de detalle 'Premium' por pantalla"""
+    device_id = request.args.get('device_id', 'REF-01')
+    return render_template('site_analysis.html', device_id=device_id)
