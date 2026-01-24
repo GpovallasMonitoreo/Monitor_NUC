@@ -4,55 +4,92 @@ from src.services.supabase_service import SupabaseService
 bp = Blueprint('views', __name__)
 db_service = SupabaseService()
 
-# ... (RUTAS VIEJAS SE MANTIENEN IGUALES) ...
+# ==========================================
+# RUTAS ORIGINALES DE MONITOREO (NO BORRAR)
+# ==========================================
+
+@bp.route('/')
+def home():
+    return render_template('index.html') # O tu template principal
+
+@bp.route('/monitor')
+def monitor():
+    return render_template('monitor.html')
+
+@bp.route('/latency')
+def latency():
+    return render_template('latency.html')
+
+@bp.route('/map')
+def map_view():
+    return render_template('map.html')
+
+# --- MÓDULO DE INVENTARIO ---
+@bp.route('/inventory')
+def inventory_main():
+    return render_template('inventory/main.html')
+
+@bp.route('/inventory/manuals')
+def inventory_manuals():
+    return render_template('inventory/manuals.html')
+
+@bp.route('/inventory/specs')
+def inventory_specs():
+    return render_template('inventory/specs.html')
+
+@bp.route('/inventory/logs')
+def inventory_logs():
+    return render_template('inventory/logs.html')
 
 # ==========================================
-# API TECHVIEW Y DASHBOARD
+# MÓDULO TECHVIEW (FINANZAS & COSTOS)
 # ==========================================
 
 @bp.route('/techview')
 def techview_home():
+    """Dashboard General Financiero"""
     return render_template('dashboard_finanzas.html')
 
 @bp.route('/techview/detail')
 def techview_detail():
+    """Detalle de una pantalla (Calculadora)"""
     device_id = request.args.get('device_id', 'REF-01')
     return render_template('techview.html', device_id=device_id)
 
 @bp.route('/techview/proposal')
 def techview_proposal():
+    """Nueva Propuesta de Instalación"""
     return render_template('proposal.html')
 
-# --- APIS DE DATOS ---
+# --- API ENDPOINTS (JSON) ---
 
 @bp.route('/api/techview/dashboard')
-def api_dashboard_data():
-    """Datos globales: KPIs, Ventas Totales vs Costos"""
+def api_dashboard():
+    """KPIs globales reales"""
     data = db_service.get_financial_overview()
-    if not data: return jsonify({"error": "No data"}), 500
-    return jsonify(data)
+    if data: return jsonify(data)
+    return jsonify({"kpis": {"capex": 0, "sales": 0}, "financials": {}}), 200
 
 @bp.route('/api/techview/device/<path:device_id>')
-def api_device_detail(device_id):
-    """Datos de una pantalla específica: CAPEX, OPEX, Tickets"""
-    data = db_service.get_device_detail(device_id)
-    if not data: return jsonify({"error": "Device not found"}), 404
-    return jsonify(data)
+def api_device(device_id):
+    """Datos financieros de un dispositivo"""
+    data = db_service.get_device_financials(device_id)
+    if data: return jsonify(data)
+    return jsonify({"error": "No data"}), 404
 
 @bp.route('/api/techview/inventory')
 def api_inventory():
-    """Lista para el buscador"""
+    """Lista de dispositivos para tablas y buscadores"""
     try:
-        res = db_service.client.table("devices").select("device_id, pc_name, status, disconnect_count").execute()
+        # Traemos datos técnicos básicos
+        res = db_service.client.table("devices").select("device_id, pc_name, status, ip_address, disconnect_count").execute()
         return jsonify(res.data)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @bp.route('/api/techview/save', methods=['POST'])
-def api_save_financial():
-    """Endpoint para guardar costos desde los formularios"""
-    data = request.json
-    success = db_service.save_financial_record(data)
-    if success:
-        return jsonify({"status": "ok"}), 200
+def api_save():
+    """Guardar costo en DB"""
+    success = db_service.save_cost_entry(request.json)
+    if success: return jsonify({"status": "saved"}), 200
     return jsonify({"status": "error"}), 500
