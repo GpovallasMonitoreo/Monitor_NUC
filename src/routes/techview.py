@@ -112,7 +112,50 @@ class TechViewService:
     def _get_finance_info(self, device_id):
         try:
             fin_resp = self.client.table("finances").select("*").eq("device_id", device_id).execute()
-            return fin_resp.data[0] if fin_resp.data else {}
+            if fin_resp.data:
+                data = fin_resp.data[0]
+                
+                # Asegurar que todos los campos esperados existan en el resultado
+                expected_fields = [
+                    # CAPEX
+                    'capex_screen', 'capex_civil', 'capex_structure', 'capex_electrical',
+                    'capex_meter', 'capex_data_install', 'capex_nuc', 'capex_ups',
+                    'capex_sending', 'capex_processor', 'capex_modem_wifi', 'capex_modem_sim',
+                    'capex_teltonika', 'capex_hdmi', 'capex_camera', 'capex_crew',
+                    'capex_logistics', 'capex_transportation', 'capex_legal',
+                    'capex_negotiations', 'capex_admin_qtm', 'capex_inventory',
+                    'capex_first_install',
+                    
+                    # OPEX
+                    'opex_light', 'opex_internet', 'opex_internet_sim', 'opex_internet_cable',
+                    'opex_rent', 'opex_soil_use', 'opex_taxes', 'opex_insurance',
+                    'opex_license_annual', 'opex_content_scheduling', 'opex_srd',
+                    'revenue_monthly',
+                    
+                    # Mantenimiento
+                    'maint_prev_bimonthly', 'maint_cleaning_supplies', 'maint_gas',
+                    'maint_crew_size', 'maint_visit_count', 'maint_corr_labor',
+                    'maint_corr_parts', 'maint_corr_gas', 'maint_corr_visit_count',
+                    
+                    # Ciclo de Vida
+                    'life_installation_date', 'life_retirement_date', 'life_retirement',
+                    'life_renewal_date', 'life_renewal', 'life_special'
+                ]
+                
+                # Añadir campos faltantes con valores por defecto
+                for field in expected_fields:
+                    if field not in data:
+                        if field in ['maint_crew_size', 'maint_visit_count', 'maint_corr_visit_count']:
+                            data[field] = 0  # Enteros
+                        elif any(x in field for x in ['capex_', 'opex_', 'maint_', 'revenue_', 'life_']):
+                            if 'date' not in field and field != 'life_special':
+                                data[field] = 0.0  # Flotantes
+                        else:
+                            data[field] = None  # Texto/fechas
+                
+                return data
+            else:
+                return {}
         except Exception as e:
             logger.error(f"Error obteniendo info financiera: {e}")
             return {}
@@ -791,7 +834,7 @@ class TechViewService:
         }
     
     def save_device_financials(self, payload):
-        """Guarda datos financieros del dispositivo - VERSIÓN SIMPLIFICADA Y CORREGIDA"""
+        """Guarda datos financieros del dispositivo - VERSIÓN ROBUSTA CON CAMPOS OPCIONALES"""
         try:
             device_id = payload.get('device_id')
             if not device_id: 
@@ -800,55 +843,113 @@ class TechViewService:
             clean_id = clean_device_id(device_id)
             logger.info(f"💾 Guardando datos financieros para: {clean_id}")
             
-            # Preparar datos básicos para guardar
+            # 1. Obtener estructura actual de la tabla
+            try:
+                # Intentar obtener información de la tabla
+                table_info = self.client.table("finances").select("*").limit(1).execute()
+                
+                existing_columns = []
+                if table_info.data and len(table_info.data) > 0:
+                    existing_columns = list(table_info.data[0].keys())
+                logger.info(f"📋 Columnas existentes en tabla: {existing_columns}")
+                
+            except Exception as table_error:
+                logger.error(f"❌ Error obteniendo estructura de tabla: {table_error}")
+                existing_columns = []
+            
+            # 2. Preparar datos para guardar (solo columnas que existen)
             data_to_save = {
                 "device_id": clean_id,
                 "updated_at": datetime.now().isoformat()
             }
             
-            # Procesar todos los campos del payload
-            for key, value in payload.items():
-                if key == 'device_id' or key == 'cost_type' or key == 'category':
-                    continue  # Saltar campos meta
+            # Lista de campos requeridos (CAPEX básico - deben existir)
+            required_fields = [
+                'capex_screen', 'capex_civil', 'capex_structure', 'capex_electrical',
+                'capex_meter', 'capex_data_install', 'capex_nuc', 'capex_ups',
+                'capex_sending', 'capex_processor', 'capex_modem_wifi', 'capex_modem_sim',
+                'capex_teltonika', 'capex_hdmi', 'capex_camera', 'capex_crew',
+                'capex_logistics', 'capex_transportation', 'capex_legal',
+                'capex_negotiations', 'capex_admin_qtm', 'capex_inventory',
+                'capex_first_install'
+            ]
+            
+            # Campos opcionales (pueden no existir en la tabla)
+            optional_fields = [
+                # OPEX
+                'opex_light', 'opex_internet', 'opex_internet_sim', 'opex_internet_cable',
+                'opex_rent', 'opex_soil_use', 'opex_taxes', 'opex_insurance',
+                'opex_license_annual', 'opex_content_scheduling', 'opex_srd',
+                'revenue_monthly',
                 
-                # Procesar valores
-                if value is None or value == '':
-                    continue
+                # Mantenimiento
+                'maint_prev_bimonthly', 'maint_cleaning_supplies', 'maint_gas',
+                'maint_crew_size', 'maint_visit_count', 'maint_corr_labor',
+                'maint_corr_parts', 'maint_corr_gas', 'maint_corr_visit_count',
                 
-                # Determinar tipo de campo
-                if key in ['maint_crew_size', 'maint_visit_count', 'maint_corr_visit_count']:
-                    # Campos enteros
-                    try:
-                        data_to_save[key] = int(value)
-                    except:
-                        data_to_save[key] = 0
-                elif any(x in key for x in ['capex_', 'opex_', 'maint_', 'revenue_', 'life_']):
-                    # Campos numéricos
-                    try:
-                        data_to_save[key] = float(value)
-                    except:
-                        data_to_save[key] = 0.0
+                # Ciclo de Vida (OPCIONALES - pueden no existir aún)
+                'life_installation_date', 'life_retirement_date', 'life_retirement',
+                'life_renewal_date', 'life_renewal', 'life_special'
+            ]
+            
+            # 3. Procesar campos requeridos (deben existir o tienen valores por defecto)
+            for field in required_fields:
+                if field in payload:
+                    value = payload[field]
+                    if value is None or value == '':
+                        data_to_save[field] = 0.0
+                    else:
+                        try:
+                            data_to_save[field] = float(value)
+                        except:
+                            data_to_save[field] = 0.0
                 else:
-                    # Campos de texto/fecha
-                    data_to_save[key] = value
+                    # Si no viene en el payload, poner valor por defecto
+                    data_to_save[field] = 0.0
             
-            logger.info(f"📊 Datos a guardar: {list(data_to_save.keys())}")
+            # 4. Procesar campos opcionales (solo si existen en la tabla)
+            for field in optional_fields:
+                if field in payload:
+                    value = payload[field]
+                    
+                    # Verificar si la columna existe en la tabla
+                    if existing_columns and field not in existing_columns:
+                        logger.warning(f"⚠️ Columna '{field}' no existe en la tabla. Omitiendo...")
+                        continue
+                    
+                    if value is None or value == '':
+                        # Para campos de fecha/texto, dejar NULL
+                        if 'date' in field or field == 'life_special':
+                            data_to_save[field] = None
+                        else:
+                            data_to_save[field] = 0.0
+                    else:
+                        # Convertir según tipo de campo
+                        if field in ['maint_crew_size', 'maint_visit_count', 'maint_corr_visit_count']:
+                            # Campos enteros
+                            try:
+                                data_to_save[field] = int(value)
+                            except:
+                                data_to_save[field] = 0
+                        elif any(x in field for x in ['capex_', 'opex_', 'maint_', 'revenue_', 'life_']):
+                            # Campos numéricos (excepto fechas)
+                            if 'date' not in field and field != 'life_special':
+                                try:
+                                    data_to_save[field] = float(value)
+                                except:
+                                    data_to_save[field] = 0.0
+                        else:
+                            # Campos de texto/fecha
+                            data_to_save[field] = value
             
-            # INTENTAR GUARDAR - Versión más simple y robusta
+            logger.info(f"📊 Campos preparados para guardar: {list(data_to_save.keys())}")
+            
+            # 5. Intentar guardar
             try:
-                # Verificar si ya existe un registro
-                existing = self.client.table("finances").select("device_id").eq("device_id", clean_id).execute()
+                # Usar upsert para crear o actualizar
+                result = self.client.table("finances").upsert(data_to_save, on_conflict="device_id").execute()
                 
-                if existing.data:
-                    # Actualizar registro existente
-                    update_result = self.client.table("finances").update(data_to_save).eq("device_id", clean_id).execute()
-                    logger.info(f"✅ Registro actualizado para {clean_id}")
-                else:
-                    # Crear nuevo registro
-                    insert_result = self.client.table("finances").insert(data_to_save).execute()
-                    logger.info(f"✅ Nuevo registro creado para {clean_id}")
-                
-                # También actualizar/crear en devices para mantener consistencia
+                # Actualizar tabla devices para mantener consistencia
                 try:
                     self.client.table("devices").upsert({
                         "device_id": clean_id,
@@ -857,20 +958,41 @@ class TechViewService:
                 except Exception as dev_e:
                     logger.warning(f"⚠️ No se pudo actualizar tabla devices: {dev_e}")
                 
-                return True, "Datos financieros guardados correctamente"
+                logger.info(f"✅ Datos guardados exitosamente para {clean_id}")
                 
+                # Verificar si se omitieron campos de ciclo de vida
+                ciclo_vida_campos = ['life_installation_date', 'life_retirement_date', 'life_retirement',
+                                   'life_renewal_date', 'life_renewal', 'life_special']
+                campos_omitidos = [campo for campo in ciclo_vida_campos if campo in payload and campo not in data_to_save]
+                
+                if campos_omitidos:
+                    return True, f"Datos guardados. Campos de ciclo de vida omitidos (agrega columnas): {', '.join(campos_omitidos)}"
+                else:
+                    return True, "Datos financieros guardados correctamente"
+                    
             except Exception as db_error:
                 logger.error(f"❌ Error de base de datos: {db_error}")
-                # Intentar método alternativo
+                
+                # Intentar guardar solo campos básicos
                 try:
-                    # Usar upsert directo
-                    upsert_result = self.client.table("finances").upsert(data_to_save, on_conflict="device_id").execute()
-                    logger.info(f"✅ Upsert exitoso para {clean_id}")
-                    return True, "Datos financieros guardados correctamente (upsert)"
-                except Exception as upsert_error:
-                    logger.error(f"❌ Error en upsert: {upsert_error}")
-                    return False, f"Error de base de datos: {str(upsert_error)}"
+                    # Crear datos mínimos
+                    basic_data = {
+                        "device_id": clean_id,
+                        "updated_at": datetime.now().isoformat()
+                    }
                     
+                    # Solo campos CAPEX básicos
+                    for field in required_fields[:10]:  # Primeros 10 campos CAPEX
+                        basic_data[field] = data_to_save.get(field, 0.0)
+                    
+                    result = self.client.table("finances").upsert(basic_data, on_conflict="device_id").execute()
+                    logger.info(f"✅ Datos básicos guardados para {clean_id}")
+                    return True, "Datos básicos guardados (algunos campos omitidos por error de base de datos)"
+                    
+                except Exception as simple_error:
+                    logger.error(f"❌ Error incluso en guardado básico: {simple_error}")
+                    return False, f"Error de base de datos. Verifica la conexión: {str(simple_error)}"
+                        
         except Exception as e:
             logger.error(f"❌ Error general guardando datos: {e}")
             import traceback
@@ -993,11 +1115,11 @@ techview_service = TechViewService()
 
 # RUTAS DEL BLUEPRINT
 
-# RUTA PRINCIPAL DEL DASHBOARD - ESTO ES LO QUE FALTA
+# RUTA PRINCIPAL DEL DASHBOARD
 @bp.route('/')
 def index():
     """Página principal del dashboard de TechView"""
-    return render_template('techview_dashboard.html')  # Este es el HTML que me compartiste
+    return render_template('techview_dashboard.html')
 
 @bp.route('/management')
 def management():
