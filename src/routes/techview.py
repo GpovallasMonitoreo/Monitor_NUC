@@ -187,70 +187,7 @@ class TechViewService:
                 return data
             else:
                 # Si no existe registro, crear uno con todos los campos por defecto
-                return {
-                    # CAPEX
-                    'capex_screen': 0.0,
-                    'capex_civil': 0.0,
-                    'capex_structure': 0.0,
-                    'capex_electrical': 0.0,
-                    'capex_meter': 0.0,
-                    'capex_data_install': 0.0,
-                    'capex_nuc': 0.0,
-                    'capex_ups': 0.0,
-                    'capex_sending': 0.0,
-                    'capex_processor': 0.0,
-                    'capex_modem_wifi': 0.0,
-                    'capex_modem_sim': 0.0,
-                    'capex_teltonika': 0.0,
-                    'capex_hdmi': 0.0,
-                    'capex_camera': 0.0,
-                    'capex_crew': 0.0,
-                    'capex_logistics': 0.0,
-                    'capex_transportation': 0.0,
-                    'capex_legal': 0.0,
-                    'capex_negotiations': 0.0,
-                    'capex_admin_qtm': 0.0,
-                    'capex_inventory': 0.0,
-                    'capex_first_install': 0.0,
-                    'capex_total': 0.0,
-                    
-                    # OPEX
-                    'opex_light': 0.0,
-                    'opex_internet': 0.0,
-                    'opex_internet_sim': 0.0,
-                    'opex_internet_cable': 0.0,
-                    'opex_rent': 0.0,
-                    'opex_soil_use': 0.0,
-                    'opex_taxes': 0.0,
-                    'opex_insurance': 0.0,
-                    'opex_license_annual': 0.0,
-                    'opex_content_scheduling': 0.0,
-                    'opex_srd': 0.0,
-                    'revenue_monthly': 0.0,
-                    
-                    # Mantenimiento
-                    'maint_prev_bimonthly': 0.0,
-                    'maint_cleaning_supplies': 0.0,
-                    'maint_gas': 0.0,
-                    'maint_crew_size': 0,
-                    'maint_visit_count': 0,
-                    'maint_corr_labor': 0.0,
-                    'maint_corr_parts': 0.0,
-                    'maint_corr_gas': 0.0,
-                    'maint_corr_visit_count': 0,
-                    
-                    # Ciclo de Vida
-                    'life_installation_date': None,
-                    'life_retirement_date': None,
-                    'life_retirement': 0.0,
-                    'life_renewal_date': None,
-                    'life_renewal': 0.0,
-                    'life_special': None,
-                    
-                    # Campos de sistema
-                    'device_id': device_id,
-                    'updated_at': datetime.now().isoformat()
-                }
+                return self._create_default_finance_data(device_id)
         except Exception as e:
             logger.error(f"Error obteniendo info financiera: {e}")
             # Retornar estructura vacía con valores por defecto
@@ -1038,7 +975,7 @@ class TechViewService:
         }
     
     def save_device_financials(self, payload):
-        """Guarda datos financieros del dispositivo - VERSIÓN SIMPLIFICADA"""
+        """Guarda datos financieros del dispositivo - VERSIÓN MEJORADA"""
         try:
             device_id = payload.get('device_id')
             if not device_id: 
@@ -1048,68 +985,102 @@ class TechViewService:
             logger.info(f"💾 Guardando datos financieros para: {clean_id}")
             
             # 1. Obtener estructura actual de la tabla
+            existing_columns = []
             try:
-                # Intentar obtener información de la tabla
                 table_info = self.client.table("finances").select("*").limit(1).execute()
-                
-                existing_columns = []
                 if table_info.data and len(table_info.data) > 0:
                     existing_columns = list(table_info.data[0].keys())
-                logger.info(f"📋 Columnas existentes: {existing_columns}")
-                
+                    logger.info(f"📋 Columnas existentes: {len(existing_columns)} columnas")
             except Exception as table_error:
                 logger.error(f"❌ Error obteniendo estructura de tabla: {table_error}")
                 existing_columns = []
             
-            # 2. Preparar datos básicos
+            # 2. Preparar datos para guardar - INCLUIR TODOS LOS CAMPOS
             data_to_save = {
                 "device_id": clean_id,
                 "updated_at": datetime.now().isoformat()
             }
             
-            # 3. Procesar solo campos que existen en la tabla
-            for key, value in payload.items():
-                if key in ['device_id', 'cost_type', 'category']:
-                    continue
+            # Lista completa de TODOS los campos que el frontend envía
+            all_possible_fields = [
+                # CAPEX (ya existen)
+                'capex_screen', 'capex_civil', 'capex_structure', 'capex_electrical',
+                'capex_meter', 'capex_data_install', 'capex_nuc', 'capex_ups',
+                'capex_sending', 'capex_processor', 'capex_modem_wifi', 'capex_modem_sim',
+                'capex_teltonika', 'capex_hdmi', 'capex_camera', 'capex_crew',
+                'capex_logistics', 'capex_transportation', 'capex_legal',
+                'capex_negotiations', 'capex_admin_qtm', 'capex_inventory',
+                'capex_first_install', 'capex_total',
                 
-                # Solo guardar si la columna existe
-                if existing_columns and key not in existing_columns:
-                    logger.warning(f"⚠️ Columna '{key}' no existe. Omitiendo...")
-                    continue
+                # OPEX (FALTAN - necesitas agregar estas columnas)
+                'opex_light', 'opex_internet', 'opex_internet_sim', 'opex_internet_cable',
+                'opex_rent', 'opex_soil_use', 'opex_taxes', 'opex_insurance',
+                'opex_license_annual', 'opex_content_scheduling', 'opex_srd',
+                'revenue_monthly',
                 
-                if value is None or value == '':
-                    continue
+                # Mantenimiento (FALTAN - necesitas agregar estas columnas)
+                'maint_prev_bimonthly', 'maint_cleaning_supplies', 'maint_gas',
+                'maint_crew_size', 'maint_visit_count', 'maint_corr_labor',
+                'maint_corr_parts', 'maint_corr_gas', 'maint_corr_visit_count',
                 
-                # Convertir tipos
-                if key in ['maint_crew_size', 'maint_visit_count', 'maint_corr_visit_count']:
-                    try:
-                        data_to_save[key] = int(value)
-                    except:
-                        data_to_save[key] = 0
-                elif any(x in key for x in ['capex_', 'opex_', 'maint_', 'revenue_', 'life_']):
-                    if 'date' not in key and key != 'life_special':
-                        try:
-                            data_to_save[key] = float(value)
-                        except:
-                            data_to_save[key] = 0.0
-                else:
-                    data_to_save[key] = value
+                # Ciclo de Vida (FALTAN - necesitas agregar estas columnas)
+                'life_installation_date', 'life_retirement_date', 'life_retirement',
+                'life_renewal_date', 'life_renewal', 'life_special'
+            ]
             
-            # 4. Calcular capex_total si no viene
+            # 3. Procesar TODOS los campos, incluso si no existen en la tabla
+            fields_to_save = []
+            fields_missing = []
+            
+            for field in all_possible_fields:
+                if field in payload:
+                    value = payload[field]
+                    
+                    # Solo procesar si tiene valor
+                    if value is not None and value != '':
+                        # Verificar si la columna existe
+                        if existing_columns and field not in existing_columns:
+                            fields_missing.append(field)
+                            logger.warning(f"⚠️ Columna '{field}' no existe en la tabla")
+                            continue  # No guardar si no existe
+                        
+                        # Convertir tipo de dato
+                        if field in ['maint_crew_size', 'maint_visit_count', 'maint_corr_visit_count']:
+                            try:
+                                data_to_save[field] = int(value)
+                                fields_to_save.append(field)
+                            except:
+                                data_to_save[field] = 0
+                                fields_to_save.append(field)
+                        elif any(x in field for x in ['capex_', 'opex_', 'maint_', 'revenue_', 'life_']):
+                            if 'date' not in field and field != 'life_special':
+                                try:
+                                    data_to_save[field] = float(value)
+                                    fields_to_save.append(field)
+                                except:
+                                    data_to_save[field] = 0.0
+                                    fields_to_save.append(field)
+                        else:
+                            data_to_save[field] = value
+                            fields_to_save.append(field)
+            
+            # 4. Calcular capex_total automáticamente si no viene
             if 'capex_total' not in data_to_save:
                 capex_total = 0
                 for key in data_to_save:
                     if key.startswith('capex_') and key != 'capex_total':
                         capex_total += self._safe_float(data_to_save[key])
                 data_to_save['capex_total'] = capex_total
+                if 'capex_total' in existing_columns or not existing_columns:
+                    fields_to_save.append('capex_total')
             
-            logger.info(f"📊 Guardando campos: {list(data_to_save.keys())}")
+            logger.info(f"📊 Guardando {len(fields_to_save)} campos: {fields_to_save}")
             
-            # 5. Guardar
+            # 5. Intentar guardar
             try:
                 result = self.client.table("finances").upsert(data_to_save, on_conflict="device_id").execute()
                 
-                # Actualizar devices
+                # Actualizar tabla devices
                 try:
                     self.client.table("devices").upsert({
                         "device_id": clean_id,
@@ -1118,19 +1089,41 @@ class TechViewService:
                 except Exception as dev_e:
                     logger.warning(f"⚠️ No se pudo actualizar devices: {dev_e}")
                 
-                # Verificar campos faltantes
-                missing_opex = [f for f in ['opex_light', 'opex_rent', 'revenue_monthly'] 
-                              if f in payload and f not in data_to_save]
-                
-                if missing_opex:
-                    return True, f"Datos guardados. Campos OPEX faltantes (agrega columnas): {', '.join(missing_opex)}"
+                # Mensaje informativo
+                if fields_missing:
+                    missing_str = ", ".join(fields_missing[:5])  # Mostrar solo primeros 5
+                    if len(fields_missing) > 5:
+                        missing_str += f" y {len(fields_missing)-5} más..."
+                    
+                    return True, f"Datos CAPEX guardados. Agrega columnas para: {missing_str}"
                 else:
                     return True, "Datos financieros guardados correctamente"
                     
             except Exception as db_error:
                 logger.error(f"❌ Error de base de datos: {db_error}")
-                return False, f"Error al guardar en base de datos: {str(db_error)}"
-                        
+                
+                # Intentar guardar solo CAPEX básico
+                try:
+                    basic_data = {
+                        "device_id": clean_id,
+                        "updated_at": datetime.now().isoformat()
+                    }
+                    
+                    # Solo campos CAPEX que sabemos que existen
+                    for field in ['capex_screen', 'capex_civil', 'capex_structure', 'capex_electrical',
+                                'capex_meter', 'capex_data_install', 'capex_nuc', 'capex_ups']:
+                        if field in data_to_save:
+                            basic_data[field] = data_to_save[field]
+                    
+                    result = self.client.table("finances").upsert(basic_data, on_conflict="device_id").execute()
+                    logger.info(f"✅ Datos CAPEX básicos guardados para {clean_id}")
+                    
+                    return True, "Datos CAPEX básicos guardados (OPEX y otros campos no guardados - faltan columnas)"
+                    
+                except Exception as simple_error:
+                    logger.error(f"❌ Error incluso en guardado básico: {simple_error}")
+                    return False, f"Error grave. Ejecuta SQL para agregar columnas faltantes: {str(simple_error)}"
+                            
         except Exception as e:
             logger.error(f"❌ Error general guardando datos: {e}")
             import traceback
