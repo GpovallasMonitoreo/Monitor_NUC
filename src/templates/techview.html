@@ -357,8 +357,10 @@
             if (pendingChanges.size > 0 && confirm("Cambios sin guardar. ¿Salir?")) goBack();
             else if(pendingChanges.size === 0) goBack();
         }
-        function goBack() { window.location.href = '/techview/overview'; }
-
+        function goBack() { 
+    // Cambiar de '/techview/overview' a '/techview'
+            window.location.href = '/techview'; 
+        }
         const safeSet = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
         const safeSetCurrency = (id, val) => { safeSet(id, formatCurrency(val)); };
 
