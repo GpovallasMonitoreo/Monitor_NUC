@@ -72,6 +72,7 @@
                 <button onclick="switchTab('capex')" class="nav-tab px-4 py-1.5 rounded-md text-sm font-medium transition-all text-gray-500 hover:text-text-main">Inversión (CAPEX)</button>
                 <button onclick="switchTab('opex')" class="nav-tab px-4 py-1.5 rounded-md text-sm font-medium transition-all text-gray-500 hover:text-text-main">Costos (OPEX)</button>
                 <button onclick="switchTab('manto')" class="nav-tab px-4 py-1.5 rounded-md text-sm font-medium transition-all text-gray-500 hover:text-text-main">Mantenimiento</button>
+                <button onclick="switchTab('ciclo')" class="nav-tab px-4 py-1.5 rounded-md text-sm font-medium transition-all text-gray-500 hover:text-text-main">Ciclo de Vida</button>
             </nav>
         </div>
 
@@ -417,7 +418,17 @@
             }
         }
 
-        // Carga de datos
+        // --- FUNCIÓN HELPER PARA EVITAR EL ERROR "CANNOT SET PROPERTIES OF NULL" ---
+        const safeSet = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.innerText = val;
+            } else {
+                // Opcional: console.warn(`Elemento no encontrado: ${id}`);
+            }
+        };
+
+        // Carga de datos (Robustecida)
         async function loadDeviceData() {
             showLoading();
             try {
@@ -436,48 +447,32 @@
 
                 // Llenar Dashboard (Análisis Ejecutivo) CON VERIFICACIÓN DE EXISTENCIA
                 if (data.totals) {
-                    // Safe set helper
-                    const safeSet = (id, val) => {
-                        const el = document.getElementById(id);
-                        if (el) el.innerText = val;
-                    };
-
                     safeSet('kpi-capex', formatCurrency(data.totals.capex));
                     safeSet('dash-capex', formatCurrency(data.totals.capex));
-                    
                     safeSet('kpi-opex', formatCurrency(data.totals.opex_monthly));
-                    
                     safeSet('kpi-revenue', formatCurrency(data.totals.revenue_monthly));
                     safeSet('dash-revenue', formatCurrency(data.totals.revenue_monthly));
-                    
                     safeSet('kpi-margin', formatCurrency(data.totals.margin_monthly));
                     safeSet('dash-margin', formatCurrency(data.totals.margin_monthly));
-                    
                     safeSet('dash-roi', `${data.totals.roi_months} meses`);
-                    
                     safeSet('dash-monthly-cost', formatCurrency(data.totals.opex_monthly));
                 }
 
                 if (data.advanced_kpis) {
-                    const elVal = document.getElementById('tech-score-val');
-                    if (elVal) elVal.innerText = `${data.advanced_kpis.technical_score}/100`;
+                    safeSet('tech-score-val', `${data.advanced_kpis.technical_score}/100`);
                     
                     const elBar = document.getElementById('tech-score-bar');
-                    if (elBar) elBar.style.width = `${data.advanced_kpis.technical_score}%`;
+                    if(elBar) elBar.style.width = `${data.advanced_kpis.technical_score}%`;
                     
-                    const elRein = document.getElementById('dash-reincidence');
-                    if (elRein) elRein.innerText = `${data.advanced_kpis.reincidence_rate}%`;
+                    safeSet('dash-reincidence', `${data.advanced_kpis.reincidence_rate}%`);
                     
                     // Telemetría / Recomendación
                     generateTelemetry(data.totals, data.advanced_kpis);
                 }
 
                 if (data.eco) {
-                    const elCo2 = document.getElementById('eco-co2');
-                    if (elCo2) elCo2.innerText = data.eco.co2_tons;
-                    
-                    const elTrees = document.getElementById('eco-trees');
-                    if (elTrees) elTrees.innerText = data.eco.trees;
+                    safeSet('eco-co2', data.eco.co2_tons);
+                    safeSet('eco-trees', data.eco.trees);
                 }
 
                 // Renderizar Gráfica
