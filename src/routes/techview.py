@@ -115,50 +115,213 @@ class TechViewService:
             if fin_resp.data:
                 data = fin_resp.data[0]
                 
-                # Asegurar que todos los campos esperados existan en el resultado
-                expected_fields = [
-                    # CAPEX
-                    'capex_screen', 'capex_civil', 'capex_structure', 'capex_electrical',
-                    'capex_meter', 'capex_data_install', 'capex_nuc', 'capex_ups',
-                    'capex_sending', 'capex_processor', 'capex_modem_wifi', 'capex_modem_sim',
-                    'capex_teltonika', 'capex_hdmi', 'capex_camera', 'capex_crew',
-                    'capex_logistics', 'capex_transportation', 'capex_legal',
-                    'capex_negotiations', 'capex_admin_qtm', 'capex_inventory',
-                    'capex_first_install',
+                # Lista COMPLETA de todos los campos que espera el frontend
+                all_expected_fields = {
+                    # CAPEX (estos ya los tienes)
+                    'capex_screen': 0.0,
+                    'capex_civil': 0.0,
+                    'capex_structure': 0.0,
+                    'capex_electrical': 0.0,
+                    'capex_meter': 0.0,
+                    'capex_data_install': 0.0,
+                    'capex_nuc': 0.0,
+                    'capex_ups': 0.0,
+                    'capex_sending': 0.0,
+                    'capex_processor': 0.0,
+                    'capex_modem_wifi': 0.0,
+                    'capex_modem_sim': 0.0,
+                    'capex_teltonika': 0.0,
+                    'capex_hdmi': 0.0,
+                    'capex_camera': 0.0,
+                    'capex_crew': 0.0,
+                    'capex_logistics': 0.0,
+                    'capex_transportation': 0.0,
+                    'capex_legal': 0.0,
+                    'capex_negotiations': 0.0,
+                    'capex_admin_qtm': 0.0,
+                    'capex_inventory': 0.0,
+                    'capex_first_install': 0.0,
+                    'capex_total': 0.0,
                     
-                    # OPEX
-                    'opex_light', 'opex_internet', 'opex_internet_sim', 'opex_internet_cable',
-                    'opex_rent', 'opex_soil_use', 'opex_taxes', 'opex_insurance',
-                    'opex_license_annual', 'opex_content_scheduling', 'opex_srd',
-                    'revenue_monthly',
+                    # OPEX (FALTAN EN TU TABLA - valores por defecto)
+                    'opex_light': 0.0,
+                    'opex_internet': 0.0,
+                    'opex_internet_sim': 0.0,
+                    'opex_internet_cable': 0.0,
+                    'opex_rent': 0.0,
+                    'opex_soil_use': 0.0,
+                    'opex_taxes': 0.0,
+                    'opex_insurance': 0.0,
+                    'opex_license_annual': 0.0,
+                    'opex_content_scheduling': 0.0,
+                    'opex_srd': 0.0,
+                    'revenue_monthly': 0.0,
                     
-                    # Mantenimiento
-                    'maint_prev_bimonthly', 'maint_cleaning_supplies', 'maint_gas',
-                    'maint_crew_size', 'maint_visit_count', 'maint_corr_labor',
-                    'maint_corr_parts', 'maint_corr_gas', 'maint_corr_visit_count',
+                    # Mantenimiento (FALTAN EN TU TABLA - valores por defecto)
+                    'maint_prev_bimonthly': 0.0,
+                    'maint_cleaning_supplies': 0.0,
+                    'maint_gas': 0.0,
+                    'maint_crew_size': 0,
+                    'maint_visit_count': 0,
+                    'maint_corr_labor': 0.0,
+                    'maint_corr_parts': 0.0,
+                    'maint_corr_gas': 0.0,
+                    'maint_corr_visit_count': 0,
                     
-                    # Ciclo de Vida
-                    'life_installation_date', 'life_retirement_date', 'life_retirement',
-                    'life_renewal_date', 'life_renewal', 'life_special'
-                ]
+                    # Ciclo de Vida (FALTAN EN TU TABLA - valores por defecto)
+                    'life_installation_date': None,
+                    'life_retirement_date': None,
+                    'life_retirement': 0.0,
+                    'life_renewal_date': None,
+                    'life_renewal': 0.0,
+                    'life_special': None
+                }
                 
-                # Añadir campos faltantes con valores por defecto
-                for field in expected_fields:
+                # Asegurar que todos los campos existan con valores por defecto
+                for field, default_value in all_expected_fields.items():
                     if field not in data:
-                        if field in ['maint_crew_size', 'maint_visit_count', 'maint_corr_visit_count']:
-                            data[field] = 0  # Enteros
-                        elif any(x in field for x in ['capex_', 'opex_', 'maint_', 'revenue_', 'life_']):
-                            if 'date' not in field and field != 'life_special':
-                                data[field] = 0.0  # Flotantes
-                        else:
-                            data[field] = None  # Texto/fechas
+                        data[field] = default_value
+                    elif data[field] is None:
+                        data[field] = default_value
                 
                 return data
             else:
-                return {}
+                # Si no existe registro, crear uno con todos los campos por defecto
+                return {
+                    # CAPEX
+                    'capex_screen': 0.0,
+                    'capex_civil': 0.0,
+                    'capex_structure': 0.0,
+                    'capex_electrical': 0.0,
+                    'capex_meter': 0.0,
+                    'capex_data_install': 0.0,
+                    'capex_nuc': 0.0,
+                    'capex_ups': 0.0,
+                    'capex_sending': 0.0,
+                    'capex_processor': 0.0,
+                    'capex_modem_wifi': 0.0,
+                    'capex_modem_sim': 0.0,
+                    'capex_teltonika': 0.0,
+                    'capex_hdmi': 0.0,
+                    'capex_camera': 0.0,
+                    'capex_crew': 0.0,
+                    'capex_logistics': 0.0,
+                    'capex_transportation': 0.0,
+                    'capex_legal': 0.0,
+                    'capex_negotiations': 0.0,
+                    'capex_admin_qtm': 0.0,
+                    'capex_inventory': 0.0,
+                    'capex_first_install': 0.0,
+                    'capex_total': 0.0,
+                    
+                    # OPEX
+                    'opex_light': 0.0,
+                    'opex_internet': 0.0,
+                    'opex_internet_sim': 0.0,
+                    'opex_internet_cable': 0.0,
+                    'opex_rent': 0.0,
+                    'opex_soil_use': 0.0,
+                    'opex_taxes': 0.0,
+                    'opex_insurance': 0.0,
+                    'opex_license_annual': 0.0,
+                    'opex_content_scheduling': 0.0,
+                    'opex_srd': 0.0,
+                    'revenue_monthly': 0.0,
+                    
+                    # Mantenimiento
+                    'maint_prev_bimonthly': 0.0,
+                    'maint_cleaning_supplies': 0.0,
+                    'maint_gas': 0.0,
+                    'maint_crew_size': 0,
+                    'maint_visit_count': 0,
+                    'maint_corr_labor': 0.0,
+                    'maint_corr_parts': 0.0,
+                    'maint_corr_gas': 0.0,
+                    'maint_corr_visit_count': 0,
+                    
+                    # Ciclo de Vida
+                    'life_installation_date': None,
+                    'life_retirement_date': None,
+                    'life_retirement': 0.0,
+                    'life_renewal_date': None,
+                    'life_renewal': 0.0,
+                    'life_special': None,
+                    
+                    # Campos de sistema
+                    'device_id': device_id,
+                    'updated_at': datetime.now().isoformat()
+                }
         except Exception as e:
             logger.error(f"Error obteniendo info financiera: {e}")
-            return {}
+            # Retornar estructura vacía con valores por defecto
+            return self._create_default_finance_data(device_id)
+    
+    def _create_default_finance_data(self, device_id):
+        """Crea datos financieros por defecto"""
+        return {
+            # CAPEX
+            'capex_screen': 0.0,
+            'capex_civil': 0.0,
+            'capex_structure': 0.0,
+            'capex_electrical': 0.0,
+            'capex_meter': 0.0,
+            'capex_data_install': 0.0,
+            'capex_nuc': 0.0,
+            'capex_ups': 0.0,
+            'capex_sending': 0.0,
+            'capex_processor': 0.0,
+            'capex_modem_wifi': 0.0,
+            'capex_modem_sim': 0.0,
+            'capex_teltonika': 0.0,
+            'capex_hdmi': 0.0,
+            'capex_camera': 0.0,
+            'capex_crew': 0.0,
+            'capex_logistics': 0.0,
+            'capex_transportation': 0.0,
+            'capex_legal': 0.0,
+            'capex_negotiations': 0.0,
+            'capex_admin_qtm': 0.0,
+            'capex_inventory': 0.0,
+            'capex_first_install': 0.0,
+            'capex_total': 0.0,
+            
+            # OPEX
+            'opex_light': 0.0,
+            'opex_internet': 0.0,
+            'opex_internet_sim': 0.0,
+            'opex_internet_cable': 0.0,
+            'opex_rent': 0.0,
+            'opex_soil_use': 0.0,
+            'opex_taxes': 0.0,
+            'opex_insurance': 0.0,
+            'opex_license_annual': 0.0,
+            'opex_content_scheduling': 0.0,
+            'opex_srd': 0.0,
+            'revenue_monthly': 0.0,
+            
+            # Mantenimiento
+            'maint_prev_bimonthly': 0.0,
+            'maint_cleaning_supplies': 0.0,
+            'maint_gas': 0.0,
+            'maint_crew_size': 0,
+            'maint_visit_count': 0,
+            'maint_corr_labor': 0.0,
+            'maint_corr_parts': 0.0,
+            'maint_corr_gas': 0.0,
+            'maint_corr_visit_count': 0,
+            
+            # Ciclo de Vida
+            'life_installation_date': None,
+            'life_retirement_date': None,
+            'life_retirement': 0.0,
+            'life_renewal_date': None,
+            'life_renewal': 0.0,
+            'life_special': None,
+            
+            # Campos de sistema
+            'device_id': device_id,
+            'updated_at': datetime.now().isoformat()
+        }
     
     def _get_maintenance_logs(self, device_id):
         try:
@@ -169,23 +332,49 @@ class TechViewService:
             return []
     
     def _calculate_basic_totals(self, finance_data):
+        """Calcula totales básicos usando valores por defecto si faltan campos"""
         capex = opex = revenue = 0
         
         if finance_data:
-            # Calcular CAPEX total
+            # Calcular CAPEX total - sumar todos los campos capex_
             for key, value in finance_data.items():
                 if key.startswith('capex_'):
                     capex += self._safe_float(value)
-                elif key.startswith('opex_') and 'annual' not in key:
-                    opex += self._safe_float(value)
-                elif key == 'opex_license_annual':
-                    opex += (self._safe_float(value) / 12)
-                elif key == 'revenue_monthly':
-                    revenue = self._safe_float(value)
-                elif key == 'maint_prev_bimonthly':
-                    opex += (self._safe_float(value) / 2)
-                elif key.startswith('maint_') and not key.endswith(('count', 'size')):
-                    opex += self._safe_float(value)
+        
+        # Si no hay datos financieros, usar valores por defecto
+        if not finance_data:
+            finance_data = {}
+        
+        # Calcular OPEX usando valores por defecto si faltan
+        for field, default in [
+            ('opex_light', 0.0),
+            ('opex_internet', 0.0),
+            ('opex_internet_sim', 0.0),
+            ('opex_internet_cable', 0.0),
+            ('opex_rent', 0.0),
+            ('opex_soil_use', 0.0),
+            ('opex_taxes', 0.0),
+            ('opex_insurance', 0.0),
+            ('maint_prev_bimonthly', 0.0),
+            ('maint_cleaning_supplies', 0.0),
+            ('maint_gas', 0.0),
+            ('maint_corr_labor', 0.0),
+            ('maint_corr_parts', 0.0),
+            ('maint_corr_gas', 0.0)
+        ]:
+            opex += self._safe_float(finance_data.get(field, default))
+        
+        # Licencia anual (convertir a mensual)
+        opex += (self._safe_float(finance_data.get('opex_license_annual', 0)) / 12)
+        
+        # SRD
+        opex += self._safe_float(finance_data.get('opex_srd', 0))
+        
+        # Programación de contenido
+        opex += self._safe_float(finance_data.get('opex_content_scheduling', 0))
+        
+        # Ingresos
+        revenue = self._safe_float(finance_data.get('revenue_monthly', 0))
         
         # Cálculos adicionales
         margin = revenue - opex
@@ -208,7 +397,7 @@ class TechViewService:
             # 1. Recuperar CAPEX
             capex = sum(self._safe_float(finance_data.get(k, 0)) for k in finance_data if k.startswith('capex_'))
             
-            # 2. Calcular OPEX mensual
+            # 2. Calcular OPEX mensual usando valores por defecto
             monthly_opex = self._calculate_monthly_opex(finance_data)
             monthly_revenue = self._safe_float(finance_data.get('revenue_monthly', 0))
             
@@ -312,28 +501,44 @@ class TechViewService:
             return self._create_default_kpis()
     
     def _calculate_monthly_opex(self, finance_data):
-        """Calcula OPEX mensual total incluyendo mantenimiento"""
+        """Calcula OPEX mensual total usando valores por defecto"""
         monthly_opex = 0
         
         if not finance_data:
             return monthly_opex
             
-        for k, v in finance_data.items():
-            val = self._safe_float(v)
+        # Valores por defecto para todos los campos OPEX
+        default_values = {
+            'opex_light': 0.0,
+            'opex_internet': 0.0,
+            'opex_internet_sim': 0.0,
+            'opex_internet_cable': 0.0,
+            'opex_rent': 0.0,
+            'opex_soil_use': 0.0,
+            'opex_taxes': 0.0,
+            'opex_insurance': 0.0,
+            'opex_license_annual': 0.0,
+            'opex_content_scheduling': 0.0,
+            'opex_srd': 0.0,
+            'maint_prev_bimonthly': 0.0,
+            'maint_cleaning_supplies': 0.0,
+            'maint_gas': 0.0,
+            'maint_corr_labor': 0.0,
+            'maint_corr_parts': 0.0,
+            'maint_corr_gas': 0.0
+        }
+        
+        # Sumar todos los campos OPEX
+        for field, default_val in default_values.items():
+            value = finance_data.get(field, default_val)
+            val = self._safe_float(value)
             
-            # Costos OPEX directos
-            if k.startswith('opex_'):
-                if 'annual' in k: 
-                    monthly_opex += (val / 12)
-                else: 
-                    monthly_opex += val
-            
-            # Costos de mantenimiento (ya son mensuales o se convierten)
-            elif k.startswith('maint_') and not k.endswith(('count', 'size')):
-                if 'bimonthly' in k: 
-                    monthly_opex += (val / 2)
-                else: 
-                    monthly_opex += val
+            if field == 'opex_license_annual':
+                monthly_opex += (val / 12)
+            elif field == 'maint_prev_bimonthly':
+                monthly_opex += (val / 2)
+            else:
+                monthly_opex += val
         
         return monthly_opex
     
@@ -467,8 +672,7 @@ class TechViewService:
                 categories['operational'] += self._safe_float(finance_data.get(f'opex_{key}', 0))
             
             # Licencia anual (convertir a mensual para análisis)
-            if 'opex_license_annual' in finance_data:
-                categories['operational'] += (self._safe_float(finance_data['opex_license_annual']) / 12)
+            categories['operational'] += (self._safe_float(finance_data.get('opex_license_annual', 0)) / 12)
             
             # Mantenimiento
             maint_keys = ['prev_bimonthly', 'cleaning_supplies', 'gas', 'corr_labor', 'corr_parts', 'corr_gas']
@@ -824,7 +1028,7 @@ class TechViewService:
                 "roi_months": 0,
                 "roi_years": 0
             },
-            "financials": {},
+            "financials": self._create_default_finance_data(device_id),
             "advanced_kpis": self._create_default_kpis(),
             "summary": {
                 "financial_health": "Error",
@@ -834,7 +1038,7 @@ class TechViewService:
         }
     
     def save_device_financials(self, payload):
-        """Guarda datos financieros del dispositivo - VERSIÓN ROBUSTA CON CAMPOS OPCIONALES"""
+        """Guarda datos financieros del dispositivo - VERSIÓN SIMPLIFICADA"""
         try:
             device_id = payload.get('device_id')
             if not device_id: 
@@ -851,147 +1055,81 @@ class TechViewService:
                 existing_columns = []
                 if table_info.data and len(table_info.data) > 0:
                     existing_columns = list(table_info.data[0].keys())
-                logger.info(f"📋 Columnas existentes en tabla: {existing_columns}")
+                logger.info(f"📋 Columnas existentes: {existing_columns}")
                 
             except Exception as table_error:
                 logger.error(f"❌ Error obteniendo estructura de tabla: {table_error}")
                 existing_columns = []
             
-            # 2. Preparar datos para guardar (solo columnas que existen)
+            # 2. Preparar datos básicos
             data_to_save = {
                 "device_id": clean_id,
                 "updated_at": datetime.now().isoformat()
             }
             
-            # Lista de campos requeridos (CAPEX básico - deben existir)
-            required_fields = [
-                'capex_screen', 'capex_civil', 'capex_structure', 'capex_electrical',
-                'capex_meter', 'capex_data_install', 'capex_nuc', 'capex_ups',
-                'capex_sending', 'capex_processor', 'capex_modem_wifi', 'capex_modem_sim',
-                'capex_teltonika', 'capex_hdmi', 'capex_camera', 'capex_crew',
-                'capex_logistics', 'capex_transportation', 'capex_legal',
-                'capex_negotiations', 'capex_admin_qtm', 'capex_inventory',
-                'capex_first_install'
-            ]
-            
-            # Campos opcionales (pueden no existir en la tabla)
-            optional_fields = [
-                # OPEX
-                'opex_light', 'opex_internet', 'opex_internet_sim', 'opex_internet_cable',
-                'opex_rent', 'opex_soil_use', 'opex_taxes', 'opex_insurance',
-                'opex_license_annual', 'opex_content_scheduling', 'opex_srd',
-                'revenue_monthly',
+            # 3. Procesar solo campos que existen en la tabla
+            for key, value in payload.items():
+                if key in ['device_id', 'cost_type', 'category']:
+                    continue
                 
-                # Mantenimiento
-                'maint_prev_bimonthly', 'maint_cleaning_supplies', 'maint_gas',
-                'maint_crew_size', 'maint_visit_count', 'maint_corr_labor',
-                'maint_corr_parts', 'maint_corr_gas', 'maint_corr_visit_count',
+                # Solo guardar si la columna existe
+                if existing_columns and key not in existing_columns:
+                    logger.warning(f"⚠️ Columna '{key}' no existe. Omitiendo...")
+                    continue
                 
-                # Ciclo de Vida (OPCIONALES - pueden no existir aún)
-                'life_installation_date', 'life_retirement_date', 'life_retirement',
-                'life_renewal_date', 'life_renewal', 'life_special'
-            ]
-            
-            # 3. Procesar campos requeridos (deben existir o tienen valores por defecto)
-            for field in required_fields:
-                if field in payload:
-                    value = payload[field]
-                    if value is None or value == '':
-                        data_to_save[field] = 0.0
-                    else:
+                if value is None or value == '':
+                    continue
+                
+                # Convertir tipos
+                if key in ['maint_crew_size', 'maint_visit_count', 'maint_corr_visit_count']:
+                    try:
+                        data_to_save[key] = int(value)
+                    except:
+                        data_to_save[key] = 0
+                elif any(x in key for x in ['capex_', 'opex_', 'maint_', 'revenue_', 'life_']):
+                    if 'date' not in key and key != 'life_special':
                         try:
-                            data_to_save[field] = float(value)
+                            data_to_save[key] = float(value)
                         except:
-                            data_to_save[field] = 0.0
+                            data_to_save[key] = 0.0
                 else:
-                    # Si no viene en el payload, poner valor por defecto
-                    data_to_save[field] = 0.0
+                    data_to_save[key] = value
             
-            # 4. Procesar campos opcionales (solo si existen en la tabla)
-            for field in optional_fields:
-                if field in payload:
-                    value = payload[field]
-                    
-                    # Verificar si la columna existe en la tabla
-                    if existing_columns and field not in existing_columns:
-                        logger.warning(f"⚠️ Columna '{field}' no existe en la tabla. Omitiendo...")
-                        continue
-                    
-                    if value is None or value == '':
-                        # Para campos de fecha/texto, dejar NULL
-                        if 'date' in field or field == 'life_special':
-                            data_to_save[field] = None
-                        else:
-                            data_to_save[field] = 0.0
-                    else:
-                        # Convertir según tipo de campo
-                        if field in ['maint_crew_size', 'maint_visit_count', 'maint_corr_visit_count']:
-                            # Campos enteros
-                            try:
-                                data_to_save[field] = int(value)
-                            except:
-                                data_to_save[field] = 0
-                        elif any(x in field for x in ['capex_', 'opex_', 'maint_', 'revenue_', 'life_']):
-                            # Campos numéricos (excepto fechas)
-                            if 'date' not in field and field != 'life_special':
-                                try:
-                                    data_to_save[field] = float(value)
-                                except:
-                                    data_to_save[field] = 0.0
-                        else:
-                            # Campos de texto/fecha
-                            data_to_save[field] = value
+            # 4. Calcular capex_total si no viene
+            if 'capex_total' not in data_to_save:
+                capex_total = 0
+                for key in data_to_save:
+                    if key.startswith('capex_') and key != 'capex_total':
+                        capex_total += self._safe_float(data_to_save[key])
+                data_to_save['capex_total'] = capex_total
             
-            logger.info(f"📊 Campos preparados para guardar: {list(data_to_save.keys())}")
+            logger.info(f"📊 Guardando campos: {list(data_to_save.keys())}")
             
-            # 5. Intentar guardar
+            # 5. Guardar
             try:
-                # Usar upsert para crear o actualizar
                 result = self.client.table("finances").upsert(data_to_save, on_conflict="device_id").execute()
                 
-                # Actualizar tabla devices para mantener consistencia
+                # Actualizar devices
                 try:
                     self.client.table("devices").upsert({
                         "device_id": clean_id,
                         "updated_at": datetime.now().isoformat()
                     }, on_conflict="device_id").execute()
                 except Exception as dev_e:
-                    logger.warning(f"⚠️ No se pudo actualizar tabla devices: {dev_e}")
+                    logger.warning(f"⚠️ No se pudo actualizar devices: {dev_e}")
                 
-                logger.info(f"✅ Datos guardados exitosamente para {clean_id}")
+                # Verificar campos faltantes
+                missing_opex = [f for f in ['opex_light', 'opex_rent', 'revenue_monthly'] 
+                              if f in payload and f not in data_to_save]
                 
-                # Verificar si se omitieron campos de ciclo de vida
-                ciclo_vida_campos = ['life_installation_date', 'life_retirement_date', 'life_retirement',
-                                   'life_renewal_date', 'life_renewal', 'life_special']
-                campos_omitidos = [campo for campo in ciclo_vida_campos if campo in payload and campo not in data_to_save]
-                
-                if campos_omitidos:
-                    return True, f"Datos guardados. Campos de ciclo de vida omitidos (agrega columnas): {', '.join(campos_omitidos)}"
+                if missing_opex:
+                    return True, f"Datos guardados. Campos OPEX faltantes (agrega columnas): {', '.join(missing_opex)}"
                 else:
                     return True, "Datos financieros guardados correctamente"
                     
             except Exception as db_error:
                 logger.error(f"❌ Error de base de datos: {db_error}")
-                
-                # Intentar guardar solo campos básicos
-                try:
-                    # Crear datos mínimos
-                    basic_data = {
-                        "device_id": clean_id,
-                        "updated_at": datetime.now().isoformat()
-                    }
-                    
-                    # Solo campos CAPEX básicos
-                    for field in required_fields[:10]:  # Primeros 10 campos CAPEX
-                        basic_data[field] = data_to_save.get(field, 0.0)
-                    
-                    result = self.client.table("finances").upsert(basic_data, on_conflict="device_id").execute()
-                    logger.info(f"✅ Datos básicos guardados para {clean_id}")
-                    return True, "Datos básicos guardados (algunos campos omitidos por error de base de datos)"
-                    
-                except Exception as simple_error:
-                    logger.error(f"❌ Error incluso en guardado básico: {simple_error}")
-                    return False, f"Error de base de datos. Verifica la conexión: {str(simple_error)}"
+                return False, f"Error al guardar en base de datos: {str(db_error)}"
                         
         except Exception as e:
             logger.error(f"❌ Error general guardando datos: {e}")
@@ -1011,14 +1149,10 @@ class TechViewService:
     def get_dashboard_data(self):
         """Obtiene datos para el dashboard principal"""
         try:
-            # Obtener todos los dispositivos
             devices = self.get_inventory()
-            
-            # Obtener datos financieros agregados
             finances_resp = self.client.table("finances").select("*").execute()
             finances = finances_resp.data if finances_resp.data else []
             
-            # Calcular KPIs agregados
             total_capex = 0
             total_monthly_revenue = 0
             total_monthly_opex = 0
@@ -1026,7 +1160,6 @@ class TechViewService:
             offline_count = 0
             
             for device in devices:
-                # Encontrar datos financieros para este dispositivo
                 device_finances = next((f for f in finances if f.get('device_id') == device.get('device_id')), {})
                 
                 # Sumar CAPEX
@@ -1034,30 +1167,26 @@ class TechViewService:
                     if key.startswith('capex_'):
                         total_capex += self._safe_float(value)
                 
-                # Sumar ingresos y gastos
+                # Ingresos
                 total_monthly_revenue += self._safe_float(device_finances.get('revenue_monthly', 0))
                 
-                # Calcular OPEX mensual para este dispositivo
-                device_monthly_opex = 0
-                for key, value in device_finances.items():
-                    if key.startswith('opex_') and 'annual' not in key:
-                        device_monthly_opex += self._safe_float(value)
-                    elif key == 'opex_license_annual':
-                        device_monthly_opex += (self._safe_float(value) / 12)
-                    elif key == 'maint_prev_bimonthly':
-                        device_monthly_opex += (self._safe_float(value) / 2)
-                    elif key.startswith('maint_') and not key.endswith(('count', 'size')):
-                        device_monthly_opex += self._safe_float(value)
+                # OPEX
+                device_opex = 0
+                for key in ['opex_light', 'opex_internet', 'opex_rent', 'opex_taxes', 'opex_insurance']:
+                    device_opex += self._safe_float(device_finances.get(key, 0))
                 
-                total_monthly_opex += device_monthly_opex
+                # Licencia anual
+                device_opex += (self._safe_float(device_finances.get('opex_license_annual', 0)) / 12)
                 
-                # Contar estados
+                total_monthly_opex += device_opex
+                
+                # Estados
                 if device.get('status') == 'online':
                     online_count += 1
                 else:
                     offline_count += 1
             
-            # Datos para gráfico (últimos 6 meses)
+            # Datos para gráfico
             months = []
             sales_data = []
             cost_data = []
@@ -1065,12 +1194,10 @@ class TechViewService:
             current_date = datetime.now()
             for i in range(6, 0, -1):
                 month_date = current_date - timedelta(days=30*i)
-                month_name = month_date.strftime('%b')
-                months.append(month_name)
+                months.append(month_date.strftime('%b'))
                 
-                # Datos de ejemplo - en producción esto vendría de una tabla de ventas históricas
-                base_sales = total_monthly_revenue * (0.9 + (i * 0.04))  # Crecimiento del 4% mensual
-                base_costs = total_monthly_opex * (0.95 + (i * 0.01))   # Inflación del 1% mensual
+                base_sales = total_monthly_revenue * (0.9 + (i * 0.04))
+                base_costs = total_monthly_opex * (0.95 + (i * 0.01))
                 
                 sales_data.append(round(base_sales, 2))
                 cost_data.append(round(base_costs, 2))
@@ -1115,7 +1242,6 @@ techview_service = TechViewService()
 
 # RUTAS DEL BLUEPRINT
 
-# RUTA PRINCIPAL DEL DASHBOARD
 @bp.route('/')
 def index():
     """Página principal del dashboard de TechView"""
@@ -1194,7 +1320,6 @@ def api_dashboard():
             }
         }), 500
 
-# Nueva ruta para propuesta
 @bp.route('/proposal')
 def proposal():
     """Página para nueva instalación/propuesta"""
