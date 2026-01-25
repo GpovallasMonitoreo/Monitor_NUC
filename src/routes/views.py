@@ -1,77 +1,171 @@
-from flask import Blueprint, render_template, request, jsonify
-from src.services.supabase_service import SupabaseService 
+import os
+import logging
+from datetime import datetime
+from supabase import create_client, Client
 
-bp = Blueprint('views', __name__)
-db_service = SupabaseService()
+logger = logging.getLogger(__name__)
 
-# --- RUTAS PRINCIPALES (NO TOCAR) ---
-@bp.route('/')
-def home(): return render_template('index.html')
-@bp.route('/monitor')
-def monitor(): return render_template('monitor.html')
-@bp.route('/latency')
-def latency(): return render_template('latency.html')
-@bp.route('/map')
-def map_view(): return render_template('map.html')
-@bp.route('/inventory')
-def inventory_main(): return render_template('inventory/main.html')
-@bp.route('/inventory/manuals')
-def inventory_manuals(): return render_template('inventory/manuals.html')
-@bp.route('/inventory/specs')
-def inventory_specs(): return render_template('inventory/specs.html')
-@bp.route('/inventory/logs')
-def inventory_logs(): return render_template('inventory/logs.html')
+class SupabaseService:
+    def __init__(self):
+        url = os.environ.get("SUPABASE_URL")
+        key = os.environ.get("SUPABASE_KEY")
+        if not url or not key:
+            raise ValueError("Faltan credenciales de Supabase en .env")
+        self.client: Client = create_client(url, key)
 
-# ==========================================
-# MÓDULO TECHVIEW (COMPLETO)
-# ==========================================
+    def _safe_float(self, value):
+        """Convierte valores a float de forma segura, evitando error 500"""
+        try:
+            if value is None or value == '': return 0.0
+            return float(value)
+        except (ValueError, TypeError):
+            return 0.0
 
-@bp.route('/techview')
-def techview_home():
-    """Dashboard General Financiero"""
-    return render_template('dashboard_finanzas.html')
+    # --- CÁLCULO CIENTÍFICO DE IMPACTO AMBIENTAL ---
+    def _calculate_eco_impact(self):
+        """
+        Calcula el ahorro real al migrar de tecnología Legacy a NUC/LED Eficiente.
+        Datos: 18 horas de uso diario.
+        """
+        # Consumo Promedio (Watts/Hora)
+        watts_legacy = 450.0  # Pantalla vieja + Player antiguo
+        watts_modern = 150.0  # Pantalla LED Nueva + NUC 11th Gen
+        hours_active = 18.0   # Horas encendida al día
+        
+        # Ahorro: (Diferencia Watts * Horas * 365 días) / 1000 para kWh
+        kwh_saved_annual = ((watts_legacy - watts_modern) * hours_active * 365) / 1000
+        
+        # Factor CO2 (México: ~0.42 kg CO2 por kWh generado)
+        co2_tons = (kwh_saved_annual * 0.42) / 1000
+        
+        # Árboles equivalentes (1 árbol maduro absorbe ~22kg CO2/año)
+        trees = int((kwh_saved_annual * 0.42) / 22)
 
-@bp.route('/techview/detail')
-def techview_detail():
-    """Formulario de Edición de Costos"""
-    device_id = request.args.get('device_id', 'REF-01')
-    return render_template('techview.html', device_id=device_id)
+        return {
+            "kwh_saved": round(kwh_saved_annual, 2),
+            "co2_tons": round(co2_tons, 2),
+            "trees": trees,
+            "efficiency_gain": "66%" 
+        }
 
-@bp.route('/techview/analysis')
-def techview_analysis():
-    """
-    NUEVO: Dashboard Visual Premium (Site Analysis).
-    """
-    device_id = request.args.get('device_id', 'REF-01')
-    return render_template('site_analysis.html', device_id=device_id)
+    # --- MÉTODOS DE DATOS ---
+    def get_financial_overview(self):
+        """KPIs Globales para el Dashboard Principal"""
+        try:
+            finances = self.client.table("finances").select("*").execute().data or []
+            tickets = self.client.table("tickets").select("ticket_id, costo_estimado").execute().data or []
+            devices = self.client.table("devices").select("status").execute().data or []
 
-@bp.route('/techview/proposal')
-def techview_proposal():
-    return render_template('proposal.html')
+            capex = 0.0
+            sales_total = 0.0
+            opex_monthly = 0.0
 
-# --- API ENDPOINTS ---
+            for f in finances:
+                amt = self._safe_float(f.get('amount'))
+                ctype = f.get('cost_type')
+                rec = f.get('recurrence')
+                
+                # Compatibilidad con datos viejos
+                if not ctype:
+                    t = f.get('type')
+                    if t == 'installation': ctype = 'CAPEX'
+                    elif t == 'sale': ctype = 'REVENUE'
+                    else: ctype = 'OPEX'
 
-@bp.route('/api/techview/dashboard')
-def api_dashboard():
-    data = db_service.get_financial_overview()
-    if not data: return jsonify({"kpis": {}, "financials": {}})
-    return jsonify(data)
+                if ctype == 'CAPEX': capex += amt
+                elif ctype == 'REVENUE': 
+                    if rec == 'monthly': sales_total += (amt * 12)
+                    else: sales_total += amt
+                elif ctype == 'OPEX' and rec == 'monthly': opex_monthly += amt
 
-@bp.route('/api/techview/device/<path:device_id>')
-def api_device(device_id):
-    data = db_service.get_device_detail(device_id)
-    if not data: return jsonify({"totals": {}, "eco": {}})
-    return jsonify(data)
+            incident_cost = sum(self._safe_float(t.get('costo_estimado')) for t in tickets)
 
-@bp.route('/api/techview/inventory')
-def api_inventory():
-    try:
-        res = db_service.client.table("devices").select("device_id, pc_name, status, ip_address").execute()
-        return jsonify(res.data or [])
-    except: return jsonify([])
+            return {
+                "kpis": {
+                    "capex": capex,
+                    "sales_annual": sales_total,
+                    "opex_monthly": opex_monthly,
+                    "incidents": len(tickets),
+                    "active_alerts": sum(1 for d in devices if d.get('status') != 'online')
+                },
+                "financials": {
+                    "months": ['Actual', 'Proyección'],
+                    "sales": [sales_total/12, sales_total/12],
+                    "maintenance": [opex_monthly, opex_monthly + (incident_cost/12)]
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error Overview: {e}")
+            return None
 
-@bp.route('/api/techview/save', methods=['POST'])
-def api_save():
-    success = db_service.save_cost_entry(request.json)
-    if success: return jsonify({"status": "ok"}), 200
-    return jsonify({"status": "error"}), 500
+    def get_device_detail(self, device_id):
+        """Detalle completo por pantalla + Eco Impact"""
+        try:
+            # Consultas DB seguras
+            fin_resp = self.client.table("finances").select("*").eq("device_id", device_id).execute()
+            # En tickets buscamos por 'sitio' o 'device_id' dependiendo de tu tabla
+            tic_resp = self.client.table("tickets").select("*").eq("sitio", device_id).execute()
+            dev_resp = self.client.table("devices").select("*").eq("device_id", device_id).execute()
+
+            records = fin_resp.data if fin_resp and fin_resp.data else []
+            tickets = tic_resp.data if tic_resp and tic_resp.data else []
+            device_info = dev_resp.data[0] if dev_resp and dev_resp.data else {}
+
+            data = {
+                "device": device_info,
+                "breakdown": records,
+                "totals": {"capex": 0.0, "opex": 0.0, "revenue": 0.0, "roi": 0.0},
+                "history": {"tickets": tickets, "downtime": device_info.get('disconnect_count', 0)},
+                "eco": self._calculate_eco_impact()
+            }
+
+            for r in records:
+                amt = self._safe_float(r.get('amount'))
+                ctype = r.get('cost_type')
+                rec = r.get('recurrence')
+                
+                # Compatibilidad
+                if not ctype:
+                    t = r.get('type')
+                    if t == 'installation': ctype = 'CAPEX'
+                    elif t == 'sale': ctype = 'REVENUE'
+                    else: ctype = 'OPEX'
+
+                if ctype == 'CAPEX': data['totals']['capex'] += amt
+                elif ctype == 'OPEX' and rec == 'monthly': data['totals']['opex'] += amt
+                elif ctype == 'REVENUE' and rec == 'monthly': data['totals']['revenue'] += amt
+
+            margin = data['totals']['revenue'] - data['totals']['opex']
+            if margin > 0: data['totals']['roi'] = data['totals']['capex'] / margin
+
+            return data
+        except Exception as e:
+            logger.error(f"Error Device {device_id}: {e}")
+            # Retornar estructura vacía para evitar error 500
+            return {
+                "device": {}, "breakdown": [], 
+                "totals": {"capex": 0, "opex": 0, "revenue": 0, "roi": 0},
+                "history": {"tickets": [], "downtime": 0},
+                "eco": {"kwh_saved": 0, "co2_tons": 0, "trees": 0, "efficiency_gain": "0%"}
+            }
+
+    def save_cost_entry(self, payload):
+        """Guarda un costo en la tabla finances"""
+        try:
+            record = {
+                "device_id": payload.get('device_id'),
+                "cost_type": payload.get('cost_type'),
+                "category": payload.get('category'),
+                "concept": payload.get('concept'),
+                "amount": self._safe_float(payload.get('amount')),
+                "recurrence": payload.get('recurrence', 'one_time'),
+                "date": datetime.now().strftime("%Y-%m-%d"),
+                "created_at": datetime.now().isoformat(),
+                "type": "sale" if payload.get('cost_type') == 'REVENUE' else "expense"
+            }
+            # Usamos insert para mantener historial
+            self.client.table("finances").insert(record).execute()
+            return True
+        except Exception as e:
+            logger.error(f"Error Save: {e}")
+            return False
