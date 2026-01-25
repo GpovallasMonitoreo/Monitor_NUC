@@ -3,8 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>TechRevamp - Análisis de Sitio</title>
-<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<title>DOOH - Análisis de Sitio</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Noto+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -15,175 +14,89 @@
         darkMode: "class",
         theme: {
             extend: {
-                colors: {
-                    "primary": "#17cfcf", "primary-dark": "#12a5a5",
-                    "background-light": "#f6f7f9", "background-dark": "#171c26",
-                    "card-light": "#ffffff", "card-dark": "#1f2633",
-                    "border-light": "#e7f3f3", "border-dark": "#2d3642",
-                    "text-main": "#0e1b1b", "text-secondary": "#4e9797",
-                },
-                fontFamily: {
-                    "display": ["Space Grotesk", "sans-serif"],
-                    "body": ["Noto Sans", "sans-serif"],
-                    "mono": ["Space Grotesk", "monospace"],
-                },
+                colors: { "primary": "#17cfcf", "background-light": "#f6f7f9", "card-light": "#ffffff", "text-main": "#0e1b1b", "text-secondary": "#4e9797" },
+                fontFamily: { "display": ["Space Grotesk", "sans-serif"], "body": ["Noto Sans", "sans-serif"] },
             },
         },
     }
 </script>
-<style>
-    .ledger-scroll::-webkit-scrollbar { width: 6px; }
-    .ledger-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
-</style>
+<style>.ledger-scroll::-webkit-scrollbar { width: 6px; } .ledger-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }</style>
 </head>
 
-<body class="bg-background-light dark:bg-background-dark font-display text-text-main dark:text-gray-100 transition-colors duration-200">
-<div class="flex min-h-screen flex-col">
+<body class="bg-background-light font-display text-text-main flex flex-col min-h-screen">
 
-<header class="sticky top-0 z-50 flex items-center justify-between border-b border-border-light bg-background-light/95 backdrop-blur-md px-6 py-3">
-    <div class="flex items-center gap-8">
-        <div class="flex items-center gap-4 cursor-pointer" onclick="window.location.href='/techview'">
-            <div class="size-8 text-primary">
-                <svg class="w-full h-full" fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M24 18.4228L42 11.475V34.3663C42 34.7796 41.7457 35.1504 41.3601 35.2992L24 42V18.4228Z" fill="currentColor"></path></svg>
-            </div>
-            <h2 class="text-xl font-bold tracking-tight">TechRevamp</h2>
-        </div>
-    </div>
+<header class="sticky top-0 z-50 flex items-center justify-between border-b border-gray-200 bg-white/95 backdrop-blur-md px-6 py-3">
     <div class="flex items-center gap-4">
-        <a href="/techview/detail?device_id={{ device_id }}" class="flex items-center gap-2 px-4 h-10 rounded-lg bg-primary hover:bg-primary-dark text-white font-bold text-sm shadow-md transition-all">
-            <span class="material-symbols-outlined text-[18px]">edit_document</span>
-            Editar Ledger / Costos
-        </a>
+        <h2 class="text-xl font-bold tracking-tight text-primary">TechRevamp</h2>
     </div>
+    <a href="/techview/detail?device_id={{ device_id }}" class="flex items-center gap-2 px-4 h-9 bg-primary text-white rounded-lg font-bold text-xs shadow-md">
+        <span class="material-symbols-outlined text-[16px]">edit</span> Editar Datos
+    </a>
 </header>
 
-<main class="flex-1 overflow-hidden">
-<div class="container mx-auto max-w-[1600px] h-[calc(100vh-65px)] flex flex-col p-4 md:p-6 gap-4">
-
-    <div class="flex flex-col gap-2 shrink-0">
-        <div class="flex flex-wrap items-end justify-between gap-4 pb-2 border-b border-border-light">
-            <div>
-                <h1 class="text-3xl md:text-4xl font-bold tracking-tight" id="header-name">Cargando...</h1>
-                <p class="text-text-secondary mt-1 flex items-center gap-2 text-sm font-mono">
-                    <span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider" id="header-status">...</span>
-                    ID: {{ device_id }} | Reporte en Tiempo Real
-                </p>
-            </div>
-        </div>
+<main class="flex-1 overflow-hidden p-6 max-w-[1600px] mx-auto w-full h-[calc(100vh-65px)] flex flex-col gap-6">
+    
+    <div class="flex flex-col gap-2 shrink-0 border-b border-gray-200 pb-4">
+        <h1 class="text-4xl font-bold" id="header-name">Cargando...</h1>
+        <p class="text-text-secondary text-sm font-mono flex items-center gap-2">
+            <span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-bold" id="header-status">...</span>
+            ID: {{ device_id }}
+        </p>
     </div>
 
     <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
-        
-        <div class="lg:col-span-4 xl:col-span-3 flex flex-col bg-card-light rounded-xl border border-border-light shadow-sm overflow-hidden">
-            <div class="p-4 border-b border-border-light bg-gray-50/50 flex justify-between items-center">
-                <h3 class="font-bold text-lg">Bitácora Operativa</h3>
-                <span class="material-symbols-outlined text-text-secondary">history</span>
-            </div>
-            <div class="flex-1 overflow-y-auto ledger-scroll p-4 space-y-8">
-                <div class="space-y-3">
-                    <h4 class="text-sm font-bold text-text-secondary uppercase tracking-wider flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[16px]">router</span> Inventario Hardware
-                    </h4>
-                    <div class="bg-background-light rounded-lg border border-border-light divide-y divide-border-light" id="hardware-list">
-                        <div class="p-3 text-xs text-center">Cargando...</div>
-                    </div>
+        <div class="lg:col-span-3 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-gray-200 bg-gray-50/50 font-bold text-lg">Historial Operativo</div>
+            <div class="flex-1 overflow-y-auto ledger-scroll p-4 space-y-6">
+                <div>
+                    <h4 class="text-xs font-bold text-text-secondary uppercase mb-2">Hardware</h4>
+                    <div id="hardware-list" class="space-y-2"></div>
                 </div>
-                <div class="space-y-3">
-                    <h4 class="text-sm font-bold text-text-secondary uppercase tracking-wider flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[16px]">warning</span> Últimas Incidencias
-                    </h4>
-                    <div id="tickets-list" class="space-y-2">
-                        </div>
+                <div>
+                    <h4 class="text-xs font-bold text-text-secondary uppercase mb-2">Últimas Incidencias</h4>
+                    <div id="tickets-list" class="space-y-2"></div>
                 </div>
             </div>
         </div>
 
-        <div class="lg:col-span-8 xl:col-span-9 flex flex-col gap-6 overflow-y-auto ledger-scroll pr-2">
+        <div class="lg:col-span-9 flex flex-col gap-6 overflow-y-auto ledger-scroll pr-2">
             
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                <div class="bg-card-light p-5 rounded-xl border border-border-light shadow-sm">
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="text-xs font-bold text-text-secondary uppercase tracking-wider">Ventas Totales</span>
-                        <span class="material-symbols-outlined text-green-500 bg-green-100 rounded p-1">trending_up</span>
-                    </div>
-                    <div class="text-3xl font-black font-mono text-text-main mb-1" id="kpi-sales">$0</div>
-                    <div class="text-xs text-text-secondary">Mensual Promedio</div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-xl border shadow-sm">
+                    <span class="text-xs font-bold text-text-secondary uppercase">Ventas Totales</span>
+                    <div class="text-2xl font-black text-text-main mt-1" id="kpi-sales">$0</div>
                 </div>
-                <div class="bg-card-light p-5 rounded-xl border border-border-light shadow-sm">
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="text-xs font-bold text-text-secondary uppercase tracking-wider">Inversión (CAPEX)</span>
-                        <span class="material-symbols-outlined text-text-secondary bg-gray-100 rounded p-1">account_balance_wallet</span>
-                    </div>
-                    <div class="text-3xl font-black font-mono text-text-main mb-1" id="kpi-capex">$0</div>
-                    <div class="text-xs text-text-secondary">Costo Histórico</div>
+                <div class="bg-white p-5 rounded-xl border shadow-sm">
+                    <span class="text-xs font-bold text-text-secondary uppercase">Inversión (CAPEX)</span>
+                    <div class="text-2xl font-black text-text-main mt-1" id="kpi-capex">$0</div>
                 </div>
-                <div class="bg-card-light p-5 rounded-xl border border-border-light shadow-sm">
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="text-xs font-bold text-text-secondary uppercase tracking-wider">OPEX Mensual</span>
-                        <span class="material-symbols-outlined text-primary bg-primary/10 rounded p-1">query_stats</span>
-                    </div>
-                    <div class="text-3xl font-black font-mono text-text-main mb-1" id="kpi-opex">$0</div>
-                    <div class="text-xs text-text-secondary">Recurrente</div>
+                <div class="bg-white p-5 rounded-xl border shadow-sm">
+                    <span class="text-xs font-bold text-text-secondary uppercase">OPEX Mensual</span>
+                    <div class="text-2xl font-black text-text-main mt-1" id="kpi-opex">$0</div>
                 </div>
-                
-                <div class="bg-gradient-to-br from-[#17cfcf] to-[#12a5a5] p-5 rounded-xl border border-primary shadow-sm text-white relative overflow-hidden">
-                    <div class="absolute -right-6 -bottom-6 opacity-20 transform rotate-12">
-                        <span class="material-symbols-outlined text-[100px] text-white">forest</span>
-                    </div>
-                    <div class="flex justify-between items-start mb-2 relative z-10">
-                        <span class="text-xs font-bold text-white/80 uppercase tracking-wider">Impacto Ambiental</span>
-                        <span class="material-symbols-outlined text-white bg-white/20 rounded p-1">eco</span>
-                    </div>
-                    <div class="text-3xl font-black font-mono mb-1 relative z-10" id="kpi-co2">0 Ton</div>
-                    <div class="text-xs text-white/90 font-bold flex gap-1 items-center relative z-10">
-                        <span class="material-symbols-outlined text-[14px]">park</span> <span id="kpi-trees">0</span> Árboles salvados
-                    </div>
+                <div class="bg-gradient-to-br from-[#17cfcf] to-[#12a5a5] p-5 rounded-xl border border-primary shadow-sm text-white">
+                    <span class="text-xs font-bold text-white/80 uppercase">Impacto Ambiental</span>
+                    <div class="text-2xl font-black mt-1" id="kpi-co2">0 Ton</div>
+                    <div class="text-xs mt-1 flex gap-1 items-center"><span class="material-symbols-outlined text-[12px]">forest</span> <span id="kpi-trees">0</span> Árboles</div>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 pb-6">
-                <div class="xl:col-span-2 bg-card-light rounded-xl border border-border-light shadow-sm p-6 flex flex-col">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="font-bold text-lg">Proyección de Rentabilidad</h3>
-                    </div>
-                    <div class="h-64 w-full relative">
-                        <canvas id="analysisChart"></canvas>
-                    </div>
-                </div>
-                
-                <div class="xl:col-span-1 bg-card-light rounded-xl border border-border-light shadow-sm p-6">
-                    <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
-                        <span class="material-symbols-outlined text-primary">energy_savings_leaf</span> Eficiencia
-                    </h3>
-                    <div class="space-y-4">
-                        <div class="p-3 bg-background-light rounded border border-border-light">
-                            <span class="text-xs text-text-secondary">Ahorro Energía Anual</span>
-                            <div class="text-xl font-bold font-mono" id="val-kwh">0 kWh</div>
-                        </div>
-                        <div class="p-3 bg-background-light rounded border border-border-light">
-                            <span class="text-xs text-text-secondary">Ganancia vs Legacy</span>
-                            <div class="text-xl font-bold font-mono text-green-500" id="val-eff">0%</div>
-                        </div>
-                        <p class="text-xs text-text-secondary leading-relaxed">
-                            Cálculo basado en sustitución de hardware legacy (450W) por tecnología NUC eficiente (150W). Datos EPA.
-                        </p>
-                    </div>
-                </div>
+            <div class="bg-white rounded-xl border shadow-sm p-6">
+                <h3 class="font-bold text-lg mb-4">Proyección Rentabilidad</h3>
+                <div class="h-64 w-full"><canvas id="analysisChart"></canvas></div>
             </div>
-
         </div>
     </div>
-</div>
 </main>
-</div>
 
 <script>
     const deviceId = "{{ device_id }}";
 
-    async function init() {
+    async function initAnalysis() {
         try {
-            // Llamar API Real
+            console.log("Cargando:", deviceId);
             const res = await fetch(`/api/techview/device/${encodeURIComponent(deviceId)}`);
+            if(!res.ok) throw new Error("API Error");
             const data = await res.json();
 
             // 1. Header
@@ -191,64 +104,58 @@
             const status = data.device?.status || 'unknown';
             const badge = document.getElementById('header-status');
             badge.innerText = status.toUpperCase();
-            badge.className = status === 'online' 
-                ? "bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider"
-                : "bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider";
+            badge.className = status === 'online' ? "bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-bold" : "bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-bold";
 
-            // 2. Formatter
-            const fmt = n => `$${n.toLocaleString('en-US', {maximumFractionDigits: 0})}`;
-
-            // 3. KPIs Financieros
+            // 2. KPIs
+            const fmt = n => `$${(n||0).toLocaleString('en-US', {maximumFractionDigits: 0})}`;
             document.getElementById('kpi-sales').innerText = fmt(data.totals.revenue);
             document.getElementById('kpi-capex').innerText = fmt(data.totals.capex);
             document.getElementById('kpi-opex').innerText = fmt(data.totals.opex);
 
-            // 4. KPIs Ambientales (Real Math from Python)
-            if (data.eco) {
+            // 3. ECO
+            if(data.eco) {
                 document.getElementById('kpi-co2').innerText = `${data.eco.co2_tons} Ton`;
                 document.getElementById('kpi-trees').innerText = data.eco.trees;
-                document.getElementById('val-kwh').innerText = `${data.eco.kwh_saved} kWh`;
-                document.getElementById('val-eff').innerText = data.eco.efficiency_gain;
             }
 
-            // 5. Hardware List (Filtrar del breakdown)
+            // 4. Hardware List
             const hwList = document.getElementById('hardware-list');
-            const hardwareItems = data.breakdown?.filter(i => i.category === 'Electronica' || i.category === 'Infraestructura') || [];
+            hwList.innerHTML = '';
+            const breakdown = data.breakdown || [];
+            const hardware = breakdown.filter(i => i.category === 'Electronica' || i.category === 'Infraestructura');
             
-            if (hardwareItems.length > 0) {
-                hwList.innerHTML = hardwareItems.map(item => `
-                    <div class="p-3 flex justify-between items-center">
-                        <div class="flex flex-col">
-                            <span class="text-sm font-bold">${item.concept}</span>
-                            <span class="text-xs text-text-secondary">Instalado</span>
-                        </div>
-                        <span class="material-symbols-outlined text-green-500 text-[18px]">check_circle</span>
+            if (hardware.length > 0) {
+                hwList.innerHTML = hardware.map(item => `
+                    <div class="flex justify-between items-center bg-gray-50 p-2 rounded border border-gray-100 text-xs">
+                        <span class="font-bold text-gray-700">${item.concept}</span>
+                        <span class="text-green-500 font-bold material-symbols-outlined text-[14px]">check_circle</span>
                     </div>
                 `).join('');
             } else {
-                hwList.innerHTML = '<div class="p-3 text-xs text-center text-text-secondary">Sin datos de hardware.</div>';
+                hwList.innerHTML = '<div class="text-xs text-center text-gray-400">Sin datos.</div>';
             }
 
-            // 6. Tickets
+            // 5. Tickets (FIX ERROR)
             const ticketList = document.getElementById('tickets-list');
-            if (data.history.tickets && data.history.tickets.length > 0) {
-                ticketList.innerHTML = data.history.tickets.slice(0, 3).map(t => `
-                    <div class="p-3 bg-background-light rounded border border-border-light flex gap-3 items-start">
-                        <span class="material-symbols-outlined text-orange-500 text-[18px]">warning</span>
-                        <div>
-                            <p class="text-sm font-bold leading-tight truncate w-32">${t.ticket_id}</p>
-                            <p class="text-xs text-text-secondary mt-1">Costo Est.: $${t.costo_estimado || 0}</p>
-                        </div>
+            ticketList.innerHTML = '';
+            // Verificamos si existe data.history y data.history.tickets
+            const tickets = (data.history && data.history.tickets) ? data.history.tickets : [];
+            
+            if (tickets.length > 0) {
+                ticketList.innerHTML = tickets.slice(0, 3).map(t => `
+                    <div class="p-2 bg-red-50 rounded border border-red-100 text-xs">
+                        <span class="font-bold text-red-700">Incidencia</span>
+                        <p class="text-gray-500 truncate">${t.ticket_id || 'ID Pendiente'}</p>
                     </div>
                 `).join('');
             } else {
-                ticketList.innerHTML = '<div class="p-3 text-xs text-center text-text-secondary">Sin incidencias recientes.</div>';
+                ticketList.innerHTML = '<div class="text-xs text-center text-gray-400">Sin incidencias.</div>';
             }
 
-            // 7. Chart
+            // 6. Chart
             renderChart(data.totals.revenue, data.totals.opex);
 
-        } catch (e) { console.error("Error loading dashboard", e); }
+        } catch (e) { console.error("Error Analysis:", e); }
     }
 
     function renderChart(rev, cost) {
@@ -256,22 +163,17 @@
         new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: ['Promedio Mensual'],
+                labels: ['Mensual'],
                 datasets: [
-                    { label: 'Ingresos', data: [rev], backgroundColor: '#17cfcf', borderRadius: 4 },
-                    { label: 'Costos OPEX', data: [cost], backgroundColor: '#cbd5e1', borderRadius: 4 }
+                    { label: 'Ingresos', data: [rev], backgroundColor: '#17cfcf' },
+                    { label: 'Costos OPEX', data: [cost], backgroundColor: '#cbd5e1' }
                 ]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                indexAxis: 'y',
-                scales: { x: { beginAtZero: true, grid: {display:false} }, y: { grid: {display:false} } }
-            }
+            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y' }
         });
     }
 
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', initAnalysis);
 </script>
 </body>
 </html>
