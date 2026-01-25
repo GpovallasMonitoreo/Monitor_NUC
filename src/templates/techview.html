@@ -1,256 +1,577 @@
 <!DOCTYPE html>
-<html lang="es" class="light">
+<html lang="es">
 <head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Argos TechView - Gestión</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
-    
-    <script>
-        tailwind.config = {
-            theme: { extend: { colors: { primary: "#F97316", secondary: "#3B82F6" } } }
-        };
-    </script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechView - Gestión</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .tab-content { display: none; }
         .tab-content.active { display: block; animation: fadeIn 0.3s; }
-        .nav-tab.active { border-bottom: 2px solid #F97316; color: #F97316; font-weight: 700; }
-        .cost-input { width: 100%; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 0.875rem; }
+        .nav-tab.active { border-bottom: 2px solid #F97316; color: #F97316; font-weight: 600; }
+        .cost-input { width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; }
+        .cost-input:focus { outline: none; border-color: #F97316; box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1); }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .debug-panel { font-family: monospace; font-size: 12px; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
-
-    <header class="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-50 shadow-sm flex justify-between items-center">
-        <div class="flex items-center gap-4">
-            <h2 class="text-lg font-bold text-slate-900">Gestión: <span class="text-primary">{{ device_id }}</span></h2>
-        </div>
-        <div class="flex gap-3">
-            <a href="/techview/analysis?device_id={{ device_id }}" target="_blank" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-xs flex gap-2 items-center">
-                <span class="material-icons-outlined text-sm">analytics</span> Reporte Visual
-            </a>
-            <button onclick="saveAll()" class="bg-primary hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-bold text-xs flex gap-2 items-center shadow-md">
-                <span class="material-icons-outlined text-sm">save</span> Guardar Todo
-            </button>
-            <a href="/techview" class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-lg font-bold text-xs">Cerrar</a>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-lg font-bold text-gray-800">💼 Gestión Financiera</h1>
+                    <p class="text-sm text-gray-600 mt-1">
+                        Dispositivo: <span id="device-id-display" class="font-mono">{{ device_id }}</span>
+                        <span id="device-status" class="ml-2 text-xs px-2 py-1 bg-gray-100 rounded"></span>
+                    </p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="testSave()" class="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded">
+                        🧪 Test
+                    </button>
+                    <button onclick="saveAll()" id="save-btn" class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg flex items-center gap-2">
+                        <span>💾</span> Guardar Todo
+                    </button>
+                </div>
+            </div>
         </div>
     </header>
 
-    <div class="bg-white border-b border-slate-100 px-6 overflow-x-auto">
-        <div class="flex gap-6 min-w-max">
-            <button onclick="switchTab('resumen')" class="nav-tab active py-3 text-sm">Resumen</button>
-            <button onclick="switchTab('infra')" class="nav-tab py-3 text-sm">1. Infraestructura</button>
-            <button onclick="switchTab('electro')" class="nav-tab py-3 text-sm">2. Electrónica</button>
-            <button onclick="switchTab('legal')" class="nav-tab py-3 text-sm">3. Legal/MO</button>
-            <button onclick="switchTab('opex')" class="nav-tab py-3 text-sm">4. OPEX</button>
-            <button onclick="switchTab('manto')" class="nav-tab py-3 text-sm">5. Mantenimiento</button>
-            <button onclick="switchTab('ciclo')" class="nav-tab py-3 text-sm">6. Ciclo de Vida</button>
+    <!-- Tabs Navigation -->
+    <div class="bg-white border-b">
+        <div class="container mx-auto px-4">
+            <div class="flex overflow-x-auto">
+                <button onclick="switchTab('resumen')" class="nav-tab active px-4 py-3 whitespace-nowrap">📊 Resumen</button>
+                <button onclick="switchTab('capex')" class="nav-tab px-4 py-3 whitespace-nowrap">🏗️ CAPEX</button>
+                <button onclick="switchTab('opex')" class="nav-tab px-4 py-3 whitespace-nowrap">💡 OPEX</button>
+                <button onclick="switchTab('manto')" class="nav-tab px-4 py-3 whitespace-nowrap">🔧 Mantenimiento</button>
+                <button onclick="switchTab('debug')" class="nav-tab px-4 py-3 whitespace-nowrap">🐛 Debug</button>
+            </div>
         </div>
     </div>
 
-    <main class="p-6 max-w-[1920px] mx-auto w-full">
-
-        <div id="tab-resumen" class="tab-content active space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-white p-6 rounded-xl border shadow-sm"><p class="text-xs text-slate-400 font-bold">CAPEX Total</p><h3 class="text-3xl font-black text-slate-900" id="kpi-capex">$0</h3></div>
-                <div class="bg-white p-6 rounded-xl border shadow-sm"><p class="text-xs text-slate-400 font-bold">OPEX Mensual</p><h3 class="text-3xl font-black text-orange-600" id="kpi-opex">$0</h3></div>
-                <div class="bg-white p-6 rounded-xl border shadow-sm"><p class="text-xs text-slate-400 font-bold">Ventas Mensual</p><h3 class="text-3xl font-black text-emerald-600" id="kpi-sales">$0</h3></div>
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-6">
+        <!-- Tab: Resumen -->
+        <div id="tab-resumen" class="tab-content active">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-white p-5 rounded-xl border shadow-sm">
+                    <p class="text-sm text-gray-500 font-medium mb-1">CAPEX TOTAL</p>
+                    <p class="text-3xl font-bold text-gray-800" id="kpi-capex">$0</p>
+                    <p class="text-xs text-gray-400 mt-2">Inversión inicial</p>
+                </div>
+                <div class="bg-white p-5 rounded-xl border shadow-sm">
+                    <p class="text-sm text-gray-500 font-medium mb-1">OPEX MENSUAL</p>
+                    <p class="text-3xl font-bold text-orange-500" id="kpi-opex">$0</p>
+                    <p class="text-xs text-gray-400 mt-2">Gastos operativos</p>
+                </div>
+                <div class="bg-white p-5 rounded-xl border shadow-sm">
+                    <p class="text-sm text-gray-500 font-medium mb-1">VENTAS MENSUAL</p>
+                    <p class="text-3xl font-bold text-emerald-500" id="kpi-sales">$0</p>
+                    <p class="text-xs text-gray-400 mt-2">Ingresos</p>
+                </div>
             </div>
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2 bg-white p-6 rounded-xl border shadow-sm h-64"><canvas id="barChart"></canvas></div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-5 rounded-xl border shadow-sm">
+                    <h3 class="font-bold text-gray-700 mb-4">📈 Rendimiento</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <p class="text-sm text-gray-500">Margen Mensual</p>
+                            <p class="text-2xl font-bold text-blue-500" id="kpi-margin">$0</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">ROI (Meses)</p>
+                            <p class="text-2xl font-bold text-purple-500" id="kpi-roi">0</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-5 rounded-xl border shadow-sm">
+                    <h3 class="font-bold text-gray-700 mb-4">🌱 Impacto Ecológico</h3>
+                    <div class="space-y-2">
+                        <div class="flex justify-between">
+                            <span class="text-sm text-gray-600">Ahorro Energético</span>
+                            <span class="font-medium" id="eco-kwh">0 kWh</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm text-gray-600">Reducción CO₂</span>
+                            <span class="font-medium" id="eco-co2">0 ton</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm text-gray-600">Equivalente Árboles</span>
+                            <span class="font-medium" id="eco-trees">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: CAPEX -->
+        <div id="tab-capex" class="tab-content">
+            <div class="bg-white p-5 rounded-xl border shadow-sm mb-4">
+                <h3 class="font-bold text-gray-700 mb-4 border-b pb-2">🏗️ Infraestructura</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Pantalla LED ($)</label>
+                        <input type="number" step="0.01" class="cost-input" id="capex_screen" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Obra Civil ($)</label>
+                        <input type="number" step="0.01" class="cost-input" id="capex_civil" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Estructura Metal ($)</label>
+                        <input type="number" step="0.01" class="cost-input" id="capex_structure" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Inst. Eléctrica ($)</label>
+                        <input type="number" step="0.01" class="cost-input" id="capex_electrical" placeholder="0.00">
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-xl border shadow-sm">
+                <h3 class="font-bold text-gray-700 mb-4 border-b pb-2">⚡ Electrónica</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">NUC ($)</label>
+                        <input type="number" step="0.01" class="cost-input" id="capex_nuc" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">UPS ($)</label>
+                        <input type="number" step="0.01" class="cost-input" id="capex_ups" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Sending Card ($)</label>
+                        <input type="number" step="0.01" class="cost-input" id="capex_sending" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Módem WiFi ($)</label>
+                        <input type="number" step="0.01" class="cost-input" id="capex_modem_wifi" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Módem SIM ($)</label>
+                        <input type="number" step="0.01" class="cost-input" id="capex_modem_sim" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Cámara ($)</label>
+                        <input type="number" step="0.01" class="cost-input" id="capex_camera" placeholder="0.00">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: OPEX -->
+        <div id="tab-opex" class="tab-content">
+            <div class="bg-white p-5 rounded-xl border shadow-sm">
+                <h3 class="font-bold text-gray-700 mb-4 border-b pb-2">💰 Gastos Operativos</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Luz ($/mes)</label>
+                        <input type="number" step="0.01" class="cost-input" id="opex_light" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Internet ($/mes)</label>
+                        <input type="number" step="0.01" class="cost-input" id="opex_internet" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Renta ($/mes)</label>
+                        <input type="number" step="0.01" class="cost-input" id="opex_rent" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Uso Suelo ($/mes)</label>
+                        <input type="number" step="0.01" class="cost-input" id="opex_soil_use" placeholder="0.00">
+                    </div>
+                </div>
+                
+                <div class="mt-6 pt-4 border-t">
+                    <h4 class="font-bold text-emerald-600 mb-3">💵 Ingresos</h4>
+                    <div class="max-w-md">
+                        <label class="block text-sm font-medium text-emerald-700 mb-1">VENTAS MENSUALES ($)</label>
+                        <input type="number" step="0.01" class="cost-input border-emerald-300 bg-emerald-50" id="revenue_monthly" placeholder="0.00">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Mantenimiento -->
+        <div id="tab-manto" class="tab-content">
+            <div class="bg-white p-5 rounded-xl border shadow-sm">
+                <h3 class="font-bold text-gray-700 mb-4 border-b pb-2">🔧 Mantenimiento</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Preventivo Bimestral ($)</label>
+                        <input type="number" step="0.01" class="cost-input" id="maint_prev_bimonthly" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Gasolina ($)</label>
+                        <input type="number" step="0.01" class="cost-input" id="maint_gas" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Partes Correctivas ($)</label>
+                        <input type="number" step="0.01" class="cost-input" id="maint_corr_parts" placeholder="0.00">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Debug -->
+        <div id="tab-debug" class="tab-content">
+            <div class="bg-white p-5 rounded-xl border shadow-sm">
+                <h3 class="font-bold text-gray-700 mb-4">🐛 Debug & Logs</h3>
+                
                 <div class="space-y-4">
-                    <div class="bg-white p-4 rounded-xl border shadow-sm h-32 flex"><canvas id="pieCapex"></canvas></div>
-                    <div class="bg-white p-4 rounded-xl border shadow-sm h-32 flex"><canvas id="pieOpex"></canvas></div>
-                </div>
-            </div>
-        </div>
-
-        <div id="tab-infra" class="tab-content space-y-6">
-            <div class="grid grid-cols-2 gap-6">
-                <div class="bg-white p-6 rounded-xl border shadow-sm">
-                    <h4 class="font-bold border-b pb-2 mb-4 text-primary">Activos Fijos</h4>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Pantalla LED ($)<input type="number" class="cost-input" id="capex_screen"></label>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Obra Civil ($)<input type="number" class="cost-input" id="capex_civil"></label>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Estructura ($)<input type="number" class="cost-input" id="capex_structure"></label>
-                </div>
-                <div class="bg-white p-6 rounded-xl border shadow-sm">
-                    <h4 class="font-bold border-b pb-2 mb-4 text-primary">Instalaciones</h4>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Instalación Eléctrica ($)<input type="number" class="cost-input" id="capex_electrical"></label>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Medidor CFE ($)<input type="number" class="cost-input" id="capex_meter"></label>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Instalación Datos ($)<input type="number" class="cost-input" id="capex_data_install"></label>
-                </div>
-            </div>
-        </div>
-
-        <div id="tab-electro" class="tab-content space-y-6">
-            <div class="bg-white p-6 rounded-xl border shadow-sm">
-                <h4 class="font-bold border-b pb-2 mb-4 text-primary">Componentes Electrónicos</h4>
-                <div class="grid grid-cols-3 gap-6">
-                    <div>
-                        <label class="block mb-2 text-xs font-bold text-slate-500">NUC (Player)<input type="number" class="cost-input" id="capex_nuc"></label>
-                        <label class="block mb-2 text-xs font-bold text-slate-500">UPS<input type="number" class="cost-input" id="capex_ups"></label>
-                        <label class="block mb-2 text-xs font-bold text-slate-500">Sending Card<input type="number" class="cost-input" id="capex_sending"></label>
+                    <div class="flex gap-2 flex-wrap">
+                        <button onclick="testConnection()" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm">
+                            🔗 Test Conexión
+                        </button>
+                        <button onclick="loadData()" class="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded text-sm">
+                            🔄 Recargar Datos
+                        </button>
+                        <button onclick="clearLogs()" class="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded text-sm">
+                            🗑️ Limpiar Logs
+                        </button>
                     </div>
-                    <div>
-                        <label class="block mb-2 text-xs font-bold text-slate-500">Procesador Video<input type="number" class="cost-input" id="capex_processor"></label>
-                        <label class="block mb-2 text-xs font-bold text-slate-500">Módem WiFi<input type="number" class="cost-input" id="capex_modem_wifi"></label>
-                        <label class="block mb-2 text-xs font-bold text-slate-500">Módem SIM<input type="number" class="cost-input" id="capex_modem_sim"></label>
+                    
+                    <div class="border rounded p-3">
+                        <h4 class="font-medium text-sm mb-2">Logs de Consola</h4>
+                        <div id="console-logs" class="debug-panel max-h-60 overflow-y-auto p-2 bg-gray-50 rounded">
+                            <!-- Logs aparecerán aquí -->
+                        </div>
                     </div>
-                    <div>
-                        <label class="block mb-2 text-xs font-bold text-slate-500">Teltonika<input type="number" class="cost-input" id="capex_teltonika"></label>
-                        <label class="block mb-2 text-xs font-bold text-slate-500">HDMI / Cables<input type="number" class="cost-input" id="capex_hdmi"></label>
-                        <label class="block mb-2 text-xs font-bold text-slate-500">Cámara<input type="number" class="cost-input" id="capex_camera"></label>
+                    
+                    <div class="border rounded p-3">
+                        <h4 class="font-medium text-sm mb-2">Última Respuesta API</h4>
+                        <pre id="api-response" class="debug-panel max-h-60 overflow-y-auto p-2 bg-gray-900 text-gray-100 rounded">
+                            {/* Respuesta aparecerá aquí */}
+                        </pre>
                     </div>
                 </div>
             </div>
         </div>
-
-        <div id="tab-legal" class="tab-content space-y-6">
-            <div class="grid grid-cols-2 gap-6">
-                <div class="bg-white p-6 rounded-xl border shadow-sm">
-                    <h4 class="font-bold border-b pb-2 mb-4">Mano de Obra</h4>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Cuadrilla (6 técnicos)<input type="number" class="cost-input" id="capex_crew"></label>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Logística/Gasolina<input type="number" class="cost-input" id="capex_logistics"></label>
-                </div>
-                <div class="bg-white p-6 rounded-xl border shadow-sm">
-                    <h4 class="font-bold border-b pb-2 mb-4">Legal</h4>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Gestoría / Permisos<input type="number" class="cost-input" id="capex_legal"></label>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Primera Instalación<input type="number" class="cost-input" id="capex_first_install"></label>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Alta QTM<input type="number" class="cost-input" id="capex_admin_qtm"></label>
-                </div>
-            </div>
-        </div>
-
-        <div id="tab-opex" class="tab-content space-y-6">
-            <div class="grid grid-cols-2 gap-6">
-                <div class="bg-white p-6 rounded-xl border shadow-sm">
-                    <h4 class="font-bold border-b pb-2 mb-4 text-orange-600">Suministros (Mensual)</h4>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Luz CFE<input type="number" class="cost-input" id="opex_light"></label>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Internet<input type="number" class="cost-input" id="opex_internet"></label>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Renta Sitio<input type="number" class="cost-input" id="opex_rent"></label>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Uso Suelo<input type="number" class="cost-input" id="opex_soil_use"></label>
-                </div>
-                <div class="bg-white p-6 rounded-xl border shadow-sm">
-                    <h4 class="font-bold border-b pb-2 mb-4 text-orange-600">Software & Ingresos</h4>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Licencias (Anual)<input type="number" class="cost-input" id="opex_license_annual"></label>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Pauta (Mensual)<input type="number" class="cost-input" id="opex_content_scheduling"></label>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">SRD<input type="number" class="cost-input" id="opex_srd"></label>
-                    <div class="mt-4 p-4 bg-emerald-50 rounded border border-emerald-100">
-                        <label class="block text-xs font-bold text-emerald-800">VENTA PUBLICIDAD (MES)<input type="number" class="cost-input font-bold" id="revenue_monthly"></label>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="tab-manto" class="tab-content space-y-6">
-            <div class="grid grid-cols-2 gap-6">
-                <div class="bg-white p-6 rounded-xl border shadow-sm">
-                    <h4 class="font-bold border-b pb-2 mb-4">Preventivo</h4>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Costo Bimestral<input type="number" class="cost-input" id="maint_prev_bimonthly"></label>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Insumos Limpieza<input type="number" class="cost-input" id="maint_cleaning_supplies"></label>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Gasolina<input type="number" class="cost-input" id="maint_gas"></label>
-                </div>
-                <div class="bg-white p-6 rounded-xl border shadow-sm">
-                    <h4 class="font-bold border-b pb-2 mb-4 text-red-600">Correctivo (Estimado)</h4>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Refacciones<input type="number" class="cost-input" id="maint_corr_parts"></label>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Mano de Obra Extra<input type="number" class="cost-input" id="maint_corr_labor"></label>
-                </div>
-            </div>
-        </div>
-
-        <div id="tab-ciclo" class="tab-content space-y-6">
-            <div class="bg-white p-6 rounded-xl border shadow-sm">
-                <h4 class="font-bold border-b pb-2 mb-4">Costos Extraordinarios</h4>
-                <div class="grid grid-cols-3 gap-6">
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Retiro / Reubicación<input type="number" class="cost-input" id="life_retirement"></label>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Renovación Tecnológica<input type="number" class="cost-input" id="life_renewal"></label>
-                    <label class="block mb-2 text-xs font-bold text-slate-500">Implementaciones Especiales<input type="number" class="cost-input" id="life_special"></label>
-                </div>
-            </div>
-        </div>
-
     </main>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
     <script>
         const deviceId = "{{ device_id }}";
-        let charts = {};
-
-        function switchTab(id) {
-            document.querySelectorAll('.tab-content').forEach(e => e.classList.remove('active'));
-            document.querySelectorAll('.nav-tab').forEach(e => e.classList.remove('active'));
-            document.getElementById('tab-'+id).classList.add('active');
+        let currentData = null;
+        
+        // Interceptar console.log para mostrar en pantalla
+        (function() {
+            const originalLog = console.log;
+            const originalError = console.error;
+            
+            console.log = function(...args) {
+                originalLog.apply(console, args);
+                addToLog('📘', args);
+            };
+            
+            console.error = function(...args) {
+                originalError.apply(console, args);
+                addToLog('❌', args);
+            };
+            
+            function addToLog(icon, args) {
+                const logsDiv = document.getElementById('console-logs');
+                if (logsDiv) {
+                    const message = args.map(arg => 
+                        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+                    ).join(' ');
+                    
+                    const logEntry = document.createElement('div');
+                    logEntry.className = 'mb-1 pb-1 border-b border-gray-200';
+                    logEntry.innerHTML = `<span class="mr-2">${icon}</span><span class="text-xs">${message}</span>`;
+                    
+                    logsDiv.appendChild(logEntry);
+                    logsDiv.scrollTop = logsDiv.scrollHeight;
+                }
+            }
+        })();
+        
+        // Funciones de UI
+        function switchTab(tabId) {
+            // Ocultar todas las pestañas
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // Desactivar todos los botones
+            document.querySelectorAll('.nav-tab').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // Mostrar pestaña seleccionada
+            document.getElementById(`tab-${tabId}`).classList.add('active');
             event.target.classList.add('active');
         }
-
+        
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const colors = {
+                success: 'bg-emerald-500',
+                error: 'bg-red-500',
+                warning: 'bg-yellow-500',
+                info: 'bg-blue-500'
+            };
+            
+            toast.className = `${colors[type]} text-white px-4 py-3 rounded-lg shadow-lg animate-fade-in`;
+            toast.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span>${type === 'success' ? '✅' : '❌'}</span>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Auto-remover después de 3 segundos
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+        
+        function setLoading(loading) {
+            const btn = document.getElementById('save-btn');
+            if (!btn) return;
+            
+            if (loading) {
+                btn.innerHTML = '<span class="animate-spin">⟳</span> Guardando...';
+                btn.disabled = true;
+                btn.classList.add('opacity-50');
+            } else {
+                btn.innerHTML = '<span>💾</span> Guardar Todo';
+                btn.disabled = false;
+                btn.classList.remove('opacity-50');
+            }
+        }
+        
+        // Funciones de API
+        async function testConnection() {
+            try {
+                console.log('🔍 Probando conexión API...');
+                const response = await fetch('/api/techview/test');
+                const data = await response.json();
+                
+                document.getElementById('api-response').textContent = 
+                    JSON.stringify(data, null, 2);
+                
+                if (response.ok) {
+                    showToast('✅ Conexión exitosa', 'success');
+                } else {
+                    showToast('❌ Error de conexión', 'error');
+                }
+                
+                return data;
+            } catch (error) {
+                console.error('Error testConnection:', error);
+                showToast('❌ Error de red: ' + error.message, 'error');
+                return null;
+            }
+        }
+        
         async function loadData() {
             try {
-                const res = await fetch(`/api/techview/device/${encodeURIComponent(deviceId)}`);
-                if(!res.ok) throw new Error("API Error");
-                const data = await res.json();
-
-                // Llenar inputs por ID (Mapeo directo a columnas DB)
-                if(data.financials) {
-                    Object.keys(data.financials).forEach(key => {
+                console.log(`📥 Cargando datos para: ${deviceId}`);
+                
+                const response = await fetch(`/api/techview/device/${encodeURIComponent(deviceId)}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                currentData = await response.json();
+                console.log('📊 Datos recibidos:', currentData);
+                
+                // Mostrar respuesta en debug
+                document.getElementById('api-response').textContent = 
+                    JSON.stringify(currentData, null, 2);
+                
+                // Actualizar estado del dispositivo
+                const statusEl = document.getElementById('device-status');
+                if (statusEl && currentData.device) {
+                    statusEl.textContent = currentData.device.status || 'unknown';
+                    statusEl.className = `ml-2 text-xs px-2 py-1 rounded ${
+                        currentData.device.status === 'online' ? 'bg-green-100 text-green-800' :
+                        currentData.device.status === 'offline' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                    }`;
+                }
+                
+                // Llenar inputs
+                if (currentData.financials) {
+                    Object.keys(currentData.financials).forEach(key => {
                         const input = document.getElementById(key);
-                        if(input) input.value = data.financials[key];
+                        if (input && currentData.financials[key] !== null) {
+                            input.value = currentData.financials[key];
+                        }
                     });
                 }
-
-                // KPIs
-                const fmt = n => `$${n.toLocaleString('en-US', {maximumFractionDigits: 0})}`;
-                document.getElementById('kpi-capex').innerText = fmt(data.totals.capex);
-                document.getElementById('kpi-opex').innerText = fmt(data.totals.opex);
-                document.getElementById('kpi-sales').innerText = fmt(data.totals.revenue);
                 
-                // Charts
-                renderCharts(data.totals);
-
-            } catch(e) { console.error("Error loading data:", e); }
+                // Actualizar KPIs
+                if (currentData.totals) {
+                    const fmt = (n) => `$${parseFloat(n || 0).toLocaleString('es-MX', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    })}`;
+                    
+                    document.getElementById('kpi-capex').textContent = fmt(currentData.totals.capex);
+                    document.getElementById('kpi-opex').textContent = fmt(currentData.totals.opex);
+                    document.getElementById('kpi-sales').textContent = fmt(currentData.totals.revenue);
+                    document.getElementById('kpi-margin').textContent = fmt(currentData.totals.margin);
+                    document.getElementById('kpi-roi').textContent = 
+                        currentData.totals.roi ? `${currentData.totals.roi.toFixed(1)} meses` : 'N/A';
+                }
+                
+                // Actualizar impacto ecológico
+                if (currentData.eco) {
+                    document.getElementById('eco-kwh').textContent = 
+                        `${currentData.eco.kwh_saved.toLocaleString()} kWh`;
+                    document.getElementById('eco-co2').textContent = 
+                        `${currentData.eco.co2_tons} ton`;
+                    document.getElementById('eco-trees').textContent = 
+                        currentData.eco.trees;
+                }
+                
+                showToast('✅ Datos cargados', 'success');
+                return currentData;
+                
+            } catch (error) {
+                console.error('Error loadData:', error);
+                showToast('❌ Error: ' + error.message, 'error');
+                
+                // Mostrar error en debug
+                document.getElementById('api-response').textContent = 
+                    `Error: ${error.message}\n\n${error.stack || ''}`;
+                
+                return null;
+            }
         }
-
-        function renderCharts(totals) {
-            if(charts.bar) charts.bar.destroy();
-            
-            charts.bar = new Chart(document.getElementById('barChart'), {
-                type: 'bar',
-                data: {
-                    labels: ['Mensual'],
-                    datasets: [
-                        { label: 'Ingresos', data: [totals.revenue], backgroundColor: '#10B981' },
-                        { label: 'Gastos', data: [totals.opex], backgroundColor: '#F97316' }
-                    ]
-                },
-                options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y' }
-            });
-            // (Agregar lógica para los pasteles aquí si se requiere desglose porcentual)
-        }
-
+        
         async function saveAll() {
-            // Construir payload con todos los inputs
-            const payload = { device_id: deviceId };
-            document.querySelectorAll('.cost-input').forEach(input => {
-                payload[input.id] = parseFloat(input.value) || 0;
-            });
-
+            setLoading(true);
+            
             try {
-                const res = await fetch('/api/techview/save', {
+                // Construir payload
+                const payload = {
+                    device_id: deviceId,
+                    cost_type: 'techview',
+                    category: 'management'
+                };
+                
+                // Recolectar todos los inputs numéricos
+                const inputs = document.querySelectorAll('.cost-input');
+                inputs.forEach(input => {
+                    const value = parseFloat(input.value);
+                    if (!isNaN(value) && input.id) {
+                        payload[input.id] = value;
+                    }
+                });
+                
+                console.log('📤 Enviando datos:', payload);
+                
+                const response = await fetch('/api/techview/save', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
                 
-                if(res.ok) {
-                    alert("Datos guardados y actualizados.");
-                    loadData();
+                const result = await response.json();
+                console.log('📥 Respuesta:', result);
+                
+                // Mostrar respuesta
+                document.getElementById('api-response').textContent = 
+                    JSON.stringify(result, null, 2);
+                
+                if (response.ok && result.success) {
+                    showToast('✅ Datos guardados correctamente', 'success');
+                    // Recargar datos después de guardar
+                    setTimeout(loadData, 1000);
                 } else {
-                    alert("Error al guardar.");
+                    showToast('❌ Error: ' + (result.error || 'Desconocido'), 'error');
                 }
-            } catch(e) { console.error(e); }
+                
+            } catch (error) {
+                console.error('Error saveAll:', error);
+                showToast('❌ Error de red: ' + error.message, 'error');
+                
+                document.getElementById('api-response').textContent = 
+                    `Error: ${error.message}\n\n${error.stack || ''}`;
+            } finally {
+                setLoading(false);
+            }
         }
-
-        document.addEventListener('DOMContentLoaded', loadData);
+        
+        async function testSave() {
+            // Guardado de prueba con datos mínimos
+            const testPayload = {
+                device_id: deviceId,
+                capex_screen: 15000,
+                revenue_monthly: 3000,
+                cost_type: 'test',
+                category: 'test'
+            };
+            
+            console.log('🧪 Test save:', testPayload);
+            
+            const response = await fetch('/api/techview/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(testPayload)
+            });
+            
+            const result = await response.json();
+            console.log('🧪 Test result:', result);
+            
+            showToast(result.success ? '✅ Test exitoso' : '❌ Test falló', 
+                     result.success ? 'success' : 'error');
+            
+            document.getElementById('api-response').textContent = 
+                JSON.stringify(result, null, 2);
+        }
+        
+        function clearLogs() {
+            document.getElementById('console-logs').innerHTML = '';
+            showToast('Logs limpiados', 'info');
+        }
+        
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 TechView Management inicializado');
+            console.log(`📱 Dispositivo: ${deviceId}`);
+            
+            // Cargar datos iniciales
+            loadData();
+            
+            // Test de conexión automático
+            setTimeout(testConnection, 500);
+            
+            // Mostrar notificación de bienvenida
+            setTimeout(() => {
+                showToast('Sistema listo. Cargando datos...', 'info');
+            }, 1000);
+        });
+        
+        // Estilos para animaciones
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fade-in {
+                from { opacity: 0; transform: translateY(-10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            .animate-fade-in {
+                animation: fade-in 0.3s ease-out;
+            }
+        `;
+        document.head.appendChild(style);
     </script>
 </body>
 </html>
