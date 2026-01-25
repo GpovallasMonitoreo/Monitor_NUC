@@ -14,9 +14,10 @@ class SupabaseService:
         self.client: Client = create_client(url, key)
 
     def _safe_float(self, value):
-        """Convierte valores a float de forma segura"""
+        """Convierte valores a float de forma segura, evitando error 500"""
         try:
-            return float(value) if value is not None else 0.0
+            if value is None or value == '': return 0.0
+            return float(value)
         except (ValueError, TypeError):
             return 0.0
 
@@ -24,29 +25,27 @@ class SupabaseService:
     def _calculate_eco_impact(self):
         """
         Calcula el ahorro real al migrar de tecnología Legacy a NUC/LED Eficiente.
-        Factores basados en promedios industriales.
+        Datos: 18 horas de uso diario.
         """
         # Consumo Promedio (Watts/Hora)
         watts_legacy = 450.0  # Pantalla vieja + Player antiguo
         watts_modern = 150.0  # Pantalla LED Nueva + NUC 11th Gen
         hours_active = 18.0   # Horas encendida al día
         
-        # Cálculo de Ahorro
-        daily_saving_kwh = ((watts_legacy - watts_modern) * hours_active) / 1000
-        annual_saving_kwh = daily_saving_kwh * 365
+        # Ahorro: (Diferencia Watts * Horas * 365 días) / 1000 para kWh
+        kwh_saved_annual = ((watts_legacy - watts_modern) * hours_active * 365) / 1000
         
-        # Factores de Conversión (Fuente: EPA / Factores eléctricos México)
-        co2_factor = 0.42  # kg CO2 por kWh ahorrado
-        tree_absorption = 22.0 # kg CO2 que absorbe un árbol adulto al año
+        # Factor CO2 (México: ~0.42 kg CO2 por kWh generado)
+        co2_tons = (kwh_saved_annual * 0.42) / 1000
         
-        co2_saved_tons = (annual_saving_kwh * co2_factor) / 1000
-        trees_equivalent = int((annual_saving_kwh * co2_factor) / tree_absorption)
+        # Árboles equivalentes (1 árbol maduro absorbe ~22kg CO2/año)
+        trees = int((kwh_saved_annual * 0.42) / 22)
 
         return {
-            "kwh_saved": round(annual_saving_kwh, 2),
-            "co2_tons": round(co2_saved_tons, 2),
-            "trees": trees_equivalent,
-            "efficiency_gain": "66%" # (450-150)/450
+            "kwh_saved": round(kwh_saved_annual, 2),
+            "co2_tons": round(co2_tons, 2),
+            "trees": trees,
+            "efficiency_gain": "66%" 
         }
 
     # --- MÉTODOS DE DATOS ---
@@ -66,7 +65,7 @@ class SupabaseService:
                 ctype = f.get('cost_type')
                 rec = f.get('recurrence')
                 
-                # Compatibilidad
+                # Compatibilidad con datos viejos
                 if not ctype:
                     t = f.get('type')
                     if t == 'installation': ctype = 'CAPEX'
@@ -74,8 +73,10 @@ class SupabaseService:
                     else: ctype = 'OPEX'
 
                 if ctype == 'CAPEX': capex += amt
-                if ctype == 'REVENUE': sales_total += (amt * 12) if rec == 'monthly' else amt
-                if ctype == 'OPEX' and rec == 'monthly': opex_monthly += amt
+                elif ctype == 'REVENUE': 
+                    if rec == 'monthly': sales_total += (amt * 12)
+                    else: sales_total += amt
+                elif ctype == 'OPEX' and rec == 'monthly': opex_monthly += amt
 
             incident_cost = sum(self._safe_float(t.get('costo_estimado')) for t in tickets)
 
@@ -100,21 +101,22 @@ class SupabaseService:
     def get_device_detail(self, device_id):
         """Detalle completo por pantalla + Eco Impact"""
         try:
-            # Consultas
+            # Consultas DB seguras
             fin_resp = self.client.table("finances").select("*").eq("device_id", device_id).execute()
+            # En tickets buscamos por 'sitio' o 'device_id' dependiendo de tu tabla
             tic_resp = self.client.table("tickets").select("*").eq("sitio", device_id).execute()
             dev_resp = self.client.table("devices").select("*").eq("device_id", device_id).execute()
 
-            records = fin_resp.data if fin_resp.data else []
-            tickets = tic_resp.data if tic_resp.data else []
-            device_info = dev_resp.data[0] if dev_resp.data else {}
+            records = fin_resp.data if fin_resp and fin_resp.data else []
+            tickets = tic_resp.data if tic_resp and tic_resp.data else []
+            device_info = dev_resp.data[0] if dev_resp and dev_resp.data else {}
 
             data = {
                 "device": device_info,
                 "breakdown": records,
                 "totals": {"capex": 0.0, "opex": 0.0, "revenue": 0.0, "roi": 0.0},
                 "history": {"tickets": tickets, "downtime": device_info.get('disconnect_count', 0)},
-                "eco": self._calculate_eco_impact() # <--- DATOS REALES CALCULADOS
+                "eco": self._calculate_eco_impact()
             }
 
             for r in records:
@@ -122,9 +124,12 @@ class SupabaseService:
                 ctype = r.get('cost_type')
                 rec = r.get('recurrence')
                 
+                # Compatibilidad
                 if not ctype:
                     t = r.get('type')
-                    ctype = 'CAPEX' if t == 'installation' else 'REVENUE' if t == 'sale' else 'OPEX'
+                    if t == 'installation': ctype = 'CAPEX'
+                    elif t == 'sale': ctype = 'REVENUE'
+                    else: ctype = 'OPEX'
 
                 if ctype == 'CAPEX': data['totals']['capex'] += amt
                 elif ctype == 'OPEX' and rec == 'monthly': data['totals']['opex'] += amt
@@ -136,21 +141,29 @@ class SupabaseService:
             return data
         except Exception as e:
             logger.error(f"Error Device {device_id}: {e}")
-            return None
+            # Retornar estructura vacía para evitar error 500
+            return {
+                "device": {}, "breakdown": [], 
+                "totals": {"capex": 0, "opex": 0, "revenue": 0, "roi": 0},
+                "history": {"tickets": [], "downtime": 0},
+                "eco": {"kwh_saved": 0, "co2_tons": 0, "trees": 0, "efficiency_gain": "0%"}
+            }
 
     def save_cost_entry(self, payload):
+        """Guarda un costo en la tabla finances"""
         try:
             record = {
-                "device_id": payload['device_id'],
-                "cost_type": payload['cost_type'],
-                "category": payload['category'],
-                "concept": payload['concept'],
-                "amount": self._safe_float(payload['amount']),
+                "device_id": payload.get('device_id'),
+                "cost_type": payload.get('cost_type'),
+                "category": payload.get('category'),
+                "concept": payload.get('concept'),
+                "amount": self._safe_float(payload.get('amount')),
                 "recurrence": payload.get('recurrence', 'one_time'),
                 "date": datetime.now().strftime("%Y-%m-%d"),
                 "created_at": datetime.now().isoformat(),
-                "type": "sale" if payload['cost_type'] == 'REVENUE' else "expense"
+                "type": "sale" if payload.get('cost_type') == 'REVENUE' else "expense"
             }
+            # Usamos insert para mantener historial
             self.client.table("finances").insert(record).execute()
             return True
         except Exception as e:
