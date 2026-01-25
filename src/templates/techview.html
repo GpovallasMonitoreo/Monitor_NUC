@@ -46,6 +46,8 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         .toast { position: fixed; top: 20px; right: 20px; padding: 16px 24px; border-radius: 12px; color: white; font-weight: 500; z-index: 2000; box-shadow: 0 10px 25px rgba(0,0,0,0.1); animation: slideIn 0.3s ease-out; }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .profit-indicator { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
     </style>
 </head>
 <body class="bg-background-light text-text-main font-display min-h-screen flex flex-col">
@@ -156,23 +158,67 @@
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+                        <!-- NUEVO: Proyección de Rentabilidad -->
                         <div class="bg-surface-light p-6 rounded-2xl border border-[#cdeadb] shadow-sm">
-                            <h4 class="text-xs uppercase tracking-wider text-text-muted font-bold mb-4 border-b pb-2">Latencia & Red</h4>
+                            <h4 class="text-xs uppercase tracking-wider text-text-muted font-bold mb-4 border-b pb-2 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-green-600">trending_up</span>
+                                Proyección de Rentabilidad
+                            </h4>
                             <div class="h-32 w-full mb-4">
-                                <canvas id="latencyChart"></canvas>
+                                <canvas id="profitabilityChart"></canvas>
                             </div>
-                            <div class="space-y-2 text-sm" id="dynamic-specs">
-                                <p class="text-gray-400 text-xs italic">Cargando telemetría...</p>
+                            <div class="space-y-3 text-sm">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-500">Punto de Equilibrio</span>
+                                    <span class="font-bold text-green-600" id="break-even">Cargando...</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-500">Margen Operativo</span>
+                                    <span class="font-bold" id="operating-margin">0%</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-500">Retorno Anual (ROI)</span>
+                                    <span class="font-bold" id="annual-roi">0%</span>
+                                </div>
                             </div>
                         </div>
                         
+                        <!-- NUEVO: TCO (Costo Total de Propiedad) -->
                         <div class="bg-surface-light p-6 rounded-2xl border border-[#cdeadb] shadow-sm relative overflow-hidden">
-                            <h4 class="text-xs uppercase tracking-wider text-text-muted font-bold mb-4 border-b pb-2">Impacto Ecológico</h4>
-                            <div class="flex items-center gap-6">
-                                <div>
-                                    <p class="text-2xl font-black text-text-main" id="eco-co2">0.00</p>
-                                    <p class="text-xs text-text-muted uppercase">Toneladas CO₂ evitadas</p>
-                                    <p class="text-xs text-gray-400 mt-1">Eq. a <span id="eco-trees">0</span> árboles</p>
+                            <h4 class="text-xs uppercase tracking-wider text-text-muted font-bold mb-4 border-b pb-2 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-blue-600">account_balance</span>
+                                TCO (5 años)
+                            </h4>
+                            <div class="space-y-4">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="text-2xl font-black text-text-main" id="tco-5year">$0</p>
+                                        <p class="text-xs text-text-muted">Costo Total de Propiedad</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-lg font-black" id="tco-monthly">$0</p>
+                                        <p class="text-xs text-text-muted">/ mes equivalente</p>
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between text-sm">
+                                        <span class="text-gray-500">CAPEX</span>
+                                        <span class="font-bold" id="tco-capex">$0</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm">
+                                        <span class="text-gray-500">OPEX (5 años)</span>
+                                        <span class="font-bold" id="tco-opex">$0</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm">
+                                        <span class="text-gray-500">Mantenimiento</span>
+                                        <span class="font-bold" id="tco-maintenance">$0</span>
+                                    </div>
+                                </div>
+                                <div class="pt-2 border-t">
+                                    <div class="flex justify-between text-sm font-bold">
+                                        <span>Rentabilidad Neta (5 años)</span>
+                                        <span class="text-green-600" id="tco-net-profit">$0</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -293,7 +339,7 @@
         const deviceId = "{{ device_id }}";
         let pendingChanges = new Set();
         let chartInstance = null;
-        let latencyChart = null;
+        let profitabilityChart = null;
 
         document.addEventListener('DOMContentLoaded', () => {
             loadDeviceData();
@@ -314,6 +360,7 @@
         function goBack() { window.location.href = '/techview/overview'; }
 
         const safeSet = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
+        const safeSetCurrency = (id, val) => { safeSet(id, formatCurrency(val)); };
 
         async function loadDeviceData() {
             showLoading();
@@ -329,73 +376,147 @@
                 }
 
                 if (data.totals) {
-                    safeSet('dash-revenue', formatCurrency(data.totals.revenue_monthly));
-                    safeSet('dash-capex', formatCurrency(data.totals.capex));
-                    safeSet('dash-margin', formatCurrency(data.totals.margin_monthly));
+                    safeSetCurrency('dash-revenue', data.totals.revenue_monthly);
+                    safeSetCurrency('dash-capex', data.totals.capex);
+                    safeSetCurrency('dash-margin', data.totals.margin_monthly);
                     safeSet('dash-roi', `${data.totals.roi_months} meses`);
-                    safeSet('dash-monthly-cost', formatCurrency(data.totals.opex_monthly));
+                    safeSetCurrency('dash-monthly-cost', data.totals.opex_monthly);
+                    
+                    // Calcular ROI anual
+                    const capex = data.totals.capex || 0;
+                    const annualMargin = (data.totals.margin_monthly || 0) * 12;
+                    const annualROI = capex > 0 ? (annualMargin / capex * 100) : 0;
+                    safeSet('annual-roi', `${annualROI.toFixed(1)}%`);
+                    
+                    // Calcular margen operativo
+                    const revenue = data.totals.revenue_monthly || 0;
+                    const opex = data.totals.opex_monthly || 0;
+                    const operatingMargin = revenue > 0 ? ((revenue - opex) / revenue * 100) : 0;
+                    safeSet('operating-margin', `${operatingMargin.toFixed(1)}%`);
                 }
 
                 if (data.advanced_kpis) {
-                    // Nuevos KPIs acumulados
-                    safeSet('dash-accum-opex', formatCurrency(data.advanced_kpis.accumulated_opex));
-                    safeSet('dash-total-project', formatCurrency(data.advanced_kpis.total_current_cost));
+                    // KPIs acumulados
+                    safeSetCurrency('dash-accum-opex', data.advanced_kpis.accumulated_opex);
+                    safeSetCurrency('dash-total-project', data.advanced_kpis.total_current_cost);
                     
                     safeSet('tech-score-val', `${data.advanced_kpis.technical_score}/100`);
                     if(document.getElementById('tech-score-bar')) document.getElementById('tech-score-bar').style.width = `${data.advanced_kpis.technical_score}%`;
                     safeSet('dash-reincidence', `${data.advanced_kpis.reincidence_rate}%`);
-                    generateTelemetry(data.totals, data.advanced_kpis);
+                    
+                    // Calcular TCO
+                    calculateTCO(data.totals, data.advanced_kpis);
+                    
+                    // Calcular punto de equilibrio
+                    calculateBreakEven(data.totals);
+                    
+                    // Actualizar recomendación IA
+                    updateAIRecommendation(data.totals, data.advanced_kpis);
                 }
 
                 if (data.eco) {
-                    safeSet('eco-co2', data.eco.co2_tons);
-                    safeSet('eco-trees', data.eco.trees);
+                    // Mantener eco si existe, pero ahora está oculto
                 }
                 
-                // ESPECIFICACIONES DINÁMICAS (CPU, DISCO, ETC)
-                const specsDiv = document.getElementById('dynamic-specs');
-                if (specsDiv && data.device && data.device.sensors) {
-                    let html = '';
-                    const sensors = data.device.sensors; // JSON
-                    // Buscar patrones comunes
-                    let cpu = "Generico";
-                    let disk = "Generico";
-                    
-                    for(const [cat, items] of Object.entries(sensors)) {
-                        items.forEach(s => {
-                            if(s.nombre && s.nombre.toLowerCase().includes('processor')) cpu = s.valor;
-                            if(s.nombre && (s.nombre.includes('Disk') || s.nombre.includes('Drive'))) disk = s.valor;
-                        });
-                    }
-                    html += `<div class="flex justify-between border-b border-gray-100 pb-1"><span class="text-gray-500">CPU</span><span class="font-bold text-text-main text-right">${cpu}</span></div>`;
-                    html += `<div class="flex justify-between border-b border-gray-100 pb-1"><span class="text-gray-500">Disco</span><span class="font-bold text-text-main text-right">${disk}</span></div>`;
-                    specsDiv.innerHTML = html;
-                } else if(specsDiv) {
-                    specsDiv.innerHTML = `<p class="text-gray-400 text-xs italic">Esperando telemetría...</p>`;
-                }
-
                 initMonthlyChart(data.financials);
-                initLatencyChart(); // Placeholder para gráfica de latencia
+                initProfitabilityChart(data.totals);
 
-            } catch (e) { console.error(e); } 
+            } catch (e) { 
+                console.error(e);
+                showToast('Error cargando datos', 'error');
+            } 
             finally { hideLoading(); }
         }
 
-        function generateTelemetry(totals, advanced) {
-            const margin = totals?.margin_monthly || 0;
-            const status = margin < 0 ? "Déficit" : "Rentable";
-            const color = margin < 0 ? "text-red-500" : "text-primary";
+        function calculateTCO(totals, advanced) {
+            // Calcular TCO a 5 años
+            const capex = totals.capex || 0;
+            const monthlyOpex = totals.opex_monthly || 0;
+            const annualOpex = monthlyOpex * 12;
+            const fiveYearOpex = annualOpex * 5;
+            
+            // Costo de mantenimiento estimado (preventivo + correctivo)
+            const monthlyMaintenance = (advanced.real_maintenance_total || 0) / (advanced.months_operation || 1);
+            const fiveYearMaintenance = monthlyMaintenance * 12 * 5;
+            
+            const tco5Year = capex + fiveYearOpex + fiveYearMaintenance;
+            const tcoMonthlyEquivalent = tco5Year / (5 * 12);
+            
+            // Calcular rentabilidad neta a 5 años
+            const annualRevenue = (totals.revenue_monthly || 0) * 12;
+            const fiveYearRevenue = annualRevenue * 5;
+            const netProfit = fiveYearRevenue - tco5Year;
+            
+            safeSetCurrency('tco-5year', tco5Year);
+            safeSetCurrency('tco-monthly', tcoMonthlyEquivalent);
+            safeSetCurrency('tco-capex', capex);
+            safeSetCurrency('tco-opex', fiveYearOpex);
+            safeSetCurrency('tco-maintenance', fiveYearMaintenance);
+            safeSetCurrency('tco-net-profit', netProfit);
+            
+            // Cambiar color según rentabilidad
+            const netProfitEl = document.getElementById('tco-net-profit');
+            if (netProfitEl) {
+                netProfitEl.className = netProfit >= 0 ? 'text-green-600 font-bold' : 'text-red-600 font-bold';
+            }
+        }
+
+        function calculateBreakEven(totals) {
+            const capex = totals.capex || 0;
+            const monthlyMargin = totals.margin_monthly || 0;
+            
+            if (monthlyMargin > 0) {
+                const breakEvenMonths = Math.ceil(capex / monthlyMargin);
+                const breakEvenDate = new Date();
+                breakEvenDate.setMonth(breakEvenDate.getMonth() + breakEvenMonths);
+                
+                const options = { year: 'numeric', month: 'short' };
+                const breakEvenText = `${breakEvenMonths} meses (${breakEvenDate.toLocaleDateString('es-MX', options)})`;
+                safeSet('break-even', breakEvenText);
+            } else {
+                safeSet('break-even', 'No alcanzable');
+                document.getElementById('break-even').className = 'font-bold text-red-600';
+            }
+        }
+
+        function updateAIRecommendation(totals, advanced) {
+            const margin = totals.margin_monthly || 0;
+            const tcoNetProfit = parseFloat(document.getElementById('tco-net-profit')?.innerText.replace(/[^0-9.-]+/g, '') || 0);
+            
+            let recommendation = '';
+            let status = '';
+            let statusColor = '';
+            
+            if (margin < 0) {
+                recommendation = "Revisar costos operativos urgentemente";
+                status = "Déficit";
+                statusColor = "text-red-500";
+            } else if (tcoNetProfit < 0) {
+                recommendation = "Rentabilidad a 5 años negativa. Reconsiderar inversión";
+                status = "Riesgo";
+                statusColor = "text-orange-500";
+            } else if (tcoNetProfit < totals.capex) {
+                recommendation = "Rentabilidad aceptable pero con margen de mejora";
+                status = "Estable";
+                statusColor = "text-blue-500";
+            } else {
+                recommendation = "Inversión altamente rentable a largo plazo";
+                status = "Excelente";
+                statusColor = "text-primary";
+            }
+            
+            safeSet('ai-recommendation', recommendation);
             safeSet('financial-status-text', status);
-            const el = document.getElementById('financial-status-text');
-            if(el) el.className = `font-bold ${color}`;
-            safeSet('ai-recommendation', margin < 0 ? "Revisar costos operativos." : "Mantener operación.");
+            document.getElementById('financial-status-text').className = `font-bold ${statusColor}`;
         }
 
         function initMonthlyChart(financials) {
             const ctx = document.getElementById('monthlyCostChart');
             if (!ctx) return;
             let opex = 0;
-            if(financials) Object.keys(financials).forEach(k => { if(k.startsWith('opex_') && !k.includes('annual')) opex += parseFloat(financials[k]||0); });
+            if(financials) Object.keys(financials).forEach(k => { 
+                if(k.startsWith('opex_') && !k.includes('annual')) opex += parseFloat(financials[k]||0); 
+            });
             if (chartInstance) chartInstance.destroy();
             chartInstance = new Chart(ctx, {
                 type: 'line',
@@ -403,41 +524,84 @@
                     labels: ['M1','M2','M3','M4','M5','Actual'],
                     datasets: [{
                         data: Array(6).fill(opex).map(v => v * (1 + (Math.random()*0.1 - 0.05))),
-                        borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.1)', fill: true, tension: 0.4, pointRadius:0
+                        borderColor: '#f97316', 
+                        backgroundColor: 'rgba(249,115,22,0.1)', 
+                        fill: true, 
+                        tension: 0.4, 
+                        pointRadius: 0
                     }]
                 },
-                options: { plugins: {legend: {display: false}}, scales: {x:{display:false}, y:{display:false}} }
+                options: { 
+                    plugins: {legend: {display: false}}, 
+                    scales: {x:{display:false}, y:{display:false}} 
+                }
             });
         }
 
-        function initLatencyChart() {
-            const ctx = document.getElementById('latencyChart');
+        function initProfitabilityChart(totals) {
+            const ctx = document.getElementById('profitabilityChart');
             if (!ctx) return;
-            if (latencyChart) latencyChart.destroy();
-            // Simulación de datos de latencia (el backend debería enviarlos en data.device.latency_history)
-            const dataPoints = Array.from({length: 20}, () => Math.floor(Math.random() * 40) + 10);
+            if (profitabilityChart) profitabilityChart.destroy();
             
-            latencyChart = new Chart(ctx, {
+            const revenue = totals.revenue_monthly || 0;
+            const opex = totals.opex_monthly || 0;
+            const capex = totals.capex || 0;
+            
+            // Datos para 24 meses
+            const months = Array.from({length: 24}, (_, i) => `M${i+1}`);
+            const cumulativeRevenue = months.map((_, i) => revenue * (i + 1));
+            const cumulativeCost = months.map((_, i) => capex + (opex * (i + 1)));
+            
+            profitabilityChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: Array(20).fill(''),
-                    datasets: [{
-                        data: dataPoints,
-                        borderColor: '#4f46e5',
-                        borderWidth: 2,
-                        fill: true,
-                        backgroundColor: 'rgba(79, 70, 229, 0.05)',
-                        tension: 0.4,
-                        pointRadius: 0
-                    }]
+                    labels: months,
+                    datasets: [
+                        {
+                            label: 'Ingreso Acumulado',
+                            data: cumulativeRevenue,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Costo Acumulado',
+                            data: cumulativeCost,
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
+                    plugins: { 
+                        legend: { 
+                            display: true,
+                            position: 'top',
+                            labels: { usePointStyle: true, padding: 15 }
+                        } 
+                    },
                     scales: {
-                        x: { display: false },
-                        y: { display: false, min: 0 }
+                        x: { 
+                            display: true,
+                            grid: { display: false },
+                            ticks: { maxTicksLimit: 8 }
+                        },
+                        y: { 
+                            display: true,
+                            beginAtZero: true,
+                            ticks: { 
+                                callback: function(value) {
+                                    return formatCurrency(value, true);
+                                }
+                            }
+                        }
                     }
                 }
             });
@@ -449,11 +613,25 @@
                 const payload = { device_id: deviceId, cost_type: 'techview', category: 'comprehensive' };
                 const intFields = ['maint_crew_size', 'maint_visit_count', 'maint_corr_visit_count'];
                 document.querySelectorAll('input').forEach(i => {
-                    if(i.value !== '') payload[i.id] = (i.type === 'number') ? (intFields.includes(i.id) ? parseInt(i.value) : parseFloat(i.value)) : i.value;
+                    if(i.value !== '') payload[i.id] = (i.type === 'number') ? 
+                        (intFields.includes(i.id) ? parseInt(i.value) : parseFloat(i.value)) : i.value;
                 });
-                const res = await fetch('/techview/api/save', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
-                if (res.ok) { showToast('Guardado', 'success'); pendingChanges.clear(); document.getElementById('unsaved-badge').classList.add('hidden'); loadDeviceData(); }
-            } catch (e) { showToast(e.message, 'error'); } 
+                const res = await fetch('/techview/api/save', { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify(payload) 
+                });
+                if (res.ok) { 
+                    showToast('Datos financieros guardados', 'success'); 
+                    pendingChanges.clear(); 
+                    document.getElementById('unsaved-badge').classList.add('hidden'); 
+                    loadDeviceData(); 
+                } else {
+                    throw new Error('Error al guardar');
+                }
+            } catch (e) { 
+                showToast('Error: ' + e.message, 'error'); 
+            } 
             finally { hideLoading(); }
         }
 
@@ -463,12 +641,29 @@
             document.querySelectorAll('.nav-tab').forEach(e => e.classList.remove('active'));
             event.currentTarget.classList.add('active');
         }
-        function formatCurrency(val) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0); }
+        
+        function formatCurrency(val, short = false) {
+            if (short && val >= 1000000) {
+                return '$' + (val / 1000000).toFixed(1) + 'M';
+            } else if (short && val >= 1000) {
+                return '$' + (val / 1000).toFixed(1) + 'K';
+            }
+            return new Intl.NumberFormat('en-US', { 
+                style: 'currency', 
+                currency: 'USD',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(val || 0);
+        }
+        
         function showLoading() { document.getElementById('loading-overlay').classList.remove('hidden'); }
         function hideLoading() { document.getElementById('loading-overlay').classList.add('hidden'); }
         function showToast(msg, type) {
-            const t = document.createElement('div'); t.className = `toast ${type === 'error' ? 'bg-red-500' : 'bg-green-500'}`; t.innerText = msg;
-            document.getElementById('toast-container').appendChild(t); setTimeout(() => t.remove(), 3000);
+            const t = document.createElement('div'); 
+            t.className = `toast ${type === 'error' ? 'bg-red-500' : 'bg-green-500'}`; 
+            t.innerText = msg;
+            document.getElementById('toast-container').appendChild(t); 
+            setTimeout(() => t.remove(), 3000);
         }
     </script>
 </body>
