@@ -61,7 +61,7 @@ class TechViewService:
             clean_id = clean_device_id(device_id)
             logger.info(f"🔍 TechView buscando dispositivo: {clean_id}")
             
-            # 1. Obtener datos (El monitor de latencia alimenta la tabla 'devices')
+            # 1. Obtener datos
             device_data = self._get_device_info(clean_id)
             finance_data = self._get_finance_info(clean_id)
             maintenance_logs = self._get_maintenance_logs(clean_id)
@@ -88,8 +88,8 @@ class TechViewService:
             return self._create_error_response(device_id, str(e))
     
     def _get_device_info(self, device_id):
-        """Obtiene info actualizada por el Monitor de Latencia"""
         try:
+            # Traer sensores y status del Monitor de Latencia
             dev_resp = self.client.table("devices").select("*").eq("device_id", device_id).execute()
             if dev_resp.data: return dev_resp.data[0]
             else: return {"device_id": device_id, "status": "active", "location": device_id, "created_at": datetime.now().isoformat()}
@@ -103,6 +103,7 @@ class TechViewService:
     
     def _get_maintenance_logs(self, device_id):
         try:
+            # Asegurar traer el costo real de la bitácora
             logs_resp = self.client.table("maintenance_logs").select("*").eq("device_id", device_id).order("log_date", desc=True).limit(50).execute()
             return logs_resp.data if logs_resp.data else []
         except: return []
@@ -142,11 +143,11 @@ class TechViewService:
         # 1. Recuperar CAPEX
         capex = sum(self._safe_float(finance_data.get(k, 0)) for k in finance_data if k.startswith('capex_'))
         
-        # 2. Recuperar Flujo Mensual (OPEX + Mantenimiento Prorrateado)
+        # 2. Recuperar Flujo Mensual Proyectado (OPEX + Mantenimiento Configurado)
         monthly_burn_rate = self._calculate_monthly_opex(finance_data)
         monthly_revenue = self._safe_float(finance_data.get('revenue_monthly', 0))
         
-        # 3. Calcular tiempo de vida (Meses desde instalación)
+        # 3. Calcular tiempo de vida
         install_date = device_data.get('created_at') or finance_data.get('life_installation_date')
         months_operation = 1
         if install_date:
@@ -157,11 +158,20 @@ class TechViewService:
             except: 
                 months_operation = 1
         
-        # --- NUEVOS CÁLCULOS SOLICITADOS ---
-        # A) Suma de todos los meses sin contar inversión inicial (OPEX Histórico)
-        accumulated_opex = monthly_burn_rate * months_operation
+        # --- LÓGICA DE COSTOS REALES (BITÁCORA) ---
+        # Sumar costos explícitos reportados en la bitácora de mantenimiento del Monitor
+        real_maintenance_cost_total = 0
+        for log in maintenance_logs:
+            # Buscar campo 'cost' o 'total_cost' en el log
+            cost = self._safe_float(log.get('cost', 0)) or self._safe_float(log.get('total_cost', 0))
+            real_maintenance_cost_total += cost
+
+        # A) Suma de todos los meses (OPEX Proyectado + Mantenimientos Reales Extra)
+        # Asumimos que el monthly_burn_rate ya cubre el mantenimiento preventivo básico.
+        # Los logs suelen ser correctivos o extras.
+        accumulated_opex = (monthly_burn_rate * months_operation) + real_maintenance_cost_total
         
-        # B) Cuenta todo con inversión inicial (Costo Total del Proyecto / TCO)
+        # B) Cuenta todo con inversión inicial (TCO)
         total_project_cost = capex + accumulated_opex
         # -----------------------------------
 
@@ -169,12 +179,9 @@ class TechViewService:
         
         # Telemetría del Monitor
         total_maint = len(maintenance_logs)
-        # Usamos disconnect_count del monitor de latencia si existe
         disconnects = device_data.get('disconnect_count', 0)
-        
         corrective = sum(1 for log in maintenance_logs if log.get('log_type') == 'corrective')
         
-        # Tasa de reincidencia (mezcla incidentes físicos y desconexiones graves)
         reincidence = ((corrective + (disconnects/10)) / max(1, total_maint + (months_operation/2))) * 100
         
         technical_score = self._calculate_technical_score(device_data, maintenance_logs, finance_data)
@@ -182,8 +189,9 @@ class TechViewService:
         life_projection = self._calculate_life_projection(finance_data, device_data)
         
         return {
-            "total_current_cost": round(total_project_cost, 2), # TCO
-            "accumulated_opex": round(accumulated_opex, 2),     # Solo Operativo Histórico
+            "total_current_cost": round(total_project_cost, 2), # TCO (Capex + Opex + Manto Real)
+            "accumulated_opex": round(accumulated_opex, 2),     # Histórico Operativo
+            "real_maintenance_total": round(real_maintenance_cost_total, 2), # Desglose solo manto real
             "months_operation": months_operation,
             "annual_projected_margin": round(annual_projected_margin, 2),
             "reincidence_rate": round(reincidence, 1),
@@ -208,12 +216,10 @@ class TechViewService:
 
     def _calculate_technical_score(self, device_data, maintenance_logs, finance_data):
         score = 100
-        # Telemetría en tiempo real
         status = device_data.get('status', 'unknown')
         if status == 'offline': score -= 30
         elif status == 'warning': score -= 15
         
-        # Penalización por desconexiones frecuentes (Monitor Latencia)
         disconnects = self._safe_int(device_data.get('disconnect_count', 0))
         if disconnects > 50: score -= 20
         elif disconnects > 10: score -= 5
