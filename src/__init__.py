@@ -111,13 +111,15 @@ def create_app():
         from src.routes.views import bp as views_bp
         from src.routes.appsheet import bp as appsheet_bp # Legacy adapter
         from src.routes.costs import bp as costs_bp       # NUEVO MÓDULO DE COSTOS
+        from src.routes.techview import bp as techview_bp # NUEVO: TechView
 
         app.register_blueprint(api_bp)
         app.register_blueprint(views_bp)
         app.register_blueprint(appsheet_bp)
         app.register_blueprint(costs_bp)  # Registramos la ruta de finanzas
+        app.register_blueprint(techview_bp)  # Registramos TechView
         
-        logger.info("✅ Blueprints registrados (API, Views, Legacy, Costs)")
+        logger.info("✅ Blueprints registrados (API, Views, Legacy, Costs, TechView)")
     except Exception as e:
         logger.error(f"❌ Error registrando rutas: {e}")
         import traceback
@@ -138,7 +140,8 @@ def create_app():
                 "database_cloud": sb_status,
                 "local_config": "OK" if storage else "ERROR",
                 "monitor": "RUNNING" if monitor and getattr(monitor, 'running', False) else "STOPPED",
-                "finance_module": "LOADED"
+                "finance_module": "LOADED",
+                "techview_module": "LOADED"
             }
         }
 
