@@ -3,36 +3,110 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TechView - Gestión</title>
+    <title>TechView - Gestión Financiera</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
     <style>
+        /* Estilos personalizados */
         .tab-content { display: none; }
         .tab-content.active { display: block; animation: fadeIn 0.3s; }
-        .nav-tab.active { border-bottom: 2px solid #F97316; color: #F97316; font-weight: 600; }
-        .cost-input { width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; }
-        .cost-input:focus { outline: none; border-color: #F97316; box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1); }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .debug-panel { font-family: monospace; font-size: 12px; }
+        .nav-tab.active { 
+            border-bottom: 3px solid #f97316; 
+            color: #f97316; 
+            font-weight: 600;
+        }
+        .cost-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .cost-input:focus {
+            outline: none;
+            border-color: #f97316;
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+        }
+        .cost-input.error {
+            border-color: #ef4444;
+            background-color: #fef2f2;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #f97316;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .debug-panel {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-gray-50 text-gray-800 min-h-screen">
     <!-- Header -->
-    <header class="bg-white shadow-sm border-b sticky top-0 z-50">
+    <header class="bg-white shadow-sm border-b sticky top-0 z-40">
         <div class="container mx-auto px-4 py-3">
-            <div class="flex justify-between items-center">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
-                    <h1 class="text-lg font-bold text-gray-800">💼 Gestión Financiera</h1>
-                    <p class="text-sm text-gray-600 mt-1">
-                        Dispositivo: <span id="device-id-display" class="font-mono">{{ device_id }}</span>
-                        <span id="device-status" class="ml-2 text-xs px-2 py-1 bg-gray-100 rounded"></span>
-                    </p>
+                    <h1 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <span class="material-icons-outlined text-orange-500">analytics</span>
+                        TechView - Gestión Financiera
+                    </h1>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="text-sm text-gray-600">Dispositivo:</span>
+                        <code id="device-id-display" class="text-sm bg-gray-100 px-2 py-1 rounded">{{ device_id }}</code>
+                        <span id="device-status" class="text-xs px-2 py-1 rounded-full bg-gray-100"></span>
+                    </div>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="testSave()" class="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded">
-                        🧪 Test
+                    <button onclick="window.open('/techview/diagnostic', '_blank')" 
+                            class="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center gap-1">
+                        <span class="material-icons-outlined text-sm">bug_report</span>
+                        Diagnóstico
                     </button>
-                    <button onclick="saveAll()" id="save-btn" class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg flex items-center gap-2">
-                        <span>💾</span> Guardar Todo
+                    <button onclick="testConnection()" 
+                            class="px-3 py-2 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg flex items-center gap-1">
+                        <span class="material-icons-outlined text-sm">wifi</span>
+                        Test Conexión
+                    </button>
+                    <button onclick="saveAll()" id="save-btn" 
+                            class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg flex items-center gap-2 transition-colors">
+                        <span class="material-icons-outlined text-sm">save</span>
+                        <span>Guardar Todo</span>
                     </button>
                 </div>
             </div>
@@ -40,14 +114,33 @@
     </header>
 
     <!-- Tabs Navigation -->
-    <div class="bg-white border-b">
+    <div class="bg-white border-b shadow-sm">
         <div class="container mx-auto px-4">
             <div class="flex overflow-x-auto">
-                <button onclick="switchTab('resumen')" class="nav-tab active px-4 py-3 whitespace-nowrap">📊 Resumen</button>
-                <button onclick="switchTab('capex')" class="nav-tab px-4 py-3 whitespace-nowrap">🏗️ CAPEX</button>
-                <button onclick="switchTab('opex')" class="nav-tab px-4 py-3 whitespace-nowrap">💡 OPEX</button>
-                <button onclick="switchTab('manto')" class="nav-tab px-4 py-3 whitespace-nowrap">🔧 Mantenimiento</button>
-                <button onclick="switchTab('debug')" class="nav-tab px-4 py-3 whitespace-nowrap">🐛 Debug</button>
+                <button onclick="switchTab('resumen')" class="nav-tab active px-4 py-3 whitespace-nowrap flex items-center gap-2">
+                    <span class="material-icons-outlined text-sm">dashboard</span>
+                    Resumen
+                </button>
+                <button onclick="switchTab('infra')" class="nav-tab px-4 py-3 whitespace-nowrap flex items-center gap-2">
+                    <span class="material-icons-outlined text-sm">construction</span>
+                    Infraestructura
+                </button>
+                <button onclick="switchTab('electronica')" class="nav-tab px-4 py-3 whitespace-nowrap flex items-center gap-2">
+                    <span class="material-icons-outlined text-sm">memory</span>
+                    Electrónica
+                </button>
+                <button onclick="switchTab('opex')" class="nav-tab px-4 py-3 whitespace-nowrap flex items-center gap-2">
+                    <span class="material-icons-outlined text-sm">receipt</span>
+                    OPEX
+                </button>
+                <button onclick="switchTab('manto')" class="nav-tab px-4 py-3 whitespace-nowrap flex items-center gap-2">
+                    <span class="material-icons-outlined text-sm">handyman</span>
+                    Mantenimiento
+                </button>
+                <button onclick="switchTab('debug')" class="nav-tab px-4 py-3 whitespace-nowrap flex items-center gap-2">
+                    <span class="material-icons-outlined text-sm">code</span>
+                    Debug
+                </button>
             </div>
         </div>
     </div>
@@ -56,109 +149,193 @@
     <main class="container mx-auto px-4 py-6">
         <!-- Tab: Resumen -->
         <div id="tab-resumen" class="tab-content active">
+            <!-- KPIs -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div class="bg-white p-5 rounded-xl border shadow-sm">
-                    <p class="text-sm text-gray-500 font-medium mb-1">CAPEX TOTAL</p>
+                <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm font-medium text-gray-500">CAPEX TOTAL</p>
+                        <span class="material-icons-outlined text-gray-400 text-lg">business</span>
+                    </div>
                     <p class="text-3xl font-bold text-gray-800" id="kpi-capex">$0</p>
-                    <p class="text-xs text-gray-400 mt-2">Inversión inicial</p>
+                    <p class="text-xs text-gray-400 mt-2">Inversión inicial en infraestructura</p>
                 </div>
-                <div class="bg-white p-5 rounded-xl border shadow-sm">
-                    <p class="text-sm text-gray-500 font-medium mb-1">OPEX MENSUAL</p>
+                
+                <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm font-medium text-gray-500">OPEX MENSUAL</p>
+                        <span class="material-icons-outlined text-orange-400 text-lg">trending_up</span>
+                    </div>
                     <p class="text-3xl font-bold text-orange-500" id="kpi-opex">$0</p>
-                    <p class="text-xs text-gray-400 mt-2">Gastos operativos</p>
+                    <p class="text-xs text-gray-400 mt-2">Gastos operativos mensuales</p>
                 </div>
-                <div class="bg-white p-5 rounded-xl border shadow-sm">
-                    <p class="text-sm text-gray-500 font-medium mb-1">VENTAS MENSUAL</p>
+                
+                <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm font-medium text-gray-500">VENTAS MENSUALES</p>
+                        <span class="material-icons-outlined text-emerald-400 text-lg">attach_money</span>
+                    </div>
                     <p class="text-3xl font-bold text-emerald-500" id="kpi-sales">$0</p>
-                    <p class="text-xs text-gray-400 mt-2">Ingresos</p>
+                    <p class="text-xs text-gray-400 mt-2">Ingresos mensuales estimados</p>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-white p-5 rounded-xl border shadow-sm">
-                    <h3 class="font-bold text-gray-700 mb-4">📈 Rendimiento</h3>
-                    <div class="space-y-3">
-                        <div>
-                            <p class="text-sm text-gray-500">Margen Mensual</p>
-                            <p class="text-2xl font-bold text-blue-500" id="kpi-margin">$0</p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-500">ROI (Meses)</p>
-                            <p class="text-2xl font-bold text-purple-500" id="kpi-roi">0</p>
-                        </div>
+            <!-- Gráficas y métricas -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <div class="lg:col-span-2 bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+                        <span class="material-icons-outlined text-blue-500">bar_chart</span>
+                        Rendimiento Financiero
+                    </h3>
+                    <div class="h-64">
+                        <canvas id="performance-chart"></canvas>
                     </div>
                 </div>
                 
-                <div class="bg-white p-5 rounded-xl border shadow-sm">
-                    <h3 class="font-bold text-gray-700 mb-4">🌱 Impacto Ecológico</h3>
-                    <div class="space-y-2">
-                        <div class="flex justify-between">
-                            <span class="text-sm text-gray-600">Ahorro Energético</span>
-                            <span class="font-medium" id="eco-kwh">0 kWh</span>
+                <div class="space-y-4">
+                    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                        <h4 class="font-bold text-gray-700 mb-3">📈 ROI y Margen</h4>
+                        <div class="space-y-3">
+                            <div>
+                                <p class="text-sm text-gray-500">Margen Mensual</p>
+                                <p class="text-2xl font-bold text-blue-600" id="kpi-margin">$0</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">ROI (Meses)</p>
+                                <p class="text-2xl font-bold text-purple-600" id="kpi-roi">0</p>
+                            </div>
                         </div>
-                        <div class="flex justify-between">
-                            <span class="text-sm text-gray-600">Reducción CO₂</span>
-                            <span class="font-medium" id="eco-co2">0 ton</span>
+                    </div>
+                    
+                    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                        <h4 class="font-bold text-gray-700 mb-3">🌱 Impacto Ecológico</h4>
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Ahorro Energético</span>
+                                <span class="font-medium text-emerald-600" id="eco-kwh">0 kWh</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Reducción CO₂</span>
+                                <span class="font-medium text-emerald-600" id="eco-co2">0 ton</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Equivalente Árboles</span>
+                                <span class="font-medium text-emerald-600" id="eco-trees">0</span>
+                            </div>
                         </div>
-                        <div class="flex justify-between">
-                            <span class="text-sm text-gray-600">Equivalente Árboles</span>
-                            <span class="font-medium" id="eco-trees">0</span>
-                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Información del dispositivo -->
+            <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+                    <span class="material-icons-outlined text-gray-500">info</span>
+                    Información del Dispositivo
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm text-gray-500">Estado</p>
+                        <p class="font-medium" id="device-info-status">Cargando...</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Ubicación</p>
+                        <p class="font-medium" id="device-info-location">Cargando...</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Última actualización</p>
+                        <p class="font-medium" id="device-info-updated">Cargando...</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Tickets activos</p>
+                        <p class="font-medium" id="device-info-tickets">0</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Tab: CAPEX -->
-        <div id="tab-capex" class="tab-content">
-            <div class="bg-white p-5 rounded-xl border shadow-sm mb-4">
-                <h3 class="font-bold text-gray-700 mb-4 border-b pb-2">🏗️ Infraestructura</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Tab: Infraestructura -->
+        <div id="tab-infra" class="tab-content">
+            <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm mb-4">
+                <h3 class="font-bold text-gray-700 mb-4 border-b pb-3 flex items-center gap-2">
+                    <span class="material-icons-outlined text-orange-500">apartment</span>
+                    Estructura Física
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Pantalla LED ($)</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Pantalla LED ($)</label>
                         <input type="number" step="0.01" class="cost-input" id="capex_screen" placeholder="0.00">
+                        <p class="text-xs text-gray-500 mt-1">Costo de la pantalla LED principal</p>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Obra Civil ($)</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Obra Civil ($)</label>
                         <input type="number" step="0.01" class="cost-input" id="capex_civil" placeholder="0.00">
+                        <p class="text-xs text-gray-500 mt-1">Preparación del terreno y cimentación</p>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Estructura Metal ($)</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Estructura Metálica ($)</label>
                         <input type="number" step="0.01" class="cost-input" id="capex_structure" placeholder="0.00">
+                        <p class="text-xs text-gray-500 mt-1">Estructura de soporte y montaje</p>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Inst. Eléctrica ($)</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Instalación Eléctrica ($)</label>
                         <input type="number" step="0.01" class="cost-input" id="capex_electrical" placeholder="0.00">
+                        <p class="text-xs text-gray-500 mt-1">Cableado, protecciones y conexiones</p>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <div class="bg-white p-5 rounded-xl border shadow-sm">
-                <h3 class="font-bold text-gray-700 mb-4 border-b pb-2">⚡ Electrónica</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">NUC ($)</label>
-                        <input type="number" step="0.01" class="cost-input" id="capex_nuc" placeholder="0.00">
+        <!-- Tab: Electrónica -->
+        <div id="tab-electronica" class="tab-content">
+            <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                <h3 class="font-bold text-gray-700 mb-4 border-b pb-3 flex items-center gap-2">
+                    <span class="material-icons-outlined text-blue-500">devices</span>
+                    Componentes Electrónicos
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">NUC ($)</label>
+                            <input type="number" step="0.01" class="cost-input" id="capex_nuc" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">UPS ($)</label>
+                            <input type="number" step="0.01" class="cost-input" id="capex_ups" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Sending Card ($)</label>
+                            <input type="number" step="0.01" class="cost-input" id="capex_sending" placeholder="0.00">
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">UPS ($)</label>
-                        <input type="number" step="0.01" class="cost-input" id="capex_ups" placeholder="0.00">
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Módem WiFi ($)</label>
+                            <input type="number" step="0.01" class="cost-input" id="capex_modem_wifi" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Módem SIM ($)</label>
+                            <input type="number" step="0.01" class="cost-input" id="capex_modem_sim" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Cámara ($)</label>
+                            <input type="number" step="0.01" class="cost-input" id="capex_camera" placeholder="0.00">
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Sending Card ($)</label>
-                        <input type="number" step="0.01" class="cost-input" id="capex_sending" placeholder="0.00">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Módem WiFi ($)</label>
-                        <input type="number" step="0.01" class="cost-input" id="capex_modem_wifi" placeholder="0.00">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Módem SIM ($)</label>
-                        <input type="number" step="0.01" class="cost-input" id="capex_modem_sim" placeholder="0.00">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Cámara ($)</label>
-                        <input type="number" step="0.01" class="cost-input" id="capex_camera" placeholder="0.00">
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Procesador ($)</label>
+                            <input type="number" step="0.01" class="cost-input" id="capex_processor" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">HDMI ($)</label>
+                            <input type="number" step="0.01" class="cost-input" id="capex_hdmi" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Teltonika ($)</label>
+                            <input type="number" step="0.01" class="cost-input" id="capex_teltonika" placeholder="0.00">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -166,32 +343,62 @@
 
         <!-- Tab: OPEX -->
         <div id="tab-opex" class="tab-content">
-            <div class="bg-white p-5 rounded-xl border shadow-sm">
-                <h3 class="font-bold text-gray-700 mb-4 border-b pb-2">💰 Gastos Operativos</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Luz ($/mes)</label>
-                        <input type="number" step="0.01" class="cost-input" id="opex_light" placeholder="0.00">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Internet ($/mes)</label>
-                        <input type="number" step="0.01" class="cost-input" id="opex_internet" placeholder="0.00">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Renta ($/mes)</label>
-                        <input type="number" step="0.01" class="cost-input" id="opex_rent" placeholder="0.00">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Uso Suelo ($/mes)</label>
-                        <input type="number" step="0.01" class="cost-input" id="opex_soil_use" placeholder="0.00">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 class="font-bold text-gray-700 mb-4 border-b pb-3 flex items-center gap-2">
+                        <span class="material-icons-outlined text-red-500">paid</span>
+                        Gastos Operativos
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Luz ($/mes)</label>
+                            <input type="number" step="0.01" class="cost-input" id="opex_light" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Internet ($/mes)</label>
+                            <input type="number" step="0.01" class="cost-input" id="opex_internet" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Renta ($/mes)</label>
+                            <input type="number" step="0.01" class="cost-input" id="opex_rent" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Uso de Suelo ($/mes)</label>
+                            <input type="number" step="0.01" class="cost-input" id="opex_soil_use" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Licencia Anual ($)</label>
+                            <input type="number" step="0.01" class="cost-input" id="opex_license_annual" placeholder="0.00">
+                            <p class="text-xs text-gray-500 mt-1">Se divide automáticamente entre 12 meses</p>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="mt-6 pt-4 border-t">
-                    <h4 class="font-bold text-emerald-600 mb-3">💵 Ingresos</h4>
-                    <div class="max-w-md">
-                        <label class="block text-sm font-medium text-emerald-700 mb-1">VENTAS MENSUALES ($)</label>
-                        <input type="number" step="0.01" class="cost-input border-emerald-300 bg-emerald-50" id="revenue_monthly" placeholder="0.00">
+                <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 class="font-bold text-emerald-700 mb-4 border-b pb-3 flex items-center gap-2">
+                        <span class="material-icons-outlined text-emerald-500">trending_up</span>
+                        Ingresos
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-bold text-emerald-700 mb-2">VENTAS MENSUALES ($)</label>
+                            <input type="number" step="0.01" class="cost-input border-emerald-300 bg-emerald-50" id="revenue_monthly" placeholder="0.00">
+                            <p class="text-xs text-emerald-600 mt-1">Ingresos estimados mensuales por publicidad</p>
+                        </div>
+                        
+                        <div class="pt-4 border-t">
+                            <h4 class="font-medium text-gray-700 mb-3">Otros Gastos</h4>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Contenido y Programación ($/mes)</label>
+                                    <input type="number" step="0.01" class="cost-input" id="opex_content_scheduling" placeholder="0.00">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">SRD ($/mes)</label>
+                                    <input type="number" step="0.01" class="cost-input" id="opex_srd" placeholder="0.00">
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -199,20 +406,43 @@
 
         <!-- Tab: Mantenimiento -->
         <div id="tab-manto" class="tab-content">
-            <div class="bg-white p-5 rounded-xl border shadow-sm">
-                <h3 class="font-bold text-gray-700 mb-4 border-b pb-2">🔧 Mantenimiento</h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Preventivo Bimestral ($)</label>
-                        <input type="number" step="0.01" class="cost-input" id="maint_prev_bimonthly" placeholder="0.00">
+            <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                <h3 class="font-bold text-gray-700 mb-4 border-b pb-3 flex items-center gap-2">
+                    <span class="material-icons-outlined text-amber-500">build</span>
+                    Mantenimiento y Vida Útil
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Preventivo Bimestral ($)</label>
+                            <input type="number" step="0.01" class="cost-input" id="maint_prev_bimonthly" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Insumos Limpieza ($)</label>
+                            <input type="number" step="0.01" class="cost-input" id="maint_cleaning_supplies" placeholder="0.00">
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Gasolina ($)</label>
-                        <input type="number" step="0.01" class="cost-input" id="maint_gas" placeholder="0.00">
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Gasolina ($)</label>
+                            <input type="number" step="0.01" class="cost-input" id="maint_gas" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Partes Correctivas ($)</label>
+                            <input type="number" step="0.01" class="cost-input" id="maint_corr_parts" placeholder="0.00">
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Partes Correctivas ($)</label>
-                        <input type="number" step="0.01" class="cost-input" id="maint_corr_parts" placeholder="0.00">
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Retiro / Vida Útil ($)</label>
+                            <input type="number" step="0.01" class="cost-input" id="life_retirement" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Renovación ($)</label>
+                            <input type="number" step="0.01" class="cost-input" id="life_renewal" placeholder="0.00">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -220,63 +450,114 @@
 
         <!-- Tab: Debug -->
         <div id="tab-debug" class="tab-content">
-            <div class="bg-white p-5 rounded-xl border shadow-sm">
-                <h3 class="font-bold text-gray-700 mb-4">🐛 Debug & Logs</h3>
+            <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
+                    <span class="material-icons-outlined text-gray-500">terminal</span>
+                    Debug & Logs del Sistema
+                </h3>
                 
                 <div class="space-y-4">
-                    <div class="flex gap-2 flex-wrap">
-                        <button onclick="testConnection()" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm">
-                            🔗 Test Conexión
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="testConnection()" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm flex items-center gap-1">
+                            <span class="material-icons-outlined text-sm">wifi</span>
+                            Test Conexión
                         </button>
-                        <button onclick="loadData()" class="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded text-sm">
-                            🔄 Recargar Datos
+                        <button onclick="loadData()" class="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded text-sm flex items-center gap-1">
+                            <span class="material-icons-outlined text-sm">refresh</span>
+                            Recargar Datos
                         </button>
-                        <button onclick="clearLogs()" class="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded text-sm">
-                            🗑️ Limpiar Logs
+                        <button onclick="clearLogs()" class="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded text-sm flex items-center gap-1">
+                            <span class="material-icons-outlined text-sm">delete</span>
+                            Limpiar Logs
+                        </button>
+                        <button onclick="exportData()" class="px-3 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded text-sm flex items-center gap-1">
+                            <span class="material-icons-outlined text-sm">download</span>
+                            Exportar JSON
                         </button>
                     </div>
                     
-                    <div class="border rounded p-3">
-                        <h4 class="font-medium text-sm mb-2">Logs de Consola</h4>
-                        <div id="console-logs" class="debug-panel max-h-60 overflow-y-auto p-2 bg-gray-50 rounded">
+                    <div class="border rounded-lg overflow-hidden">
+                        <div class="bg-gray-50 px-4 py-2 border-b">
+                            <h4 class="font-medium text-sm">📋 Logs de Consola</h4>
+                        </div>
+                        <div id="console-logs" class="debug-panel max-h-60 overflow-y-auto p-3 bg-gray-900 text-gray-100">
                             <!-- Logs aparecerán aquí -->
                         </div>
                     </div>
                     
-                    <div class="border rounded p-3">
-                        <h4 class="font-medium text-sm mb-2">Última Respuesta API</h4>
-                        <pre id="api-response" class="debug-panel max-h-60 overflow-y-auto p-2 bg-gray-900 text-gray-100 rounded">
-                            {/* Respuesta aparecerá aquí */}
+                    <div class="border rounded-lg overflow-hidden">
+                        <div class="bg-gray-50 px-4 py-2 border-b">
+                            <h4 class="font-medium text-sm">📡 Última Respuesta API</h4>
+                        </div>
+                        <pre id="api-response" class="debug-panel max-h-60 overflow-y-auto p-3 bg-gray-50">
+// Esperando datos...
                         </pre>
+                    </div>
+                    
+                    <div class="border rounded-lg overflow-hidden">
+                        <div class="bg-gray-50 px-4 py-2 border-b">
+                            <h4 class="font-medium text-sm">⚙️ Estado del Sistema</h4>
+                        </div>
+                        <div id="system-status" class="p-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <p class="text-sm text-gray-500">Service TechView</p>
+                                    <p id="techview-status" class="font-medium">Comprobando...</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">Última actualización</p>
+                                    <p id="last-update" class="font-medium">-</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">Device ID</p>
+                                    <p class="font-medium font-mono">{{ device_id }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">URLs Disponibles</p>
+                                    <p class="text-xs">
+                                        <code>/techview/api/test</code><br>
+                                        <code>/techview/api/device/...</code>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- Toast Notifications -->
-    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2 max-w-md"></div>
 
     <script>
+        // Variables globales
         const deviceId = "{{ device_id }}";
         let currentData = null;
+        let charts = {};
         
         // Interceptar console.log para mostrar en pantalla
         (function() {
             const originalLog = console.log;
             const originalError = console.error;
+            const originalWarn = console.warn;
             
             console.log = function(...args) {
                 originalLog.apply(console, args);
-                addToLog('📘', args);
+                addToLog('📘 INFO', args, 'text-blue-600');
             };
             
             console.error = function(...args) {
                 originalError.apply(console, args);
-                addToLog('❌', args);
+                addToLog('❌ ERROR', args, 'text-red-600');
             };
             
-            function addToLog(icon, args) {
+            console.warn = function(...args) {
+                originalWarn.apply(console, args);
+                addToLog('⚠️ WARN', args, 'text-yellow-600');
+            };
+            
+            function addToLog(level, args, colorClass) {
                 const logsDiv = document.getElementById('console-logs');
                 if (logsDiv) {
                     const message = args.map(arg => 
@@ -284,8 +565,8 @@
                     ).join(' ');
                     
                     const logEntry = document.createElement('div');
-                    logEntry.className = 'mb-1 pb-1 border-b border-gray-200';
-                    logEntry.innerHTML = `<span class="mr-2">${icon}</span><span class="text-xs">${message}</span>`;
+                    logEntry.className = `mb-2 pb-2 border-b border-gray-800 ${colorClass}`;
+                    logEntry.innerHTML = `<span class="font-mono text-xs">${level}:</span> <span class="text-gray-300">${message}</span>`;
                     
                     logsDiv.appendChild(logEntry);
                     logsDiv.scrollTop = logsDiv.scrollHeight;
@@ -306,37 +587,46 @@
             });
             
             // Mostrar pestaña seleccionada
-            document.getElementById(`tab-${tabId}`).classList.add('active');
-            event.target.classList.add('active');
+            const tabElement = document.getElementById(`tab-${tabId}`);
+            if (tabElement) {
+                tabElement.classList.add('active');
+            }
+            
+            // Activar botón
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
         }
         
         function showToast(message, type = 'success') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
             
-            const colors = {
-                success: 'bg-emerald-500',
-                error: 'bg-red-500',
-                warning: 'bg-yellow-500',
-                info: 'bg-blue-500'
+            const config = {
+                success: { bg: 'bg-emerald-500', icon: '✅' },
+                error: { bg: 'bg-red-500', icon: '❌' },
+                warning: { bg: 'bg-yellow-500', icon: '⚠️' },
+                info: { bg: 'bg-blue-500', icon: 'ℹ️' }
             };
             
-            toast.className = `${colors[type]} text-white px-4 py-3 rounded-lg shadow-lg animate-fade-in`;
+            const { bg, icon } = config[type] || config.info;
+            
+            toast.className = `${bg} text-white px-4 py-3 rounded-lg shadow-lg animate-fade-in`;
             toast.innerHTML = `
                 <div class="flex items-center gap-2">
-                    <span>${type === 'success' ? '✅' : '❌'}</span>
-                    <span>${message}</span>
+                    <span class="text-lg">${icon}</span>
+                    <span class="text-sm">${message}</span>
                 </div>
             `;
             
             container.appendChild(toast);
             
-            // Auto-remover después de 3 segundos
+            // Auto-remover después de 4 segundos
             setTimeout(() => {
                 toast.style.opacity = '0';
                 toast.style.transition = 'opacity 0.3s';
                 setTimeout(() => toast.remove(), 300);
-            }, 3000);
+            }, 4000);
         }
         
         function setLoading(loading) {
@@ -344,48 +634,73 @@
             if (!btn) return;
             
             if (loading) {
-                btn.innerHTML = '<span class="animate-spin">⟳</span> Guardando...';
+                btn.innerHTML = '<span class="loading-spinner"></span> Guardando...';
                 btn.disabled = true;
-                btn.classList.add('opacity-50');
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
             } else {
-                btn.innerHTML = '<span>💾</span> Guardar Todo';
+                btn.innerHTML = '<span class="material-icons-outlined text-sm">save</span> Guardar Todo';
                 btn.disabled = false;
-                btn.classList.remove('opacity-50');
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
             }
+        }
+        
+        function updateSystemStatus(connected) {
+            const statusElement = document.getElementById('techview-status');
+            if (statusElement) {
+                statusElement.innerHTML = connected ? 
+                    '<span class="text-emerald-600">✅ CONECTADO</span>' : 
+                    '<span class="text-red-600">❌ DESCONECTADO</span>';
+            }
+            
+            document.getElementById('last-update').textContent = 
+                new Date().toLocaleTimeString();
         }
         
         // Funciones de API
         async function testConnection() {
             try {
-                console.log('🔍 Probando conexión API...');
-                const response = await fetch('/api/techview/test');
+                console.log('🔍 Probando conexión con TechView API...');
+                showToast('Probando conexión...', 'info');
+                
+                const response = await fetch('/techview/api/test');
                 const data = await response.json();
                 
+                console.log('Test conexión:', data);
+                
+                // Mostrar respuesta en debug
                 document.getElementById('api-response').textContent = 
                     JSON.stringify(data, null, 2);
                 
+                updateSystemStatus(response.ok);
+                
                 if (response.ok) {
-                    showToast('✅ Conexión exitosa', 'success');
+                    showToast('✅ Conexión exitosa con TechView', 'success');
+                    return data;
                 } else {
                     showToast('❌ Error de conexión', 'error');
+                    return null;
                 }
-                
-                return data;
             } catch (error) {
                 console.error('Error testConnection:', error);
                 showToast('❌ Error de red: ' + error.message, 'error');
+                
+                document.getElementById('api-response').textContent = 
+                    `Error: ${error.message}\n\n${error.stack || ''}`;
+                
+                updateSystemStatus(false);
                 return null;
             }
         }
         
         async function loadData() {
             try {
-                console.log(`📥 Cargando datos para: ${deviceId}`);
+                console.log(`📥 Cargando datos para dispositivo: ${deviceId}`);
+                showToast('Cargando datos...', 'info');
                 
-                const response = await fetch(`/api/techview/device/${encodeURIComponent(deviceId)}`);
+                const response = await fetch(`/techview/api/device/${encodeURIComponent(deviceId)}`);
                 
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
+                    throw new Error(`HTTP ${response.status}: ${await response.text()}`);
                 }
                 
                 currentData = await response.json();
@@ -395,22 +710,34 @@
                 document.getElementById('api-response').textContent = 
                     JSON.stringify(currentData, null, 2);
                 
-                // Actualizar estado del dispositivo
-                const statusEl = document.getElementById('device-status');
-                if (statusEl && currentData.device) {
-                    statusEl.textContent = currentData.device.status || 'unknown';
-                    statusEl.className = `ml-2 text-xs px-2 py-1 rounded ${
-                        currentData.device.status === 'online' ? 'bg-green-100 text-green-800' :
-                        currentData.device.status === 'offline' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                    }`;
+                // Actualizar información del dispositivo
+                if (currentData.device) {
+                    document.getElementById('device-info-status').textContent = 
+                        currentData.device.status || 'Desconocido';
+                    document.getElementById('device-info-location').textContent = 
+                        currentData.device.location || 'Sin ubicación';
+                    document.getElementById('device-info-updated').textContent = 
+                        currentData.device.updated_at ? 
+                            new Date(currentData.device.updated_at).toLocaleString() : 'Nunca';
+                    
+                    // Actualizar badge de estado
+                    const statusElement = document.getElementById('device-status');
+                    if (statusElement) {
+                        const status = currentData.device.status || 'unknown';
+                        statusElement.textContent = status;
+                        statusElement.className = `text-xs px-2 py-1 rounded-full ${
+                            status === 'online' ? 'bg-green-100 text-green-800' :
+                            status === 'offline' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                        }`;
+                    }
                 }
                 
-                // Llenar inputs
+                // Llenar inputs con datos financieros
                 if (currentData.financials) {
                     Object.keys(currentData.financials).forEach(key => {
                         const input = document.getElementById(key);
-                        if (input && currentData.financials[key] !== null) {
+                        if (input && currentData.financials[key] !== null && currentData.financials[key] !== undefined) {
                             input.value = currentData.financials[key];
                         }
                     });
@@ -418,15 +745,19 @@
                 
                 // Actualizar KPIs
                 if (currentData.totals) {
-                    const fmt = (n) => `$${parseFloat(n || 0).toLocaleString('es-MX', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                    })}`;
+                    const formatCurrency = (value) => {
+                        return new Intl.NumberFormat('es-MX', {
+                            style: 'currency',
+                            currency: 'USD',
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        }).format(value || 0);
+                    };
                     
-                    document.getElementById('kpi-capex').textContent = fmt(currentData.totals.capex);
-                    document.getElementById('kpi-opex').textContent = fmt(currentData.totals.opex);
-                    document.getElementById('kpi-sales').textContent = fmt(currentData.totals.revenue);
-                    document.getElementById('kpi-margin').textContent = fmt(currentData.totals.margin);
+                    document.getElementById('kpi-capex').textContent = formatCurrency(currentData.totals.capex);
+                    document.getElementById('kpi-opex').textContent = formatCurrency(currentData.totals.opex);
+                    document.getElementById('kpi-sales').textContent = formatCurrency(currentData.totals.revenue);
+                    document.getElementById('kpi-margin').textContent = formatCurrency(currentData.totals.margin);
                     document.getElementById('kpi-roi').textContent = 
                         currentData.totals.roi ? `${currentData.totals.roi.toFixed(1)} meses` : 'N/A';
                 }
@@ -434,14 +765,25 @@
                 // Actualizar impacto ecológico
                 if (currentData.eco) {
                     document.getElementById('eco-kwh').textContent = 
-                        `${currentData.eco.kwh_saved.toLocaleString()} kWh`;
+                        `${currentData.eco.kwh_saved?.toLocaleString() || 0} kWh`;
                     document.getElementById('eco-co2').textContent = 
-                        `${currentData.eco.co2_tons} ton`;
+                        `${currentData.eco.co2_tons || 0} ton`;
                     document.getElementById('eco-trees').textContent = 
-                        currentData.eco.trees;
+                        currentData.eco.trees || 0;
                 }
                 
-                showToast('✅ Datos cargados', 'success');
+                // Actualizar tickets
+                if (currentData.history && currentData.history.tickets) {
+                    document.getElementById('device-info-tickets').textContent = 
+                        currentData.history.tickets.length;
+                }
+                
+                // Renderizar gráfica
+                renderChart();
+                
+                showToast('✅ Datos cargados correctamente', 'success');
+                updateSystemStatus(true);
+                
                 return currentData;
                 
             } catch (error) {
@@ -452,8 +794,84 @@
                 document.getElementById('api-response').textContent = 
                     `Error: ${error.message}\n\n${error.stack || ''}`;
                 
+                updateSystemStatus(false);
                 return null;
             }
+        }
+        
+        function renderChart() {
+            const ctx = document.getElementById('performance-chart');
+            if (!ctx) return;
+            
+            // Destruir gráfica anterior si existe
+            if (charts.performance) {
+                charts.performance.destroy();
+            }
+            
+            // Datos para la gráfica
+            const totals = currentData?.totals || {};
+            const data = {
+                labels: ['CAPEX', 'OPEX', 'Ingresos', 'Margen'],
+                datasets: [{
+                    label: 'Valores ($)',
+                    data: [
+                        totals.capex || 0,
+                        totals.opex || 0,
+                        totals.revenue || 0,
+                        totals.margin || 0
+                    ],
+                    backgroundColor: [
+                        'rgba(59, 130, 246, 0.7)',
+                        'rgba(249, 115, 22, 0.7)',
+                        'rgba(16, 185, 129, 0.7)',
+                        'rgba(139, 92, 246, 0.7)'
+                    ],
+                    borderColor: [
+                        'rgb(59, 130, 246)',
+                        'rgb(249, 115, 22)',
+                        'rgb(16, 185, 129)',
+                        'rgb(139, 92, 246)'
+                    ],
+                    borderWidth: 1
+                }]
+            };
+            
+            charts.performance = new Chart(ctx, {
+                type: 'bar',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `$${context.parsed.y.toLocaleString('es-MX', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    })}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return `$${value.toLocaleString('es-MX', {
+                                        minimumFractionDigits: 0,
+                                        maximumFractionDigits: 0
+                                    })}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
         
         async function saveAll() {
@@ -463,31 +881,44 @@
                 // Construir payload
                 const payload = {
                     device_id: deviceId,
-                    cost_type: 'techview',
-                    category: 'management'
+                    cost_type: 'techview_management',
+                    category: 'comprehensive'
                 };
                 
                 // Recolectar todos los inputs numéricos
                 const inputs = document.querySelectorAll('.cost-input');
+                let hasData = false;
+                
                 inputs.forEach(input => {
                     const value = parseFloat(input.value);
                     if (!isNaN(value) && input.id) {
                         payload[input.id] = value;
+                        hasData = true;
                     }
                 });
                 
-                console.log('📤 Enviando datos:', payload);
+                if (!hasData) {
+                    showToast('⚠️ No hay datos para guardar', 'warning');
+                    setLoading(false);
+                    return;
+                }
                 
-                const response = await fetch('/api/techview/save', {
+                console.log('📤 Enviando datos al servidor:', payload);
+                showToast('Guardando datos...', 'info');
+                
+                const response = await fetch('/techview/api/save', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
                     body: JSON.stringify(payload)
                 });
                 
                 const result = await response.json();
-                console.log('📥 Respuesta:', result);
+                console.log('📥 Respuesta del servidor:', result);
                 
-                // Mostrar respuesta
+                // Mostrar respuesta en debug
                 document.getElementById('api-response').textContent = 
                     JSON.stringify(result, null, 2);
                 
@@ -496,7 +927,7 @@
                     // Recargar datos después de guardar
                     setTimeout(loadData, 1000);
                 } else {
-                    showToast('❌ Error: ' + (result.error || 'Desconocido'), 'error');
+                    showToast('❌ Error: ' + (result.error || 'Error desconocido'), 'error');
                 }
                 
             } catch (error) {
@@ -505,73 +936,75 @@
                 
                 document.getElementById('api-response').textContent = 
                     `Error: ${error.message}\n\n${error.stack || ''}`;
+                
             } finally {
                 setLoading(false);
             }
         }
         
-        async function testSave() {
-            // Guardado de prueba con datos mínimos
-            const testPayload = {
-                device_id: deviceId,
-                capex_screen: 15000,
-                revenue_monthly: 3000,
-                cost_type: 'test',
-                category: 'test'
-            };
-            
-            console.log('🧪 Test save:', testPayload);
-            
-            const response = await fetch('/api/techview/save', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(testPayload)
-            });
-            
-            const result = await response.json();
-            console.log('🧪 Test result:', result);
-            
-            showToast(result.success ? '✅ Test exitoso' : '❌ Test falló', 
-                     result.success ? 'success' : 'error');
-            
-            document.getElementById('api-response').textContent = 
-                JSON.stringify(result, null, 2);
-        }
-        
         function clearLogs() {
             document.getElementById('console-logs').innerHTML = '';
+            console.log('🗑️ Logs limpiados');
             showToast('Logs limpiados', 'info');
+        }
+        
+        function exportData() {
+            if (!currentData) {
+                showToast('No hay datos para exportar', 'warning');
+                return;
+            }
+            
+            const dataStr = JSON.stringify(currentData, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            
+            const exportFileDefaultName = `techview_${deviceId.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.json`;
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+            
+            showToast('✅ Datos exportados como JSON', 'success');
         }
         
         // Inicialización
         document.addEventListener('DOMContentLoaded', () => {
             console.log('🚀 TechView Management inicializado');
             console.log(`📱 Dispositivo: ${deviceId}`);
+            console.log(`🌐 URL Base: ${window.location.origin}`);
             
             // Cargar datos iniciales
             loadData();
             
-            // Test de conexión automático
-            setTimeout(testConnection, 500);
+            // Test de conexión automático después de 1 segundo
+            setTimeout(testConnection, 1000);
             
             // Mostrar notificación de bienvenida
             setTimeout(() => {
-                showToast('Sistema listo. Cargando datos...', 'info');
-            }, 1000);
+                showToast('Sistema TechView listo. Datos cargados.', 'info');
+            }, 1500);
+            
+            // Agregar estilos CSS para animaciones
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes fade-in {
+                    from { opacity: 0; transform: translateY(-10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .animate-fade-in {
+                    animation: fade-in 0.3s ease-out;
+                }
+            `;
+            document.head.appendChild(style);
         });
         
-        // Estilos para animaciones
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes fade-in {
-                from { opacity: 0; transform: translateY(-10px); }
-                to { opacity: 1; transform: translateY(0); }
+        // Manejar tecla Enter en inputs
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.target.classList.contains('cost-input')) {
+                e.preventDefault();
+                saveAll();
             }
-            .animate-fade-in {
-                animation: fade-in 0.3s ease-out;
-            }
-        `;
-        document.head.appendChild(style);
+        });
     </script>
 </body>
 </html>
