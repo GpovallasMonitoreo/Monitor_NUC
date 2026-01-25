@@ -89,6 +89,7 @@ class TechViewService:
             }
         except Exception as e:
             logger.error(f"❌ TechView error get_device_detail: {e}")
+            import traceback
             logger.error(traceback.format_exc())
             return self._create_error_response(device_id, str(e))
     
@@ -263,6 +264,7 @@ class TechViewService:
             }
         except Exception as e:
             logger.error(f"Error calculando KPIs avanzados: {e}")
+            import traceback
             logger.error(traceback.format_exc())
             return self._create_default_kpis()
     
@@ -874,18 +876,138 @@ class TechViewService:
             import traceback
             logger.error(traceback.format_exc())
             return False, f"Error al guardar: {str(e)}"
+    
+    def get_inventory(self):
+        """Obtiene todos los dispositivos para el dashboard"""
+        try:
+            devices_resp = self.client.table("devices").select("*").execute()
+            return devices_resp.data if devices_resp.data else []
+        except Exception as e:
+            logger.error(f"Error obteniendo inventario: {e}")
+            return []
+    
+    def get_dashboard_data(self):
+        """Obtiene datos para el dashboard principal"""
+        try:
+            # Obtener todos los dispositivos
+            devices = self.get_inventory()
+            
+            # Obtener datos financieros agregados
+            finances_resp = self.client.table("finances").select("*").execute()
+            finances = finances_resp.data if finances_resp.data else []
+            
+            # Calcular KPIs agregados
+            total_capex = 0
+            total_monthly_revenue = 0
+            total_monthly_opex = 0
+            online_count = 0
+            offline_count = 0
+            
+            for device in devices:
+                # Encontrar datos financieros para este dispositivo
+                device_finances = next((f for f in finances if f.get('device_id') == device.get('device_id')), {})
+                
+                # Sumar CAPEX
+                for key, value in device_finances.items():
+                    if key.startswith('capex_'):
+                        total_capex += self._safe_float(value)
+                
+                # Sumar ingresos y gastos
+                total_monthly_revenue += self._safe_float(device_finances.get('revenue_monthly', 0))
+                
+                # Calcular OPEX mensual para este dispositivo
+                device_monthly_opex = 0
+                for key, value in device_finances.items():
+                    if key.startswith('opex_') and 'annual' not in key:
+                        device_monthly_opex += self._safe_float(value)
+                    elif key == 'opex_license_annual':
+                        device_monthly_opex += (self._safe_float(value) / 12)
+                    elif key == 'maint_prev_bimonthly':
+                        device_monthly_opex += (self._safe_float(value) / 2)
+                    elif key.startswith('maint_') and not key.endswith(('count', 'size')):
+                        device_monthly_opex += self._safe_float(value)
+                
+                total_monthly_opex += device_monthly_opex
+                
+                # Contar estados
+                if device.get('status') == 'online':
+                    online_count += 1
+                else:
+                    offline_count += 1
+            
+            # Datos para gráfico (últimos 6 meses)
+            months = []
+            sales_data = []
+            cost_data = []
+            
+            current_date = datetime.now()
+            for i in range(6, 0, -1):
+                month_date = current_date - timedelta(days=30*i)
+                month_name = month_date.strftime('%b')
+                months.append(month_name)
+                
+                # Datos de ejemplo - en producción esto vendría de una tabla de ventas históricas
+                base_sales = total_monthly_revenue * (0.9 + (i * 0.04))  # Crecimiento del 4% mensual
+                base_costs = total_monthly_opex * (0.95 + (i * 0.01))   # Inflación del 1% mensual
+                
+                sales_data.append(round(base_sales, 2))
+                cost_data.append(round(base_costs, 2))
+            
+            return {
+                "kpis": {
+                    "capex": total_capex,
+                    "sales_annual": total_monthly_revenue * 12,
+                    "opex_monthly": total_monthly_opex,
+                    "incidents": offline_count,
+                    "active_alerts": offline_count,
+                    "online_devices": online_count,
+                    "total_devices": len(devices)
+                },
+                "financials": {
+                    "months": months,
+                    "sales": sales_data,
+                    "maintenance": cost_data
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error obteniendo datos dashboard: {e}")
+            return {
+                "kpis": {
+                    "capex": 0,
+                    "sales_annual": 0,
+                    "opex_monthly": 0,
+                    "incidents": 0,
+                    "active_alerts": 0,
+                    "online_devices": 0,
+                    "total_devices": 0
+                },
+                "financials": {
+                    "months": [],
+                    "sales": [],
+                    "maintenance": []
+                }
+            }
 
 # Instancia global del servicio
 techview_service = TechViewService()
 
-# Rutas del blueprint
+# RUTAS DEL BLUEPRINT
+
+# RUTA PRINCIPAL DEL DASHBOARD - ESTO ES LO QUE FALTA
+@bp.route('/')
+def index():
+    """Página principal del dashboard de TechView"""
+    return render_template('techview_dashboard.html')  # Este es el HTML que me compartiste
+
 @bp.route('/management')
 def management():
+    """Página de gestión individual de dispositivo"""
     device_id = request.args.get('device_id', '')
     return render_template('techview.html', device_id=unquote(device_id))
 
 @bp.route('/api/device/<path:device_id>')
 def api_device(device_id):
+    """API para obtener datos de un dispositivo específico"""
     try:
         result = techview_service.get_device_detail(device_id)
         return jsonify(result)
@@ -897,6 +1019,7 @@ def api_device(device_id):
 
 @bp.route('/api/save', methods=['POST'])
 def api_save():
+    """API para guardar datos financieros"""
     try:
         data = request.get_json()
         if not data:
@@ -913,3 +1036,44 @@ def api_save():
         import traceback
         logger.error(traceback.format_exc())
         return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
+
+@bp.route('/api/inventory')
+def api_inventory():
+    """API para obtener inventario de dispositivos"""
+    try:
+        inventory = techview_service.get_inventory()
+        return jsonify(inventory)
+    except Exception as e:
+        logger.error(f"Error en API inventory: {e}")
+        return jsonify([]), 500
+
+@bp.route('/api/dashboard')
+def api_dashboard():
+    """API para obtener datos del dashboard"""
+    try:
+        data = techview_service.get_dashboard_data()
+        return jsonify(data)
+    except Exception as e:
+        logger.error(f"Error en API dashboard: {e}")
+        return jsonify({
+            "kpis": {
+                "capex": 0,
+                "sales_annual": 0,
+                "opex_monthly": 0,
+                "incidents": 0,
+                "active_alerts": 0,
+                "online_devices": 0,
+                "total_devices": 0
+            },
+            "financials": {
+                "months": [],
+                "sales": [],
+                "maintenance": []
+            }
+        }), 500
+
+# Nueva ruta para propuesta
+@bp.route('/proposal')
+def proposal():
+    """Página para nueva instalación/propuesta"""
+    return render_template('techview_proposal.html')
