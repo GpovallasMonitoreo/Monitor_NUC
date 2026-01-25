@@ -61,9 +61,12 @@ class TechViewService:
             clean_id = clean_device_id(device_id)
             logger.info(f"🔍 TechView buscando dispositivo: {clean_id}")
             
+            # 1. Obtener datos (El monitor de latencia alimenta la tabla 'devices')
             device_data = self._get_device_info(clean_id)
             finance_data = self._get_finance_info(clean_id)
             maintenance_logs = self._get_maintenance_logs(clean_id)
+            
+            # 2. Cálculos
             basic_totals = self._calculate_basic_totals(finance_data)
             advanced_kpis = self._calculate_advanced_kpis(finance_data, maintenance_logs, device_data)
             eco_impact = self._calculate_eco_impact(basic_totals)
@@ -85,6 +88,7 @@ class TechViewService:
             return self._create_error_response(device_id, str(e))
     
     def _get_device_info(self, device_id):
+        """Obtiene info actualizada por el Monitor de Latencia"""
         try:
             dev_resp = self.client.table("devices").select("*").eq("device_id", device_id).execute()
             if dev_resp.data: return dev_resp.data[0]
@@ -135,31 +139,51 @@ class TechViewService:
         }
     
     def _calculate_advanced_kpis(self, finance_data, maintenance_logs, device_data):
+        # 1. Recuperar CAPEX
         capex = sum(self._safe_float(finance_data.get(k, 0)) for k in finance_data if k.startswith('capex_'))
-        monthly_opex = self._calculate_monthly_opex(finance_data)
+        
+        # 2. Recuperar Flujo Mensual (OPEX + Mantenimiento Prorrateado)
+        monthly_burn_rate = self._calculate_monthly_opex(finance_data)
         monthly_revenue = self._safe_float(finance_data.get('revenue_monthly', 0))
         
-        install_date = device_data.get('created_at')
-        months_operation = 12
+        # 3. Calcular tiempo de vida (Meses desde instalación)
+        install_date = device_data.get('created_at') or finance_data.get('life_installation_date')
+        months_operation = 1
         if install_date:
             try:
-                install_dt = datetime.fromisoformat(install_date.replace('Z', '+00:00'))
-                months_operation = max(1, (datetime.now() - install_dt).days // 30)
-            except: pass
+                install_dt = datetime.fromisoformat(str(install_date).replace('Z', '+00:00'))
+                days_diff = (datetime.now(install_dt.tzinfo) - install_dt).days
+                months_operation = max(1, days_diff // 30)
+            except: 
+                months_operation = 1
         
-        total_current_cost = capex + (monthly_opex * months_operation)
-        annual_projected_margin = (monthly_revenue - monthly_opex) * 12
+        # --- NUEVOS CÁLCULOS SOLICITADOS ---
+        # A) Suma de todos los meses sin contar inversión inicial (OPEX Histórico)
+        accumulated_opex = monthly_burn_rate * months_operation
         
+        # B) Cuenta todo con inversión inicial (Costo Total del Proyecto / TCO)
+        total_project_cost = capex + accumulated_opex
+        # -----------------------------------
+
+        annual_projected_margin = (monthly_revenue - monthly_burn_rate) * 12
+        
+        # Telemetría del Monitor
         total_maint = len(maintenance_logs)
+        # Usamos disconnect_count del monitor de latencia si existe
+        disconnects = device_data.get('disconnect_count', 0)
+        
         corrective = sum(1 for log in maintenance_logs if log.get('log_type') == 'corrective')
-        reincidence = (corrective / total_maint * 100) if total_maint > 0 else 0
+        
+        # Tasa de reincidencia (mezcla incidentes físicos y desconexiones graves)
+        reincidence = ((corrective + (disconnects/10)) / max(1, total_maint + (months_operation/2))) * 100
         
         technical_score = self._calculate_technical_score(device_data, maintenance_logs, finance_data)
         category_analysis = self._analyze_by_category(finance_data)
         life_projection = self._calculate_life_projection(finance_data, device_data)
         
         return {
-            "total_current_cost": round(total_current_cost, 2),
+            "total_current_cost": round(total_project_cost, 2), # TCO
+            "accumulated_opex": round(accumulated_opex, 2),     # Solo Operativo Histórico
             "months_operation": months_operation,
             "annual_projected_margin": round(annual_projected_margin, 2),
             "reincidence_rate": round(reincidence, 1),
@@ -184,19 +208,26 @@ class TechViewService:
 
     def _calculate_technical_score(self, device_data, maintenance_logs, finance_data):
         score = 100
-        if device_data.get('status') != 'online': score -= 10
-        # Simplificado para brevedad, lógica completa en tu versión anterior
+        # Telemetría en tiempo real
+        status = device_data.get('status', 'unknown')
+        if status == 'offline': score -= 30
+        elif status == 'warning': score -= 15
+        
+        # Penalización por desconexiones frecuentes (Monitor Latencia)
+        disconnects = self._safe_int(device_data.get('disconnect_count', 0))
+        if disconnects > 50: score -= 20
+        elif disconnects > 10: score -= 5
+        
         return max(0, min(100, score))
 
     def _analyze_by_category(self, finance_data):
-        # Lógica de categorías mantenida
         return {} 
 
     def _calculate_life_projection(self, finance_data, device_data):
         return {"estimated_life_years": 5, "months_remaining": 60}
 
     def _calculate_eco_impact(self, totals):
-        kwh = 1971 # Ejemplo base
+        kwh = 1971 
         return {"kwh_saved": kwh, "co2_tons": round(kwh * 0.45 / 1000, 2), "trees": int(kwh * 0.45 / 1000 * 50)}
 
     def _get_financial_projections(self, device_id):
@@ -226,19 +257,15 @@ class TechViewService:
             data_to_save = {
                 "device_id": clean_id,
                 "updated_at": datetime.now().isoformat(),
-                **payload # Copiar todo el payload
+                **payload 
             }
             
-            # Asegurar enteros
             int_fields = ['maint_visit_count', 'maint_corr_visit_count', 'maint_crew_size']
             for f in int_fields:
                 if f in data_to_save:
                     data_to_save[f] = self._safe_int(data_to_save[f])
             
-            # Upsert device
             self.client.table("devices").upsert({"device_id": clean_id, "updated_at": datetime.now().isoformat()}, on_conflict="device_id").execute()
-            
-            # Upsert finances
             self.client.table("finances").upsert(data_to_save, on_conflict="device_id").execute()
             
             return True, "Guardado correctamente"
