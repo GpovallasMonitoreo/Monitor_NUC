@@ -975,112 +975,186 @@ class TechViewService:
         }
     
     def save_device_financials(self, payload):
-        """Guarda datos financieros del dispositivo - VERSIÓN MEJORADA"""
+        """Guarda datos financieros - VERSIÓN CON DEBUG COMPLETO"""
         try:
             device_id = payload.get('device_id')
             if not device_id: 
                 return False, "device_id requerido"
             
             clean_id = clean_device_id(device_id)
-            logger.info(f"💾 Guardando datos financieros para: {clean_id}")
+            logger.info(f"💾 ========== INICIANDO GUARDADO PARA: {clean_id} ==========")
+            logger.info(f"📦 Payload completo recibido: {json.dumps(payload, indent=2)}")
             
-            # 1. Obtener estructura actual de la tabla
-            existing_columns = []
-            try:
-                table_info = self.client.table("finances").select("*").limit(1).execute()
-                if table_info.data and len(table_info.data) > 0:
-                    existing_columns = list(table_info.data[0].keys())
-                    logger.info(f"📋 Columnas existentes: {len(existing_columns)} columnas")
-            except Exception as table_error:
-                logger.error(f"❌ Error obteniendo estructura de tabla: {table_error}")
-                existing_columns = []
-            
-            # 2. Preparar datos para guardar - INCLUIR TODOS LOS CAMPOS
+            # 1. Preparar datos básicos
             data_to_save = {
                 "device_id": clean_id,
                 "updated_at": datetime.now().isoformat()
             }
             
-            # Lista completa de TODOS los campos que el frontend envía
-            all_possible_fields = [
-                # CAPEX (ya existen)
-                'capex_screen', 'capex_civil', 'capex_structure', 'capex_electrical',
-                'capex_meter', 'capex_data_install', 'capex_nuc', 'capex_ups',
-                'capex_sending', 'capex_processor', 'capex_modem_wifi', 'capex_modem_sim',
-                'capex_teltonika', 'capex_hdmi', 'capex_camera', 'capex_crew',
-                'capex_logistics', 'capex_transportation', 'capex_legal',
-                'capex_negotiations', 'capex_admin_qtm', 'capex_inventory',
-                'capex_first_install', 'capex_total',
-                
-                # OPEX (FALTAN - necesitas agregar estas columnas)
-                'opex_light', 'opex_internet', 'opex_internet_sim', 'opex_internet_cable',
-                'opex_rent', 'opex_soil_use', 'opex_taxes', 'opex_insurance',
-                'opex_license_annual', 'opex_content_scheduling', 'opex_srd',
-                'revenue_monthly',
-                
-                # Mantenimiento (FALTAN - necesitas agregar estas columnas)
-                'maint_prev_bimonthly', 'maint_cleaning_supplies', 'maint_gas',
-                'maint_crew_size', 'maint_visit_count', 'maint_corr_labor',
-                'maint_corr_parts', 'maint_corr_gas', 'maint_corr_visit_count',
-                
-                # Ciclo de Vida (FALTAN - necesitas agregar estas columnas)
-                'life_installation_date', 'life_retirement_date', 'life_retirement',
-                'life_renewal_date', 'life_renewal', 'life_special'
-            ]
+            # 2. DEBUG: Listar todos los campos del payload
+            logger.info("🔍 Campos en el payload:")
+            for key, value in payload.items():
+                logger.info(f"   - {key}: {value} (tipo: {type(value).__name__})")
             
-            # 3. Procesar TODOS los campos, incluso si no existen en la tabla
-            fields_to_save = []
-            fields_missing = []
+            # 3. Mapeo de campos del frontend a nombres de columna en la base
+            # Esto es CRÍTICO porque los nombres deben coincidir exactamente
+            field_mapping = {
+                # CAPEX - Ya existen
+                'capex_screen': 'capex_screen',
+                'capex_civil': 'capex_civil',
+                'capex_structure': 'capex_structure',
+                'capex_electrical': 'capex_electrical',
+                'capex_meter': 'capex_meter',
+                'capex_data_install': 'capex_data_install',
+                'capex_nuc': 'capex_nuc',
+                'capex_ups': 'capex_ups',
+                'capex_sending': 'capex_sending',
+                'capex_processor': 'capex_processor',
+                'capex_modem_wifi': 'capex_modem_wifi',
+                'capex_modem_sim': 'capex_modem_sim',
+                'capex_teltonika': 'capex_teltonika',
+                'capex_hdmi': 'capex_hdmi',
+                'capex_camera': 'capex_camera',
+                'capex_crew': 'capex_crew',
+                'capex_logistics': 'capex_logistics',
+                'capex_transportation': 'capex_transportation',
+                'capex_legal': 'capex_legal',
+                'capex_negotiations': 'capex_negotiations',
+                'capex_admin_qtm': 'capex_admin_qtm',
+                'capex_inventory': 'capex_inventory',
+                'capex_first_install': 'capex_first_install',
+                'capex_total': 'capex_total',
+                
+                # OPEX
+                'opex_light': 'opex_light',
+                'opex_internet': 'opex_internet',
+                'opex_internet_sim': 'opex_internet_sim',
+                'opex_internet_cable': 'opex_internet_cable',
+                'opex_rent': 'opex_rent',
+                'opex_soil_use': 'opex_soil_use',
+                'opex_taxes': 'opex_taxes',
+                'opex_insurance': 'opex_insurance',
+                'opex_license_annual': 'opex_license_annual',
+                'opex_content_scheduling': 'opex_content_scheduling',
+                'opex_srd': 'opex_srd',
+                'revenue_monthly': 'revenue_monthly',
+                
+                # Mantenimiento
+                'maint_prev_bimonthly': 'maint_prev_bimonthly',
+                'maint_cleaning_supplies': 'maint_cleaning_supplies',
+                'maint_gas': 'maint_gas',
+                'maint_crew_size': 'maint_crew_size',
+                'maint_visit_count': 'maint_visit_count',
+                'maint_corr_labor': 'maint_corr_labor',
+                'maint_corr_parts': 'maint_corr_parts',
+                'maint_corr_gas': 'maint_corr_gas',
+                'maint_corr_visit_count': 'maint_corr_visit_count',
+                
+                # Ciclo de Vida
+                'life_installation_date': 'life_installation_date',
+                'life_retirement_date': 'life_retirement_date',
+                'life_retirement': 'life_retirement',
+                'life_renewal_date': 'life_renewal_date',
+                'life_renewal': 'life_renewal',
+                'life_special': 'life_special'
+            }
             
-            for field in all_possible_fields:
-                if field in payload:
-                    value = payload[field]
+            # 4. Procesar cada campo con conversión EXPLÍCITA
+            processed_fields = []
+            conversion_errors = []
+            
+            for frontend_field, db_column in field_mapping.items():
+                if frontend_field in payload:
+                    raw_value = payload[frontend_field]
                     
-                    # Solo procesar si tiene valor
-                    if value is not None and value != '':
-                        # Verificar si la columna existe
-                        if existing_columns and field not in existing_columns:
-                            fields_missing.append(field)
-                            logger.warning(f"⚠️ Columna '{field}' no existe en la tabla")
-                            continue  # No guardar si no existe
-                        
-                        # Convertir tipo de dato
-                        if field in ['maint_crew_size', 'maint_visit_count', 'maint_corr_visit_count']:
-                            try:
-                                data_to_save[field] = int(value)
-                                fields_to_save.append(field)
-                            except:
-                                data_to_save[field] = 0
-                                fields_to_save.append(field)
-                        elif any(x in field for x in ['capex_', 'opex_', 'maint_', 'revenue_', 'life_']):
-                            if 'date' not in field and field != 'life_special':
-                                try:
-                                    data_to_save[field] = float(value)
-                                    fields_to_save.append(field)
-                                except:
-                                    data_to_save[field] = 0.0
-                                    fields_to_save.append(field)
+                    logger.info(f"🔄 Procesando {frontend_field} -> {db_column}: valor={raw_value}")
+                    
+                    # Si está vacío
+                    if raw_value is None or raw_value == '':
+                        if frontend_field in ['maint_crew_size', 'maint_visit_count', 'maint_corr_visit_count']:
+                            data_to_save[db_column] = 0
+                            logger.info(f"   -> Vacío, estableciendo a 0 (entero)")
+                        elif 'date' in frontend_field:
+                            data_to_save[db_column] = None
+                            logger.info(f"   -> Fecha vacía, estableciendo NULL")
+                        elif frontend_field == 'life_special':
+                            data_to_save[db_column] = None
+                            logger.info(f"   -> Texto vacío, estableciendo NULL")
                         else:
-                            data_to_save[field] = value
-                            fields_to_save.append(field)
+                            data_to_save[db_column] = 0.0
+                            logger.info(f"   -> Vacío, estableciendo a 0.0 (float)")
+                        
+                        processed_fields.append(db_column)
+                        continue
+                    
+                    # CONVERSIÓN EXPLÍCITA POR TIPO
+                    try:
+                        # Campos enteros
+                        if frontend_field in ['maint_crew_size', 'maint_visit_count', 'maint_corr_visit_count']:
+                            data_to_save[db_column] = int(float(raw_value))
+                            logger.info(f"   -> Convertido a entero: {data_to_save[db_column]}")
+                        
+                        # Campos numéricos (floats)
+                        elif any(x in frontend_field for x in ['capex_', 'opex_', 'maint_', 'revenue_', 'life_']):
+                            if 'date' not in frontend_field and frontend_field != 'life_special':
+                                data_to_save[db_column] = float(raw_value)
+                                logger.info(f"   -> Convertido a float: {data_to_save[db_column]}")
+                            else:
+                                # Fechas o texto
+                                data_to_save[db_column] = str(raw_value)
+                                logger.info(f"   -> Mantenido como texto: {data_to_save[db_column]}")
+                        
+                        # Otros campos (deberían ser texto)
+                        else:
+                            data_to_save[db_column] = str(raw_value)
+                            logger.info(f"   -> Mantenido como texto: {data_to_save[db_column]}")
+                        
+                        processed_fields.append(db_column)
+                        
+                    except Exception as conv_error:
+                        conversion_errors.append(f"{frontend_field}: {raw_value} -> {str(conv_error)}")
+                        logger.error(f"❌ Error convirtiendo {frontend_field}={raw_value}: {conv_error}")
+                        
+                        # Valor por defecto según tipo
+                        if frontend_field in ['maint_crew_size', 'maint_visit_count', 'maint_corr_visit_count']:
+                            data_to_save[db_column] = 0
+                        elif any(x in frontend_field for x in ['capex_', 'opex_', 'maint_', 'revenue_', 'life_']):
+                            if 'date' not in frontend_field and frontend_field != 'life_special':
+                                data_to_save[db_column] = 0.0
+                            else:
+                                data_to_save[db_column] = None
+                        else:
+                            data_to_save[db_column] = None
             
-            # 4. Calcular capex_total automáticamente si no viene
-            if 'capex_total' not in data_to_save:
+            # 5. Calcular capex_total si es necesario
+            if 'capex_total' not in data_to_save or data_to_save.get('capex_total') in [None, '', 0]:
                 capex_total = 0
-                for key in data_to_save:
-                    if key.startswith('capex_') and key != 'capex_total':
-                        capex_total += self._safe_float(data_to_save[key])
+                for field in data_to_save:
+                    if field.startswith('capex_') and field != 'capex_total':
+                        val = data_to_save.get(field, 0)
+                        capex_total += self._safe_float(val)
                 data_to_save['capex_total'] = capex_total
-                if 'capex_total' in existing_columns or not existing_columns:
-                    fields_to_save.append('capex_total')
+                logger.info(f"🧮 capex_total calculado: {capex_total}")
             
-            logger.info(f"📊 Guardando {len(fields_to_save)} campos: {fields_to_save}")
+            # 6. LOG DE DATOS FINALES
+            logger.info("📊 ========== DATOS FINALES A GUARDAR ==========")
+            for key, value in data_to_save.items():
+                if key not in ['device_id', 'updated_at']:
+                    logger.info(f"   {key}: {value} (tipo: {type(value).__name__})")
             
-            # 5. Intentar guardar
+            logger.info(f"✅ Total campos procesados: {len(processed_fields)}")
+            if conversion_errors:
+                logger.warning(f"⚠️ Errores de conversión: {conversion_errors}")
+            
+            # 7. INTENTAR GUARDAR
             try:
+                logger.info("💽 Intentando guardar en Supabase...")
                 result = self.client.table("finances").upsert(data_to_save, on_conflict="device_id").execute()
                 
-                # Actualizar tabla devices
+                logger.info(f"🎉 ¡GUARDADO EXITOSO! para {clean_id}")
+                logger.info(f"📝 Resultado: {result}")
+                
+                # Actualizar devices
                 try:
                     self.client.table("devices").upsert({
                         "device_id": clean_id,
@@ -1089,45 +1163,21 @@ class TechViewService:
                 except Exception as dev_e:
                     logger.warning(f"⚠️ No se pudo actualizar devices: {dev_e}")
                 
-                # Mensaje informativo
-                if fields_missing:
-                    missing_str = ", ".join(fields_missing[:5])  # Mostrar solo primeros 5
-                    if len(fields_missing) > 5:
-                        missing_str += f" y {len(fields_missing)-5} más..."
-                    
-                    return True, f"Datos CAPEX guardados. Agrega columnas para: {missing_str}"
+                # Mensaje final
+                if conversion_errors:
+                    return True, f"Datos guardados ({len(processed_fields)} campos). Errores: {len(conversion_errors)}"
                 else:
-                    return True, "Datos financieros guardados correctamente"
-                    
-            except Exception as db_error:
-                logger.error(f"❌ Error de base de datos: {db_error}")
+                    return True, f"Datos guardados correctamente ({len(processed_fields)} campos)"
                 
-                # Intentar guardar solo CAPEX básico
-                try:
-                    basic_data = {
-                        "device_id": clean_id,
-                        "updated_at": datetime.now().isoformat()
-                    }
+            except Exception as db_error:
+                logger.error(f"❌ ERROR DE BASE DE DATOS: {db_error}")
+                logger.error(f"❌ Datos que intentamos guardar: {data_to_save}")
+                return False, f"Error de base de datos: {str(db_error)}"
                     
-                    # Solo campos CAPEX que sabemos que existen
-                    for field in ['capex_screen', 'capex_civil', 'capex_structure', 'capex_electrical',
-                                'capex_meter', 'capex_data_install', 'capex_nuc', 'capex_ups']:
-                        if field in data_to_save:
-                            basic_data[field] = data_to_save[field]
-                    
-                    result = self.client.table("finances").upsert(basic_data, on_conflict="device_id").execute()
-                    logger.info(f"✅ Datos CAPEX básicos guardados para {clean_id}")
-                    
-                    return True, "Datos CAPEX básicos guardados (OPEX y otros campos no guardados - faltan columnas)"
-                    
-                except Exception as simple_error:
-                    logger.error(f"❌ Error incluso en guardado básico: {simple_error}")
-                    return False, f"Error grave. Ejecuta SQL para agregar columnas faltantes: {str(simple_error)}"
-                            
         except Exception as e:
-            logger.error(f"❌ Error general guardando datos: {e}")
+            logger.error(f"❌ ERROR GENERAL: {e}")
             import traceback
-            logger.error(traceback.format_exc())
+            logger.error(f"❌ Traceback completo:\n{traceback.format_exc()}")
             return False, f"Error al guardar: {str(e)}"
     
     def get_inventory(self):
