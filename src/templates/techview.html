@@ -121,7 +121,10 @@
                     <div class="bg-surface-light rounded-2xl border border-[#cdeadb] shadow-sm p-6 flex-1">
                         <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-lg flex items-center gap-2"><span class="material-symbols-outlined text-orange-500">payments</span> Flujo Operativo</h3><span class="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded font-bold">MENSUAL</span></div>
                         <p class="text-sm text-text-muted mb-4">Suma de OPEX + Mantenimiento</p>
-                        <div class="flex items-baseline gap-2 mb-4"><span class="text-4xl font-black text-text-main" id="dash-monthly-cost">$0</span><span class="text-sm text-text-muted">/ mes</span></div>
+                        <div class="flex items-baseline gap-2 mb-4 w-full">
+                            <span class="text-2xl font-black text-text-main truncate" id="dash-monthly-cost">$0</span>
+                            <span class="text-sm text-text-muted shrink-0">/ mes</span>
+                        </div>
                         <div class="h-32 w-full"><canvas id="monthlyCostChart"></canvas></div>
                     </div>
                 </div>
@@ -139,7 +142,7 @@
                         <div class="bg-surface-light p-4 rounded-xl border border-orange-100 bg-orange-50/30 shadow-sm relative overflow-hidden group">
                             <p class="text-orange-600 text-[10px] font-bold uppercase mb-1">Gasto Op. Histórico</p>
                             <p class="text-xl font-black text-orange-700" id="dash-accum-opex">$0</p>
-                            <span class="text-[9px] text-gray-400 absolute bottom-1 right-2">Sin CAPEX</span>
+                            <span class="text-[9px] text-gray-400 absolute bottom-1 right-2">Incluye Bitácora</span>
                         </div>
                         <div class="bg-surface-light p-4 rounded-xl border border-purple-100 bg-purple-50/30 shadow-sm relative overflow-hidden group">
                             <p class="text-purple-600 text-[10px] font-bold uppercase mb-1">Costo Total Proyecto</p>
@@ -154,13 +157,15 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
                         <div class="bg-surface-light p-6 rounded-2xl border border-[#cdeadb] shadow-sm">
-                            <h4 class="text-xs uppercase tracking-wider text-text-muted font-bold mb-4 border-b pb-2">Especificaciones</h4>
-                            <div class="space-y-3 text-sm">
-                                <div class="flex justify-between"><span class="text-gray-500">Pantalla</span><span class="font-bold text-text-main">LED P3.9 Outdoor</span></div>
-                                <div class="flex justify-between"><span class="text-gray-500">Controlador</span><span class="font-bold text-text-main">Intel NUC</span></div>
-                                <div class="flex justify-between"><span class="text-gray-500">Conectividad</span><span class="font-bold text-text-main">Teltonika LTE</span></div>
+                            <h4 class="text-xs uppercase tracking-wider text-text-muted font-bold mb-4 border-b pb-2">Latencia & Red</h4>
+                            <div class="h-32 w-full mb-4">
+                                <canvas id="latencyChart"></canvas>
+                            </div>
+                            <div class="space-y-2 text-sm" id="dynamic-specs">
+                                <p class="text-gray-400 text-xs italic">Cargando telemetría...</p>
                             </div>
                         </div>
+                        
                         <div class="bg-surface-light p-6 rounded-2xl border border-[#cdeadb] shadow-sm relative overflow-hidden">
                             <h4 class="text-xs uppercase tracking-wider text-text-muted font-bold mb-4 border-b pb-2">Impacto Ecológico</h4>
                             <div class="flex items-center gap-6">
@@ -288,6 +293,7 @@
         const deviceId = "{{ device_id }}";
         let pendingChanges = new Set();
         let chartInstance = null;
+        let latencyChart = null;
 
         document.addEventListener('DOMContentLoaded', () => {
             loadDeviceData();
@@ -307,11 +313,7 @@
         }
         function goBack() { window.location.href = '/techview/overview'; }
 
-        // HELPER SAFE SET
-        const safeSet = (id, val) => {
-            const el = document.getElementById(id);
-            if(el) el.innerText = val;
-        };
+        const safeSet = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
 
         async function loadDeviceData() {
             showLoading();
@@ -334,14 +336,13 @@
                     safeSet('dash-monthly-cost', formatCurrency(data.totals.opex_monthly));
                 }
 
-                // NUEVOS CAMPOS FINANCIEROS (Calculados en Python)
                 if (data.advanced_kpis) {
+                    // Nuevos KPIs acumulados
                     safeSet('dash-accum-opex', formatCurrency(data.advanced_kpis.accumulated_opex));
                     safeSet('dash-total-project', formatCurrency(data.advanced_kpis.total_current_cost));
                     
                     safeSet('tech-score-val', `${data.advanced_kpis.technical_score}/100`);
-                    if(document.getElementById('tech-score-bar')) 
-                        document.getElementById('tech-score-bar').style.width = `${data.advanced_kpis.technical_score}%`;
+                    if(document.getElementById('tech-score-bar')) document.getElementById('tech-score-bar').style.width = `${data.advanced_kpis.technical_score}%`;
                     safeSet('dash-reincidence', `${data.advanced_kpis.reincidence_rate}%`);
                     generateTelemetry(data.totals, data.advanced_kpis);
                 }
@@ -351,7 +352,31 @@
                     safeSet('eco-trees', data.eco.trees);
                 }
                 
+                // ESPECIFICACIONES DINÁMICAS (CPU, DISCO, ETC)
+                const specsDiv = document.getElementById('dynamic-specs');
+                if (specsDiv && data.device && data.device.sensors) {
+                    let html = '';
+                    const sensors = data.device.sensors; // JSON
+                    // Buscar patrones comunes
+                    let cpu = "Generico";
+                    let disk = "Generico";
+                    
+                    for(const [cat, items] of Object.entries(sensors)) {
+                        items.forEach(s => {
+                            if(s.nombre && s.nombre.toLowerCase().includes('processor')) cpu = s.valor;
+                            if(s.nombre && (s.nombre.includes('Disk') || s.nombre.includes('Drive'))) disk = s.valor;
+                        });
+                    }
+                    html += `<div class="flex justify-between border-b border-gray-100 pb-1"><span class="text-gray-500">CPU</span><span class="font-bold text-text-main text-right">${cpu}</span></div>`;
+                    html += `<div class="flex justify-between border-b border-gray-100 pb-1"><span class="text-gray-500">Disco</span><span class="font-bold text-text-main text-right">${disk}</span></div>`;
+                    specsDiv.innerHTML = html;
+                } else if(specsDiv) {
+                    specsDiv.innerHTML = `<p class="text-gray-400 text-xs italic">Esperando telemetría...</p>`;
+                }
+
                 initMonthlyChart(data.financials);
+                initLatencyChart(); // Placeholder para gráfica de latencia
+
             } catch (e) { console.error(e); } 
             finally { hideLoading(); }
         }
@@ -371,7 +396,6 @@
             if (!ctx) return;
             let opex = 0;
             if(financials) Object.keys(financials).forEach(k => { if(k.startsWith('opex_') && !k.includes('annual')) opex += parseFloat(financials[k]||0); });
-            
             if (chartInstance) chartInstance.destroy();
             chartInstance = new Chart(ctx, {
                 type: 'line',
@@ -379,10 +403,43 @@
                     labels: ['M1','M2','M3','M4','M5','Actual'],
                     datasets: [{
                         data: Array(6).fill(opex).map(v => v * (1 + (Math.random()*0.1 - 0.05))),
-                        borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.1)', fill: true
+                        borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.1)', fill: true, tension: 0.4, pointRadius:0
                     }]
                 },
                 options: { plugins: {legend: {display: false}}, scales: {x:{display:false}, y:{display:false}} }
+            });
+        }
+
+        function initLatencyChart() {
+            const ctx = document.getElementById('latencyChart');
+            if (!ctx) return;
+            if (latencyChart) latencyChart.destroy();
+            // Simulación de datos de latencia (el backend debería enviarlos en data.device.latency_history)
+            const dataPoints = Array.from({length: 20}, () => Math.floor(Math.random() * 40) + 10);
+            
+            latencyChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array(20).fill(''),
+                    datasets: [{
+                        data: dataPoints,
+                        borderColor: '#4f46e5',
+                        borderWidth: 2,
+                        fill: true,
+                        backgroundColor: 'rgba(79, 70, 229, 0.05)',
+                        tension: 0.4,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { display: false },
+                        y: { display: false, min: 0 }
+                    }
+                }
             });
         }
 
