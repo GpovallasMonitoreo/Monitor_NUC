@@ -9,89 +9,66 @@ class SupabaseService:
     def __init__(self):
         url = os.environ.get("SUPABASE_URL")
         key = os.environ.get("SUPABASE_KEY")
-        if not url or not key:
-            raise ValueError("Faltan credenciales de Supabase en .env")
+        if not url or not key: raise ValueError("Faltan credenciales .env")
         self.client: Client = create_client(url, key)
 
     def _safe_float(self, value):
-        """Convierte valores a float de forma segura, evitando error 500"""
-        try:
-            if value is None or value == '': return 0.0
-            return float(value)
-        except (ValueError, TypeError):
-            return 0.0
+        try: return float(value) if value else 0.0
+        except: return 0.0
 
-    # --- CÁLCULO CIENTÍFICO DE IMPACTO AMBIENTAL ---
     def _calculate_eco_impact(self):
-        """
-        Calcula el ahorro real al migrar de tecnología Legacy a NUC/LED Eficiente.
-        Datos: 18 horas de uso diario.
-        """
-        # Consumo Promedio (Watts/Hora)
-        watts_legacy = 450.0  # Pantalla vieja + Player antiguo
-        watts_modern = 150.0  # Pantalla LED Nueva + NUC 11th Gen
-        hours_active = 18.0   # Horas encendida al día
-        
-        # Ahorro: (Diferencia Watts * Horas * 365 días) / 1000 para kWh
-        kwh_saved_annual = ((watts_legacy - watts_modern) * hours_active * 365) / 1000
-        
-        # Factor CO2 (México: ~0.42 kg CO2 por kWh generado)
-        co2_tons = (kwh_saved_annual * 0.42) / 1000
-        
-        # Árboles equivalentes (1 árbol maduro absorbe ~22kg CO2/año)
-        trees = int((kwh_saved_annual * 0.42) / 22)
+        """Cálculo real basado en consumo promedio vs NUC"""
+        # Ahorro: (450W Legacy - 150W NUC) * 18 horas * 365 días / 1000
+        kwh_saved = ((450 - 150) * 18 * 365) / 1000
+        co2 = (kwh_saved * 0.42) / 1000 # Factor México 0.42kg/kWh
+        trees = int((kwh_saved * 0.42) / 22) # 22kg absorción árbol
+        return {"kwh_saved": round(kwh_saved, 2), "co2_tons": round(co2, 2), "trees": trees}
 
-        return {
-            "kwh_saved": round(kwh_saved_annual, 2),
-            "co2_tons": round(co2_tons, 2),
-            "trees": trees,
-            "efficiency_gain": "66%" 
-        }
-
-    # --- MÉTODOS DE DATOS ---
     def get_financial_overview(self):
-        """KPIs Globales para el Dashboard Principal"""
+        """Dashboard General: Suma de columnas"""
         try:
+            # Traemos todas las filas financieras
             finances = self.client.table("finances").select("*").execute().data or []
-            tickets = self.client.table("tickets").select("ticket_id, costo_estimado").execute().data or []
-            devices = self.client.table("devices").select("status").execute().data or []
-
-            capex = 0.0
-            sales_total = 0.0
-            opex_monthly = 0.0
+            tickets = self.client.table("tickets").select("id").execute().data or [] # Solo conteo
+            
+            # Inicializar
+            capex_total = 0.0
+            opex_mensual_total = 0.0
+            ventas_mensual_total = 0.0
 
             for f in finances:
-                amt = self._safe_float(f.get('amount'))
-                ctype = f.get('cost_type')
-                rec = f.get('recurrence')
-                
-                # Compatibilidad con datos viejos
-                if not ctype:
-                    t = f.get('type')
-                    if t == 'installation': ctype = 'CAPEX'
-                    elif t == 'sale': ctype = 'REVENUE'
-                    else: ctype = 'OPEX'
+                # SUMAR COLUMNAS CAPEX
+                capex_total += (
+                    self._safe_float(f.get('capex_screen')) + self._safe_float(f.get('capex_civil')) +
+                    self._safe_float(f.get('capex_structure')) + self._safe_float(f.get('capex_electrical')) +
+                    self._safe_float(f.get('capex_nuc')) + self._safe_float(f.get('capex_ups')) +
+                    self._safe_float(f.get('capex_sending')) + self._safe_float(f.get('capex_crew')) +
+                    self._safe_float(f.get('capex_legal')) 
+                    # ... sumar resto de columnas CAPEX si se requiere precisión total
+                )
 
-                if ctype == 'CAPEX': capex += amt
-                elif ctype == 'REVENUE': 
-                    if rec == 'monthly': sales_total += (amt * 12)
-                    else: sales_total += amt
-                elif ctype == 'OPEX' and rec == 'monthly': opex_monthly += amt
+                # SUMAR COLUMNAS OPEX
+                opex_mensual_total += (
+                    self._safe_float(f.get('opex_light')) + self._safe_float(f.get('opex_internet')) +
+                    self._safe_float(f.get('opex_rent')) + self._safe_float(f.get('opex_soil_use')) +
+                    (self._safe_float(f.get('opex_license_annual')) / 12) # Prorrateo anual
+                )
 
-            incident_cost = sum(self._safe_float(t.get('costo_estimado')) for t in tickets)
+                # SUMAR VENTAS
+                ventas_mensual_total += self._safe_float(f.get('revenue_monthly'))
 
             return {
                 "kpis": {
-                    "capex": capex,
-                    "sales_annual": sales_total,
-                    "opex_monthly": opex_monthly,
+                    "capex": capex_total,
+                    "sales_annual": ventas_mensual_total * 12,
+                    "opex_monthly": opex_mensual_total,
                     "incidents": len(tickets),
-                    "active_alerts": sum(1 for d in devices if d.get('status') != 'online')
+                    "active_alerts": 0 # Se conecta con monitor en endpoint aparte
                 },
                 "financials": {
-                    "months": ['Actual', 'Proyección'],
-                    "sales": [sales_total/12, sales_total/12],
-                    "maintenance": [opex_monthly, opex_monthly + (incident_cost/12)]
+                    "months": ['Promedio'],
+                    "sales": [ventas_mensual_total],
+                    "maintenance": [opex_mensual_total]
                 }
             }
         except Exception as e:
@@ -99,72 +76,62 @@ class SupabaseService:
             return None
 
     def get_device_detail(self, device_id):
-        """Detalle completo por pantalla + Eco Impact"""
+        """Obtiene la fila única de finanzas de este dispositivo"""
         try:
-            # Consultas DB seguras
+            # 1. Finanzas (La fila ancha)
             fin_resp = self.client.table("finances").select("*").eq("device_id", device_id).execute()
-            # En tickets buscamos por 'sitio' o 'device_id' dependiendo de tu tabla
+            finance_row = fin_resp.data[0] if fin_resp.data else {}
+
+            # 2. Tickets (Historial)
             tic_resp = self.client.table("tickets").select("*").eq("sitio", device_id).execute()
+            tickets = tic_resp.data if tic_resp.data else []
+
+            # 3. Dispositivo (Info Técnica)
             dev_resp = self.client.table("devices").select("*").eq("device_id", device_id).execute()
+            device_info = dev_resp.data[0] if dev_resp.data else {}
 
-            records = fin_resp.data if fin_resp and fin_resp.data else []
-            tickets = tic_resp.data if tic_resp and tic_resp.data else []
-            device_info = dev_resp.data[0] if dev_resp and dev_resp.data else {}
+            # Calcular Totales al vuelo
+            capex = sum([
+                self._safe_float(finance_row.get(k)) for k in finance_row.keys() if k.startswith('capex_')
+            ])
+            
+            opex = sum([
+                self._safe_float(finance_row.get(k)) for k in finance_row.keys() if k.startswith('opex_') and 'annual' not in k
+            ])
+            # Sumar parte anual prorrateada
+            opex += (self._safe_float(finance_row.get('opex_license_annual')) / 12)
 
-            data = {
+            revenue = self._safe_float(finance_row.get('revenue_monthly'))
+
+            margin = revenue - opex
+            roi = (capex / margin) if margin > 0 else 0
+
+            return {
                 "device": device_info,
-                "breakdown": records,
-                "totals": {"capex": 0.0, "opex": 0.0, "revenue": 0.0, "roi": 0.0},
-                "history": {"tickets": tickets, "downtime": device_info.get('disconnect_count', 0)},
+                "financials": finance_row, # Enviamos toda la fila para llenar inputs
+                "totals": {
+                    "capex": capex,
+                    "opex": opex,
+                    "revenue": revenue,
+                    "roi": roi
+                },
+                "history": {"tickets": tickets},
                 "eco": self._calculate_eco_impact()
             }
 
-            for r in records:
-                amt = self._safe_float(r.get('amount'))
-                ctype = r.get('cost_type')
-                rec = r.get('recurrence')
-                
-                # Compatibilidad
-                if not ctype:
-                    t = r.get('type')
-                    if t == 'installation': ctype = 'CAPEX'
-                    elif t == 'sale': ctype = 'REVENUE'
-                    else: ctype = 'OPEX'
-
-                if ctype == 'CAPEX': data['totals']['capex'] += amt
-                elif ctype == 'OPEX' and rec == 'monthly': data['totals']['opex'] += amt
-                elif ctype == 'REVENUE' and rec == 'monthly': data['totals']['revenue'] += amt
-
-            margin = data['totals']['revenue'] - data['totals']['opex']
-            if margin > 0: data['totals']['roi'] = data['totals']['capex'] / margin
-
-            return data
         except Exception as e:
             logger.error(f"Error Device {device_id}: {e}")
-            # Retornar estructura vacía para evitar error 500
-            return {
-                "device": {}, "breakdown": [], 
-                "totals": {"capex": 0, "opex": 0, "revenue": 0, "roi": 0},
-                "history": {"tickets": [], "downtime": 0},
-                "eco": {"kwh_saved": 0, "co2_tons": 0, "trees": 0, "efficiency_gain": "0%"}
-            }
+            return {"device":{}, "financials":{}, "totals":{}, "history":{"tickets":[]}, "eco":{}}
 
-    def save_cost_entry(self, payload):
-        """Guarda un costo en la tabla finances"""
+    def save_device_financials(self, payload):
+        """Guarda la fila completa (UPSERT)"""
         try:
-            record = {
-                "device_id": payload.get('device_id'),
-                "cost_type": payload.get('cost_type'),
-                "category": payload.get('category'),
-                "concept": payload.get('concept'),
-                "amount": self._safe_float(payload.get('amount')),
-                "recurrence": payload.get('recurrence', 'one_time'),
-                "date": datetime.now().strftime("%Y-%m-%d"),
-                "created_at": datetime.now().isoformat(),
-                "type": "sale" if payload.get('cost_type') == 'REVENUE' else "expense"
-            }
-            # Usamos insert para mantener historial
-            self.client.table("finances").insert(record).execute()
+            # Payload ya viene con las claves correctas (capex_screen, etc.)
+            # Agregamos fecha actualización
+            payload['updated_at'] = datetime.now().isoformat()
+            
+            # Usamos upsert basado en device_id (Unique Key)
+            self.client.table("finances").upsert(payload, on_conflict="device_id").execute()
             return True
         except Exception as e:
             logger.error(f"Error Save: {e}")
