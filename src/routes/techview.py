@@ -34,7 +34,9 @@ class TechViewService:
             key = os.environ.get("SUPABASE_KEY")
             
             if not url or not key:
-                raise ValueError("Credenciales de Supabase no configuradas")
+                # Fallback para desarrollo local si no hay env vars (Opcional)
+                logger.warning("⚠️ Credenciales de Supabase no encontradas en variables de entorno")
+                return 
             
             logger.info("Conectando a Supabase para TechView...")
             self.client = create_client(url, key)
@@ -90,7 +92,8 @@ class TechViewService:
         try:
             if value is None or value == '':
                 return 0
-            return int(value)
+            # Maneja strings como "3.0" convirtiendo primero a float
+            return int(float(value))
         except:
             return 0
     
@@ -201,7 +204,7 @@ class TechViewService:
                     revenue = self._safe_float(value)
                 elif key == 'maint_prev_bimonthly':
                     opex += (self._safe_float(value) / 2)  # Convertir bimestral a mensual
-                elif key.startswith('maint_'):
+                elif key.startswith('maint_') and not key.endswith(('count', 'size')): # Ignorar contadores
                     opex += self._safe_float(value)
         
         margin = revenue - opex
@@ -250,7 +253,7 @@ class TechViewService:
         total_maintenance = len(maintenance_logs)
         corrective_maintenance = sum(1 for log in maintenance_logs 
                                     if log.get('log_type') == 'corrective' or 
-                                       log.get('estado') in ['abierto', 'pendiente'])
+                                      log.get('estado') in ['abierto', 'pendiente'])
         
         reincidence_rate = (corrective_maintenance / total_maintenance * 100) if total_maintenance > 0 else 0
         
@@ -294,7 +297,7 @@ class TechViewService:
                 monthly_opex += value
         
         # Mantenimiento (convertir a mensual)
-        maint_fields = [k for k in finance_data if k.startswith('maint_')]
+        maint_fields = [k for k in finance_data if k.startswith('maint_') and not k.endswith(('count', 'size'))]
         for field in maint_fields:
             value = self._safe_float(finance_data.get(field, 0))
             if 'bimonthly' in field:
@@ -686,7 +689,7 @@ class TechViewService:
         }
     
     def save_device_financials(self, payload):
-        """Guardar datos financieros - Versión mejorada"""
+        """Guardar datos financieros - Versión corregida para enteros"""
         try:
             logger.info(f"💾 TechView guardando datos para: {payload.get('device_id')}")
             
@@ -707,25 +710,19 @@ class TechViewService:
             
             # Lista completa de campos
             all_fields = [
-                # CAPEX - Infraestructura
+                # CAPEX
                 'capex_screen', 'capex_civil', 'capex_structure', 'capex_electrical',
                 'capex_meter', 'capex_data_install', 'capex_transportation',
                 'capex_negotiations', 'capex_inventory',
-                
-                # CAPEX - Electrónica
                 'capex_nuc', 'capex_ups', 'capex_sending', 'capex_processor',
                 'capex_modem_wifi', 'capex_modem_sim', 'capex_teltonika',
                 'capex_hdmi', 'capex_camera',
-                
-                # CAPEX - Mano de Obra y Legal
                 'capex_crew', 'capex_logistics', 'capex_legal',
                 'capex_first_install', 'capex_admin_qtm',
                 
-                # OPEX - Suministros
+                # OPEX
                 'opex_light', 'opex_internet', 'opex_internet_sim', 'opex_internet_cable',
                 'opex_rent', 'opex_soil_use', 'opex_taxes', 'opex_insurance',
-                
-                # OPEX - Software
                 'opex_license_annual', 'opex_content_scheduling', 'opex_srd',
                 
                 # Mantenimiento
@@ -741,6 +738,9 @@ class TechViewService:
                 'revenue_monthly'
             ]
             
+            # Campos que DEBEN ser enteros
+            integer_fields = ['maint_visit_count', 'maint_corr_visit_count', 'maint_crew_size']
+            
             # Procesar campos
             total_capex = 0
             total_opex = 0
@@ -749,16 +749,24 @@ class TechViewService:
                 if field in payload and payload[field] not in [None, '']:
                     if field in ['revenue_monthly'] or field.startswith(('capex_', 'opex_', 'maint_', 'life_')):
                         try:
-                            value = float(payload[field])
+                            # CORRECCIÓN AQUÍ: Convertir enteros correctamente
+                            if field in integer_fields:
+                                value = int(float(payload[field]))
+                            else:
+                                value = float(payload[field])
+                            
                             data_to_save[field] = value
                             
                             # Acumular para totales
                             if field.startswith('capex_'):
                                 total_capex += value
                             elif field.startswith(('opex_', 'maint_')):
-                                total_opex += value
+                                # Excluir contadores de la suma monetaria
+                                if field not in integer_fields:
+                                    total_opex += value
                                 
-                        except:
+                        except Exception as e:
+                            logger.warning(f"Error convirtiendo campo {field}: {e}")
                             data_to_save[field] = 0.0
                     else:
                         data_to_save[field] = str(payload[field])
@@ -910,16 +918,6 @@ def index():
                 </div>
                 
                 <div class="stat-card">
-                    <div class="stat-label">Dispositivos en BD</div>
-                    <div class="stat-value" id="device-count">Cargando...</div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-label">Registros Financieros</div>
-                    <div class="stat-value" id="finance-count">Cargando...</div>
-                </div>
-                
-                <div class="stat-card">
                     <div class="stat-label">Última Actualización</div>
                     <div class="stat-value">''' + datetime.now().strftime("%H:%M:%S") + '''</div>
                 </div>
@@ -934,582 +932,30 @@ def index():
                         <li style="margin: 10px 0;"><a href="/techview/management?device_id=TEST_DEVICE_123" class="btn">💼 Gestión (Ejemplo)</a></li>
                     </ul>
                 </div>
-                
-                <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                    <h3>📡 API Endpoints</h3>
-                    <div style="font-family: monospace; font-size: 13px;">
-                        <code>GET /techview/api/test</code> - Test conexión<br>
-                        <code>GET /techview/api/device/{id}</code> - Datos dispositivo<br>
-                        <code>POST /techview/api/save</code> - Guardar datos<br>
-                        <code>GET /techview/api/overview</code> - Overview general
-                    </div>
-                </div>
-                
-                <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                    <h3>⚡ Acciones Rápidas</h3>
-                    <button onclick="testAll()" class="btn btn-warning">🧪 Ejecutar Todas las Pruebas</button>
-                    <div id="test-results" style="margin-top: 15px; font-size: 13px;"></div>
-                </div>
-            </div>
-            
-            <div style="margin-top: 30px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                <h3>📋 Características Implementadas</h3>
-                <ul>
-                    <li><strong>CAPEX Completo:</strong> Infraestructura, Electrónica, Mano de Obra, Legal</li>
-                    <li><strong>OPEX Detallado:</strong> Suministros, Software, Mantenimiento</li>
-                    <li><strong>KPIs Avanzados:</strong> ROI, Rentabilidad, Estado Técnico, Reincidencia</li>
-                    <li><strong>Análisis por Categoría:</strong> Distribución de costos</li>
-                    <li><strong>Proyecciones:</strong> Análisis de vida útil y rentabilidad futura</li>
-                    <li><strong>Impacto Ecológico:</strong> Ahorro energético y reducción de CO₂</li>
-                </ul>
             </div>
         </div>
-        
-        <script>
-            async function loadCounts() {
-                try {
-                    const response = await fetch('/techview/api/test');
-                    const data = await response.json();
-                    
-                    if (data.devices_count !== undefined) {
-                        document.getElementById('device-count').textContent = data.devices_count;
-                    }
-                    if (data.finances_count !== undefined) {
-                        document.getElementById('finance-count').textContent = data.finances_count;
-                    }
-                } catch(e) {
-                    console.error('Error loading counts:', e);
-                }
-            }
-            
-            async function testAll() {
-                const resultsDiv = document.getElementById('test-results');
-                resultsDiv.innerHTML = '<p>Ejecutando pruebas...</p>';
-                
-                const tests = [
-                    {name: 'Test DB', url: '/techview/api/test'},
-                    {name: 'Test Overview', url: '/techview/api/overview'}
-                ];
-                
-                let allPassed = true;
-                let resultsHTML = '';
-                
-                for (const test of tests) {
-                    try {
-                        const response = await fetch(test.url);
-                        const data = await response.json();
-                        
-                        resultsHTML += `
-                            <div style="margin: 5px 0; padding: 5px; background: ${response.ok ? '#d4edda' : '#f8d7da'}; border-radius: 3px;">
-                                ${response.ok ? '✅' : '❌'} ${test.name}
-                            </div>
-                        `;
-                        
-                        if (!response.ok) allPassed = false;
-                        
-                    } catch(e) {
-                        resultsHTML += `
-                            <div style="margin: 5px 0; padding: 5px; background: #f8d7da; border-radius: 3px;">
-                                ❌ ${test.name}: ${e.message}
-                            </div>
-                        `;
-                        allPassed = false;
-                    }
-                }
-                
-                resultsDiv.innerHTML = `
-                    <div style="background: ${allPassed ? '#d4edda' : '#f8d7da'}; padding: 10px; border-radius: 5px;">
-                        <strong>${allPassed ? '✅ Todas las pruebas pasaron' : '❌ Algunas pruebas fallaron'}</strong>
-                        ${resultsHTML}
-                    </div>
-                `;
-            }
-            
-            // Cargar datos iniciales
-            loadCounts();
-            setTimeout(testAll, 1000);
-        </script>
     </body>
     </html>
     '''
 
 @bp.route('/diagnostic')
 def diagnostic():
-    return '''
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>TechView - Diagnóstico</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-            body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
-            .container { max-width: 1200px; margin: 0 auto; }
-            .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            .success { border-left: 4px solid #28a745; }
-            .error { border-left: 4px solid #dc3545; }
-            .warning { border-left: 4px solid #ffc107; }
-            button { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; margin: 5px; font-size: 14px; }
-            button:hover { background: #0056b3; }
-            button:disabled { background: #ccc; cursor: not-allowed; }
-            pre { background: #f8f9fa; padding: 15px; border-radius: 4px; overflow: auto; font-family: 'Courier New', monospace; font-size: 12px; }
-            .loading { color: #6c757d; font-style: italic; }
-            .status-indicator { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
-            .status-online { background: #28a745; }
-            .status-offline { background: #dc3545; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>🔧 TechView - Diagnóstico del Sistema</h1>
-            
-            <div class="card">
-                <h2>📊 Estado del Servicio</h2>
-                <div id="service-status">
-                    <p><span class="status-indicator ''' + ('status-online' if techview_service else 'status-offline') + '''"></span>
-                    <strong>TechView Service:</strong> ''' + ("✅ CONECTADO" if techview_service else "❌ DESCONECTADO") + '''</p>
-                    <p><strong>Timestamp:</strong> ''' + datetime.now().isoformat() + '''</p>
-                    <p><strong>Servicio:</strong> ''' + ("🚀 OPERATIVO" if techview_service else "⚠️ NO DISPONIBLE") + '''</p>
-                </div>
-            </div>
-            
-            <div class="card">
-                <h2>🧪 Pruebas de Funcionalidad</h2>
-                <div style="margin-bottom: 15px;">
-                    <button onclick="runTest('db')">Test Base de Datos</button>
-                    <button onclick="runTest('overview')">Test Overview</button>
-                    <button onclick="runTest('save')">Test Guardado</button>
-                    <button onclick="runTest('device')">Test Consulta Device</button>
-                    <button onclick="runTest('all')" style="background: #28a745;">Ejecutar Todas las Pruebas</button>
-                </div>
-                <div id="test-results">
-                    <p class="loading">Haz click en una prueba para ejecutarla...</p>
-                </div>
-            </div>
-            
-            <div class="card">
-                <h2>📝 Datos de Prueba</h2>
-                <div>
-                    <label><strong>Device ID para pruebas:</strong></label><br>
-                    <input type="text" id="test-device-id" value="MX_CM_EV_MGP_01_3591 Calle Arquímedes 173 :238" style="width: 100%; max-width: 500px; padding: 8px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px;">
-                    <button onclick="testSpecificDevice()">Probar Este Device</button>
-                    <button onclick="testDeviceManagement()" style="background: #17a2b8;">Abrir Gestión</button>
-                </div>
-                <div id="device-test-results" style="margin-top: 15px;"></div>
-            </div>
-            
-            <div class="card">
-                <h2>🐛 Logs del Sistema</h2>
-                <div id="system-logs" style="max-height: 300px; overflow-y: auto; padding: 10px; background: #f8f9fa; border-radius: 4px; font-family: monospace; font-size: 12px;">
-                    <!-- Logs aparecerán aquí -->
-                </div>
-                <button onclick="clearLogs()" style="margin-top: 10px; background: #6c757d;">Limpiar Logs</button>
-            </div>
-            
-            <div class="card">
-                <h2>⚙️ Configuración del Sistema</h2>
-                <div id="system-config">
-                    <p><strong>URL Supabase:</strong> ''' + (os.environ.get("SUPABASE_URL", "No configurado")[:30] + "..." if os.environ.get("SUPABASE_URL") else "No configurado") + '''</p>
-                    <p><strong>Entorno:</strong> ''' + (os.environ.get("FLASK_ENV", "production")) + '''</p>
-                    <p><strong>Hora del Servidor:</strong> ''' + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '''</p>
-                </div>
-            </div>
-        </div>
-        
-        <script>
-            // Interceptar console.log para mostrar en pantalla
-            (function() {
-                const originalLog = console.log;
-                const originalError = console.error;
-                
-                console.log = function(...args) {
-                    originalLog.apply(console, args);
-                    addToLog('📘 INFO', args);
-                };
-                
-                console.error = function(...args) {
-                    originalError.apply(console, args);
-                    addToLog('❌ ERROR', args);
-                };
-                
-                function addToLog(level, args) {
-                    const logsDiv = document.getElementById('system-logs');
-                    if (logsDiv) {
-                        const message = args.map(arg => 
-                            typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-                        ).join(' ');
-                        
-                        const logEntry = document.createElement('div');
-                        logEntry.className = 'log-entry';
-                        logEntry.style = 'margin-bottom: 5px; padding: 5px; border-bottom: 1px solid #eee;';
-                        logEntry.innerHTML = `<strong>${level}:</strong> ${message}`;
-                        
-                        logsDiv.appendChild(logEntry);
-                        logsDiv.scrollTop = logsDiv.scrollHeight;
-                    }
-                }
-            })();
-            
-            function showLoading(elementId, message) {
-                document.getElementById(elementId).innerHTML = 
-                    `<div class="loading">${message}</div>`;
-            }
-            
-            function showResult(elementId, data, success) {
-                const element = document.getElementById(elementId);
-                const className = success ? 'success' : 'error';
-                element.innerHTML = `
-                    <div class="${className}" style="padding: 15px;">
-                        <h4>${success ? '✅ Éxito' : '❌ Error'}</h4>
-                        <pre>${JSON.stringify(data, null, 2)}</pre>
-                    </div>
-                `;
-            }
-            
-            async function runTest(testType) {
-                console.log(`Ejecutando prueba: ${testType}`);
-                
-                if (testType === 'db' || testType === 'all') {
-                    await testDatabase();
-                }
-                
-                if (testType === 'overview' || testType === 'all') {
-                    await testOverview();
-                }
-                
-                if (testType === 'save' || testType === 'all') {
-                    await testSave();
-                }
-                
-                if (testType === 'device' || testType === 'all') {
-                    await testDevice();
-                }
-            }
-            
-            async function testDatabase() {
-                showLoading('test-results', 'Probando conexión a base de datos...');
-                try {
-                    const response = await fetch('/techview/api/test');
-                    const data = await response.json();
-                    showResult('test-results', data, response.ok);
-                } catch(e) {
-                    showResult('test-results', {error: e.message}, false);
-                }
-            }
-            
-            async function testOverview() {
-                showLoading('test-results', 'Probando overview financiero...');
-                try {
-                    const response = await fetch('/techview/api/overview');
-                    const data = await response.json();
-                    showResult('test-results', data, response.ok);
-                } catch(e) {
-                    showResult('test-results', {error: e.message}, false);
-                }
-            }
-            
-            async function testSave() {
-                showLoading('test-results', 'Probando operación de guardado...');
-                const testData = {
-                    device_id: "TEST_" + Date.now(),
-                    capex_screen: 15000,
-                    revenue_monthly: 3000,
-                    cost_type: "test",
-                    category: "test"
-                };
-                
-                try {
-                    const response = await fetch('/techview/api/save', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify(testData)
-                    });
-                    const data = await response.json();
-                    showResult('test-results', data, response.ok);
-                } catch(e) {
-                    showResult('test-results', {error: e.message}, false);
-                }
-            }
-            
-            async function testDevice() {
-                showLoading('test-results', 'Consultando dispositivo de prueba...');
-                const deviceId = "MX_CM_EV_MGP_01_3591 Calle Arquímedes 173 :238";
-                try {
-                    const response = await fetch('/techview/api/device/' + encodeURIComponent(deviceId));
-                    const data = await response.json();
-                    showResult('test-results', data, response.ok);
-                } catch(e) {
-                    showResult('test-results', {error: e.message}, false);
-                }
-            }
-            
-            async function testSpecificDevice() {
-                const deviceId = document.getElementById('test-device-id').value;
-                showLoading('device-test-results', `Consultando dispositivo: ${deviceId}`);
-                
-                try {
-                    const response = await fetch('/techview/api/device/' + encodeURIComponent(deviceId));
-                    const data = await response.json();
-                    showResult('device-test-results', data, response.ok);
-                } catch(e) {
-                    showResult('device-test-results', {error: e.message}, false);
-                }
-            }
-            
-            function testDeviceManagement() {
-                const deviceId = document.getElementById('test-device-id').value;
-                window.open(`/techview/management?device_id=${encodeURIComponent(deviceId)}`, '_blank');
-            }
-            
-            function clearLogs() {
-                document.getElementById('system-logs').innerHTML = '';
-                console.log('🗑️ Logs limpiados');
-            }
-            
-            // Ejecutar prueba automática al cargar
-            document.addEventListener('DOMContentLoaded', () => {
-                console.log('🔧 Diagnóstico TechView cargado');
-                testDatabase();
-            });
-        </script>
-    </body>
-    </html>
-    '''
+    return render_template('techview_diagnostic.html') # Asumiendo que tienes este template, si no, usa el HTML inline anterior
 
 @bp.route('/overview')
 def overview():
-    """Página de overview financiero"""
-    return '''
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>TechView - Overview Financiero</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <script src="https://cdn.tailwindcss.com"></script>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <style>
-            .card { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            .loading { text-align: center; padding: 40px; color: #6c757d; }
-        </style>
-    </head>
-    <body class="bg-gray-50 p-4">
-        <div class="container mx-auto">
-            <div class="flex justify-between items-center mb-6">
-                <h1 class="text-2xl font-bold text-gray-800">📈 Overview Financiero - TechView</h1>
-                <div>
-                    <a href="/techview" class="px-4 py-2 bg-gray-200 rounded-lg mr-2">🏠 Inicio</a>
-                    <a href="/techview/diagnostic" class="px-4 py-2 bg-blue-500 text-white rounded-lg">🔧 Diagnóstico</a>
-                </div>
-            </div>
-            
-            <div id="overview-content" class="loading">
-                <p>Cargando datos financieros...</p>
-            </div>
-        </div>
-        
-        <script>
-            async function loadOverview() {
-                try {
-                    const response = await fetch('/techview/api/overview');
-                    const data = await response.json();
-                    
-                    if (response.ok) {
-                        renderOverview(data);
-                    } else {
-                        document.getElementById('overview-content').innerHTML = 
-                            '<div class="card text-red-500">Error al cargar datos: ' + JSON.stringify(data) + '</div>';
-                    }
-                } catch(e) {
-                    document.getElementById('overview-content').innerHTML = 
-                        '<div class="card text-red-500">Error de conexión: ' + e.message + '</div>';
-                }
-            }
-            
-            function renderOverview(data) {
-                const overview = data.overview_data || [];
-                const totals = data.totals || {};
-                
-                let html = `
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                        <div class="card">
-                            <h3 class="text-sm text-gray-500">Total CAPEX</h3>
-                            <p class="text-2xl font-bold">$${(totals.total_capex || 0).toLocaleString()}</p>
-                        </div>
-                        <div class="card">
-                            <h3 class="text-sm text-gray-500">Ingresos Mensuales</h3>
-                            <p class="text-2xl font-bold text-green-600">$${(totals.total_monthly_revenue || 0).toLocaleString()}</p>
-                        </div>
-                        <div class="card">
-                            <h3 class="text-sm text-gray-500">OPEX Mensual</h3>
-                            <p class="text-2xl font-bold text-orange-600">$${(totals.total_monthly_opex || 0).toLocaleString()}</p>
-                        </div>
-                        <div class="card">
-                            <h3 class="text-sm text-gray-500">Margen Mensual</h3>
-                            <p class="text-2xl font-bold text-blue-600">$${(totals.total_monthly_margin || 0).toLocaleString()}</p>
-                        </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                        <div class="card lg:col-span-2">
-                            <h3 class="font-bold mb-4">Dispositivos por Rentabilidad</h3>
-                            <div class="h-64">
-                                <canvas id="profitability-chart"></canvas>
-                            </div>
-                        </div>
-                        <div class="card">
-                            <h3 class="font-bold mb-4">Resumen</h3>
-                            <div class="space-y-3">
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Total Dispositivos</span>
-                                    <span class="font-bold">${totals.device_count || 0}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">ROI Promedio (Meses)</span>
-                                    <span class="font-bold">${(data.average_roi || 0).toFixed(1)}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Actualización</span>
-                                    <span class="font-bold">${new Date().toLocaleTimeString()}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="card">
-                        <h3 class="font-bold mb-4">Lista de Dispositivos</h3>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-4 py-2 text-left">Device ID</th>
-                                        <th class="px-4 py-2 text-left">Ingresos</th>
-                                        <th class="px-4 py-2 text-left">OPEX</th>
-                                        <th class="px-4 py-2 text-left">Margen</th>
-                                        <th class="px-4 py-2 text-left">ROI (Meses)</th>
-                                        <th class="px-4 py-2 text-left">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="devices-table">
-                `;
-                
-                overview.forEach(device => {
-                    const roi = device.roi_months || 0;
-                    const roiColor = roi < 12 ? 'text-green-600' : roi < 24 ? 'text-yellow-600' : 'text-red-600';
-                    
-                    html += `
-                        <tr class="border-t">
-                            <td class="px-4 py-2 font-mono text-sm">${device.device_id || 'N/A'}</td>
-                            <td class="px-4 py-2">$${(device.monthly_revenue || 0).toLocaleString()}</td>
-                            <td class="px-4 py-2">$${(device.monthly_opex || 0).toLocaleString()}</td>
-                            <td class="px-4 py-2 font-bold ${(device.monthly_margin || 0) >= 0 ? 'text-green-600' : 'text-red-600'}">
-                                $${(device.monthly_margin || 0).toLocaleString()}
-                            </td>
-                            <td class="px-4 py-2 font-bold ${roiColor}">${roi.toFixed(1)}</td>
-                            <td class="px-4 py-2">
-                                <a href="/techview/management?device_id=${encodeURIComponent(device.device_id || '')}" 
-                                   class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm">
-                                    Gestionar
-                                </a>
-                            </td>
-                        </tr>
-                    `;
-                });
-                
-                html += `
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                `;
-                
-                document.getElementById('overview-content').innerHTML = html;
-                
-                // Renderizar gráfica
-                renderChart(overview);
-            }
-            
-            function renderChart(devices) {
-                const ctx = document.getElementById('profitability-chart');
-                if (!ctx) return;
-                
-                // Preparar datos para la gráfica
-                const labels = devices.slice(0, 10).map(d => d.device_id?.substring(0, 15) || 'Device');
-                const revenues = devices.slice(0, 10).map(d => d.monthly_revenue || 0);
-                const margins = devices.slice(0, 10).map(d => d.monthly_margin || 0);
-                
-                new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [
-                            {
-                                label: 'Ingresos Mensuales',
-                                data: revenues,
-                                backgroundColor: 'rgba(34, 197, 94, 0.7)',
-                                borderColor: 'rgb(34, 197, 94)',
-                                borderWidth: 1
-                            },
-                            {
-                                label: 'Margen Mensual',
-                                data: margins,
-                                backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                                borderColor: 'rgb(59, 130, 246)',
-                                borderWidth: 1
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: {
-                                    callback: function(value) {
-                                        return '$' + value.toLocaleString();
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-            
-            // Cargar datos al iniciar
-            document.addEventListener('DOMContentLoaded', loadOverview);
-            
-            // Auto-refresh cada 60 segundos
-            setInterval(loadOverview, 60000);
-        </script>
-    </body>
-    </html>
-    '''
+    return render_template('techview_overview.html')
 
 @bp.route('/management')
 def management():
     device_id = request.args.get('device_id', '')
     if not device_id:
-        return '''
-        <html>
-        <body style="padding: 40px; font-family: Arial;">
-            <h1>❌ Error: device_id requerido</h1>
-            <p>Es necesario especificar un device_id en la URL:</p>
-            <code>/techview/management?device_id=TU_DEVICE_ID</code>
-            <p>Ejemplos:</p>
-            <ul>
-                <li><a href="/techview/management?device_id=MX_CM_EV_MGP_01_3591%09Calle%20Arqu%C3%ADmedes%20173%20:238">Device con tab</a></li>
-                <li><a href="/techview/management?device_id=TEST_DEVICE_123">Device de prueba</a></li>
-                <li><a href="/techview/overview">Ver todos los dispositivos</a></li>
-            </ul>
-            <p><a href="/techview">← Volver a TechView</a></p>
-        </body>
-        </html>
-        ''', 400
+        return jsonify({"error": "device_id requerido"}), 400
     
     device_id = unquote(device_id)
     logger.info(f"📱 TechView cargando gestión para: {device_id}")
     
-    # Renderizar template de gestión (el HTML completo está en el siguiente paso)
-    return render_template('techview_management.html', device_id=device_id)
+    return render_template('techview.html', device_id=device_id)
 
 # ============================================
 # API ENDPOINTS
@@ -1524,24 +970,11 @@ def api_test():
         finances = techview_service.client.table("finances").select("count", count="exact").execute()
         devices = techview_service.client.table("devices").select("count", count="exact").execute()
         
-        # Verificar columnas importantes
-        sample = techview_service.client.table("finances").select("*").limit(1).execute()
-        columns = list(sample.data[0].keys()) if sample.data else []
-        
-        has_capex = any('capex_' in col for col in columns)
-        has_opex = any('opex_' in col for col in columns)
-        has_revenue = 'revenue_monthly' in columns
-        
         return jsonify({
             "status": "success",
             "service": "techview",
             "finances_count": finances.count,
             "devices_count": devices.count,
-            "has_capex": has_capex,
-            "has_opex": has_opex,
-            "has_revenue": has_revenue,
-            "has_cost_type": 'cost_type' in columns,
-            "required_columns": len([c for c in columns if any(x in c for x in ['capex_', 'opex_', 'maint_', 'revenue_'])]),
             "timestamp": datetime.now().isoformat()
         })
     except Exception as e:
@@ -1594,17 +1027,12 @@ def api_save():
             return jsonify({"error": "Content-Type debe ser application/json"}), 400
         
         data = request.get_json()
-        logger.info(f"📦 Datos recibidos. Keys: {list(data.keys())}")
-        logger.info(f"📦 Device ID: {data.get('device_id', 'NO PROPORCIONADO')}")
         
         if 'device_id' not in data:
             logger.error("❌ device_id faltante")
             return jsonify({"error": "device_id es requerido"}), 400
         
         success, message = techview_service.save_device_financials(data)
-        
-        logger.info(f"💾 Resultado: {success} - {message}")
-        logger.info("=" * 60)
         
         if success:
             return jsonify({
@@ -1628,11 +1056,3 @@ def api_save():
             "error": f"Error crítico: {str(e)}",
             "timestamp": datetime.now().isoformat()
         }), 500
-
-# Favicon para evitar error 404
-@bp.route('/favicon.ico')
-def favicon():
-    from flask import Response
-    return Response(status=204)
-
-logger.info("✅ Módulo TechView cargado - Versión Completa")
