@@ -63,7 +63,7 @@
                 </div>
                 <div>
                     <h2 class="text-lg font-bold leading-none">TechView</h2>
-                    <p class="text-xs text-text-muted mt-1 font-mono" id="device-display">{{ device_id }}</p>
+                    <p class="text-xs text-text-muted mt-1 font-mono truncate max-w-[200px]" id="device-display">{{ device_id }}</p>
                 </div>
             </div>
             
@@ -82,7 +82,7 @@
             
             <button onclick="saveAll()" class="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg font-bold text-sm transition-colors shadow-lg shadow-primary/20 active:scale-95">
                 <span class="material-symbols-outlined text-lg">save</span>
-                Guardar
+                <span class="hidden sm:inline">Guardar</span>
             </button>
             
             <button onclick="checkExit()" class="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg font-bold text-sm transition-colors" title="Salir (Esc)">
@@ -379,6 +379,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadDeviceData();
             setupInputListeners();
+            
             // Cerrar con tecla ESC
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') checkExit();
@@ -433,35 +434,50 @@
                     });
                 }
 
-                // Llenar Dashboard (Análisis Ejecutivo)
+                // Llenar Dashboard (Análisis Ejecutivo) CON VERIFICACIÓN DE EXISTENCIA
                 if (data.totals) {
-                    document.getElementById('kpi-capex').innerText = formatCurrency(data.totals.capex);
-                    document.getElementById('dash-capex').innerText = formatCurrency(data.totals.capex);
-                    document.getElementById('kpi-opex').innerText = formatCurrency(data.totals.opex_monthly);
-                    document.getElementById('kpi-revenue').innerText = formatCurrency(data.totals.revenue_monthly);
-                    document.getElementById('dash-revenue').innerText = formatCurrency(data.totals.revenue_monthly);
-                    document.getElementById('kpi-margin').innerText = formatCurrency(data.totals.margin_monthly);
-                    document.getElementById('dash-margin').innerText = formatCurrency(data.totals.margin_monthly);
-                    document.getElementById('dash-roi').innerText = `${data.totals.roi_months} meses`;
+                    // Safe set helper
+                    const safeSet = (id, val) => {
+                        const el = document.getElementById(id);
+                        if (el) el.innerText = val;
+                    };
+
+                    safeSet('kpi-capex', formatCurrency(data.totals.capex));
+                    safeSet('dash-capex', formatCurrency(data.totals.capex));
                     
-                    // Costo Mensual Total (OPEX + Manto)
-                    // Nota: Totals.opex_monthly ya debería incluir mantenimiento si el backend lo suma,
-                    // pero para la gráfica lo calcularemos explícitamente abajo.
-                    document.getElementById('dash-monthly-cost').innerText = formatCurrency(data.totals.opex_monthly);
+                    safeSet('kpi-opex', formatCurrency(data.totals.opex_monthly));
+                    
+                    safeSet('kpi-revenue', formatCurrency(data.totals.revenue_monthly));
+                    safeSet('dash-revenue', formatCurrency(data.totals.revenue_monthly));
+                    
+                    safeSet('kpi-margin', formatCurrency(data.totals.margin_monthly));
+                    safeSet('dash-margin', formatCurrency(data.totals.margin_monthly));
+                    
+                    safeSet('dash-roi', `${data.totals.roi_months} meses`);
+                    
+                    safeSet('dash-monthly-cost', formatCurrency(data.totals.opex_monthly));
                 }
 
                 if (data.advanced_kpis) {
-                    document.getElementById('tech-score-val').innerText = `${data.advanced_kpis.technical_score}/100`;
-                    document.getElementById('tech-score-bar').style.width = `${data.advanced_kpis.technical_score}%`;
-                    document.getElementById('dash-reincidence').innerText = `${data.advanced_kpis.reincidence_rate}%`;
+                    const elVal = document.getElementById('tech-score-val');
+                    if (elVal) elVal.innerText = `${data.advanced_kpis.technical_score}/100`;
+                    
+                    const elBar = document.getElementById('tech-score-bar');
+                    if (elBar) elBar.style.width = `${data.advanced_kpis.technical_score}%`;
+                    
+                    const elRein = document.getElementById('dash-reincidence');
+                    if (elRein) elRein.innerText = `${data.advanced_kpis.reincidence_rate}%`;
                     
                     // Telemetría / Recomendación
                     generateTelemetry(data.totals, data.advanced_kpis);
                 }
 
                 if (data.eco) {
-                    document.getElementById('eco-co2').innerText = data.eco.co2_tons;
-                    document.getElementById('eco-trees').innerText = data.eco.trees;
+                    const elCo2 = document.getElementById('eco-co2');
+                    if (elCo2) elCo2.innerText = data.eco.co2_tons;
+                    
+                    const elTrees = document.getElementById('eco-trees');
+                    if (elTrees) elTrees.innerText = data.eco.trees;
                 }
 
                 // Renderizar Gráfica
@@ -477,9 +493,9 @@
 
         // Telemetría Simple
         function generateTelemetry(totals, advanced) {
-            const margin = totals.margin_monthly || 0;
-            const roi = totals.roi_months || 99;
-            const score = advanced.technical_score || 0;
+            const margin = totals?.margin_monthly || 0;
+            const roi = totals?.roi_months || 99;
+            const score = advanced?.technical_score || 0;
             let status = "Estable";
             let rec = "Mantener operación actual.";
             let color = "text-text-muted";
@@ -502,9 +518,14 @@
                 color = "text-primary";
             }
 
-            document.getElementById('financial-status-text').innerText = status;
-            document.getElementById('financial-status-text').className = `font-bold ${color}`;
-            document.getElementById('ai-recommendation').innerText = rec;
+            const elStatus = document.getElementById('financial-status-text');
+            if (elStatus) {
+                elStatus.innerText = status;
+                elStatus.className = `font-bold ${color}`;
+            }
+            
+            const elRec = document.getElementById('ai-recommendation');
+            if (elRec) elRec.innerText = rec;
         }
 
         // Gráfica de Costo Mensual
@@ -512,9 +533,18 @@
             const ctx = document.getElementById('monthlyCostChart');
             if (!ctx) return;
 
-            // Calcular costo mensual base
-            const opex = parseFloat(financials?.opex_monthly_total || 0) || 0; // O sumar campos individuales si no viene totalizado
-            // Generar datos simulados con ligera variación para proyección
+            // Calcular costo mensual base (aprox)
+            let opex = 0;
+            if (financials) {
+                // Sumar campos OPEX manual para gráfica rápida
+                const keys = Object.keys(financials);
+                keys.forEach(k => {
+                    if (k.startsWith('opex_') && !k.includes('annual')) opex += parseFloat(financials[k] || 0);
+                    if (k === 'opex_license_annual') opex += parseFloat(financials[k] || 0) / 12;
+                });
+            }
+            
+            // Generar datos simulados con ligera variación para proyección visual
             const dataPoints = Array.from({length: 6}, (_, i) => opex * (1 + (Math.random() * 0.05 - 0.025)));
 
             if (chartInstance) chartInstance.destroy();
@@ -546,7 +576,7 @@
             });
         }
 
-        // Guardado
+        // Guardado con conversión de tipos
         async function saveAll() {
             if (pendingChanges.size === 0) {
                 showToast('No hay cambios pendientes', 'info');
@@ -555,12 +585,14 @@
             showLoading();
             try {
                 const payload = { device_id: deviceId, cost_type: 'techview', category: 'comprehensive' };
+                // Campos ENTEROS específicos
                 const integerFields = ['maint_crew_size', 'maint_visit_count', 'maint_corr_visit_count'];
 
                 document.querySelectorAll('input').forEach(input => {
                     if (input.value !== '') {
                         if (input.type === 'number') {
-                            payload[input.id] = integerFields.includes(input.id) ? parseInt(input.value) : parseFloat(input.value);
+                            // CORRECCIÓN CLAVE: parseInt vs parseFloat
+                            payload[input.id] = integerFields.includes(input.id) ? parseInt(input.value, 10) : parseFloat(input.value);
                         } else {
                             payload[input.id] = input.value;
                         }
@@ -589,7 +621,7 @@
             }
         }
 
-        // Utilidades
+        // Utilidades UI
         function switchTab(id) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.getElementById('tab-' + id).classList.add('active');
