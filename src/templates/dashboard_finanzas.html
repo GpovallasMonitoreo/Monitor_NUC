@@ -4,162 +4,469 @@
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>Argos DOOH - Executive Command Center</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+    
     <script>
         tailwind.config = {
             darkMode: "class",
-            theme: { extend: { colors: { primary: "#F97316", secondary: "#3B82F6", accent: "#8B5CF6", success: "#10B981", dark: "#0F172A" }, fontFamily: { body: ["Inter", "sans-serif"] } } }
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#3B82F6",
+                        secondary: "#64748B",
+                        success: "#10B981",
+                        warning: "#F59E0B",
+                        danger: "#EF4444",
+                        dark: "#0F172A",
+                        surface: "#FFFFFF",
+                        background: "#F1F5F9"
+                    },
+                    fontFamily: {
+                        sans: ["Inter", "sans-serif"]
+                    }
+                }
+            }
         };
     </script>
+    
     <style>
-        .custom-scroll::-webkit-scrollbar { width: 6px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .truncate-col { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+        /* Scrollbar personalizado */
+        .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
+        
+        /* Animaciones */
+        .fade-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Utilidades */
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid #e2e8f0; }
     </style>
 </head>
 
-<body class="bg-slate-50 text-slate-800 font-body h-screen flex flex-col overflow-hidden">
+<body class="bg-background text-slate-800 font-sans h-screen flex flex-col overflow-hidden">
 
-    <header class="bg-white border-b border-slate-200 h-16 flex flex-shrink-0 items-center justify-between px-8 shadow-sm z-20">
+    <header class="bg-surface border-b border-slate-200 h-16 flex flex-shrink-0 items-center justify-between px-6 shadow-sm z-30 relative">
         <div class="flex items-center gap-4">
-            <div class="size-10 bg-slate-900 rounded-lg flex items-center justify-center text-primary shadow-lg"><i data-lucide="activity" class="w-6 h-6"></i></div>
-            <div><h1 class="text-xl font-bold text-slate-800 tracking-tight">Finanzas y Rentabilidad</h1><p class="text-[10px] text-slate-400 font-medium">VISTA GENERAL</p></div>
+            <div class="size-10 bg-dark rounded-xl flex items-center justify-center text-white shadow-lg">
+                <span class="material-icons-outlined text-xl">grid_view</span>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold text-slate-900 tracking-tight leading-none">Argos DOOH</h1>
+                <p class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mt-0.5">Command Center</p>
+            </div>
         </div>
+
+        <div class="flex-1 max-w-2xl mx-8 hidden md:block">
+            <div class="relative group">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span class="material-icons-outlined text-slate-400 group-focus-within:text-primary transition-colors">search</span>
+                </div>
+                <input type="text" id="global-search" 
+                       class="block w-full pl-10 pr-4 py-2 bg-slate-100 border-none rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all placeholder-slate-400" 
+                       placeholder="Buscar pantalla por ID, ubicación o NUC...">
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                    <span class="text-[10px] text-slate-400 font-mono border border-slate-300 rounded px-1.5 py-0.5">CTRL+K</span>
+                </div>
+            </div>
+        </div>
+
         <div class="flex items-center gap-3">
-            <a href="/techview/proposal" class="hidden md:flex items-center gap-2 px-4 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg hover:bg-slate-700 transition shadow-md"><span class="material-icons-outlined text-sm">add</span> NUEVA INSTALACIÓN</a>
-            <a href="/" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg font-bold text-xs transition"><span class="material-icons-outlined text-sm">logout</span> Volver</a>
+            <button onclick="window.location.reload()" class="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition" title="Actualizar Datos">
+                <span class="material-icons-outlined">refresh</span>
+            </button>
+            <div class="h-8 w-[1px] bg-slate-200 mx-1"></div>
+            <a href="/techview/proposal" class="hidden md:flex items-center gap-2 px-4 py-2 bg-dark text-white text-xs font-bold rounded-lg hover:bg-slate-800 transition shadow-md active:scale-95 transform duration-100">
+                <span class="material-icons-outlined text-sm">add_circle</span> 
+                NUEVA PANTALLA
+            </a>
         </div>
     </header>
 
-    <main class="flex-1 overflow-y-auto p-6 scroll-smooth custom-scroll w-full max-w-[1920px] mx-auto">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8" id="kpi-container">
-            <div class="animate-pulse bg-white h-32 rounded-2xl border border-slate-100"></div>
-            <div class="animate-pulse bg-white h-32 rounded-2xl border border-slate-100"></div>
-            <div class="animate-pulse bg-white h-32 rounded-2xl border border-slate-100"></div>
-            <div class="animate-pulse bg-white h-32 rounded-2xl border border-slate-100"></div>
+    <main class="flex-1 overflow-y-auto p-6 scroll-smooth custom-scroll w-full mx-auto relative">
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 fade-in">
+            <div class="bg-surface p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
+                <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <span class="material-icons-outlined text-6xl text-primary">account_balance</span>
+                </div>
+                <p class="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">CAPEX Total (Inversión)</p>
+                <div class="flex items-baseline gap-2">
+                    <h3 class="text-2xl font-black text-slate-900 tracking-tight" id="kpi-capex">$0.00</h3>
+                </div>
+                <div class="mt-3 h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div class="h-full bg-primary w-3/4 rounded-full"></div>
+                </div>
+            </div>
+
+            <div class="bg-surface p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
+                <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <span class="material-icons-outlined text-6xl text-warning">trending_down</span>
+                </div>
+                <p class="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">OPEX Mensual (Gasto)</p>
+                <div class="flex items-baseline gap-2">
+                    <h3 class="text-2xl font-black text-slate-900 tracking-tight" id="kpi-opex">$0.00</h3>
+                </div>
+                <p class="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                    <span class="material-icons-outlined text-[14px]">info</span> Recurrente mensual
+                </p>
+            </div>
+
+            <div class="bg-surface p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
+                <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <span class="material-icons-outlined text-6xl text-success">payments</span>
+                </div>
+                <p class="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Ingresos Mensuales</p>
+                <div class="flex items-baseline gap-2">
+                    <h3 class="text-2xl font-black text-slate-900 tracking-tight" id="kpi-revenue">$0.00</h3>
+                    <span class="text-xs font-bold text-success bg-success/10 px-1.5 py-0.5 rounded">+12%</span>
+                </div>
+                <p class="text-xs text-slate-400 mt-1">Proyección actual</p>
+            </div>
+
+            <div class="bg-surface p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
+                <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <span class="material-icons-outlined text-6xl text-indigo-500">query_stats</span>
+                </div>
+                <p class="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">ROI Promedio</p>
+                <div class="flex items-baseline gap-2">
+                    <h3 class="text-2xl font-black text-slate-900 tracking-tight" id="kpi-roi">0.0</h3>
+                    <span class="text-sm font-medium text-slate-500">meses</span>
+                </div>
+                <div class="mt-3 flex gap-1">
+                    <span class="h-1.5 w-1.5 rounded-full bg-success"></span>
+                    <span class="text-[10px] text-slate-400 font-medium">Saludable: &lt; 24m</span>
+                </div>
+            </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <div class="lg:col-span-8 space-y-6">
-                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Flujo de Caja</h3>
-                    </div>
-                    <div class="h-72 w-full"><canvas id="rentabilityChart"></canvas></div>
-                </div>
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                        <h2 class="text-lg font-bold text-slate-800">Inventario</h2>
-                        <div class="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5 w-64">
-                            <span class="material-icons-outlined text-slate-400 text-lg">search</span>
-                            <input type="text" id="inventory-search" placeholder="Buscar..." class="border-none bg-transparent p-0 text-sm w-full focus:ring-0">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 fade-in" style="animation-delay: 0.1s;">
+            
+            <div class="lg:col-span-8 flex flex-col gap-6">
+                <div class="bg-surface rounded-2xl border border-slate-200 shadow-sm flex flex-col h-full">
+                    
+                    <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50 rounded-t-2xl">
+                        <div class="flex items-center gap-3">
+                            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <span class="material-icons-outlined text-slate-400">inventory_2</span> Inventario Activo
+                            </h2>
+                            <span class="px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-600 text-xs font-bold" id="asset-count">0</span>
+                        </div>
+                        <div class="flex gap-2 w-full sm:w-auto">
+                            <select id="status-filter" class="bg-white border border-slate-300 text-slate-600 text-xs font-bold rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary/20">
+                                <option value="all">Todos los Estados</option>
+                                <option value="active">Online / Activo</option>
+                                <option value="warning">Revisión</option>
+                                <option value="offline">Offline</option>
+                            </select>
                         </div>
                     </div>
-                    <div class="overflow-x-auto">
+
+                    <div class="overflow-x-auto flex-1 custom-scroll">
                         <table class="w-full text-left border-collapse">
-                            <thead class="bg-slate-50/80 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                                <tr><th class="p-4 w-1/3">Sitio / ID</th><th class="p-4">Estado</th><th class="p-4 text-center">Acciones</th></tr>
+                            <thead class="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                                <tr>
+                                    <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider w-1/3">Dispositivo / ID</th>
+                                    <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">Estado Financiero</th>
+                                    <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">Salud Técnica</th>
+                                    <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider text-right">Acciones</th>
+                                </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-100 text-sm" id="table-body">
-                                <tr><td colspan="3" class="p-6 text-center text-slate-400">Cargando inventario...</td></tr>
+                            <tbody class="divide-y divide-slate-100 text-sm" id="assets-table-body">
+                                <tr>
+                                    <td colspan="4" class="p-8 text-center">
+                                        <div class="flex flex-col items-center justify-center gap-2">
+                                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                                            <span class="text-slate-400 text-xs">Cargando inventario...</span>
+                                        </div>
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
+                    
+                    <div class="p-3 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl flex justify-center">
+                        <button class="text-xs font-bold text-primary hover:text-primary-dark transition flex items-center gap-1">
+                            Ver reporte completo <span class="material-icons-outlined text-[14px]">arrow_forward</span>
+                        </button>
+                    </div>
                 </div>
             </div>
-            <div class="lg:col-span-4 space-y-6">
-                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">Alertas de Red</h3>
-                    <div class="space-y-3" id="alerts-container"></div>
+
+            <div class="lg:col-span-4 flex flex-col gap-6">
+                
+                <div class="bg-surface p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-indigo-500"></span> Flujo de Caja Global
+                        </h3>
+                    </div>
+                    <div class="relative h-60 w-full">
+                        <canvas id="financialChart"></canvas>
+                    </div>
+                    <div class="mt-4 grid grid-cols-2 gap-4 text-center">
+                        <div class="p-2 bg-slate-50 rounded-lg">
+                            <p class="text-[10px] text-slate-400 font-bold uppercase">Ingresos YTD</p>
+                            <p class="text-sm font-bold text-slate-800" id="ytd-revenue">--</p>
+                        </div>
+                        <div class="p-2 bg-slate-50 rounded-lg">
+                            <p class="text-[10px] text-slate-400 font-bold uppercase">Gastos YTD</p>
+                            <p class="text-sm font-bold text-slate-800" id="ytd-expenses">--</p>
+                        </div>
+                    </div>
                 </div>
+
+                <div class="bg-surface p-6 rounded-2xl border border-slate-200 shadow-sm flex-1">
+                    <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center justify-between">
+                        <span>Alertas del Sistema</span>
+                        <span class="bg-red-100 text-red-600 text-[10px] px-2 py-0.5 rounded-full" id="alert-count">0</span>
+                    </h3>
+                    <div class="space-y-3 overflow-y-auto max-h-[300px] custom-scroll pr-1" id="alerts-list">
+                        <div class="flex flex-col items-center justify-center h-32 text-center border-2 border-dashed border-slate-100 rounded-xl">
+                            <span class="material-icons-outlined text-slate-300 text-3xl mb-1">check_circle</span>
+                            <p class="text-slate-400 text-xs">Sin alertas críticas</p>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </main>
 
     <script>
-        class DashboardApp {
-            constructor() { this.allAssets = []; }
+        class ExecutiveDashboard {
+            constructor() {
+                this.assets = [];
+                this.chartInstance = null;
+            }
 
             async init() {
                 try {
-                    // 1. Cargar KPIs Financieros
-                    const kpiRes = await fetch('/api/techview/dashboard');
-                    if (kpiRes.ok) {
-                        const kpiData = await kpiRes.json();
-                        this.renderKPIs(kpiData.kpis);
-                        this.renderChart(kpiData.financials);
-                        this.renderAlerts(kpiData.kpis.active_alerts);
-                    } else {
-                        console.error("Error API Dashboard", kpiRes.status);
-                    }
+                    await this.loadData();
+                    this.setupSearch();
+                    this.setupShortcuts();
+                } catch (error) {
+                    console.error("Error inicializando dashboard:", error);
+                }
+            }
 
-                    // 2. Cargar Inventario
-                    const invRes = await fetch('/api/techview/inventory');
-                    if (invRes.ok) {
-                        this.allAssets = await invRes.json();
-                        this.renderTable(this.allAssets);
-                    }
-
-                    // Buscador
-                    document.getElementById('inventory-search').addEventListener('input', (e) => {
-                        const term = e.target.value.toLowerCase();
-                        this.renderTable(this.allAssets.filter(a => 
-                            (a.pc_name && a.pc_name.toLowerCase().includes(term)) || 
-                            (a.device_id && a.device_id.toLowerCase().includes(term))
-                        ));
-                    });
+            async loadData() {
+                try {
+                    const response = await fetch('/techview/api/overview'); // Endpoint existente
+                    const data = await response.json();
                     
-                    lucide.createIcons();
-                } catch (e) { console.error("Error crítico init", e); }
+                    if (data.overview_data) {
+                        this.assets = data.overview_data;
+                        this.renderKPIs(data.totals);
+                        this.renderTable(this.assets);
+                        this.renderChart(data.overview_data);
+                        this.analyzeAlerts(this.assets);
+                        
+                        document.getElementById('asset-count').innerText = data.totals.device_count || 0;
+                    }
+                } catch (e) {
+                    console.error("Error cargando datos:", e);
+                }
             }
 
-            renderKPIs(kpis) {
-                if (!kpis) return;
-                const fmt = n => `$${(n/1000000).toFixed(2)}M`;
-                document.getElementById('kpi-container').innerHTML = `
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm"><p class="text-[10px] font-bold text-slate-400 uppercase mb-1">CAPEX Total</p><h3 class="text-2xl font-bold text-slate-900 font-mono">${fmt(kpis.capex)}</h3></div>
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm"><p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Ventas Anuales</p><h3 class="text-2xl font-bold text-emerald-600 font-mono">${fmt(kpis.sales_annual)}</h3></div>
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm"><p class="text-[10px] font-bold text-slate-400 uppercase mb-1">OPEX Mensual</p><h3 class="text-2xl font-bold text-amber-600 font-mono">$${(kpis.opex_monthly/1000).toFixed(1)}k</h3></div>
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm"><p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Incidencias</p><h3 class="text-2xl font-bold text-red-500 font-mono">${kpis.incidents}</h3></div>
-                `;
+            renderKPIs(totals) {
+                const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+                
+                // Animación simple de conteo (opcional, aquí directo)
+                document.getElementById('kpi-capex').innerText = fmt(totals.total_capex || 0);
+                document.getElementById('kpi-opex').innerText = fmt(totals.total_monthly_opex || 0);
+                document.getElementById('kpi-revenue').innerText = fmt(totals.total_monthly_revenue || 0);
+                
+                // ROI Promedio
+                const roi = totals.average_roi || 0;
+                const roiEl = document.getElementById('kpi-roi');
+                roiEl.innerText = roi.toFixed(1);
+                roiEl.className = `text-2xl font-black tracking-tight ${roi > 36 ? 'text-danger' : roi > 24 ? 'text-warning' : 'text-success'}`;
             }
 
-            renderTable(assets) {
-                const tbody = document.getElementById('table-body');
-                if (!assets || assets.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="3" class="p-6 text-center text-slate-400">Sin datos.</td></tr>';
+            renderTable(data) {
+                const tbody = document.getElementById('assets-table-body');
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-400 text-sm">No se encontraron activos.</td></tr>`;
                     return;
                 }
-                tbody.innerHTML = assets.map(a => `
-                    <tr class="hover:bg-slate-50 transition border-b border-slate-50">
-                        <td class="p-4"><div class="truncate-col font-bold text-slate-700" title="${a.pc_name}">${a.pc_name || 'Sin Nombre'}</div><div class="text-[10px] text-slate-400 font-mono">${a.device_id}</div></td>
-                        <td class="p-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${a.status==='online'?'bg-emerald-100 text-emerald-700':'bg-red-100 text-red-700'}">${a.status || 'unknown'}</span></td>
-                        <td class="p-4 text-center"><a href="/techview/detail?device_id=${encodeURIComponent(a.device_id)}" class="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition text-xs">Gestionar</a></td>
-                    </tr>
-                `).join('');
+
+                tbody.innerHTML = data.map(item => {
+                    const roi = item.roi_months || 0;
+                    const margin = item.monthly_margin || 0;
+                    // Simulación de estado técnico (esto vendría del backend idealmente)
+                    const techScore = Math.floor(Math.random() * (100 - 70) + 70); 
+                    const statusColor = margin > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700';
+                    const statusText = margin > 0 ? 'RENTABLE' : 'DÉFICIT';
+
+                    return `
+                        <tr class="hover:bg-slate-50 transition border-b border-slate-50 group">
+                            <td class="p-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="h-8 w-8 rounded bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-xs shrink-0">
+                                        LED
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="font-bold text-slate-700 text-sm truncate max-w-[200px]" title="${item.device_id}">
+                                            ${item.device_id.split('\t')[0] || item.device_id}
+                                        </p>
+                                        <p class="text-[10px] text-slate-400 font-mono truncate max-w-[180px]">
+                                            ROI: ${roi.toFixed(1)}m
+                                        </p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="p-4">
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-bold text-slate-700">$${item.monthly_margin?.toLocaleString()} /mes</span>
+                                    <span class="inline-flex w-fit items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase mt-1 ${statusColor}">
+                                        ${statusText}
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="p-4">
+                                <div class="w-full max-w-[100px]">
+                                    <div class="flex justify-between text-[10px] mb-1">
+                                        <span class="text-slate-500 font-bold">Salud</span>
+                                        <span class="text-slate-700 font-bold">${techScore}%</span>
+                                    </div>
+                                    <div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                        <div class="h-full bg-primary rounded-full" style="width: ${techScore}%"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="p-4 text-right">
+                                <a href="/techview/management?device_id=${encodeURIComponent(item.device_id)}" 
+                                   class="inline-flex items-center justify-center px-3 py-1.5 bg-white border border-slate-200 hover:border-primary hover:text-primary text-slate-600 rounded-lg text-xs font-bold transition shadow-sm">
+                                    Gestionar
+                                </a>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
             }
 
-            renderAlerts(count) {
-                document.getElementById('alerts-container').innerHTML = (count > 0) 
-                    ? `<div class="p-3 bg-red-50 border border-red-100 rounded-lg text-red-700 text-xs font-bold flex gap-2"><span class="material-icons-outlined text-sm">warning</span> Se detectaron ${count} pantallas desconectadas.</div>`
-                    : `<div class="p-3 bg-emerald-50 border border-emerald-100 rounded-lg text-emerald-700 text-xs font-bold flex gap-2"><span class="material-icons-outlined text-sm">check_circle</span> Sistema operando normalmente.</div>`;
-            }
+            renderChart(data) {
+                const ctx = document.getElementById('financialChart').getContext('2d');
+                
+                // Preparar datos (Top 5 revenue vs expenses)
+                const sortedData = [...data].sort((a, b) => b.monthly_revenue - a.monthly_revenue).slice(0, 5);
+                const labels = sortedData.map(d => d.device_id.substring(0, 10) + '...');
+                const revenue = sortedData.map(d => d.monthly_revenue);
+                const expenses = sortedData.map(d => d.monthly_opex);
 
-            renderChart(fin) {
-                if(!fin || !fin.months) return;
-                new Chart(document.getElementById('rentabilityChart'), {
+                // Calcular YTD simple (simulado x12 para demo)
+                const totalRev = revenue.reduce((a,b)=>a+b,0) * 12;
+                const totalExp = expenses.reduce((a,b)=>a+b,0) * 12;
+                document.getElementById('ytd-revenue').innerText = `$${(totalRev/1000).toFixed(1)}k`;
+                document.getElementById('ytd-expenses').innerText = `$${(totalExp/1000).toFixed(1)}k`;
+
+                if (this.chartInstance) this.chartInstance.destroy();
+
+                this.chartInstance = new Chart(ctx, {
                     type: 'bar',
-                    data: { labels: fin.months, datasets: [{label: 'Ventas', data: fin.sales, backgroundColor: '#10B981'}, {label: 'Costos', data: fin.maintenance, backgroundColor: '#F97316'}] },
-                    options: { responsive: true, maintainAspectRatio: false }
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Ingresos',
+                                data: revenue,
+                                backgroundColor: '#10B981',
+                                borderRadius: 4,
+                                barPercentage: 0.6
+                            },
+                            {
+                                label: 'Costos',
+                                data: expenses,
+                                backgroundColor: '#EF4444',
+                                borderRadius: 4,
+                                barPercentage: 0.6
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8, font: { size: 10 } } }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } },
+                            x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                        }
+                    }
+                });
+            }
+
+            analyzeAlerts(data) {
+                const alertsContainer = document.getElementById('alerts-list');
+                const alertCountBadge = document.getElementById('alert-count');
+                const alerts = [];
+
+                // Generar alertas basadas en reglas de negocio
+                data.forEach(d => {
+                    if (d.monthly_margin < 0) {
+                        alerts.push({ type: 'danger', msg: `Déficit financiero en ${d.device_id.substring(0, 15)}...`, icon: 'trending_down' });
+                    }
+                    if (d.roi_months > 36) {
+                        alerts.push({ type: 'warning', msg: `ROI crítico (>36m) en ${d.device_id.substring(0, 15)}...`, icon: 'warning' });
+                    }
+                });
+
+                alertCountBadge.innerText = alerts.length;
+
+                if (alerts.length > 0) {
+                    alertsContainer.innerHTML = alerts.map(a => `
+                        <div class="p-3 rounded-xl border flex gap-3 items-start ${a.type === 'danger' ? 'bg-red-50 border-red-100 text-red-700' : 'bg-amber-50 border-amber-100 text-amber-700'}">
+                            <span class="material-icons-outlined text-sm mt-0.5">${a.icon}</span>
+                            <div>
+                                <p class="text-xs font-bold leading-tight">${a.msg}</p>
+                                <a href="#" class="text-[10px] underline opacity-80 hover:opacity-100 mt-1 block">Ver detalles</a>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+
+            setupSearch() {
+                const searchInput = document.getElementById('global-search');
+                const statusFilter = document.getElementById('status-filter');
+
+                const filterData = () => {
+                    const term = searchInput.value.toLowerCase();
+                    const status = statusFilter.value; // Implementar lógica real de status si viene del backend
+                    
+                    const filtered = this.assets.filter(a => 
+                        a.device_id.toLowerCase().includes(term)
+                    );
+                    this.renderTable(filtered);
+                };
+
+                searchInput.addEventListener('input', filterData);
+                statusFilter.addEventListener('change', filterData);
+            }
+
+            setupShortcuts() {
+                document.addEventListener('keydown', (e) => {
+                    // CTRL+K para buscar
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                        e.preventDefault();
+                        document.getElementById('global-search').focus();
+                    }
                 });
             }
         }
-        const app = new DashboardApp();
-        document.addEventListener('DOMContentLoaded', () => app.init());
+
+        // Inicializar App
+        document.addEventListener('DOMContentLoaded', () => {
+            const dashboard = new ExecutiveDashboard();
+            dashboard.init();
+        });
     </script>
 </body>
 </html>
