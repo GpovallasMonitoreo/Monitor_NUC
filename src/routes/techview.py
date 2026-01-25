@@ -53,8 +53,12 @@ class TechViewService:
     def _safe_int(self, value):
         try:
             if value is None or value == '': return 0
-            return int(float(value))
-        except: return 0
+            return int(value)
+        except: 
+            try:
+                return int(float(value))
+            except:
+                return 0
     
     def get_device_detail(self, device_id):
         try:
@@ -85,6 +89,7 @@ class TechViewService:
             }
         except Exception as e:
             logger.error(f"❌ TechView error get_device_detail: {e}")
+            logger.error(traceback.format_exc())
             return self._create_error_response(device_id, str(e))
     
     def _get_device_info(self, device_id):
@@ -155,111 +160,119 @@ class TechViewService:
         }
     
     def _calculate_advanced_kpis(self, finance_data, maintenance_logs, device_data):
-        # 1. Recuperar CAPEX
-        capex = sum(self._safe_float(finance_data.get(k, 0)) for k in finance_data if k.startswith('capex_'))
-        
-        # 2. Calcular OPEX mensual
-        monthly_opex = self._calculate_monthly_opex(finance_data)
-        monthly_revenue = self._safe_float(finance_data.get('revenue_monthly', 0))
-        
-        # 3. Calcular tiempo de vida
-        months_operation = self._calculate_months_operation(device_data, finance_data)
-        
-        # 4. Costos reales de mantenimiento de bitácora
-        real_maintenance_total = 0
-        for log in maintenance_logs:
-            cost = self._safe_float(log.get('cost', 0)) or self._safe_float(log.get('total_cost', 0))
-            real_maintenance_total += cost
+        try:
+            # 1. Recuperar CAPEX
+            capex = sum(self._safe_float(finance_data.get(k, 0)) for k in finance_data if k.startswith('capex_'))
+            
+            # 2. Calcular OPEX mensual
+            monthly_opex = self._calculate_monthly_opex(finance_data)
+            monthly_revenue = self._safe_float(finance_data.get('revenue_monthly', 0))
+            
+            # 3. Calcular tiempo de vida
+            months_operation = self._calculate_months_operation(device_data, finance_data)
+            
+            # 4. Costos reales de mantenimiento de bitácora
+            real_maintenance_total = 0
+            for log in maintenance_logs:
+                cost = self._safe_float(log.get('cost', 0)) or self._safe_float(log.get('total_cost', 0))
+                real_maintenance_total += cost
 
-        # 5. Costos acumulados históricos
-        accumulated_opex = (monthly_opex * months_operation) + real_maintenance_total
-        total_project_cost = capex + accumulated_opex
-        
-        # 6. Cálculos de TCO (Costo Total de Propiedad a 5 años)
-        annual_opex = monthly_opex * 12
-        five_year_opex = annual_opex * 5
-        
-        # Costo promedio de mantenimiento por mes
-        avg_monthly_maintenance = real_maintenance_total / months_operation if months_operation > 0 else 0
-        five_year_maintenance = avg_monthly_maintenance * 12 * 5
-        
-        tco_5year = capex + five_year_opex + five_year_maintenance
-        tco_monthly_equivalent = tco_5year / (5 * 12) if tco_5year > 0 else 0
-        
-        # 7. Rentabilidad a 5 años
-        annual_revenue = monthly_revenue * 12
-        five_year_revenue = annual_revenue * 5
-        net_profit_5year = five_year_revenue - tco_5year
-        
-        # 8. Punto de equilibrio
-        monthly_margin = monthly_revenue - monthly_opex
-        break_even_months = math.ceil(capex / monthly_margin) if monthly_margin > 0 else 0
-        
-        # 9. ROI anual
-        annual_margin = monthly_margin * 12
-        annual_roi = (annual_margin / capex * 100) if capex > 0 else 0
-        
-        # 10. Margen operativo
-        operating_margin = ((monthly_revenue - monthly_opex) / monthly_revenue * 100) if monthly_revenue > 0 else 0
-        
-        # 11. Proyección anual
-        annual_projected_margin = annual_margin
-        
-        # 12. Calcular tasa de reincidencia
-        total_maint = len(maintenance_logs)
-        disconnects = device_data.get('disconnect_count', 0)
-        corrective = sum(1 for log in maintenance_logs if log.get('log_type') == 'corrective')
-        reincidence = ((corrective + (disconnects/10)) / max(1, total_maint + (months_operation/2))) * 100
-        
-        # 13. Score técnico
-        technical_score = self._calculate_technical_score(device_data, maintenance_logs, finance_data)
-        
-        # 14. Análisis por categoría
-        category_analysis = self._analyze_by_category(finance_data)
-        
-        # 15. Proyección de vida
-        life_projection = self._calculate_life_projection(finance_data, device_data)
-        
-        # 16. Generar recomendaciones
-        recommendations = self._generate_recommendations(
-            monthly_margin, net_profit_5year, capex, monthly_opex, monthly_revenue
-        )
-        
-        return {
-            # Costos acumulados
-            "total_current_cost": round(total_project_cost, 2),
-            "accumulated_opex": round(accumulated_opex, 2),
-            "real_maintenance_total": round(real_maintenance_total, 2),
-            "months_operation": months_operation,
+            # 5. Costos acumulados históricos
+            accumulated_opex = (monthly_opex * months_operation) + real_maintenance_total
+            total_project_cost = capex + accumulated_opex
             
-            # Métricas TCO
-            "tco_5year": round(tco_5year, 2),
-            "tco_monthly_equivalent": round(tco_monthly_equivalent, 2),
-            "five_year_opex": round(five_year_opex, 2),
-            "five_year_maintenance": round(five_year_maintenance, 2),
-            "net_profit_5year": round(net_profit_5year, 2),
+            # 6. Cálculos de TCO (Costo Total de Propiedad a 5 años)
+            annual_opex = monthly_opex * 12
+            five_year_opex = annual_opex * 5
             
-            # Métricas financieras
-            "annual_projected_margin": round(annual_projected_margin, 2),
-            "break_even_months": break_even_months,
-            "annual_roi": round(annual_roi, 1),
-            "operating_margin": round(operating_margin, 1),
+            # Costo promedio de mantenimiento por mes
+            avg_monthly_maintenance = real_maintenance_total / months_operation if months_operation > 0 else 0
+            five_year_maintenance = avg_monthly_maintenance * 12 * 5
             
-            # Métricas operativas
-            "reincidence_rate": round(reincidence, 1),
-            "technical_score": round(technical_score, 0),
-            "health_status": self._get_health_status(technical_score),
+            tco_5year = capex + five_year_opex + five_year_maintenance
+            tco_monthly_equivalent = tco_5year / (5 * 12) if tco_5year > 0 else 0
             
-            # Análisis
-            "category_analysis": category_analysis,
-            "life_projection": life_projection,
-            "recommendations": recommendations
-        }
+            # 7. Rentabilidad a 5 años
+            annual_revenue = monthly_revenue * 12
+            five_year_revenue = annual_revenue * 5
+            net_profit_5year = five_year_revenue - tco_5year
+            
+            # 8. Punto de equilibrio
+            monthly_margin = monthly_revenue - monthly_opex
+            break_even_months = math.ceil(capex / monthly_margin) if monthly_margin > 0 and capex > 0 else 0
+            
+            # 9. ROI anual
+            annual_margin = monthly_margin * 12
+            annual_roi = (annual_margin / capex * 100) if capex > 0 else 0
+            
+            # 10. Margen operativo
+            operating_margin = ((monthly_revenue - monthly_opex) / monthly_revenue * 100) if monthly_revenue > 0 else 0
+            
+            # 11. Proyección anual
+            annual_projected_margin = annual_margin
+            
+            # 12. Calcular tasa de reincidencia
+            total_maint = len(maintenance_logs)
+            disconnects = device_data.get('disconnect_count', 0)
+            corrective = sum(1 for log in maintenance_logs if log.get('log_type') == 'corrective')
+            reincidence = ((corrective + (disconnects/10)) / max(1, total_maint + (months_operation/2))) * 100
+            
+            # 13. Score técnico
+            technical_score = self._calculate_technical_score(device_data, maintenance_logs, finance_data)
+            
+            # 14. Análisis por categoría
+            category_analysis = self._analyze_by_category(finance_data)
+            
+            # 15. Proyección de vida
+            life_projection = self._calculate_life_projection(finance_data, device_data)
+            
+            # 16. Generar recomendaciones
+            recommendations = self._generate_recommendations(
+                monthly_margin, net_profit_5year, capex, monthly_opex, monthly_revenue
+            )
+            
+            return {
+                # Costos acumulados
+                "total_current_cost": round(total_project_cost, 2),
+                "accumulated_opex": round(accumulated_opex, 2),
+                "real_maintenance_total": round(real_maintenance_total, 2),
+                "months_operation": months_operation,
+                
+                # Métricas TCO
+                "tco_5year": round(tco_5year, 2),
+                "tco_monthly_equivalent": round(tco_monthly_equivalent, 2),
+                "five_year_opex": round(five_year_opex, 2),
+                "five_year_maintenance": round(five_year_maintenance, 2),
+                "net_profit_5year": round(net_profit_5year, 2),
+                
+                # Métricas financieras
+                "annual_projected_margin": round(annual_projected_margin, 2),
+                "break_even_months": break_even_months,
+                "annual_roi": round(annual_roi, 1),
+                "operating_margin": round(operating_margin, 1),
+                
+                # Métricas operativas
+                "reincidence_rate": round(reincidence, 1),
+                "technical_score": round(technical_score, 0),
+                "health_status": self._get_health_status(technical_score),
+                
+                # Análisis
+                "category_analysis": category_analysis,
+                "life_projection": life_projection,
+                "recommendations": recommendations
+            }
+        except Exception as e:
+            logger.error(f"Error calculando KPIs avanzados: {e}")
+            logger.error(traceback.format_exc())
+            return self._create_default_kpis()
     
     def _calculate_monthly_opex(self, finance_data):
         """Calcula OPEX mensual total incluyendo mantenimiento"""
         monthly_opex = 0
         
+        if not finance_data:
+            return monthly_opex
+            
         for k, v in finance_data.items():
             val = self._safe_float(v)
             
@@ -281,12 +294,15 @@ class TechViewService:
     
     def _calculate_months_operation(self, device_data, finance_data):
         """Calcula meses de operación basado en fecha de instalación"""
-        install_date = device_data.get('created_at') or finance_data.get('life_installation_date')
-        
-        if install_date:
-            try:
+        try:
+            install_date = device_data.get('created_at') or finance_data.get('life_installation_date')
+            
+            if install_date:
                 # Limpiar y convertir fecha
-                install_str = str(install_date).replace('Z', '+00:00')
+                install_str = str(install_date)
+                if 'Z' in install_str:
+                    install_str = install_str.replace('Z', '+00:00')
+                
                 install_dt = datetime.fromisoformat(install_str)
                 
                 # Calcular diferencia en días
@@ -295,8 +311,8 @@ class TechViewService:
                 
                 # Convertir a meses (mínimo 1)
                 return max(1, days_diff // 30)
-            except Exception as e:
-                logger.error(f"Error calculando meses operación: {e}")
+        except Exception as e:
+            logger.error(f"Error calculando meses operación: {e}")
         
         # Valor por defecto
         return 1
@@ -305,61 +321,68 @@ class TechViewService:
         """Calcula score técnico basado en múltiples factores"""
         score = 100
         
-        # 1. Estado del dispositivo
-        status = device_data.get('status', 'unknown')
-        if status == 'offline': 
-            score -= 40
-        elif status == 'warning': 
-            score -= 20
-        elif status == 'online': 
-            score += 10
-        
-        # 2. Conectividad
-        disconnects = self._safe_int(device_data.get('disconnect_count', 0))
-        if disconnects > 100: 
-            score -= 30
-        elif disconnects > 50: 
-            score -= 20
-        elif disconnects > 10: 
-            score -= 10
-        elif disconnects == 0: 
-            score += 5
-        
-        # 3. Mantenimiento reciente
-        if maintenance_logs:
-            last_log_date = maintenance_logs[0].get('log_date')
-            if last_log_date:
-                try:
-                    last_log = datetime.fromisoformat(str(last_log_date).replace('Z', '+00:00'))
-                    days_since_last = (datetime.now() - last_log).days
-                    
-                    if days_since_last > 90:
-                        score -= 15  # Sin mantenimiento en 3 meses
-                    elif days_since_last < 30:
-                        score += 10  # Mantenimiento reciente
-                except:
-                    pass
-            
-            # 4. Proporción mantenimiento correctivo vs preventivo
-            total_logs = len(maintenance_logs)
-            corrective_logs = sum(1 for log in maintenance_logs if log.get('log_type') == 'corrective')
-            
-            if total_logs > 0:
-                corrective_ratio = corrective_logs / total_logs
-                if corrective_ratio > 0.7:
-                    score -= 25  # Mucho mantenimiento correctivo
-                elif corrective_ratio < 0.3:
-                    score += 15  # Mayormente preventivo
-        
-        # 5. Datos financieros completos
-        if finance_data:
-            required_fields = ['revenue_monthly', 'opex_light', 'opex_rent']
-            missing_fields = sum(1 for field in required_fields if not finance_data.get(field))
-            
-            if missing_fields == 0:
-                score += 10
-            elif missing_fields == len(required_fields):
+        try:
+            # 1. Estado del dispositivo
+            status = device_data.get('status', 'unknown')
+            if status == 'offline': 
+                score -= 40
+            elif status == 'warning': 
                 score -= 20
+            elif status == 'online': 
+                score += 10
+            
+            # 2. Conectividad
+            disconnects = self._safe_int(device_data.get('disconnect_count', 0))
+            if disconnects > 100: 
+                score -= 30
+            elif disconnects > 50: 
+                score -= 20
+            elif disconnects > 10: 
+                score -= 10
+            elif disconnects == 0: 
+                score += 5
+            
+            # 3. Mantenimiento reciente
+            if maintenance_logs:
+                last_log_date = maintenance_logs[0].get('log_date')
+                if last_log_date:
+                    try:
+                        last_log_str = str(last_log_date)
+                        if 'Z' in last_log_str:
+                            last_log_str = last_log_str.replace('Z', '+00:00')
+                        
+                        last_log = datetime.fromisoformat(last_log_str)
+                        days_since_last = (datetime.now() - last_log).days
+                        
+                        if days_since_last > 90:
+                            score -= 15  # Sin mantenimiento en 3 meses
+                        elif days_since_last < 30:
+                            score += 10  # Mantenimiento reciente
+                    except:
+                        pass
+                
+                # 4. Proporción mantenimiento correctivo vs preventivo
+                total_logs = len(maintenance_logs)
+                corrective_logs = sum(1 for log in maintenance_logs if log.get('log_type') == 'corrective')
+                
+                if total_logs > 0:
+                    corrective_ratio = corrective_logs / total_logs
+                    if corrective_ratio > 0.7:
+                        score -= 25  # Mucho mantenimiento correctivo
+                    elif corrective_ratio < 0.3:
+                        score += 15  # Mayormente preventivo
+            
+            # 5. Datos financieros completos
+            if finance_data:
+                required_fields = ['revenue_monthly', 'opex_light', 'opex_rent']
+                missing_fields = sum(1 for field in required_fields if not finance_data.get(field))
+                
+                if missing_fields == 0:
+                    score += 10
+                elif missing_fields == len(required_fields):
+                    score -= 20
+        except Exception as e:
+            logger.error(f"Error calculando score técnico: {e}")
         
         # Asegurar límites
         return max(0, min(100, score))
@@ -377,66 +400,77 @@ class TechViewService:
         if not finance_data:
             return categories
         
-        # CAPEX - Infraestructura
-        infra_keys = ['screen', 'civil', 'structure', 'electrical', 'meter', 'data_install']
-        for key in infra_keys:
-            categories['infrastructure'] += self._safe_float(finance_data.get(f'capex_{key}', 0))
-        
-        # CAPEX - Electrónica
-        electronic_keys = ['nuc', 'ups', 'sending', 'processor', 'modem_wifi', 'modem_sim', 'teltonika', 'hdmi', 'camera']
-        for key in electronic_keys:
-            categories['electronics'] += self._safe_float(finance_data.get(f'capex_{key}', 0))
-        
-        # CAPEX - Mano de obra
-        labor_keys = ['crew', 'logistics', 'transportation', 'legal', 'negotiations', 'admin_qtm', 'inventory', 'first_install']
-        for key in labor_keys:
-            categories['labor'] += self._safe_float(finance_data.get(f'capex_{key}', 0))
-        
-        # OPEX - Operacional
-        opex_keys = ['light', 'internet', 'internet_sim', 'internet_cable', 'rent', 'soil_use', 'taxes', 'insurance', 'srd']
-        for key in opex_keys:
-            categories['operational'] += self._safe_float(finance_data.get(f'opex_{key}', 0))
-        
-        # Licencia anual (convertir a mensual para análisis)
-        if 'opex_license_annual' in finance_data:
-            categories['operational'] += (self._safe_float(finance_data['opex_license_annual']) / 12)
-        
-        # Mantenimiento
-        maint_keys = ['prev_bimonthly', 'cleaning_supplies', 'gas', 'corr_labor', 'corr_parts', 'corr_gas']
-        for key in maint_keys:
-            val = self._safe_float(finance_data.get(f'maint_{key}', 0))
-            if 'bimonthly' in key:
-                categories['maintenance'] += (val / 2)
-            else:
-                categories['maintenance'] += val
-        
-        # Redondear valores
-        for category in categories:
-            categories[category] = round(categories[category], 2)
+        try:
+            # CAPEX - Infraestructura
+            infra_keys = ['screen', 'civil', 'structure', 'electrical', 'meter', 'data_install']
+            for key in infra_keys:
+                categories['infrastructure'] += self._safe_float(finance_data.get(f'capex_{key}', 0))
+            
+            # CAPEX - Electrónica
+            electronic_keys = ['nuc', 'ups', 'sending', 'processor', 'modem_wifi', 'modem_sim', 'teltonika', 'hdmi', 'camera']
+            for key in electronic_keys:
+                categories['electronics'] += self._safe_float(finance_data.get(f'capex_{key}', 0))
+            
+            # CAPEX - Mano de obra
+            labor_keys = ['crew', 'logistics', 'transportation', 'legal', 'negotiations', 'admin_qtm', 'inventory', 'first_install']
+            for key in labor_keys:
+                categories['labor'] += self._safe_float(finance_data.get(f'capex_{key}', 0))
+            
+            # OPEX - Operacional
+            opex_keys = ['light', 'internet', 'internet_sim', 'internet_cable', 'rent', 'soil_use', 'taxes', 'insurance', 'srd']
+            for key in opex_keys:
+                categories['operational'] += self._safe_float(finance_data.get(f'opex_{key}', 0))
+            
+            # Licencia anual (convertir a mensual para análisis)
+            if 'opex_license_annual' in finance_data:
+                categories['operational'] += (self._safe_float(finance_data['opex_license_annual']) / 12)
+            
+            # Mantenimiento
+            maint_keys = ['prev_bimonthly', 'cleaning_supplies', 'gas', 'corr_labor', 'corr_parts', 'corr_gas']
+            for key in maint_keys:
+                val = self._safe_float(finance_data.get(f'maint_{key}', 0))
+                if 'bimonthly' in key:
+                    categories['maintenance'] += (val / 2)
+                else:
+                    categories['maintenance'] += val
+            
+            # Redondear valores
+            for category in categories:
+                categories[category] = round(categories[category], 2)
+        except Exception as e:
+            logger.error(f"Error analizando categorías: {e}")
         
         return categories
     
     def _calculate_life_projection(self, finance_data, device_data):
         """Calcula proyección de vida útil del activo"""
-        # Fecha de instalación
-        install_date = device_data.get('created_at') or finance_data.get('life_installation_date')
-        
-        # Fecha de retiro o renovación
-        retirement_date = finance_data.get('life_retirement_date')
-        renewal_date = finance_data.get('life_renewal_date')
-        
-        # Calcular meses restantes
-        months_remaining = 60  # Por defecto 5 años
-        
-        if install_date:
-            try:
-                install_dt = datetime.fromisoformat(str(install_date).replace('Z', '+00:00'))
+        try:
+            # Fecha de instalación
+            install_date = device_data.get('created_at') or finance_data.get('life_installation_date')
+            
+            # Fecha de retiro o renovación
+            retirement_date = finance_data.get('life_retirement_date')
+            renewal_date = finance_data.get('life_renewal_date')
+            
+            # Calcular meses restantes
+            months_remaining = 60  # Por defecto 5 años
+            
+            if install_date:
+                install_str = str(install_date)
+                if 'Z' in install_str:
+                    install_str = install_str.replace('Z', '+00:00')
+                
+                install_dt = datetime.fromisoformat(install_str)
                 now = datetime.now(install_dt.tzinfo) if install_dt.tzinfo else datetime.now()
                 
                 # Si hay fecha de retiro, calcular meses hasta esa fecha
                 if retirement_date:
                     try:
-                        retire_dt = datetime.fromisoformat(str(retirement_date).replace('Z', '+00:00'))
+                        retire_str = str(retirement_date)
+                        if 'Z' in retire_str:
+                            retire_str = retire_str.replace('Z', '+00:00')
+                        
+                        retire_dt = datetime.fromisoformat(retire_str)
                         months_remaining = max(0, ((retire_dt - now).days // 30))
                     except:
                         pass
@@ -444,7 +478,11 @@ class TechViewService:
                 # Si hay fecha de renovación, ajustar
                 elif renewal_date:
                     try:
-                        renew_dt = datetime.fromisoformat(str(renewal_date).replace('Z', '+00:00'))
+                        renew_str = str(renewal_date)
+                        if 'Z' in renew_str:
+                            renew_str = renew_str.replace('Z', '+00:00')
+                        
+                        renew_dt = datetime.fromisoformat(renew_str)
                         months_remaining = max(0, ((renew_dt - now).days // 30))
                     except:
                         pass
@@ -466,13 +504,14 @@ class TechViewService:
                 # Calcular meses restantes basados en vida útil
                 months_remaining = max(0, estimated_life_months - months_operated)
                 
-            except Exception as e:
-                logger.error(f"Error calculando proyección vida: {e}")
+        except Exception as e:
+            logger.error(f"Error calculando proyección vida: {e}")
+            months_remaining = 60
         
         return {
             "estimated_life_years": round(months_remaining / 12, 1),
             "months_remaining": months_remaining,
-            "estimated_life_months": 96,  # Por defecto
+            "estimated_life_months": 96,
             "retirement_date": retirement_date,
             "renewal_date": renewal_date
         }
@@ -481,69 +520,75 @@ class TechViewService:
         """Genera recomendaciones basadas en métricas financieras"""
         recommendations = []
         
-        # Análisis de margen mensual
-        if monthly_margin < 0:
-            recommendations.append({
-                "type": "critical",
-                "title": "Margen Negativo",
-                "description": "El dispositivo opera con pérdidas mensuales. Revisar costos operativos urgentemente.",
-                "action": "Reducir OPEX o aumentar ingresos"
-            })
-        elif monthly_margin < (monthly_revenue * 0.1):  # Menos del 10% de margen
-            recommendations.append({
-                "type": "warning",
-                "title": "Margen Bajo",
-                "description": f"Margen operativo del {((monthly_margin/monthly_revenue)*100 if monthly_revenue>0 else 0):.1f}%. Considerar optimización.",
-                "action": "Analizar costos fijos y variables"
-            })
-        else:
-            recommendations.append({
-                "type": "success",
-                "title": "Margen Saludable",
-                "description": f"Margen operativo del {((monthly_margin/monthly_revenue)*100 if monthly_revenue>0 else 0):.1f}%. Mantener operación.",
-                "action": "Monitorear tendencias"
-            })
-        
-        # Análisis de rentabilidad a 5 años
-        if net_profit_5year < 0:
-            recommendations.append({
-                "type": "critical",
-                "title": "Rentabilidad Negativa a 5 años",
-                "description": "Proyección indica pérdidas a largo plazo.",
-                "action": "Reevaluar inversión o estrategia comercial"
-            })
-        elif net_profit_5year < capex:  # ROI menor al 100% en 5 años
-            recommendations.append({
-                "type": "warning",
-                "title": "ROI Bajo a Largo Plazo",
-                "description": f"Retorno estimado: {((net_profit_5year/capex)*100 if capex>0 else 0):.1f}% en 5 años.",
-                "action": "Buscar eficiencias operativas"
-            })
-        else:
-            recommendations.append({
-                "type": "success",
-                "title": "Excelente Rentabilidad Futura",
-                "description": f"ROI proyectado: {((net_profit_5year/capex)*100 if capex>0 else 0):.1f}% en 5 años.",
-                "action": "Expandir modelo a ubicaciones similares"
-            })
-        
-        # Análisis de estructura de costos
-        if monthly_opex > monthly_revenue * 0.7:  # OPEX mayor al 70% de ingresos
-            recommendations.append({
-                "type": "warning",
-                "title": "Estructura de Costos Pesada",
-                "description": "Los costos operativos representan más del 70% de los ingresos.",
-                "action": "Optimizar costos fijos y renegociar contratos"
-            })
-        
-        # Recomendación general basada en múltiples factores
-        if len(recommendations) == 2 and recommendations[0]["type"] == "success" and recommendations[1]["type"] == "success":
-            recommendations.append({
-                "type": "success",
-                "title": "Activo Altamente Rentable",
-                "description": "Excelente desempeño tanto a corto como largo plazo.",
-                "action": "Considerar replicar este modelo en otras ubicaciones"
-            })
+        try:
+            # Análisis de margen mensual
+            if monthly_margin < 0:
+                recommendations.append({
+                    "type": "critical",
+                    "title": "Margen Negativo",
+                    "description": "El dispositivo opera con pérdidas mensuales. Revisar costos operativos urgentemente.",
+                    "action": "Reducir OPEX o aumentar ingresos"
+                })
+            elif monthly_margin < (monthly_revenue * 0.1) and monthly_revenue > 0:  # Menos del 10% de margen
+                recommendations.append({
+                    "type": "warning",
+                    "title": "Margen Bajo",
+                    "description": f"Margen operativo del {((monthly_margin/monthly_revenue)*100):.1f}%. Considerar optimización.",
+                    "action": "Analizar costos fijos y variables"
+                })
+            else:
+                if monthly_revenue > 0:
+                    recommendations.append({
+                        "type": "success",
+                        "title": "Margen Saludable",
+                        "description": f"Margen operativo del {((monthly_margin/monthly_revenue)*100):.1f}%. Mantener operación.",
+                        "action": "Monitorear tendencias"
+                    })
+            
+            # Análisis de rentabilidad a 5 años
+            if net_profit_5year < 0:
+                recommendations.append({
+                    "type": "critical",
+                    "title": "Rentabilidad Negativa a 5 años",
+                    "description": "Proyección indica pérdidas a largo plazo.",
+                    "action": "Reevaluar inversión o estrategia comercial"
+                })
+            elif capex > 0 and net_profit_5year < capex:  # ROI menor al 100% en 5 años
+                recommendations.append({
+                    "type": "warning",
+                    "title": "ROI Bajo a Largo Plazo",
+                    "description": f"Retorno estimado: {((net_profit_5year/capex)*100):.1f}% en 5 años.",
+                    "action": "Buscar eficiencias operativas"
+                })
+            elif capex > 0:
+                recommendations.append({
+                    "type": "success",
+                    "title": "Excelente Rentabilidad Futura",
+                    "description": f"ROI proyectado: {((net_profit_5year/capex)*100):.1f}% en 5 años.",
+                    "action": "Expandir modelo a ubicaciones similares"
+                })
+            
+            # Análisis de estructura de costos
+            if monthly_revenue > 0 and monthly_opex > monthly_revenue * 0.7:  # OPEX mayor al 70% de ingresos
+                recommendations.append({
+                    "type": "warning",
+                    "title": "Estructura de Costos Pesada",
+                    "description": "Los costos operativos representan más del 70% de los ingresos.",
+                    "action": "Optimizar costos fijos y renegociar contratos"
+                })
+            
+            # Recomendación general basada en múltiples factores
+            if len(recommendations) >= 2:
+                success_count = sum(1 for r in recommendations if r["type"] == "success")
+                if success_count >= 2:
+                    recommendations.append({
+                        "type": "success",
+                        "title": "Activo Altamente Rentable",
+                        "description": "Excelente desempeño tanto a corto como largo plazo.",
+                        "action": "Considerar replicar este modelo en otras ubicaciones"
+                    })
+        except Exception as e:
+            logger.error(f"Error generando recomendaciones: {e}")
         
         return recommendations
     
@@ -561,17 +606,16 @@ class TechViewService:
             return {"status": "Alerta", "color": "red", "level": 5}
     
     def _calculate_eco_impact(self, totals):
-        """Calcula impacto ecológico (mantenido para compatibilidad)"""
-        # Estimación de kWh ahorrados vs publicidad tradicional
+        """Calcula impacto ecológico"""
         kwh_saved = 1971  # Valor base
         co2_tons = round(kwh_saved * 0.45 / 1000, 2)
-        trees = int(co2_tons * 50)  # Cada árbol absorbe ~20kg CO2/año
+        trees = int(co2_tons * 50)
         
         return {
             "kwh_saved": kwh_saved,
             "co2_tons": co2_tons,
             "trees": trees,
-            "equivalent_cars": round(co2_tons / 4.6, 1)  # Un auto promedio emite 4.6t CO2/año
+            "equivalent_cars": round(co2_tons / 4.6, 1)
         }
     
     def _get_financial_projections(self, device_id):
@@ -594,69 +638,80 @@ class TechViewService:
             logger.error(f"Error obteniendo proyecciones: {e}")
         
         # Datos de ejemplo si no hay historial
-        return [
-            {"date": (datetime.now() - timedelta(days=30*i)).isoformat(), 
-             "revenue": 1500, "opex": 800, "margin": 700}
-            for i in range(6, 0, -1)
-        ]
+        return []
     
     def _generate_summary(self, totals, advanced, device):
         """Genera resumen ejecutivo"""
-        roi_years = totals.get('roi_years', 0)
-        net_profit_5year = advanced.get('net_profit_5year', 0)
-        technical_score = advanced.get('technical_score', 0)
-        
-        # Evaluación financiera
-        if roi_years <= 2 and net_profit_5year > totals.get('capex', 0) * 2:
-            financial_health = "Excelente"
-            financial_score = 5
-        elif roi_years <= 3 and net_profit_5year > totals.get('capex', 0):
-            financial_health = "Bueno"
-            financial_score = 4
-        elif roi_years <= 5:
-            financial_health = "Aceptable"
-            financial_score = 3
-        elif roi_years > 5:
-            financial_health = "Limitado"
-            financial_score = 2
-        else:
-            financial_health = "Crítico"
-            financial_score = 1
-        
-        # Estado operativo
-        health_status = advanced.get('health_status', {}).get('status', 'Desconocido')
-        
-        # Rating general (1-5 estrellas)
-        overall_score = (financial_score + (technical_score / 20)) / 2
-        overall_rating = min(5, max(1, round(overall_score)))
-        
-        return {
-            "financial_health": financial_health,
-            "financial_score": financial_score,
-            "operational_status": health_status,
-            "overall_rating": overall_rating,
-            "key_strengths": self._identify_strengths(totals, advanced),
-            "key_risks": self._identify_risks(totals, advanced)
-        }
+        try:
+            roi_years = totals.get('roi_years', 0)
+            net_profit_5year = advanced.get('net_profit_5year', 0)
+            technical_score = advanced.get('technical_score', 0)
+            capex = totals.get('capex', 0)
+            
+            # Evaluación financiera
+            if roi_years <= 2 and net_profit_5year > capex * 2 and capex > 0:
+                financial_health = "Excelente"
+                financial_score = 5
+            elif roi_years <= 3 and net_profit_5year > capex and capex > 0:
+                financial_health = "Bueno"
+                financial_score = 4
+            elif roi_years <= 5:
+                financial_health = "Aceptable"
+                financial_score = 3
+            elif roi_years > 5:
+                financial_health = "Limitado"
+                financial_score = 2
+            else:
+                financial_health = "Crítico"
+                financial_score = 1
+            
+            # Estado operativo
+            health_status = advanced.get('health_status', {}).get('status', 'Desconocido')
+            
+            # Rating general (1-5 estrellas)
+            overall_score = (financial_score + (technical_score / 20)) / 2
+            overall_rating = min(5, max(1, round(overall_score)))
+            
+            return {
+                "financial_health": financial_health,
+                "financial_score": financial_score,
+                "operational_status": health_status,
+                "overall_rating": overall_rating,
+                "key_strengths": self._identify_strengths(totals, advanced),
+                "key_risks": self._identify_risks(totals, advanced)
+            }
+        except Exception as e:
+            logger.error(f"Error generando summary: {e}")
+            return {
+                "financial_health": "Error",
+                "operational_status": "Desconocido",
+                "overall_rating": 0
+            }
     
     def _identify_strengths(self, totals, advanced):
         """Identifica fortalezas del activo"""
         strengths = []
         
-        if totals.get('margin_monthly', 0) > totals.get('revenue_monthly', 0) * 0.3:
-            strengths.append("Alto margen operativo")
-        
-        if advanced.get('break_even_months', 0) < 24:
-            strengths.append("Rápido retorno de inversión")
-        
-        if advanced.get('reincidence_rate', 0) < 10:
-            strengths.append("Baja tasa de incidencias")
-        
-        if advanced.get('technical_score', 0) >= 80:
-            strengths.append("Excelente salud técnica")
-        
-        if totals.get('roi_years', 0) < 3:
-            strengths.append("ROI atractivo")
+        try:
+            monthly_revenue = totals.get('revenue_monthly', 0)
+            monthly_margin = totals.get('margin_monthly', 0)
+            
+            if monthly_revenue > 0 and monthly_margin > monthly_revenue * 0.3:
+                strengths.append("Alto margen operativo")
+            
+            if advanced.get('break_even_months', 0) < 24 and advanced.get('break_even_months', 0) > 0:
+                strengths.append("Rápido retorno de inversión")
+            
+            if advanced.get('reincidence_rate', 0) < 10:
+                strengths.append("Baja tasa de incidencias")
+            
+            if advanced.get('technical_score', 0) >= 80:
+                strengths.append("Excelente salud técnica")
+            
+            if totals.get('roi_years', 0) < 3:
+                strengths.append("ROI atractivo")
+        except Exception as e:
+            logger.error(f"Error identificando fortalezas: {e}")
         
         return strengths
     
@@ -664,22 +719,52 @@ class TechViewService:
         """Identifica riesgos del activo"""
         risks = []
         
-        if totals.get('margin_monthly', 0) < 0:
-            risks.append("Pérdidas operativas mensuales")
-        
-        if advanced.get('net_profit_5year', 0) < 0:
-            risks.append("Rentabilidad negativa a largo plazo")
-        
-        if advanced.get('reincidence_rate', 0) > 30:
-            risks.append("Alta tasa de fallas técnicas")
-        
-        if advanced.get('technical_score', 0) < 50:
-            risks.append("Salud técnica crítica")
-        
-        if totals.get('opex_monthly', 0) > totals.get('revenue_monthly', 0) * 0.8:
-            risks.append("Costos operativos muy elevados")
+        try:
+            if totals.get('margin_monthly', 0) < 0:
+                risks.append("Pérdidas operativas mensuales")
+            
+            if advanced.get('net_profit_5year', 0) < 0:
+                risks.append("Rentabilidad negativa a largo plazo")
+            
+            if advanced.get('reincidence_rate', 0) > 30:
+                risks.append("Alta tasa de fallas técnicas")
+            
+            if advanced.get('technical_score', 0) < 50:
+                risks.append("Salud técnica crítica")
+            
+            monthly_revenue = totals.get('revenue_monthly', 0)
+            monthly_opex = totals.get('opex_monthly', 0)
+            
+            if monthly_revenue > 0 and monthly_opex > monthly_revenue * 0.8:
+                risks.append("Costos operativos muy elevados")
+        except Exception as e:
+            logger.error(f"Error identificando riesgos: {e}")
         
         return risks
+    
+    def _create_default_kpis(self):
+        """Crea KPIs por defecto en caso de error"""
+        return {
+            "total_current_cost": 0,
+            "accumulated_opex": 0,
+            "real_maintenance_total": 0,
+            "months_operation": 1,
+            "tco_5year": 0,
+            "tco_monthly_equivalent": 0,
+            "five_year_opex": 0,
+            "five_year_maintenance": 0,
+            "net_profit_5year": 0,
+            "annual_projected_margin": 0,
+            "break_even_months": 0,
+            "annual_roi": 0,
+            "operating_margin": 0,
+            "reincidence_rate": 0,
+            "technical_score": 0,
+            "health_status": self._get_health_status(0),
+            "category_analysis": {},
+            "life_projection": {"estimated_life_years": 5, "months_remaining": 60},
+            "recommendations": []
+        }
     
     def _create_error_response(self, device_id, msg):
         """Crea respuesta de error estructurada"""
@@ -695,18 +780,7 @@ class TechViewService:
                 "roi_years": 0
             },
             "financials": {},
-            "advanced_kpis": {
-                "total_current_cost": 0,
-                "accumulated_opex": 0,
-                "months_operation": 1,
-                "tco_5year": 0,
-                "net_profit_5year": 0,
-                "break_even_months": 0,
-                "annual_roi": 0,
-                "operating_margin": 0,
-                "technical_score": 0,
-                "reincidence_rate": 0
-            },
+            "advanced_kpis": self._create_default_kpis(),
             "summary": {
                 "financial_health": "Error",
                 "operational_status": "Desconocido",
@@ -715,62 +789,90 @@ class TechViewService:
         }
     
     def save_device_financials(self, payload):
-        """Guarda datos financieros del dispositivo"""
+        """Guarda datos financieros del dispositivo - VERSIÓN SIMPLIFICADA Y CORREGIDA"""
         try:
             device_id = payload.get('device_id')
             if not device_id: 
                 return False, "device_id requerido"
             
             clean_id = clean_device_id(device_id)
+            logger.info(f"💾 Guardando datos financieros para: {clean_id}")
             
-            # Preparar datos para guardar
+            # Preparar datos básicos para guardar
             data_to_save = {
                 "device_id": clean_id,
-                "updated_at": datetime.now().isoformat(),
-                **{k: v for k, v in payload.items() if k != 'device_id'}
-            }
-            
-            # Convertir campos numéricos
-            int_fields = ['maint_visit_count', 'maint_corr_visit_count', 'maint_crew_size']
-            for field in int_fields:
-                if field in data_to_save:
-                    data_to_save[field] = self._safe_int(data_to_save[field])
-            
-            # Convertir campos float
-            float_fields = [k for k in data_to_save.keys() if any(x in k for x in ['capex_', 'opex_', 'maint_', 'revenue_', 'life_'])]
-            for field in float_fields:
-                if field in data_to_save and data_to_save[field] not in [None, '']:
-                    data_to_save[field] = self._safe_float(data_to_save[field])
-            
-            # Guardar en base de datos
-            # 1. Asegurar que el dispositivo existe
-            self.client.table("devices").upsert({
-                "device_id": clean_id,
                 "updated_at": datetime.now().isoformat()
-            }, on_conflict="device_id").execute()
-            
-            # 2. Guardar datos financieros
-            self.client.table("finances").upsert(data_to_save, on_conflict="device_id").execute()
-            
-            # 3. Registrar en historial
-            history_data = {
-                "device_id": clean_id,
-                "created_at": datetime.now().isoformat(),
-                "revenue_monthly": self._safe_float(data_to_save.get('revenue_monthly', 0)),
-                "opex_monthly": self._calculate_monthly_opex(data_to_save),
-                "margin_monthly": self._safe_float(data_to_save.get('revenue_monthly', 0)) - self._calculate_monthly_opex(data_to_save)
             }
             
+            # Procesar todos los campos del payload
+            for key, value in payload.items():
+                if key == 'device_id' or key == 'cost_type' or key == 'category':
+                    continue  # Saltar campos meta
+                
+                # Procesar valores
+                if value is None or value == '':
+                    continue
+                
+                # Determinar tipo de campo
+                if key in ['maint_crew_size', 'maint_visit_count', 'maint_corr_visit_count']:
+                    # Campos enteros
+                    try:
+                        data_to_save[key] = int(value)
+                    except:
+                        data_to_save[key] = 0
+                elif any(x in key for x in ['capex_', 'opex_', 'maint_', 'revenue_', 'life_']):
+                    # Campos numéricos
+                    try:
+                        data_to_save[key] = float(value)
+                    except:
+                        data_to_save[key] = 0.0
+                else:
+                    # Campos de texto/fecha
+                    data_to_save[key] = value
+            
+            logger.info(f"📊 Datos a guardar: {list(data_to_save.keys())}")
+            
+            # INTENTAR GUARDAR - Versión más simple y robusta
             try:
-                self.client.table("finance_history").insert(history_data).execute()
-            except Exception as e:
-                logger.warning(f"No se pudo guardar historial: {e}")
-            
-            logger.info(f"✅ Datos financieros guardados para {clean_id}")
-            return True, "Datos financieros guardados correctamente"
-            
+                # Verificar si ya existe un registro
+                existing = self.client.table("finances").select("device_id").eq("device_id", clean_id).execute()
+                
+                if existing.data:
+                    # Actualizar registro existente
+                    update_result = self.client.table("finances").update(data_to_save).eq("device_id", clean_id).execute()
+                    logger.info(f"✅ Registro actualizado para {clean_id}")
+                else:
+                    # Crear nuevo registro
+                    insert_result = self.client.table("finances").insert(data_to_save).execute()
+                    logger.info(f"✅ Nuevo registro creado para {clean_id}")
+                
+                # También actualizar/crear en devices para mantener consistencia
+                try:
+                    self.client.table("devices").upsert({
+                        "device_id": clean_id,
+                        "updated_at": datetime.now().isoformat()
+                    }, on_conflict="device_id").execute()
+                except Exception as dev_e:
+                    logger.warning(f"⚠️ No se pudo actualizar tabla devices: {dev_e}")
+                
+                return True, "Datos financieros guardados correctamente"
+                
+            except Exception as db_error:
+                logger.error(f"❌ Error de base de datos: {db_error}")
+                # Intentar método alternativo
+                try:
+                    # Usar upsert directo
+                    upsert_result = self.client.table("finances").upsert(data_to_save, on_conflict="device_id").execute()
+                    logger.info(f"✅ Upsert exitoso para {clean_id}")
+                    return True, "Datos financieros guardados correctamente (upsert)"
+                except Exception as upsert_error:
+                    logger.error(f"❌ Error en upsert: {upsert_error}")
+                    return False, f"Error de base de datos: {str(upsert_error)}"
+                    
         except Exception as e:
-            logger.error(f"❌ Error guardando datos financieros: {e}")
+            logger.error(f"❌ Error general guardando datos: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return False, f"Error al guardar: {str(e)}"
 
 # Instancia global del servicio
@@ -784,136 +886,30 @@ def management():
 
 @bp.route('/api/device/<path:device_id>')
 def api_device(device_id):
-    return jsonify(techview_service.get_device_detail(device_id))
+    try:
+        result = techview_service.get_device_detail(device_id)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error en API device: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
 
 @bp.route('/api/save', methods=['POST'])
 def api_save():
-    success, msg = techview_service.save_device_financials(request.get_json())
-    return jsonify({"success": success, "message": msg, "timestamp": datetime.now().isoformat()}), 200 if success else 500
-
-@bp.route('/api/projections/<path:device_id>')
-def api_projections(device_id):
-    """Endpoint adicional para obtener proyecciones detalladas"""
     try:
-        data = techview_service.get_device_detail(device_id)
-        projections = {
-            "monthly": techview_service._generate_monthly_projections(data['totals'], data['advanced_kpis']),
-            "yearly": techview_service._generate_yearly_projections(data['totals'], data['advanced_kpis']),
-            "sensitivity": techview_service._generate_sensitivity_analysis(data['totals'])
-        }
-        return jsonify(projections)
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "message": "No data provided"}), 400
+        
+        success, msg = techview_service.save_device_financials(data)
+        return jsonify({
+            "success": success, 
+            "message": msg, 
+            "timestamp": datetime.now().isoformat()
+        }), 200 if success else 500
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# Métodos adicionales para proyecciones
-def _generate_monthly_projections(self, totals, advanced):
-    """Genera proyecciones mensuales a 24 meses"""
-    monthly_revenue = totals.get('revenue_monthly', 0)
-    monthly_opex = totals.get('opex_monthly', 0)
-    monthly_margin = totals.get('margin_monthly', 0)
-    
-    projections = []
-    cumulative_revenue = 0
-    cumulative_opex = 0
-    cumulative_margin = 0
-    
-    for month in range(1, 25):
-        # Aplicar crecimiento/reducción gradual
-        growth_factor = 1 + (0.02 * (month // 6))  # 2% crecimiento cada 6 meses
-        month_revenue = monthly_revenue * growth_factor
-        month_opex = monthly_opex * (1 + (0.01 * (month // 12)))  # 1% inflación anual
-        month_margin = month_revenue - month_opex
-        
-        cumulative_revenue += month_revenue
-        cumulative_opex += month_opex
-        cumulative_margin += month_margin
-        
-        projections.append({
-            "month": month,
-            "revenue": round(month_revenue, 2),
-            "opex": round(month_opex, 2),
-            "margin": round(month_margin, 2),
-            "cumulative_revenue": round(cumulative_revenue, 2),
-            "cumulative_opex": round(cumulative_opex, 2),
-            "cumulative_margin": round(cumulative_margin, 2),
-            "roi_to_date": round((cumulative_margin / totals.get('capex', 1)) * 100, 1) if totals.get('capex', 0) > 0 else 0
-        })
-    
-    return projections
-
-def _generate_yearly_projections(self, totals, advanced):
-    """Genera proyecciones anuales a 5 años"""
-    annual_revenue = totals.get('revenue_annual', 0)
-    annual_opex = totals.get('opex_annual', 0)
-    capex = totals.get('capex', 0)
-    
-    projections = []
-    cumulative_net = -capex  # Incluir inversión inicial negativa
-    
-    for year in range(1, 6):
-        # Factores de crecimiento
-        revenue_growth = 1 + (0.05 * year)  # 5% crecimiento anual
-        opex_inflation = 1 + (0.03 * year)  # 3% inflación anual
-        
-        year_revenue = annual_revenue * revenue_growth
-        year_opex = annual_opex * opex_inflation
-        year_net = year_revenue - year_opex
-        
-        cumulative_net += year_net
-        
-        projections.append({
-            "year": year,
-            "revenue": round(year_revenue, 2),
-            "opex": round(year_opex, 2),
-            "net_income": round(year_net, 2),
-            "cumulative_net": round(cumulative_net, 2),
-            "roi_cumulative": round((cumulative_net / capex) * 100, 1) if capex > 0 else 0,
-            "payback_achieved": cumulative_net >= 0 and any(p['cumulative_net'] < 0 for p in projections)
-        })
-    
-    return projections
-
-def _generate_sensitivity_analysis(self, totals):
-    """Análisis de sensibilidad a cambios en variables clave"""
-    base_revenue = totals.get('revenue_monthly', 0)
-    base_opex = totals.get('opex_monthly', 0)
-    capex = totals.get('capex', 0)
-    
-    scenarios = []
-    
-    # Variaciones en ingresos
-    for change in [-0.20, -0.10, 0, 0.10, 0.20]:
-        new_revenue = base_revenue * (1 + change)
-        new_margin = new_revenue - base_opex
-        roi_months = (capex / new_margin) if new_margin > 0 else 999
-        
-        scenarios.append({
-            "type": "revenue_change",
-            "change_percent": change * 100,
-            "new_revenue": round(new_revenue, 2),
-            "new_margin": round(new_margin, 2),
-            "roi_months": round(roi_months, 1),
-            "impact": "Alto" if abs(change) >= 0.15 else "Moderado" if abs(change) >= 0.05 else "Bajo"
-        })
-    
-    # Variaciones en OPEX
-    for change in [-0.15, -0.05, 0, 0.05, 0.15]:
-        new_opex = base_opex * (1 + change)
-        new_margin = base_revenue - new_opex
-        roi_months = (capex / new_margin) if new_margin > 0 else 999
-        
-        scenarios.append({
-            "type": "opex_change",
-            "change_percent": change * 100,
-            "new_opex": round(new_opex, 2),
-            "new_margin": round(new_margin, 2),
-            "roi_months": round(roi_months, 1),
-            "impact": "Alto" if abs(change) >= 0.10 else "Moderado" if abs(change) >= 0.03 else "Bajo"
-        })
-    
-    return scenarios
-
-# Agregar métodos a la clase
-TechViewService._generate_monthly_projections = _generate_monthly_projections
-TechViewService._generate_yearly_projections = _generate_yearly_projections
-TechViewService._generate_sensitivity_analysis = _generate_sensitivity_analysis
+        logger.error(f"Error en API save: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
