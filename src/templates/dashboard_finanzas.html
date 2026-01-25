@@ -29,7 +29,6 @@
             }
         };
     </script>
-    
     <style>
         .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
@@ -66,7 +65,7 @@
         </div>
 
         <div class="flex items-center gap-3">
-            <button onclick="app.loadData()" class="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition">
+            <button onclick="window.location.reload()" class="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition">
                 <span class="material-icons-outlined">refresh</span>
             </button>
         </div>
@@ -169,7 +168,6 @@
             async init() {
                 await this.loadData();
                 this.setupSearch();
-                // Atajo CTRL+K
                 document.addEventListener('keydown', (e) => {
                     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                         e.preventDefault();
@@ -180,8 +178,9 @@
 
             async loadData() {
                 try {
-                    // LLAMADA AL NUEVO ENDPOINT DEL BACKEND
-                    const res = await fetch('/techview/api/dashboard');
+                    // CORRECCIÓN CLAVE: Asegurar la ruta correcta
+                    const res = await fetch('/techview/api/overview');
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const data = await res.json();
                     
                     if (data.overview_data) {
@@ -194,11 +193,12 @@
                     }
                 } catch (e) {
                     console.error("Error loading dashboard:", e);
+                    document.getElementById('assets-table-body').innerHTML = `<tr><td colspan="4" class="p-8 text-center text-red-400 text-xs">Error de conexión: ${e.message}</td></tr>`;
                 }
             }
 
             renderKPIs(t) {
-                const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+                const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n || 0);
                 document.getElementById('kpi-capex').innerText = fmt(t.total_capex);
                 document.getElementById('kpi-opex').innerText = fmt(t.total_monthly_opex);
                 document.getElementById('kpi-revenue').innerText = fmt(t.total_monthly_revenue);
@@ -242,13 +242,19 @@
             renderChart(hist) {
                 const ctx = document.getElementById('financialChart').getContext('2d');
                 if(this.chart) this.chart.destroy();
+                
+                // Fallback si no hay datos históricos
+                const labels = hist?.months?.length ? hist.months : ['N/A'];
+                const sales = hist?.sales?.length ? hist.sales : [0];
+                const costs = hist?.costs?.length ? hist.costs : [0];
+
                 this.chart = new Chart(ctx, {
                     type: 'bar',
                     data: {
-                        labels: hist.months,
+                        labels: labels,
                         datasets: [
-                            { label: 'Ventas', data: hist.sales, backgroundColor: '#10B981', borderRadius: 4 },
-                            { label: 'Costos', data: hist.costs, backgroundColor: '#EF4444', borderRadius: 4 }
+                            { label: 'Ventas', data: sales, backgroundColor: '#10B981', borderRadius: 4 },
+                            { label: 'Costos', data: costs, backgroundColor: '#EF4444', borderRadius: 4 }
                         ]
                     },
                     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { x: { grid: { display: false } }, y: { display: false } } }
