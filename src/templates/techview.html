@@ -72,16 +72,18 @@
                 <button onclick="switchTab('resumen')" class="nav-tab active px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap">Dashboard</button>
                 <button onclick="switchTab('instalacion')" class="nav-tab px-4 py-1.5 rounded-md text-sm font-medium transition-all text-gray-500 hover:text-text-main whitespace-nowrap">Instalación</button>
                 <button onclick="switchTab('gastos')" class="nav-tab px-4 py-1.5 rounded-md text-sm font-medium transition-all text-gray-500 hover:text-text-main whitespace-nowrap">Gastos Mensuales</button>
+                <button onclick="switchTab('pautas')" class="nav-tab px-4 py-1.5 rounded-md text-sm font-medium transition-all text-gray-500 hover:text-text-main whitespace-nowrap">Pautas</button>
                 <button onclick="switchTab('mantenimientos')" class="nav-tab px-4 py-1.5 rounded-md text-sm font-medium transition-all text-gray-500 hover:text-text-main whitespace-nowrap">Mantenimientos</button>
                 <button onclick="switchTab('refacciones')" class="nav-tab px-4 py-1.5 rounded-md text-sm font-medium transition-all text-gray-500 hover:text-text-main whitespace-nowrap">Refacciones</button>
-                <button onclick="switchTab('retiros')" class="nav-tab px-4 py-1.5 rounded-md text-sm font-medium transition-all text-gray-500 hover:text-text-main whitespace-nowrap">Retiros</button>
-                <button onclick="switchTab('reubicaciones')" class="nav-tab px-4 py-1.5 rounded-md text-sm font-medium transition-all text-gray-500 hover:text-text-main whitespace-nowrap">Reubicaciones</button>
             </nav>
         </div>
 
         <div class="flex items-center gap-3">
+            <button onclick="addPauta()" class="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold text-sm transition-colors shadow-lg">
+                <span class="material-symbols-outlined text-lg">add</span> Nueva Pauta
+            </button>
             <button onclick="generateReport()" class="flex items-center gap-2 px-4 py-2 report-btn text-white rounded-lg font-bold text-sm transition-all shadow-lg hover:shadow-xl active:scale-95">
-                <span class="material-symbols-outlined text-lg">description</span> <span class="hidden sm:inline">Generar Reporte PDF</span>
+                <span class="material-symbols-outlined text-lg">description</span> <span class="hidden sm:inline">Reporte PDF</span>
             </button>
             <div id="unsaved-badge" class="hidden px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-full border border-yellow-200 animate-pulse">Cambios sin guardar</div>
             <button onclick="saveAll()" class="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg font-bold text-sm transition-colors shadow-lg shadow-primary/20 active:scale-95">
@@ -118,20 +120,28 @@
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <div class="lg:col-span-4 flex flex-col gap-6">
                     <div class="bg-surface-light rounded-2xl border border-[#cdeadb] shadow-sm p-6">
-                        <h3 class="font-bold text-lg mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-primary">verified</span> Salud del Activo</h3>
+                        <h3 class="font-bold text-lg mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-primary">verified</span> Resumen de Pautas</h3>
                         <div class="space-y-4">
-                            <div>
-                                <div class="flex justify-between text-sm mb-1"><span class="text-text-muted">Score Técnico</span><span class="font-bold" id="tech-score-val">0/100</span></div>
-                                <div class="w-full bg-gray-100 rounded-full h-2"><div id="tech-score-bar" class="bg-primary h-2 rounded-full" style="width: 0%"></div></div>
-                            </div>
                             <div class="grid grid-cols-2 gap-4">
-                                <div class="bg-gray-50 p-3 rounded-lg border border-gray-100"><span class="text-xs text-text-muted block">ROI Actual</span><span class="text-lg font-black text-text-main" id="dash-roi">0m</span></div>
-                                <div class="bg-gray-50 p-3 rounded-lg border border-gray-100"><span class="text-xs text-text-muted block">Incidencias</span><span class="text-lg font-black text-text-main" id="dash-reincidence">0%</span></div>
+                                <div class="bg-green-50 p-3 rounded-lg border border-green-100">
+                                    <span class="text-xs text-green-600 block">Pautas Activas</span>
+                                    <span class="text-lg font-black text-green-700" id="active-pautas-count">0</span>
+                                </div>
+                                <div class="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                                    <span class="text-xs text-blue-600 block">Ingreso Total</span>
+                                    <span class="text-lg font-black text-blue-700" id="total-pautas-revenue">$0</span>
+                                </div>
+                            </div>
+                            <div id="pautas-list" class="space-y-2 max-h-[200px] overflow-y-auto">
+                                <!-- Pautas se cargarán aquí -->
                             </div>
                         </div>
                     </div>
                     <div class="bg-surface-light rounded-2xl border border-[#cdeadb] shadow-sm p-6 flex-1">
-                        <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-lg flex items-center gap-2"><span class="material-symbols-outlined text-orange-500">payments</span> Flujo Operativo</h3><span class="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded font-bold">MENSUAL</span></div>
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-lg flex items-center gap-2"><span class="material-symbols-outlined text-orange-500">payments</span> Flujo Operativo</h3>
+                            <span class="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded font-bold">MENSUAL</span>
+                        </div>
                         <p class="text-sm text-text-muted mb-4">Suma de OPEX + Mantenimiento</p>
                         <div class="flex items-baseline gap-2 mb-4 w-full">
                             <span class="text-2xl font-black text-text-main truncate" id="dash-monthly-cost">$0</span>
@@ -322,6 +332,39 @@
             </div>
         </div>
 
+        <!-- TAB: PAUTAS PUBLICITARIAS -->
+        <div id="tab-pautas" class="tab-content">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-xl text-gray-800">Pautas Publicitarias</h3>
+                    <div class="flex gap-3">
+                        <button onclick="addPauta()" class="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold text-sm">
+                            <span class="material-symbols-outlined">add</span> Nueva Pauta
+                        </button>
+                        <div class="text-sm text-gray-500">Total: <span class="font-bold text-green-600" id="total-pautas">$0</span></div>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 border-b">
+                            <tr>
+                                <th class="p-3 text-xs font-bold text-gray-600 uppercase">Cliente</th>
+                                <th class="p-3 text-xs font-bold text-gray-600 uppercase">Monto</th>
+                                <th class="p-3 text-xs font-bold text-gray-600 uppercase">Fecha Inicio</th>
+                                <th class="p-3 text-xs font-bold text-gray-600 uppercase">Fecha Fin</th>
+                                <th class="p-3 text-xs font-bold text-gray-600 uppercase">Estado</th>
+                                <th class="p-3 text-xs font-bold text-gray-600 uppercase">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pautas-table">
+                            <tr><td colspan="6" class="p-8 text-center text-gray-400">No hay pautas registradas</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <!-- TAB: MANTENIMIENTOS -->
         <div id="tab-mantenimientos" class="tab-content">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -479,51 +522,58 @@
                 </div>
             </div>
         </div>
-
-        <!-- TAB: RETIROS -->
-        <div id="tab-retiros" class="tab-content">
-            <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 max-w-4xl mx-auto">
-                <div class="text-center">
-                    <div class="size-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <span class="material-symbols-outlined text-4xl text-gray-400">engineering</span>
-                    </div>
-                    <h3 class="font-bold text-xl text-gray-800 mb-2">Módulo de Retiros</h3>
-                    <p class="text-gray-500 mb-6">Esta funcionalidad se encuentra en desarrollo</p>
-                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 inline-block">
-                        <p class="text-sm text-yellow-700 font-bold">Próximamente disponibles:</p>
-                        <ul class="text-xs text-yellow-600 mt-2 text-left">
-                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm">schedule</span>Programación de retiros</li>
-                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm">calculate</span>Cálculo de costos de desmontaje</li>
-                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm">inventory_2</span>Gestión de inventario post-retiro</li>
-                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm">description</span>Reportes de baja de activos</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- TAB: REUBICACIONES -->
-        <div id="tab-reubicaciones" class="tab-content">
-            <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 max-w-4xl mx-auto">
-                <div class="text-center">
-                    <div class="size-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <span class="material-symbols-outlined text-4xl text-gray-400">move_up</span>
-                    </div>
-                    <h3 class="font-bold text-xl text-gray-800 mb-2">Módulo de Reubicaciones</h3>
-                    <p class="text-gray-500 mb-6">Esta funcionalidad se encuentra en desarrollo</p>
-                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 inline-block">
-                        <p class="text-sm text-blue-700 font-bold">Próximamente disponibles:</p>
-                        <ul class="text-xs text-blue-600 mt-2 text-left">
-                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm">map</span>Planificación de nuevas ubicaciones</li>
-                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm">local_shipping</span>Logística de transporte</li>
-                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm">architecture</span>Análisis de rentabilidad por ubicación</li>
-                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm">compare_arrows</span>Comparativa de costos de reubicación</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
     </main>
+
+    <!-- Modal para pautas -->
+    <div id="pauta-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-lg">
+            <div class="p-6 border-b">
+                <h3 class="text-lg font-bold text-gray-800" id="pauta-modal-title">Nueva Pauta</h3>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Cliente *</label>
+                    <input type="text" id="pauta-cliente" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Nombre del cliente">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Monto ($) *</label>
+                        <input type="number" id="pauta-monto" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="0.00" step="0.01">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Duración (meses)</label>
+                        <select id="pauta-duracion" class="w-full p-3 border border-gray-300 rounded-lg">
+                            <option value="1">1 mes</option>
+                            <option value="3">3 meses</option>
+                            <option value="6">6 meses</option>
+                            <option value="12">12 meses</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Inicio *</label>
+                        <input type="date" id="pauta-inicio" class="w-full p-3 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Fin *</label>
+                        <input type="date" id="pauta-fin" class="w-full p-3 border border-gray-300 rounded-lg">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+                    <textarea id="pauta-notas" class="w-full p-3 border border-gray-300 rounded-lg" rows="3" placeholder="Detalles adicionales..."></textarea>
+                </div>
+            </div>
+            <div class="p-6 border-t flex justify-between">
+                <button onclick="deletePauta()" id="delete-pauta-btn" class="px-4 py-2 bg-red-500 text-white rounded-lg hidden">Eliminar</button>
+                <div class="flex gap-3">
+                    <button onclick="closePautaModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancelar</button>
+                    <button onclick="savePauta()" id="save-pauta-btn" class="px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-green-600">Guardar Pauta</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div id="loading-overlay" class="loading-overlay hidden"><div class="bg-white p-6 rounded-xl flex flex-col items-center"><div class="spinner mb-4"></div><p class="font-bold">Procesando...</p></div></div>
     <div id="toast-container"></div>
@@ -533,6 +583,8 @@
         let pendingChanges = new Set();
         let chartInstance = null;
         let profitabilityChart = null;
+        let currentPautaId = null;
+        let pautas = [];
 
         document.addEventListener('DOMContentLoaded', () => {
             loadDeviceData();
@@ -570,9 +622,9 @@
             // Total Instalación
             let totalInstalacion = 0;
             const instalacionIds = ['cost_pantalla', 'cost_obra_civil', 'cost_estructura', 'cost_medidor_cfe', 
-                                   'cost_inst_electrica', 'cost_novastar', 'cost_ups', 'cost_nuc', 
-                                   'cost_pastilla_100a', 'cost_pastilla_20a', 'cost_camara', 
-                                   'cost_teltonika', 'cost_poe', 'cost_cable_hdmi', 'cost_ont_fibra'];
+                                  'cost_inst_electrica', 'cost_novastar', 'cost_ups', 'cost_nuc', 
+                                  'cost_pastilla_100a', 'cost_pastilla_20a', 'cost_camara', 
+                                  'cost_teltonika', 'cost_poe', 'cost_cable_hdmi', 'cost_ont_fibra'];
             
             instalacionIds.forEach(id => {
                 const val = parseFloat(document.getElementById(id)?.value) || 0;
@@ -640,27 +692,10 @@
             safeSetCurrency('total-refacciones', totalRefacciones);
         }
 
-        function checkExit() {
-            if (pendingChanges.size > 0 && confirm("Tienes cambios sin guardar. ¿Deseas salir?")) goBack();
-            else if(pendingChanges.size === 0) goBack();
-        }
-        
-        function goBack() { 
-            window.location.href = '/techview'; 
-        }
-        
-        const safeSet = (id, val) => { 
-            const el = document.getElementById(id); 
-            if(el) el.innerText = val; 
-        };
-        
-        const safeSetCurrency = (id, val) => { 
-            safeSet(id, formatCurrency(val)); 
-        };
-
         async function loadDeviceData() {
             showLoading();
             try {
+                // Cargar datos financieros
                 const res = await fetch(`/techview/api/device/${encodeURIComponent(deviceId)}`);
                 const data = await res.json();
                 
@@ -697,6 +732,9 @@
                     safeSet('operating-margin', `${operatingMargin.toFixed(1)}%`);
                 }
 
+                // Cargar pautas
+                await loadPautas();
+
                 if (data.advanced_kpis) {
                     safeSet('tech-score-val', `${data.advanced_kpis.technical_score}/100`);
                     if(document.getElementById('tech-score-bar')) document.getElementById('tech-score-bar').style.width = `${data.advanced_kpis.technical_score}%`;
@@ -716,6 +754,254 @@
                 showToast('Error cargando datos', 'error');
             } 
             finally { hideLoading(); }
+        }
+
+        async function loadPautas() {
+            try {
+                const res = await fetch(`/techview/api/device/${deviceId}/pautas`);
+                if (res.ok) {
+                    pautas = await res.json();
+                    renderPautasList();
+                    updatePautasSummary();
+                }
+            } catch (e) {
+                console.error("Error loading pautas:", e);
+            }
+        }
+
+        function renderPautasList() {
+            const container = document.getElementById('pautas-table');
+            const summaryContainer = document.getElementById('pautas-list');
+            
+            if (!pautas.length) {
+                container.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-400">No hay pautas registradas</td></tr>';
+                summaryContainer.innerHTML = '<div class="text-center p-4 text-gray-400 text-sm">No hay pautas activas</div>';
+                return;
+            }
+
+            // Tabla principal
+            container.innerHTML = pautas.map(pauta => `
+                <tr class="hover:bg-gray-50 border-b">
+                    <td class="p-3">
+                        <div>
+                            <p class="font-medium text-gray-800">${pauta.cliente || 'Sin cliente'}</p>
+                            ${pauta.notas ? `<p class="text-xs text-gray-500 mt-1">${pauta.notas.substring(0, 50)}...</p>` : ''}
+                        </div>
+                    </td>
+                    <td class="p-3">
+                        <span class="font-bold text-green-600">${formatCurrency(pauta.monto)}</span>
+                    </td>
+                    <td class="p-3">
+                        <span class="text-sm">${formatDate(pauta.fecha_inicio)}</span>
+                    </td>
+                    <td class="p-3">
+                        <span class="text-sm ${isPautaActive(pauta) ? 'text-green-600' : 'text-red-600'}">
+                            ${formatDate(pauta.fecha_fin)}
+                        </span>
+                    </td>
+                    <td class="p-3">
+                        <span class="px-2 py-1 text-xs font-bold rounded-full ${getPautaStatusClass(pauta)}">
+                            ${getPautaStatusText(pauta)}
+                        </span>
+                    </td>
+                    <td class="p-3">
+                        <div class="flex gap-2">
+                            <button onclick="editPauta('${pauta.id}')" class="text-blue-600 hover:text-blue-800">
+                                <span class="material-symbols-outlined text-sm">edit</span>
+                            </button>
+                            <button onclick="deletePauta('${pauta.id}')" class="text-red-600 hover:text-red-800">
+                                <span class="material-symbols-outlined text-sm">delete</span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+
+            // Resumen en dashboard
+            const activePautas = pautas.filter(p => isPautaActive(p));
+            const totalRevenue = activePautas.reduce((sum, p) => sum + (parseFloat(p.monto) || 0), 0);
+            
+            safeSet('active-pautas-count', activePautas.length);
+            safeSetCurrency('total-pautas-revenue', totalRevenue);
+            safeSetCurrency('total-pautas', totalRevenue);
+
+            // Lista en dashboard
+            summaryContainer.innerHTML = activePautas.slice(0, 3).map(pauta => `
+                <div class="p-2 border border-green-100 rounded-lg bg-green-50/30">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold text-green-700 truncate">${pauta.cliente}</span>
+                        <span class="text-xs font-bold text-green-600">${formatCurrency(pauta.monto)}</span>
+                    </div>
+                    <div class="text-[10px] text-green-500 flex justify-between mt-1">
+                        <span>${formatDate(pauta.fecha_inicio)}</span>
+                        <span>${formatDate(pauta.fecha_fin)}</span>
+                    </div>
+                </div>
+            `).join('');
+
+            if (activePautas.length > 3) {
+                summaryContainer.innerHTML += `
+                    <button onclick="switchTab('pautas')" class="w-full text-center text-xs text-primary hover:text-green-600 font-bold mt-2">
+                        Ver ${activePautas.length - 3} más...
+                    </button>
+                `;
+            }
+        }
+
+        function isPautaActive(pauta) {
+            const today = new Date();
+            const endDate = new Date(pauta.fecha_fin);
+            return endDate >= today && pauta.status !== 'cancelled';
+        }
+
+        function getPautaStatusClass(pauta) {
+            if (pauta.status === 'cancelled') return 'bg-red-100 text-red-700';
+            if (!isPautaActive(pauta)) return 'bg-gray-100 text-gray-700';
+            return 'bg-green-100 text-green-700';
+        }
+
+        function getPautaStatusText(pauta) {
+            if (pauta.status === 'cancelled') return 'Cancelada';
+            if (!isPautaActive(pauta)) return 'Finalizada';
+            return 'Activa';
+        }
+
+        function addPauta() {
+            currentPautaId = null;
+            document.getElementById('pauta-modal-title').textContent = 'Nueva Pauta';
+            document.getElementById('delete-pauta-btn').classList.add('hidden');
+            document.getElementById('save-pauta-btn').textContent = 'Guardar Pauta';
+            
+            // Limpiar formulario
+            document.getElementById('pauta-cliente').value = '';
+            document.getElementById('pauta-monto').value = '';
+            document.getElementById('pauta-duracion').value = '1';
+            document.getElementById('pauta-inicio').value = new Date().toISOString().split('T')[0];
+            document.getElementById('pauta-fin').value = '';
+            document.getElementById('pauta-notas').value = '';
+            
+            showPautaModal();
+        }
+
+        function editPauta(pautaId) {
+            const pauta = pautas.find(p => p.id == pautaId);
+            if (!pauta) return;
+            
+            currentPautaId = pautaId;
+            document.getElementById('pauta-modal-title').textContent = 'Editar Pauta';
+            document.getElementById('delete-pauta-btn').classList.remove('hidden');
+            document.getElementById('save-pauta-btn').textContent = 'Actualizar Pauta';
+            
+            // Llenar formulario
+            document.getElementById('pauta-cliente').value = pauta.cliente || '';
+            document.getElementById('pauta-monto').value = pauta.monto || '';
+            document.getElementById('pauta-inicio').value = pauta.fecha_inicio || '';
+            document.getElementById('pauta-fin').value = pauta.fecha_fin || '';
+            document.getElementById('pauta-notas').value = pauta.notas || '';
+            
+            showPautaModal();
+        }
+
+        function showPautaModal() {
+            document.getElementById('pauta-modal').classList.remove('hidden');
+        }
+
+        function closePautaModal() {
+            document.getElementById('pauta-modal').classList.add('hidden');
+        }
+
+        async function savePauta() {
+            const pautaData = {
+                device_id: deviceId,
+                cliente: document.getElementById('pauta-cliente').value,
+                monto: parseFloat(document.getElementById('pauta-monto').value) || 0,
+                fecha_inicio: document.getElementById('pauta-inicio').value,
+                fecha_fin: document.getElementById('pauta-fin').value,
+                notas: document.getElementById('pauta-notas').value,
+                status: 'active'
+            };
+
+            if (!pautaData.cliente || pautaData.monto <= 0 || !pautaData.fecha_inicio || !pautaData.fecha_fin) {
+                alert('Por favor complete todos los campos requeridos');
+                return;
+            }
+
+            showLoading();
+            try {
+                const url = currentPautaId ? `/techview/api/pauta/${currentPautaId}` : '/techview/api/pauta';
+                const method = currentPautaId ? 'PUT' : 'POST';
+                
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(pautaData)
+                });
+
+                if (res.ok) {
+                    showToast(currentPautaId ? 'Pauta actualizada' : 'Pauta creada', 'success');
+                    closePautaModal();
+                    
+                    // Actualizar revenue mensual
+                    await updateDeviceRevenue();
+                    
+                    // Recargar datos
+                    await loadDeviceData();
+                } else {
+                    throw new Error('Error al guardar');
+                }
+            } catch (e) {
+                showToast('Error: ' + e.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function deletePauta() {
+            if (!currentPautaId || !confirm('¿Está seguro de eliminar esta pauta?')) return;
+            
+            showLoading();
+            try {
+                const res = await fetch(`/techview/api/pauta/${currentPautaId}`, {
+                    method: 'DELETE'
+                });
+
+                if (res.ok) {
+                    showToast('Pauta eliminada', 'success');
+                    closePautaModal();
+                    await loadDeviceData();
+                } else {
+                    throw new Error('Error al eliminar');
+                }
+            } catch (e) {
+                showToast('Error: ' + e.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function updateDeviceRevenue() {
+            try {
+                // Calcular revenue total de pautas activas
+                const activePautas = pautas.filter(p => isPautaActive(p));
+                const totalRevenue = activePautas.reduce((sum, p) => sum + (parseFloat(p.monto) || 0), 0);
+                
+                // Actualizar en la base de datos
+                await fetch(`/techview/api/device/${deviceId}/revenue`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ revenue_monthly: totalRevenue })
+                });
+            } catch (e) {
+                console.error("Error updating revenue:", e);
+            }
+        }
+
+        function updatePautasSummary() {
+            const activePautas = pautas.filter(p => isPautaActive(p));
+            const totalRevenue = activePautas.reduce((sum, p) => sum + (parseFloat(p.monto) || 0), 0);
+            
+            safeSet('active-pautas-count', activePautas.length);
+            safeSetCurrency('total-pautas-revenue', totalRevenue);
         }
 
         function calculateTCO(totals, advanced) {
@@ -959,6 +1245,8 @@
                     [`Inversión Total:`, document.getElementById('dash-capex')?.innerText || '$0'],
                     [`Gasto Mensual:`, document.getElementById('dash-opex-monthly')?.innerText || '$0'],
                     [`Margen Mensual:`, document.getElementById('dash-margin')?.innerText || '$0'],
+                    [`Pautas Activas:`, document.getElementById('active-pautas-count')?.innerText || '0'],
+                    [`Ingreso por Pautas:`, document.getElementById('total-pautas-revenue')?.innerText || '$0'],
                     [`ROI Actual:`, document.getElementById('dash-roi')?.innerText || '0 meses'],
                     [`Rentabilidad:`, document.getElementById('dash-profitability')?.innerText || '0%'],
                     [`Punto de Equilibrio:`, document.getElementById('break-even')?.innerText || 'N/A'],
@@ -972,74 +1260,33 @@
                     y += 7;
                 });
                 
-                // Recomendación IA
-                y += 5;
-                doc.setFont("helvetica", "bold");
-                doc.setFontSize(12);
-                doc.text("RECOMENDACIÓN IA:", 20, y);
-                y += 7;
-                doc.setFont("helvetica", "normal");
-                doc.setFontSize(10);
-                const recommendation = document.getElementById('ai-recommendation')?.innerText || 'Sin recomendación';
-                doc.text(recommendation, 20, y, {maxWidth: 170});
-                
-                // Instalación
-                y += 20;
-                doc.addPage();
-                doc.setFont("helvetica", "bold");
-                doc.setFontSize(16);
-                doc.text("DETALLE DE INSTALACIÓN", 20, 20);
-                
-                const installationData = [];
-                const instalacionIds = ['cost_pantalla', 'cost_obra_civil', 'cost_estructura', 'cost_medidor_cfe', 
-                                      'cost_inst_electrica', 'cost_novastar', 'cost_ups', 'cost_nuc'];
-                
-                instalacionIds.forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el && el.value) {
-                        const label = el.previousElementSibling?.innerText || id;
-                        installationData.push([label, formatCurrency(parseFloat(el.value) || 0)]);
-                    }
-                });
-                
-                y = 30;
-                doc.setFontSize(10);
-                installationData.forEach(([label, value]) => {
-                    doc.text(label, 20, y);
-                    doc.text(value, 150, y);
+                // Pautas activas
+                if (pautas.filter(p => isPautaActive(p)).length > 0) {
+                    y += 10;
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(14);
+                    doc.text("PAUTAS ACTIVAS", 20, y);
+                    
+                    y += 10;
+                    doc.setFontSize(9);
+                    doc.setFont("helvetica", "bold");
+                    doc.text("Cliente", 20, y);
+                    doc.text("Monto", 100, y);
+                    doc.text("Inicio", 140, y);
+                    doc.text("Fin", 170, y);
+                    
                     y += 6;
-                });
-                
-                // Gastos Mensuales
-                y += 10;
-                doc.setFont("helvetica", "bold");
-                doc.setFontSize(16);
-                doc.text("GASTOS MENSUALES", 20, y);
-                
-                const monthlyData = [];
-                const gastosIds = ['renta_predio', 'costo_cfe', 'internet_fibra', 'internet_redundancia',
-                                 'licencia_teltonika', 'licencia_teamviewer', 'licencia_qtm'];
-                
-                y += 10;
-                doc.setFontSize(10);
-                gastosIds.forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el && el.value) {
-                        const label = el.previousElementSibling?.innerText || id;
-                        doc.text(label, 20, y);
-                        doc.text(formatCurrency(parseFloat(el.value) || 0), 150, y);
+                    doc.setFont("helvetica", "normal");
+                    pautas.filter(p => isPautaActive(p)).forEach(pauta => {
+                        if (y > 270) { doc.addPage(); y = 20; }
+                        
+                        doc.text(pauta.cliente.substring(0, 20), 20, y);
+                        doc.text(formatCurrency(pauta.monto), 100, y);
+                        doc.text(formatDate(pauta.fecha_inicio), 140, y);
+                        doc.text(formatDate(pauta.fecha_fin), 170, y);
                         y += 6;
-                    }
-                });
-                
-                // Totales
-                y += 10;
-                doc.setFont("helvetica", "bold");
-                doc.text("TOTAL INSTALACIÓN:", 20, y);
-                doc.text(document.getElementById('total-instalacion')?.innerText || '$0', 150, y);
-                y += 7;
-                doc.text("TOTAL MENSUAL:", 20, y);
-                doc.text(document.getElementById('total-gastos-mensuales')?.innerText || '$0', 150, y);
+                    });
+                }
                 
                 // Guardar PDF
                 doc.save(`Reporte_${deviceId}_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -1065,9 +1312,19 @@
             return new Intl.NumberFormat('es-MX', { 
                 style: 'currency', 
                 currency: 'MXN',
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
             }).format(val || 0);
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            try {
+                const date = new Date(dateStr);
+                return date.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
+            } catch (e) {
+                return dateStr;
+            }
         }
         
         function showLoading() { document.getElementById('loading-overlay').classList.remove('hidden'); }
@@ -1079,6 +1336,24 @@
             document.getElementById('toast-container').appendChild(t); 
             setTimeout(() => t.remove(), 3000);
         }
+        
+        function checkExit() {
+            if (pendingChanges.size > 0 && confirm("Tienes cambios sin guardar. ¿Deseas salir?")) goBack();
+            else if(pendingChanges.size === 0) goBack();
+        }
+        
+        function goBack() { 
+            window.location.href = '/techview'; 
+        }
+        
+        const safeSet = (id, val) => { 
+            const el = document.getElementById(id); 
+            if(el) el.innerText = val; 
+        };
+        
+        const safeSetCurrency = (id, val) => { 
+            safeSet(id, formatCurrency(val)); 
+        };
     </script>
 </body>
 </html>
