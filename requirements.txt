@@ -1,18 +1,14 @@
-# ============================================
-# DISCORD BOT DEPENDENCIES (CRÍTICAS)
-# ============================================
-discord.py>=2.3.0
-python-dotenv>=1.0.0
-# VERSIÓN CORRECTA Y ESTABLE - EVITA CONFLICTOS
-supabase==1.1.1
-pandas>=2.0.0
-aiohttp>=3.9.0
-nest-asyncio>=1.5.0
+# requirements.txt - VERSIÓN CORREGIDA
 
 # ============================================
-# FLASK APP DEPENDENCIES
+# FLASK APP DEPENDENCIES (SOLO ESTAS)
 # ============================================
 flask>=2.3.0
 flask-cors>=4.0.0
 requests>=2.31.0
 python-dateutil>=2.8.2
+gunicorn>=20.1.0
+
+# Si necesitas estas para Flask, déjalas:
+python-dotenv>=1.0.0
+pandas>=2.0.0  # Solo si lo usa Flask
