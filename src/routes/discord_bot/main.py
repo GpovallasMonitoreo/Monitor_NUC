@@ -1,3 +1,7 @@
+"""
+Main entry point for SyncOps Discord Bot
+"""
+
 import discord
 from discord.ext import commands
 import os
@@ -9,19 +13,23 @@ from dotenv import load_dotenv
 # Añadir ruta para imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
 src_dir = os.path.dirname(current_dir)
-if src_dir not in sys.path:
-    sys.path.insert(0, src_dir)
+project_root = os.path.dirname(src_dir)
 
-# Importar keep_alive solo si estamos en Render
-if os.environ.get('RENDER', False) or os.environ.get('PORT'):
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+# Importar keep_alive para Render
+try:
     from discord_bot.keep_alive import keep_alive
     keep_alive()
-    print("🌐 Modo Render detectado - Servidor web activado")
+    print("🌐 Keep-alive activado para entorno Render")
+except ImportError as e:
+    print(f"⚠️ No se pudo importar keep_alive: {e}")
 
-# Cargar entorno
+# Cargar variables de entorno
 load_dotenv()
 
-# Configuración
+# Configuración del bot
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
@@ -30,10 +38,15 @@ bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 
 @bot.event
 async def on_ready():
-    print(f"✅ Bot conectado como {bot.user}")
-    print(f"🆔 ID del bot: {bot.user.id}")
-    print(f"🌐 Guild ID: {os.getenv('GUILD_ID', 'No configurado')}")
+    """Evento cuando el bot se conecta exitosamente"""
+    print("=" * 50)
+    print(f"✅ BOT CONECTADO EXITOSAMENTE")
+    print(f"🤖 Nombre: {bot.user}")
+    print(f"🆔 ID: {bot.user.id}")
+    print(f"🌐 Servidores: {len(bot.guilds)}")
+    print("=" * 50)
     
+    # Sincronizar comandos de barra
     try:
         synced = await bot.tree.sync()
         print(f"✅ {len(synced)} comandos sincronizados.")
@@ -41,76 +54,126 @@ async def on_ready():
         # Mostrar comandos disponibles
         commands_list = await bot.tree.fetch_commands()
         if commands_list:
-            print("📝 Comandos disponibles:")
+            print("📝 Comandos slash disponibles:")
             for cmd in commands_list:
                 print(f"   - /{cmd.name}: {cmd.description}")
     except Exception as e:
-        print(f"❌ Error sync: {e}")
+        print(f"❌ Error sincronizando comandos: {e}")
         traceback.print_exc()
 
+@bot.event
+async def on_guild_join(guild):
+    """Evento cuando el bot es añadido a un servidor"""
+    print(f"🎉 Bot añadido al servidor: {guild.name} (ID: {guild.id})")
+    
+    # Buscar canal de texto para enviar mensaje de bienvenida
+    for channel in guild.text_channels:
+        if channel.permissions_for(guild.me).send_messages:
+            embed = discord.Embed(
+                title="🤖 SyncOps Bot Conectado",
+                description="Gracias por añadirme a tu servidor!",
+                color=0x3498db
+            )
+            embed.add_field(
+                name="Comandos Disponibles",
+                value="• `/reporte` - Crear un nuevo ticket\n• `/analisis` - Ver estadísticas",
+                inline=False
+            )
+            embed.add_field(
+                name="Soporte",
+                value="Para configurar el bot, contacta al administrador.",
+                inline=False
+            )
+            embed.set_footer(text="SyncOps Sistema de Tickets")
+            
+            try:
+                await channel.send(embed=embed)
+                break
+            except:
+                continue
+
 async def cargar_cogs():
-    """Carga todos los cogs del sistema"""
-    cogs_to_load = ["discord_bot.cogs.tickets", "discord_bot.cogs.analisis"]
+    """Cargar todos los módulos (cogs) del bot"""
+    cogs_to_load = [
+        "discord_bot.cogs.tickets",
+        "discord_bot.cogs.analisis"
+    ]
+    
+    print("📦 Cargando módulos...")
     
     for cog in cogs_to_load:
         try:
             await bot.load_extension(cog)
-            print(f"✅ Cog '{cog}' cargado correctamente.")
+            print(f"   ✅ {cog}")
         except Exception as e:
-            print(f"❌ Error cargando '{cog}': {e}")
+            print(f"   ❌ {cog}: {e}")
             traceback.print_exc()
 
 @bot.event
 async def on_command_error(ctx, error):
     """Manejo de errores de comandos"""
     if isinstance(error, commands.CommandNotFound):
-        await ctx.send("❌ Comando no encontrado. Usa `/reporte` para crear un ticket.")
-    else:
-        print(f"⚠️ Error no manejado: {error}")
-        await ctx.send(f"⚠️ Ocurrió un error: {str(error)[:100]}")
+        return  # Ignorar comandos no encontrados
+    
+    print(f"⚠️ Error en comando {ctx.command}: {error}")
+    
+    embed = discord.Embed(
+        title="❌ Error",
+        description=f"Ocurrió un error: ```{str(error)[:100]}```",
+        color=0xe74c3c
+    )
+    
+    try:
+        await ctx.send(embed=embed)
+    except:
+        pass
 
 async def main():
-    """Función principal de arranque"""
+    """Función principal de arranque del bot"""
     token = os.getenv("DISCORD_TOKEN")
-    if not token:
-        print("❌ ERROR: No hay DISCORD_TOKEN en las variables de entorno")
-        print("💡 Asegúrate de configurar DISCORD_TOKEN en Render.com")
-        return
-
-    print("🚀 Iniciando SyncOps Bot...")
-    print(f"📁 Directorio actual: {os.getcwd()}")
-    print(f"📁 Ruta del bot: {current_dir}")
-    print(f"🐍 Python version: {os.sys.version}")
     
-    # Verificar archivos importantes
-    required_files = [
-        'src/discord_bot/data/sitios.csv',
-        'src/discord_bot/cogs/tickets.py',
-        'src/discord_bot/config/settings.py'
+    if not token:
+        print("❌ ERROR: No se encontró DISCORD_TOKEN en las variables de entorno")
+        print("💡 Configura DISCORD_TOKEN en Render.com → Environment")
+        return
+    
+    print("🚀 Iniciando SyncOps Discord Bot...")
+    print(f"📁 Directorio: {os.getcwd()}")
+    print(f"🔧 Entorno: {'Render' if os.getenv('RENDER') else 'Local'}")
+    print(f"🔑 Token: {'Presente' if token else 'Ausente'}")
+    
+    # Verificar archivos esenciales
+    essential_files = [
+        ('data/sitios.csv', 'src/discord_bot/data/sitios.csv'),
+        ('cogs/tickets.py', 'src/discord_bot/cogs/tickets.py'),
+        ('config/settings.py', 'src/discord_bot/config/settings.py')
     ]
-    for file in required_files:
-        if os.path.exists(file):
-            print(f"✅ {file} encontrado")
+    
+    print("🔍 Verificando archivos esenciales...")
+    for file_name, file_path in essential_files:
+        if os.path.exists(file_path):
+            print(f"   ✅ {file_name}")
         else:
-            print(f"⚠️ {file} no encontrado")
-
+            print(f"   ❌ {file_name} (no encontrado en {file_path})")
+    
     async with bot:
-        await cargar_cogs()
         try:
-            print(f"🔑 Token length: {len(token)} caracteres")
+            await cargar_cogs()
+            print("✅ Todos los módulos cargados")
+            print("🔗 Conectando a Discord...")
             await bot.start(token)
         except discord.LoginFailure:
-            print("❌ ERROR: Token de Discord inválido")
+            print("❌ ERROR: Token de Discord inválido o expirado")
+        except KeyboardInterrupt:
+            print("\n👋 Bot detenido manualmente")
         except Exception as e:
-            print(f"❌ Error crítico al iniciar el bot: {e}")
+            print(f"💥 Error crítico: {e}")
             traceback.print_exc()
 
-# Punto de entrada principal
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\n👋 Bot detenido por el usuario")
+        print("\n👋 Programa terminado")
     except Exception as e:
-        print(f"💥 Error fatal: {e}")
-        traceback.print_exc()
+        print(f"💥 Error en ejecución principal: {e}")
