@@ -158,4 +158,39 @@ COLOR_ADVERTENCIA = 0xE67E22  # Naranja oscuro advertencia
 # ==============================================================================
 
 SLA_DEFAULT = 24      # Horas por defecto
-SLA_URGENTE = 4
+SLA_URGENTE = 4       # Horas para tickets urgentes
+SLA_CRITICO = 1       # Horas para tickets críticos
+
+# ==============================================================================
+# SEGURIDAD
+# ==============================================================================
+
+PIN_SECRET = os.getenv("PIN_SECRET", "1234")
+
+# ==============================================================================
+# ENTORNO
+# ==============================================================================
+
+IS_RENDER = os.environ.get('RENDER') == 'true' or os.environ.get('PORT') is not None
+ENVIRONMENT = "production" if IS_RENDER else "development"
+
+print(f"🌍 Entorno: {ENVIRONMENT}")
+print(f"🏗️  Estructura: {project_root}")
+print(f"🔧 Configuración: {'✅ Lista' if config_ok else '❌ Con errores'}")
+
+# ==============================================================================
+# CONSTANTES ADICIONALES
+# ==============================================================================
+
+# Límites
+MAX_TICKETS_POR_USUARIO = 10
+MAX_SITIOS_AUTOCOMPLETE = 25
+MAX_DESCRIPCION_LENGTH = 500
+
+# Rutas de archivos
+RUTA_SITIOS_CSV = os.path.join(discord_bot_dir, 'data', 'sitios.csv')
+RUTA_LOGS = os.path.join(discord_bot_dir, 'logs')
+
+# Crear directorio de logs si no existe
+if not os.path.exists(RUTA_LOGS):
+    os.makedirs(RUTA_LOGS, exist_ok=True)
