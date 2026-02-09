@@ -1,4 +1,4 @@
-# requirements.txt - Versión limpia
+# requirements.txt - AÑADE supabase
 
 # Flask y dependencias básicas
 flask>=3.0.0
@@ -11,5 +11,19 @@ flask-cors>=4.0.0
 # Utilidades
 requests>=2.31.0
 
-# Si realmente necesitas pandas (verifica)
-# pandas>=2.0.0
+# Supabase (CRÍTICO - tu app lo necesita)
+supabase>=1.1.0
+
+# Pandas (si tu app lo usa, déjalo)
+pandas>=2.0.0
+
+# Otras dependencias que tu app pueda necesitar
+# aiohttp>=3.9.0  # Si usas async
+# nest-asyncio>=1.5.0  # Si usas async en Flask
+
+# Dependencias adicionales para supabase (opcional, pero recomendado)
+httpx>=0.24.0
+postgrest>=0.10.0
+realtime>=1.0.0
+gotrue>=1.0.0
+storage3>=0.6.0
