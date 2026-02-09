@@ -1,64 +1,8 @@
+# render.yaml - ELIMINADO EL SERVICIO DE DISCORD
+
 services:
   # ============================================
-  # SERVICIO 1: DISCORD BOT
-  # ============================================
-  - type: web
-    name: syncops-discord-bot
-    env: python
-    runtime: python
-    region: oregon  # o virginia, frankfurt, etc.
-    
-    # Comandos de build y start
-    buildCommand: |
-      chmod +x build.sh
-      ./build.sh
-    startCommand: |
-      chmod +x start.sh
-      ./start.sh discord
-    
-    # Variables de entorno (SEGURAS - sync: false)
-    envVars:
-      # DISCORD (SECRETO)
-      - key: DISCORD_TOKEN
-        sync: false
-        generateValue: false
-      
-      # SUPABASE (SECRETO)
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_KEY
-        sync: false
-      
-      # CONFIGURACIÓN
-      - key: GUILD_ID
-        value: 1448770446638973131
-      - key: CANAL_GENERAL_ID
-        value: 1457449842107220123
-      - key: PIN_SECRET
-        value: "1234"
-      
-      # RENDER
-      - key: RENDER
-        value: "true"
-      - key: PORT
-        value: 10000
-      - key: PYTHON_VERSION
-        value: 3.11.0
-    
-    # Plan y auto-deploy
-    plan: free
-    autoDeploy: true
-    
-    # Health check
-    healthCheckPath: /health
-    healthCheckTimeout: 30
-    
-    # Dominios (opcional)
-    # domains:
-    #   - syncops-bot.onrender.com
-
-  # ============================================
-  # SERVICIO 2: FLASK API
+  # SERVICIO: FLASK API (ÚNICO)
   # ============================================
   - type: web
     name: monitor-nuc-api
@@ -66,22 +10,19 @@ services:
     runtime: python
     region: oregon
     
-    buildCommand: |
-      chmod +x build.sh
-      ./build.sh
-    startCommand: |
-      chmod +x start.sh
-      ./start.sh flask
+    # Comandos simplificados - no necesitas scripts
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn src.routes.app:app --bind 0.0.0.0:$PORT
     
     envVars:
       - key: FLASK_ENV
         value: production
       - key: FLASK_APP
-        value: src/routes/app.py
+        value: src.routes.app:app
       - key: RENDER
         value: "true"
       - key: PORT
-        value: 10001  # Diferente puerto para evitar conflicto
+        value: 10000
     
     plan: free
     autoDeploy: true
