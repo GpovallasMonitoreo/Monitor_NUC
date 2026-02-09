@@ -1,10 +1,10 @@
 # ============================================
-# DISCORD BOT DEPENDENCIES
+# DISCORD BOT DEPENDENCIES (CRÍTICAS)
 # ============================================
 discord.py>=2.3.0
 python-dotenv>=1.0.0
-# ESPECIFICA UNA VERSIÓN CONCRETA DE SUPABASE PARA EVITAR CONFLICTOS
-supabase==1.4.3  # <-- CAMBIO CRÍTICO: Usar '==' en lugar de '>='
+# VERSIÓN CORRECTA Y ESTABLE - EVITA CONFLICTOS
+supabase==1.1.1
 pandas>=2.0.0
 aiohttp>=3.9.0
 nest-asyncio>=1.5.0
