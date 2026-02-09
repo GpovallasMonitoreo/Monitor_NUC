@@ -1,4 +1,4 @@
-# Discord Bot
+# Discord Bot Dependencies
 discord.py>=2.3.0
 python-dotenv>=1.0.0
 supabase>=1.1.0
@@ -6,13 +6,10 @@ pandas>=2.0.0
 aiohttp>=3.9.0
 nest-asyncio>=1.5.0
 
-
-
-flask
-flask-cors
-gunicorn
-python-dotenv
-supabase
-requests
-psycopg2-binary==2.9.9
-
+# Flask App Dependencies (ajusta según tus necesidades)
+flask>=2.3.0
+flask-cors>=4.0.0
+flask-sqlalchemy>=3.0.0
+flask-migrate>=4.0.0
+requests>=2.31.0
+python-dateutil>=2.8.2
