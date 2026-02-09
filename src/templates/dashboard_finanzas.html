@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>Argos DOOH - Dashboard Principal</title>
+    <title>Argos DOOH - Dashboard Finanzas</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Cargar Supabase primero -->
@@ -53,30 +53,36 @@
                 </div>
                 <div class="flex flex-col">
                     <h1 class="text-slate-900 dark:text-white text-base font-bold leading-none tracking-tight">Argos DOOH</h1>
-                    <p class="text-slate-500 dark:text-slate-400 text-xs font-medium mt-1">Centro de Comando</p>
+                    <p class="text-slate-500 dark:text-slate-400 text-xs font-medium mt-1">Dashboard Finanzas</p>
                 </div>
             </div>
         </div>
         
         <nav class="flex-1 overflow-y-auto px-3 py-6 space-y-1">
-            <a href="index.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/10 text-primary dark:text-primary transition-colors group">
+            <!-- Enlace a tu index principal -->
+            <a href="/" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group">
+                <span class="material-symbols-outlined">arrow_back</span>
+                <span class="text-sm font-medium">Volver al Sistema Principal</span>
+            </a>
+            
+            <a href="dashboard_finanzas.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/10 text-primary dark:text-primary transition-colors group">
                 <span class="material-symbols-outlined">dashboard</span>
-                <span class="text-sm font-semibold">Dashboard</span>
+                <span class="text-sm font-semibold">Dashboard Finanzas</span>
             </a>
             
             <a href="pantallas.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group">
                 <span class="material-symbols-outlined">tv</span>
-                <span class="text-sm font-medium">Pantallas</span>
+                <span class="text-sm font-medium">Todas las Pantallas</span>
             </a>
             
             <a href="inventario.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group">
                 <span class="material-symbols-outlined">inventory_2</span>
-                <span class="text-sm font-medium">Inventario</span>
+                <span class="text-sm font-medium">Inventario Global</span>
             </a>
             
             <a href="reportes.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group">
                 <span class="material-symbols-outlined">summarize</span>
-                <span class="text-sm font-medium">Generar Reportes</span>
+                <span class="text-sm font-medium">Generar Reportes PDF</span>
             </a>
             
             <a href="csv.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group">
@@ -91,8 +97,8 @@
                     <span class="material-symbols-outlined text-primary text-sm">person</span>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-slate-900 dark:text-white truncate">Administrador</p>
-                    <p class="text-xs text-slate-500 truncate">Sistema Argos</p>
+                    <p class="text-sm font-medium text-slate-900 dark:text-white truncate">Departamento Finanzas</p>
+                    <p class="text-xs text-slate-500 truncate">Sistema Argos DOOH</p>
                 </div>
             </div>
         </div>
@@ -102,7 +108,7 @@
     <main class="flex-1 flex flex-col h-full overflow-hidden bg-background-light dark:bg-background-dark">
         <!-- Top Header -->
         <header class="flex h-16 items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 bg-surface-light/80 dark:bg-surface-dark/80 px-8 backdrop-blur-md sticky top-0 z-10">
-            <h2 class="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Dashboard Principal</h2>
+            <h2 class="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Dashboard Financiero</h2>
             <div class="flex items-center gap-4">
                 <div class="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg">
                     <span class="material-symbols-outlined text-slate-500 text-sm">calendar_today</span>
@@ -122,7 +128,7 @@
                     <div class="kpi-card bg-white dark:bg-surface-dark rounded-xl p-6 shadow-sm border border-slate-200/60 dark:border-slate-800 fade-in">
                         <div class="flex justify-between items-start">
                             <div>
-                                <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Total Pantallas</p>
+                                <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Total Pantallas Activas</p>
                                 <h3 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight" id="total-screens">0</h3>
                             </div>
                             <div class="p-2 bg-blue-100 dark:bg-blue-500/20 rounded-lg text-blue-600 dark:text-blue-400">
@@ -177,15 +183,15 @@
                     <div class="kpi-card bg-white dark:bg-surface-dark rounded-xl p-6 shadow-sm border border-slate-200/60 dark:border-slate-800 fade-in" style="animation-delay: 0.3s;">
                         <div class="flex justify-between items-start">
                             <div>
-                                <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Uptime Promedio</p>
-                                <h3 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight" id="average-uptime">0%</h3>
+                                <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Margen de Ganancia</p>
+                                <h3 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight" id="profit-margin">0%</h3>
                             </div>
                             <div class="p-2 bg-cyan-100 dark:bg-cyan-500/20 rounded-lg text-cyan-600 dark:text-cyan-400">
-                                <span class="material-symbols-outlined text-[20px]">verified</span>
+                                <span class="material-symbols-outlined text-[20px]">show_chart</span>
                             </div>
                         </div>
                         <div class="mt-4">
-                            <span class="text-xs text-emerald-600 dark:text-emerald-400" id="uptime-status">Cargando...</span>
+                            <span class="text-xs text-emerald-600 dark:text-emerald-400" id="margin-status">Cargando...</span>
                         </div>
                     </div>
                 </div>
@@ -200,23 +206,23 @@
                     </div>
                     
                     <div class="bg-white dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-800 p-6">
-                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-6">Distribución de Pantallas por Estado</h3>
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-6">Distribución por Estado</h3>
                         <div class="h-80">
                             <canvas id="statusChart"></canvas>
                         </div>
                     </div>
                 </div>
 
-                <!-- Pantallas Destacadas -->
+                <!-- Pantallas con Mejor ROI -->
                 <div class="mb-8">
                     <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-xl font-bold text-slate-900 dark:text-white">Pantallas Destacadas</h3>
+                        <h3 class="text-xl font-bold text-slate-900 dark:text-white">Pantallas con Mejor ROI</h3>
                         <a href="pantallas.html" class="text-sm font-medium text-primary hover:text-primary-dark transition">
                             Ver todas las pantallas →
                         </a>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="featured-screens">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="best-roi-screens">
                         <!-- Las pantallas se cargarán aquí -->
                         <div class="col-span-full text-center py-12 text-slate-400">
                             <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
@@ -225,17 +231,17 @@
                     </div>
                 </div>
 
-                <!-- Alertas Recientes -->
+                <!-- Alertas Financieras -->
                 <div class="bg-white dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-800 p-6">
                     <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-lg font-bold text-slate-900 dark:text-white">Alertas Recientes</h3>
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white">Alertas Financieras</h3>
                         <span class="px-2 py-1 bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold rounded" id="alerts-count">0 activas</span>
                     </div>
                     
-                    <div class="space-y-4" id="recent-alerts">
+                    <div class="space-y-4" id="financial-alerts">
                         <div class="text-center py-8 text-slate-400">
                             <span class="material-symbols-outlined text-2xl">notifications_none</span>
-                            <p class="mt-2">No hay alertas recientes</p>
+                            <p class="mt-2">No hay alertas financieras</p>
                         </div>
                     </div>
                 </div>
@@ -264,7 +270,7 @@
 
     async function loadDashboardData() {
         try {
-            console.log('🔄 Cargando datos del dashboard...');
+            console.log('🔄 Cargando datos financieros...');
             
             if (!window.supabaseClient) {
                 throw new Error('Supabase no está inicializado');
@@ -278,25 +284,25 @@
 
             if (error) throw error;
 
-            // Actualizar KPIs
-            updateKPIs(screens);
+            // Actualizar KPIs financieros
+            updateFinancialKPIs(screens);
             
-            // Actualizar pantallas destacadas
-            updateFeaturedScreens(screens);
+            // Actualizar pantallas con mejor ROI
+            updateBestROIScreens(screens);
             
-            // Actualizar alertas
-            updateAlerts(screens);
+            // Actualizar alertas financieras
+            updateFinancialAlerts(screens);
             
             // Actualizar gráficas
             updateCharts(screens);
 
         } catch (error) {
             console.error('❌ Error cargando datos:', error);
-            showNotification('Error al cargar datos del dashboard', 'error');
+            showNotification('Error al cargar datos financieros', 'error');
         }
     }
 
-    function updateKPIs(screens) {
+    function updateFinancialKPIs(screens) {
         const totalScreens = screens.length;
         const onlineScreens = screens.filter(s => s.estado === 'online').length;
         const maintenanceScreens = screens.filter(s => s.estado === 'maintenance').length;
@@ -304,11 +310,11 @@
         
         const totalRevenue = screens.reduce((sum, s) => sum + (s.ingresos_mensuales || 0), 0);
         const totalExpenses = screens.reduce((sum, s) => sum + (s.gastos_mensuales || 0), 0);
+        const totalProfit = totalRevenue - totalExpenses;
+        const profitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+        
         const averageROI = screens.length > 0 
             ? screens.reduce((sum, s) => sum + (s.roi || 0), 0) / screens.length 
-            : 0;
-        const averageUptime = screens.length > 0
-            ? screens.reduce((sum, s) => sum + (parseFloat(s.uptime) || 0), 0) / screens.length
             : 0;
 
         // Actualizar elementos DOM
@@ -319,7 +325,7 @@
         
         document.getElementById('monthly-revenue').textContent = `$${totalRevenue.toLocaleString()}`;
         document.getElementById('average-roi').textContent = averageROI.toFixed(1);
-        document.getElementById('average-uptime').textContent = `${averageUptime.toFixed(1)}%`;
+        document.getElementById('profit-margin').textContent = `${profitMargin.toFixed(1)}%`;
         
         // Actualizar tendencia de ingresos
         const revenueTrend = document.getElementById('revenue-trend');
@@ -337,22 +343,25 @@
         const roiPercentage = Math.min((averageROI / 24) * 100, 100);
         document.getElementById('roi-bar').style.width = `${roiPercentage}%`;
         
-        // Actualizar estado de uptime
-        const uptimeStatus = document.getElementById('uptime-status');
-        if (averageUptime >= 99) {
-            uptimeStatus.textContent = 'Excelente desempeño';
-            uptimeStatus.className = 'text-xs text-emerald-600 dark:text-emerald-400';
-        } else if (averageUptime >= 95) {
-            uptimeStatus.textContent = 'Buen desempeño';
-            uptimeStatus.className = 'text-xs text-blue-600 dark:text-blue-400';
+        // Actualizar estado de margen
+        const marginStatus = document.getElementById('margin-status');
+        if (profitMargin >= 50) {
+            marginStatus.textContent = 'Margen excelente';
+            marginStatus.className = 'text-xs text-emerald-600 dark:text-emerald-400';
+        } else if (profitMargin >= 30) {
+            marginStatus.textContent = 'Margen saludable';
+            marginStatus.className = 'text-xs text-blue-600 dark:text-blue-400';
+        } else if (profitMargin >= 10) {
+            marginStatus.textContent = 'Margen aceptable';
+            marginStatus.className = 'text-xs text-amber-600 dark:text-amber-400';
         } else {
-            uptimeStatus.textContent = 'Requiere atención';
-            uptimeStatus.className = 'text-xs text-red-600 dark:text-red-400';
+            marginStatus.textContent = 'Margen bajo';
+            marginStatus.className = 'text-xs text-red-600 dark:text-red-400';
         }
     }
 
-    function updateFeaturedScreens(screens) {
-        const container = document.getElementById('featured-screens');
+    function updateBestROIScreens(screens) {
+        const container = document.getElementById('best-roi-screens');
         
         if (!screens || screens.length === 0) {
             container.innerHTML = `
@@ -365,63 +374,71 @@
         }
 
         // Ordenar por ROI (mejores primero) y tomar las primeras 3
-        const featured = [...screens]
+        const bestROI = [...screens]
             .sort((a, b) => (b.roi || 0) - (a.roi || 0))
             .slice(0, 3);
 
-        container.innerHTML = featured.map(screen => {
+        container.innerHTML = bestROI.map(screen => {
             const statusConfig = getStatusConfig(screen.estado);
             const profit = (screen.ingresos_mensuales || 0) - (screen.gastos_mensuales || 0);
+            const profitMargin = (screen.ingresos_mensuales || 0) > 0 
+                ? (profit / (screen.ingresos_mensuales || 1) * 100) 
+                : 0;
             
             return `
                 <div class="screen-card bg-white dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-800 p-6">
                     <div class="flex items-start justify-between mb-4">
                         <div>
-                            <div class="inline-flex items-center gap-2 px-3 py-1 ${statusConfig.bgClass} ${statusConfig.textClass} rounded-full text-xs font-medium mb-2">
-                                <span class="size-1.5 rounded-full ${statusConfig.dotClass}"></span>
-                                ${statusConfig.text}
+                            <div class="inline-flex items-center gap-2 px-3 py-1 ${profitMargin >= 50 ? 'bg-emerald-100 text-emerald-700' : profitMargin >= 30 ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'} rounded-full text-xs font-medium mb-2">
+                                <span class="material-symbols-outlined text-sm">trending_up</span>
+                                ROI: ${screen.roi?.toFixed(1) || '0.0'} meses
                             </div>
                             <h4 class="font-bold text-slate-900 dark:text-white">${screen.nombre}</h4>
                             <p class="text-sm text-slate-500">${screen.id}</p>
                         </div>
                         <div class="size-12 rounded-lg ${statusConfig.gradient} flex items-center justify-center text-white">
-                            <span class="material-symbols-outlined">tv</span>
+                            <span class="material-symbols-outlined">paid</span>
                         </div>
                     </div>
                     <div class="space-y-3">
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm text-slate-500">ROI:</span>
-                            <span class="font-bold ${screen.roi < 18 ? 'text-emerald-600' : screen.roi < 24 ? 'text-blue-600' : 'text-red-600'}">
-                                ${screen.roi?.toFixed(1) || '0.0'} meses
-                            </span>
-                        </div>
                         <div class="flex items-center justify-between">
                             <span class="text-sm text-slate-500">Ingresos:</span>
                             <span class="font-bold text-slate-900 dark:text-white">$${(screen.ingresos_mensuales || 0).toLocaleString()}</span>
                         </div>
                         <div class="flex items-center justify-between">
-                            <span class="text-sm text-slate-500">Uptime:</span>
-                            <span class="font-bold text-cyan-600 dark:text-cyan-400">${screen.uptime || '0%'}</span>
+                            <span class="text-sm text-slate-500">Gastos:</span>
+                            <span class="font-bold text-red-600 dark:text-red-400">$${(screen.gastos_mensuales || 0).toLocaleString()}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-slate-500">Margen:</span>
+                            <span class="font-bold ${profitMargin >= 50 ? 'text-emerald-600' : profitMargin >= 30 ? 'text-blue-600' : 'text-amber-600'}">
+                                ${profitMargin.toFixed(1)}%
+                            </span>
                         </div>
                     </div>
                     <a href="techview.html?device_id=${screen.id}" class="mt-6 block w-full text-center px-4 py-2.5 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition">
-                        Ver Detalles
+                        Ver Análisis Financiero
                     </a>
                 </div>
             `;
         }).join('');
     }
 
-    function updateAlerts(screens) {
-        const container = document.getElementById('recent-alerts');
+    function updateFinancialAlerts(screens) {
+        const container = document.getElementById('financial-alerts');
         const alertsCount = document.getElementById('alerts-count');
         
-        // Encontrar pantallas con alertas
-        const alerts = screens.filter(screen => 
-            screen.estado === 'offline' || 
-            screen.estado === 'maintenance' ||
-            (screen.uptime && parseFloat(screen.uptime) < 95)
-        );
+        // Encontrar pantallas con alertas financieras
+        const alerts = screens.filter(screen => {
+            const profit = (screen.ingresos_mensuales || 0) - (screen.gastos_mensuales || 0);
+            const profitMargin = (screen.ingresos_mensuales || 0) > 0 
+                ? (profit / (screen.ingresos_mensuales || 1) * 100) 
+                : 0;
+            
+            return profitMargin < 10 || // Margen muy bajo
+                   (screen.roi || 0) > 36 || // ROI muy alto
+                   profit < 0; // Pérdidas
+        });
         
         alertsCount.textContent = `${alerts.length} activa${alerts.length !== 1 ? 's' : ''}`;
         
@@ -429,40 +446,45 @@
             container.innerHTML = `
                 <div class="text-center py-8 text-slate-400">
                     <span class="material-symbols-outlined text-2xl">check_circle</span>
-                    <p class="mt-2">Sistema estable</p>
+                    <p class="mt-2">Estado financiero estable</p>
                 </div>
             `;
             return;
         }
         
         container.innerHTML = alerts.map(screen => {
+            const profit = (screen.ingresos_mensuales || 0) - (screen.gastos_mensuales || 0);
+            const profitMargin = (screen.ingresos_mensuales || 0) > 0 
+                ? (profit / (screen.ingresos_mensuales || 1) * 100) 
+                : 0;
+            
             let alertType = '';
             let alertMessage = '';
             let alertIcon = '';
             let alertClass = '';
             
-            if (screen.estado === 'offline') {
-                alertType = 'Crítica';
-                alertMessage = `${screen.nombre} desconectada`;
+            if (profit < 0) {
+                alertType = 'PÉRDIDAS';
+                alertMessage = `${screen.nombre} con pérdidas de $${Math.abs(profit).toLocaleString()}`;
                 alertIcon = 'warning';
                 alertClass = 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20';
-            } else if (screen.estado === 'maintenance') {
-                alertType = 'Mantenimiento';
-                alertMessage = `${screen.nombre} en mantenimiento`;
-                alertIcon = 'engineering';
-                alertClass = 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20';
-            } else if (parseFloat(screen.uptime) < 95) {
-                alertType = 'Advertencia';
-                alertMessage = `${screen.nombre} uptime bajo: ${screen.uptime}`;
+            } else if (profitMargin < 10) {
+                alertType = 'MARGEN BAJO';
+                alertMessage = `${screen.nombre} margen solo ${profitMargin.toFixed(1)}%`;
                 alertIcon = 'info';
+                alertClass = 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20';
+            } else if ((screen.roi || 0) > 36) {
+                alertType = 'ROI ALTO';
+                alertMessage = `${screen.nombre} ROI de ${screen.roi?.toFixed(1) || '0'} meses`;
+                alertIcon = 'trending_up';
                 alertClass = 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20';
             }
             
             return `
                 <div class="flex items-center justify-between p-4 ${alertClass} rounded-lg border">
                     <div class="flex items-center gap-3">
-                        <div class="p-2 ${alertIcon === 'warning' ? 'bg-red-100 dark:bg-red-500/20' : alertIcon === 'engineering' ? 'bg-amber-100 dark:bg-amber-500/20' : 'bg-blue-100 dark:bg-blue-500/20'} rounded-lg">
-                            <span class="material-symbols-outlined ${alertIcon === 'warning' ? 'text-red-600 dark:text-red-400' : alertIcon === 'engineering' ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'}">${alertIcon}</span>
+                        <div class="p-2 ${alertIcon === 'warning' ? 'bg-red-100 dark:bg-red-500/20' : alertIcon === 'info' ? 'bg-amber-100 dark:bg-amber-500/20' : 'bg-blue-100 dark:bg-blue-500/20'} rounded-lg">
+                            <span class="material-symbols-outlined ${alertIcon === 'warning' ? 'text-red-600 dark:text-red-400' : alertIcon === 'info' ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'}">${alertIcon}</span>
                         </div>
                         <div>
                             <p class="font-medium text-slate-900 dark:text-white">${alertMessage}</p>
@@ -470,7 +492,7 @@
                         </div>
                     </div>
                     <a href="techview.html?device_id=${screen.id}" class="text-sm font-medium text-primary hover:text-primary-dark">
-                        Ver →
+                        Analizar →
                     </a>
                 </div>
             `;
@@ -505,25 +527,40 @@
     }
 
     function initializeCharts() {
-        // Gráfica de ingresos
+        // Gráfica de ingresos vs gastos
         const revenueCtx = document.getElementById('revenueChart').getContext('2d');
         revenueChart = new Chart(revenueCtx, {
-            type: 'line',
+            type: 'bar',
             data: {
                 labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
-                datasets: [{
-                    label: 'Ingresos',
-                    data: Array(12).fill(0),
-                    borderColor: '#10B981',
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                }]
+                datasets: [
+                    {
+                        label: 'Ingresos',
+                        data: Array(12).fill(0),
+                        backgroundColor: '#10B981',
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'Gastos',
+                        data: Array(12).fill(0),
+                        backgroundColor: '#EF4444',
+                        borderRadius: 4
+                    }
+                ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { position: 'top' } },
+                plugins: { 
+                    legend: { position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: $${context.raw.toLocaleString()}`;
+                            }
+                        }
+                    }
+                },
                 scales: {
                     y: {
                         beginAtZero: true,
@@ -537,12 +574,12 @@
             }
         });
 
-        // Gráfica de estados
+        // Gráfica de distribución
         const statusCtx = document.getElementById('statusChart').getContext('2d');
         statusChart = new Chart(statusCtx, {
-            type: 'doughnut',
+            type: 'pie',
             data: {
-                labels: ['En Línea', 'Mantenimiento', 'Desconectadas'],
+                labels: ['Rentables (ROI < 24)', 'Aceptables (ROI 24-36)', 'Críticas (ROI > 36)'],
                 datasets: [{
                     data: [0, 0, 0],
                     backgroundColor: ['#10B981', '#F59E0B', '#EF4444'],
@@ -570,32 +607,36 @@
     function updateCharts(screens) {
         if (!revenueChart || !statusChart) return;
         
-        // Actualizar gráfica de estados
-        const onlineCount = screens.filter(s => s.estado === 'online').length;
-        const maintenanceCount = screens.filter(s => s.estado === 'maintenance').length;
-        const offlineCount = screens.filter(s => s.estado === 'offline').length;
+        // Calcular distribución por ROI
+        const profitable = screens.filter(s => (s.roi || 0) < 24).length;
+        const acceptable = screens.filter(s => (s.roi || 0) >= 24 && (s.roi || 0) <= 36).length;
+        const critical = screens.filter(s => (s.roi || 0) > 36).length;
         
-        statusChart.data.datasets[0].data = [onlineCount, maintenanceCount, offlineCount];
+        statusChart.data.datasets[0].data = [profitable, acceptable, critical];
         statusChart.update();
         
-        // Simular datos históricos para la gráfica de ingresos
+        // Simular datos históricos mensuales
         const currentMonth = new Date().getMonth();
         const revenueData = Array(12).fill(0);
+        const expenseData = Array(12).fill(0);
         
         // Generar datos de ejemplo basados en el total actual
         const baseRevenue = screens.reduce((sum, s) => sum + (s.ingresos_mensuales || 0), 0) / 1000;
+        const baseExpenses = screens.reduce((sum, s) => sum + (s.gastos_mensuales || 0), 0) / 1000;
         
         for (let i = 0; i <= currentMonth; i++) {
             revenueData[i] = Math.round(baseRevenue * (0.7 + Math.random() * 0.6));
+            expenseData[i] = Math.round(baseExpenses * (0.7 + Math.random() * 0.6));
         }
         
         revenueChart.data.datasets[0].data = revenueData;
+        revenueChart.data.datasets[1].data = expenseData;
         revenueChart.update();
     }
 
     async function refreshDashboard() {
         await loadDashboardData();
-        showNotification('Dashboard actualizado', 'success');
+        showNotification('Dashboard financiero actualizado', 'success');
     }
 
     function showNotification(message, type = 'info') {
