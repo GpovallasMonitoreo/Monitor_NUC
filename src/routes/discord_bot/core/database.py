@@ -1,3 +1,7 @@
+"""
+Conexión y operaciones con la base de datos Supabase
+"""
+
 import os
 import sys
 import datetime
@@ -6,18 +10,32 @@ import traceback
 import asyncio
 import json
 
-current_file_path = os.path.abspath(__file__)
-core_dir = os.path.dirname(current_file_path)
-root_dir = os.path.dirname(core_dir)
+# Añadir rutas para imports
+current_dir = os.path.dirname(os.path.abspath(__file__))
+discord_bot_dir = os.path.dirname(current_dir)
+src_dir = os.path.dirname(discord_bot_dir)
+project_root = os.path.dirname(src_dir)
 
-if root_dir not in sys.path:
-    sys.path.insert(0, root_dir)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+print(f"📊 Inicializando Database...")
+print(f"📁 Ruta actual: {current_dir}")
 
 try:
-    import settings
+    import discord_bot.config.settings as settings
     SUPABASE_URL = getattr(settings, "SUPABASE_URL", os.getenv("SUPABASE_URL"))
     SUPABASE_KEY = getattr(settings, "SUPABASE_KEY", os.getenv("SUPABASE_KEY"))
-    print(f"✅ Configuración cargada correctamente.")
+    
+    # Verificar credenciales
+    if SUPABASE_URL and SUPABASE_KEY:
+        print(f"✅ Configuración Supabase cargada")
+        print(f"🔗 URL: {SUPABASE_URL[:40]}...")
+    else:
+        print("❌ ERROR: Credenciales de Supabase incompletas")
+        print(f"   URL: {'✅' if SUPABASE_URL else '❌'}")
+        print(f"   KEY: {'✅' if SUPABASE_KEY else '❌'}")
+        
 except ImportError as e:
     print(f"❌ Error importando settings: {e}")
     SUPABASE_URL = None
@@ -31,16 +49,31 @@ class Database:
         self.key = SUPABASE_KEY
         
         if not self.url or not self.key:
-            print("⚠️ Faltan credenciales en settings.py")
+            print("❌ No se pueden inicializar credenciales de Supabase")
             self.supabase: Client = None
-        else:
-            try:
-                self.supabase: Client = create_client(self.url, self.key)
-                print("✅ Conexión a Supabase establecida")
-            except Exception as e:
-                print(f"❌ Error conectando a Supabase: {e}")
-                self.supabase = None
-
+            return
+        
+        try:
+            self.supabase: Client = create_client(self.url, self.key)
+            print("✅ Conexión a Supabase establecida")
+            
+            # Test de conexión
+            self._test_connection()
+            
+        except Exception as e:
+            print(f"❌ Error conectando a Supabase: {e}")
+            self.supabase = None
+    
+    def _test_connection(self):
+        """Test simple de conexión a la base de datos"""
+        try:
+            test = self.supabase.table("tickets").select("ticket_id", count="exact").limit(1).execute()
+            print(f"✅ Test de conexión exitoso. Tabla 'tickets' accesible")
+            return True
+        except Exception as e:
+            print(f"⚠️ Test de conexión falló: {e}")
+            return False
+    
     def _map_keys(self, datos: dict) -> dict:
         """
         Mapea claves a Supabase. 
@@ -454,3 +487,4 @@ class Database:
 
 # Instancia global de la base de datos
 db = Database()
+print("✅ Database module listo")
