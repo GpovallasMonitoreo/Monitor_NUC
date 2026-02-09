@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>Argos DOOH - Dashboard Ejecutivo</title>
+    <title>Argos DOOH - Dashboard Principal</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
@@ -56,9 +56,25 @@
         }
         .fade-in { animation: fadeIn 0.5s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .status-online { background: linear-gradient(135deg, #10B981 0%, #34D399 100%); }
-        .status-offline { background: linear-gradient(135deg, #EF4444 0%, #F87171 100%); }
-        .status-maintenance { background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%); }
+        .status-online { 
+            background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+            box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+        }
+        .status-offline { 
+            background: linear-gradient(135deg, #EF4444 0%, #F87171 100%);
+            box-shadow: 0 2px 10px rgba(239, 68, 68, 0.3);
+        }
+        .status-maintenance { 
+            background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%);
+            box-shadow: 0 2px 10px rgba(245, 158, 11, 0.3);
+        }
+        .screen-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        .screen-card {
+            transition: all 0.3s ease;
+        }
     </style>
 </head>
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 antialiased overflow-hidden">
@@ -81,29 +97,22 @@
                 <span class="material-symbols-outlined">dashboard</span>
                 <span class="text-sm font-semibold">Dashboard</span>
             </a>
-            <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group" href="#">
+            <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group" href="#screens-section">
+                <span class="material-symbols-outlined">tv</span>
+                <span class="text-sm font-medium">Pantallas</span>
+            </a>
+            <a href="inventario.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group">
                 <span class="material-symbols-outlined">inventory_2</span>
                 <span class="text-sm font-medium">Inventario</span>
             </a>
-            <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group" href="#">
-                <span class="material-symbols-outlined">paid</span>
-                <span class="text-sm font-medium">Finanzas</span>
+            <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group" href="#reports-section">
+                <span class="material-symbols-outlined">summarize</span>
+                <span class="text-sm font-medium">Generar Reportes</span>
             </a>
-            <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group" href="#">
-                <span class="material-symbols-outlined">map</span>
-                <span class="text-sm font-medium">Mapas</span>
+            <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group" href="#csv-section">
+                <span class="material-symbols-outlined">download</span>
+                <span class="text-sm font-medium">Descarga de CSV</span>
             </a>
-            <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group" href="#">
-                <span class="material-symbols-outlined">description</span>
-                <span class="text-sm font-medium">Reportes</span>
-            </a>
-            <div class="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
-                <p class="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Sistema</p>
-                <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group" href="#">
-                    <span class="material-symbols-outlined">settings</span>
-                    <span class="text-sm font-medium">Configuración</span>
-                </a>
-            </div>
         </nav>
     </aside>
 
@@ -111,18 +120,18 @@
     <main class="flex-1 flex flex-col h-full overflow-hidden bg-background-light dark:bg-background-dark relative">
         <!-- Top Header -->
         <header class="flex h-16 items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 bg-surface-light/80 dark:bg-surface-dark/80 px-8 backdrop-blur-md sticky top-0 z-10">
-            <h2 class="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Resumen General</h2>
+            <h2 class="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Dashboard Principal</h2>
             <div class="flex items-center gap-6">
                 <!-- Search Bar -->
                 <div class="relative group">
                     <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400 group-focus-within:text-primary transition-colors">
                         <span class="material-symbols-outlined">search</span>
                     </div>
-                    <input id="global-search" class="block w-64 rounded-full border-none bg-slate-100 dark:bg-slate-800/50 py-2 pl-10 pr-4 text-sm text-slate-900 dark:text-white placeholder-slate-500 focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Buscar pantalla o métrica..." type="text"/>
+                    <input id="global-search" class="block w-64 rounded-full border-none bg-slate-100 dark:bg-slate-800/50 py-2 pl-10 pr-4 text-sm text-slate-900 dark:text-white placeholder-slate-500 focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Buscar pantalla..." type="text"/>
                 </div>
                 <!-- Actions -->
                 <div class="flex items-center gap-3">
-                    <button onclick="window.location.reload()" class="rounded-full p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors">
+                    <button onclick="refreshDashboard()" class="rounded-full p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors">
                         <span class="material-symbols-outlined">refresh</span>
                     </button>
                 </div>
@@ -134,53 +143,30 @@
             <div class="flex flex-col gap-8 max-w-[1600px] mx-auto pb-10">
                 <!-- KPI Section -->
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-                    <!-- KPI 1: CAPEX -->
+                    <!-- Total Screens -->
                     <div class="bg-surface-light dark:bg-surface-dark rounded-xl p-6 shadow-sm border border-slate-200/60 dark:border-slate-800 flex flex-col justify-between h-40 group hover:border-primary/30 transition-colors fade-in">
                         <div class="flex justify-between items-start">
                             <div>
-                                <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Inversión Total (CAPEX)</p>
-                                <h3 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight" id="kpi-capex">$0.00</h3>
+                                <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Total Pantallas</p>
+                                <h3 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight" id="total-screens">0</h3>
                             </div>
                             <div class="p-2 bg-slate-50 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                                <span class="material-symbols-outlined text-[20px]">account_balance</span>
-                            </div>
-                        </div>
-                        <div class="w-full mt-4">
-                            <div class="flex justify-between text-xs font-medium mb-2">
-                                <span class="text-slate-600 dark:text-slate-300">Uso de Inversión</span>
-                                <span class="text-primary font-bold" id="capex-percentage">0%</span>
-                            </div>
-                            <div class="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                <div class="h-full bg-primary rounded-full" id="capex-bar" style="width: 0%"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- KPI 2: OPEX -->
-                    <div class="bg-surface-light dark:bg-surface-dark rounded-xl p-6 shadow-sm border border-slate-200/60 dark:border-slate-800 flex flex-col justify-between h-40 group hover:border-primary/30 transition-colors fade-in" style="animation-delay: 0.1s;">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Gasto Mensual (OPEX)</p>
-                                <h3 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight" id="kpi-opex">$0.00</h3>
-                            </div>
-                            <div class="p-2 bg-slate-50 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                                <span class="material-symbols-outlined text-[20px]">credit_card</span>
+                                <span class="material-symbols-outlined text-[20px]">tv</span>
                             </div>
                         </div>
                         <div class="flex items-center gap-2 mt-2">
-                            <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                                Recurrente
-                            </span>
-                            <span class="text-xs text-slate-400" id="opex-trend">Cargando...</span>
+                            <span class="text-xs text-slate-500">Activas: <span id="active-screens" class="font-bold text-emerald-600">0</span></span>
+                            <span class="text-xs text-slate-500">•</span>
+                            <span class="text-xs text-slate-500">Mantenimiento: <span id="maintenance-screens" class="font-bold text-amber-600">0</span></span>
                         </div>
                     </div>
 
-                    <!-- KPI 3: Revenue -->
-                    <div class="bg-surface-light dark:bg-surface-dark rounded-xl p-6 shadow-sm border border-slate-200/60 dark:border-slate-800 flex flex-col justify-between h-40 group hover:border-primary/30 transition-colors fade-in" style="animation-delay: 0.2s;">
+                    <!-- Monthly Revenue -->
+                    <div class="bg-surface-light dark:bg-surface-dark rounded-xl p-6 shadow-sm border border-slate-200/60 dark:border-slate-800 flex flex-col justify-between h-40 group hover:border-primary/30 transition-colors fade-in" style="animation-delay: 0.1s;">
                         <div class="flex justify-between items-start">
                             <div>
                                 <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Ingresos Mensuales</p>
-                                <h3 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight" id="kpi-revenue">$0.00</h3>
+                                <h3 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight" id="monthly-revenue">$0.00</h3>
                             </div>
                             <div class="p-2 bg-slate-50 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400 group-hover:bg-emerald-500/10 group-hover:text-emerald-500 transition-colors">
                                 <span class="material-symbols-outlined text-[20px]">payments</span>
@@ -194,15 +180,15 @@
                         </div>
                     </div>
 
-                    <!-- KPI 4: ROI -->
-                    <div class="bg-surface-light dark:bg-surface-dark rounded-xl p-6 shadow-sm border border-slate-200/60 dark:border-slate-800 flex flex-col justify-between h-40 group hover:border-primary/30 transition-colors fade-in" style="animation-delay: 0.3s;">
+                    <!-- ROI Average -->
+                    <div class="bg-surface-light dark:bg-surface-dark rounded-xl p-6 shadow-sm border border-slate-200/60 dark:border-slate-800 flex flex-col justify-between h-40 group hover:border-primary/30 transition-colors fade-in" style="animation-delay: 0.2s;">
                         <div class="flex justify-between items-start">
                             <div>
                                 <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">ROI Promedio</p>
-                                <h3 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight" id="kpi-roi">0.0</h3>
+                                <h3 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight" id="average-roi">0.0</h3>
                             </div>
                             <div class="p-2 bg-slate-50 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400 group-hover:bg-blue-500/10 group-hover:text-blue-500 transition-colors">
-                                <span class="material-symbols-outlined text-[20px]">timer</span>
+                                <span class="material-symbols-outlined text-[20px]">trending_up</span>
                             </div>
                         </div>
                         <div class="flex items-center gap-2 mt-2">
@@ -211,177 +197,269 @@
                             <span class="text-xs text-emerald-600 dark:text-emerald-400 font-medium" id="roi-status">Calculando...</span>
                         </div>
                     </div>
+
+                    <!-- Active Alerts -->
+                    <div class="bg-surface-light dark:bg-surface-dark rounded-xl p-6 shadow-sm border border-slate-200/60 dark:border-slate-800 flex flex-col justify-between h-40 group hover:border-primary/30 transition-colors fade-in" style="animation-delay: 0.3s;">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Alertas Activas</p>
+                                <h3 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight" id="active-alerts">0</h3>
+                            </div>
+                            <div class="p-2 bg-slate-50 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400 group-hover:bg-red-500/10 group-hover:text-red-500 transition-colors">
+                                <span class="material-symbols-outlined text-[20px]">warning</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 mt-2">
+                            <span class="text-xs text-red-600 dark:text-red-400 font-medium" id="alerts-breakdown">Sistema estable</span>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Main Content Grid -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <!-- Left Column: Inventory Table (Span 2) -->
-                    <div class="lg:col-span-2 flex flex-col gap-6">
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-lg font-bold text-slate-900 dark:text-white">Inventario de Pantallas</h3>
-                            <div class="flex items-center gap-4">
-                                <div class="flex gap-2">
-                                    <button class="px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors" onclick="filterByStatus('all')">
-                                        Todas
-                                    </button>
-                                    <button class="px-3 py-1.5 text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-500/30 transition-colors" onclick="filterByStatus('online')">
-                                        En línea
-                                    </button>
-                                    <button class="px-3 py-1.5 text-xs font-medium bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors" onclick="filterByStatus('offline')">
-                                        Desconectadas
-                                    </button>
-                                </div>
-                                <span class="px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold" id="asset-count">0 pantallas</span>
+                <!-- Charts Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Revenue Chart -->
+                    <div class="bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-800 p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-lg font-bold text-slate-900 dark:text-white">Rendimiento Financiero</h3>
+                            <div class="flex gap-2">
+                                <button onclick="changeChartRange('monthly')" class="text-xs px-2 py-1 rounded bg-primary/10 text-primary hover:bg-primary/20">
+                                    Mensual
+                                </button>
+                                <button onclick="changeChartRange('quarterly')" class="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700">
+                                    Trimestral
+                                </button>
                             </div>
                         </div>
-                        
-                        <!-- Stats Cards -->
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div class="bg-white dark:bg-surface-dark rounded-xl p-4 border border-slate-200 dark:border-slate-800">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Pantallas Activas</p>
-                                        <p class="text-2xl font-bold text-slate-900 dark:text-white mt-1" id="active-screens">0</p>
-                                    </div>
-                                    <div class="p-2 bg-emerald-100 dark:bg-emerald-500/20 rounded-lg">
-                                        <span class="material-symbols-outlined text-emerald-600 dark:text-emerald-400">check_circle</span>
-                                    </div>
-                                </div>
-                                <div class="mt-3 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                    <div class="h-full bg-emerald-500 rounded-full" id="active-bar"></div>
-                                </div>
-                            </div>
-                            
-                            <div class="bg-white dark:bg-surface-dark rounded-xl p-4 border border-slate-200 dark:border-slate-800">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">En Mantenimiento</p>
-                                        <p class="text-2xl font-bold text-slate-900 dark:text-white mt-1" id="maintenance-screens">0</p>
-                                    </div>
-                                    <div class="p-2 bg-amber-100 dark:bg-amber-500/20 rounded-lg">
-                                        <span class="material-symbols-outlined text-amber-600 dark:text-amber-400">engineering</span>
-                                    </div>
-                                </div>
-                                <div class="mt-3 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                    <div class="h-full bg-amber-500 rounded-full" id="maintenance-bar"></div>
-                                </div>
-                            </div>
-                            
-                            <div class="bg-white dark:bg-surface-dark rounded-xl p-4 border border-slate-200 dark:border-slate-800">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Desconectadas</p>
-                                        <p class="text-2xl font-bold text-slate-900 dark:text-white mt-1" id="offline-screens">0</p>
-                                    </div>
-                                    <div class="p-2 bg-red-100 dark:bg-red-500/20 rounded-lg">
-                                        <span class="material-symbols-outlined text-red-600 dark:text-red-400">warning</span>
-                                    </div>
-                                </div>
-                                <div class="mt-3 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                    <div class="h-full bg-red-500 rounded-full" id="offline-bar"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Pantallas Table -->
-                        <div class="bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-800 overflow-hidden">
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr class="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-xs uppercase text-slate-500 dark:text-slate-400 font-semibold tracking-wide">
-                                            <th class="px-6 py-4">Pantalla</th>
-                                            <th class="px-6 py-4">Ubicación</th>
-                                            <th class="px-6 py-4">Estado</th>
-                                            <th class="px-6 py-4 text-right">Ingresos</th>
-                                            <th class="px-6 py-4">ROI</th>
-                                            <th class="px-6 py-4 text-center">Acción</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800" id="screens-table-body">
-                                        <tr>
-                                            <td colspan="6" class="px-6 py-8 text-center text-slate-400 dark:text-slate-500">
-                                                <div class="flex flex-col items-center gap-2">
-                                                    <span class="material-symbols-outlined animate-spin">refresh</span>
-                                                    <span>Cargando pantallas...</span>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <!-- Table Footer -->
-                            <div class="bg-slate-50/50 dark:bg-slate-800/20 px-6 py-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                                <span class="text-xs text-slate-500 dark:text-slate-400" id="table-info">Mostrando 0 de 0 pantallas</span>
-                                <div class="flex gap-2">
-                                    <button id="prev-page" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-medium px-3 py-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                                        <span class="material-symbols-outlined text-sm">chevron_left</span>
-                                    </button>
-                                    <button id="next-page" class="text-slate-900 dark:text-white hover:text-slate-600 dark:hover:text-slate-200 text-xs font-medium px-3 py-1.5 rounded bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                                        <span class="material-symbols-outlined text-sm">chevron_right</span>
-                                    </button>
-                                </div>
-                            </div>
+                        <div class="h-80">
+                            <canvas id="revenueChart"></canvas>
                         </div>
                     </div>
 
-                    <!-- Right Column: Charts & Alerts (Span 1) -->
-                    <div class="flex flex-col gap-6">
-                        <!-- Profitability Chart -->
-                        <div class="bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-800 p-6 flex flex-col h-[320px]">
-                            <div class="flex items-center justify-between mb-6">
-                                <h3 class="text-lg font-bold text-slate-900 dark:text-white">Rentabilidad Global</h3>
-                                <div class="flex gap-2">
-                                    <button class="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700" onclick="changeChartType('monthly')">
-                                        Mensual
-                                    </button>
-                                    <button class="text-xs px-2 py-1 rounded bg-primary/10 text-primary hover:bg-primary/20" onclick="changeChartType('quarterly')">
-                                        Trimestral
-                                    </button>
+                    <!-- Screens Status Chart -->
+                    <div class="bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-800 p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-lg font-bold text-slate-900 dark:text-white">Estado de Pantallas</h3>
+                            <button onclick="downloadStatusReport()" class="text-xs px-3 py-1.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center gap-1">
+                                <span class="material-symbols-outlined text-sm">download</span>
+                                Exportar
+                            </button>
+                        </div>
+                        <div class="h-80">
+                            <canvas id="statusChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Screens Section -->
+                <div id="screens-section" class="scroll-mt-8">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-2xl font-bold text-slate-900 dark:text-white">Mis Pantallas</h3>
+                        <div class="flex items-center gap-4">
+                            <div class="flex gap-2">
+                                <button onclick="filterScreens('all')" class="px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors">
+                                    Todas
+                                </button>
+                                <button onclick="filterScreens('online')" class="px-3 py-1.5 text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-500/30 transition-colors">
+                                    En línea
+                                </button>
+                                <button onclick="filterScreens('offline')" class="px-3 py-1.5 text-xs font-medium bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors">
+                                    Desconectadas
+                                </button>
+                            </div>
+                            <span class="px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-bold" id="screens-count">0 pantallas</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="screens-grid">
+                        <!-- Las pantallas se cargarán aquí -->
+                        <div class="col-span-full text-center py-12 text-slate-400 dark:text-slate-500">
+                            <div class="flex flex-col items-center gap-2">
+                                <span class="material-symbols-outlined animate-spin text-2xl">refresh</span>
+                                <p>Cargando pantallas...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reports Section -->
+                <div id="reports-section" class="scroll-mt-8">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-2xl font-bold text-slate-900 dark:text-white">Generar Reportes</h3>
+                        <button onclick="generateFullReport()" class="px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition flex items-center gap-2">
+                            <span class="material-symbols-outlined">summarize</span>
+                            Reporte Completo
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <!-- Rentabilidad Report -->
+                        <div class="bg-surface-light dark:bg-surface-dark rounded-xl p-6 shadow-sm border border-slate-200/60 dark:border-slate-800">
+                            <div class="flex items-center gap-4 mb-4">
+                                <div class="p-3 bg-emerald-100 dark:bg-emerald-500/20 rounded-lg">
+                                    <span class="material-symbols-outlined text-emerald-600 dark:text-emerald-400">trending_up</span>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-slate-900 dark:text-white">Rentabilidad</h4>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400">Análisis de ganancias</p>
                                 </div>
                             </div>
-                            <div class="relative flex-1">
-                                <canvas id="financialChart"></canvas>
+                            <p class="text-sm text-slate-600 dark:text-slate-300 mb-4">Reporte detallado de rentabilidad por pantalla y período.</p>
+                            <div class="flex gap-2">
+                                <button onclick="generateReport('rentabilidad', 'daily')" class="flex-1 px-3 py-2 text-sm bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-500/30 transition">
+                                    Diario
+                                </button>
+                                <button onclick="generateReport('rentabilidad', 'monthly')" class="flex-1 px-3 py-2 text-sm bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-500/30 transition">
+                                    Mensual
+                                </button>
                             </div>
                         </div>
 
-                        <!-- Active Alerts Feed -->
-                        <div class="bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-800 p-6 flex flex-col">
-                            <div class="flex items-center justify-between mb-4">
-                                <h3 class="text-lg font-bold text-slate-900 dark:text-white">Alertas Activas</h3>
-                                <div class="flex items-center gap-2">
-                                    <span class="px-2 py-1 rounded bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400 text-xs font-bold" id="alert-count">0</span>
-                                    <button onclick="markAllAsRead()" class="text-xs text-slate-500 hover:text-primary">
-                                        <span class="material-symbols-outlined text-sm">done_all</span>
-                                    </button>
+                        <!-- Incidencias Report -->
+                        <div class="bg-surface-light dark:bg-surface-dark rounded-xl p-6 shadow-sm border border-slate-200/60 dark:border-slate-800">
+                            <div class="flex items-center gap-4 mb-4">
+                                <div class="p-3 bg-red-100 dark:bg-red-500/20 rounded-lg">
+                                    <span class="material-symbols-outlined text-red-600 dark:text-red-400">warning</span>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-slate-900 dark:text-white">Incidencias</h4>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400">Reporte de problemas</p>
                                 </div>
                             </div>
-                            <div class="flex flex-col gap-3 overflow-y-auto max-h-[250px]" id="alerts-list">
-                                <div class="text-center p-4 text-slate-400 dark:text-slate-500 text-xs italic">Sin alertas activas</div>
+                            <p class="text-sm text-slate-600 dark:text-slate-300 mb-4">Análisis de frecuencia y tipos de incidencias.</p>
+                            <div class="flex gap-2">
+                                <button onclick="generateReport('incidencias', 'weekly')" class="flex-1 px-3 py-2 text-sm bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-500/30 transition">
+                                    Semanal
+                                </button>
+                                <button onclick="generateReport('incidencias', 'monthly')" class="flex-1 px-3 py-2 text-sm bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-500/30 transition">
+                                    Mensual
+                                </button>
                             </div>
-                            <button onclick="viewAllAlerts()" class="mt-4 text-center text-sm font-medium text-primary hover:text-primary-dark transition-colors w-full py-2 border-t border-slate-100 dark:border-slate-800">
-                                Ver todas las alertas
+                        </div>
+
+                        <!-- Mantenimientos Report -->
+                        <div class="bg-surface-light dark:bg-surface-dark rounded-xl p-6 shadow-sm border border-slate-200/60 dark:border-slate-800">
+                            <div class="flex items-center gap-4 mb-4">
+                                <div class="p-3 bg-amber-100 dark:bg-amber-500/20 rounded-lg">
+                                    <span class="material-symbols-outlined text-amber-600 dark:text-amber-400">engineering</span>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-slate-900 dark:text-white">Mantenimientos</h4>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400">Historial y costos</p>
+                                </div>
+                            </div>
+                            <p class="text-sm text-slate-600 dark:text-slate-300 mb-4">Reporte de mantenimientos preventivos y correctivos.</p>
+                            <div class="flex gap-2">
+                                <button onclick="generateReport('mantenimientos', 'monthly')" class="flex-1 px-3 py-2 text-sm bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 rounded-lg hover:bg-amber-200 dark:hover:bg-amber-500/30 transition">
+                                    Mensual
+                                </button>
+                                <button onclick="generateReport('mantenimientos', 'quarterly')" class="flex-1 px-3 py-2 text-sm bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 rounded-lg hover:bg-amber-200 dark:hover:bg-amber-500/30 transition">
+                                    Trimestral
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Refacciones Report -->
+                        <div class="bg-surface-light dark:bg-surface-dark rounded-xl p-6 shadow-sm border border-slate-200/60 dark:border-slate-800">
+                            <div class="flex items-center gap-4 mb-4">
+                                <div class="p-3 bg-blue-100 dark:bg-blue-500/20 rounded-lg">
+                                    <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">inventory_2</span>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-slate-900 dark:text-white">Refacciones</h4>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400">Uso y stock</p>
+                                </div>
+                            </div>
+                            <p class="text-sm text-slate-600 dark:text-slate-300 mb-4">Reporte de consumo y niveles de inventario.</p>
+                            <div class="flex gap-2">
+                                <button onclick="generateReport('refacciones', 'monthly')" class="flex-1 px-3 py-2 text-sm bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-500/30 transition">
+                                    Mensual
+                                </button>
+                                <button onclick="generateReport('refacciones', 'quarterly')" class="flex-1 px-3 py-2 text-sm bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-500/30 transition">
+                                    Trimestral
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CSV Download Section -->
+                <div id="csv-section" class="scroll-mt-8">
+                    <div class="bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-800 p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-2xl font-bold text-slate-900 dark:text-white">Descarga de CSV</h3>
+                            <button onclick="downloadAllCSV()" class="px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition flex items-center gap-2">
+                                <span class="material-symbols-outlined">download</span>
+                                Descargar Todo
                             </button>
                         </div>
 
-                        <!-- Quick Actions -->
-                        <div class="bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-800 p-6">
-                            <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">Acciones Rápidas</h3>
-                            <div class="grid grid-cols-2 gap-3">
-                                <button onclick="addNewScreen()" class="flex flex-col items-center justify-center p-4 rounded-lg bg-primary/5 border border-primary/20 hover:bg-primary/10 transition-colors group">
-                                    <span class="material-symbols-outlined text-primary text-2xl mb-2 group-hover:scale-110 transition-transform">add</span>
-                                    <span class="text-xs font-medium text-slate-700 dark:text-slate-300">Nueva Pantalla</span>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <!-- Screens CSV -->
+                            <div class="bg-white dark:bg-[#2a1d15] rounded-lg p-4 border border-slate-200 dark:border-slate-800">
+                                <div class="flex items-center gap-3 mb-3">
+                                    <div class="p-2 bg-primary/10 rounded-lg">
+                                        <span class="material-symbols-outlined text-primary">tv</span>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-900 dark:text-white">Pantallas</h4>
+                                        <p class="text-xs text-slate-500">Datos completos</p>
+                                    </div>
+                                </div>
+                                <p class="text-sm text-slate-600 dark:text-slate-300 mb-4">Información completa de todas las pantallas.</p>
+                                <button onclick="downloadCSV('screens')" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition flex items-center justify-center gap-2">
+                                    <span class="material-symbols-outlined text-sm">download</span>
+                                    Descargar CSV
                                 </button>
-                                <button onclick="generateReport()" class="flex flex-col items-center justify-center p-4 rounded-lg bg-blue-500/5 border border-blue-500/20 hover:bg-blue-500/10 transition-colors group">
-                                    <span class="material-symbols-outlined text-blue-500 text-2xl mb-2 group-hover:scale-110 transition-transform">description</span>
-                                    <span class="text-xs font-medium text-slate-700 dark:text-slate-300">Reporte</span>
+                            </div>
+
+                            <!-- Finances CSV -->
+                            <div class="bg-white dark:bg-[#2a1d15] rounded-lg p-4 border border-slate-200 dark:border-slate-800">
+                                <div class="flex items-center gap-3 mb-3">
+                                    <div class="p-2 bg-emerald-100 dark:bg-emerald-500/20 rounded-lg">
+                                        <span class="material-symbols-outlined text-emerald-600 dark:text-emerald-400">payments</span>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-900 dark:text-white">Finanzas</h4>
+                                        <p class="text-xs text-slate-500">Ingresos y gastos</p>
+                                    </div>
+                                </div>
+                                <p class="text-sm text-slate-600 dark:text-slate-300 mb-4">Datos financieros mensuales y acumulados.</p>
+                                <button onclick="downloadCSV('finances')" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition flex items-center justify-center gap-2">
+                                    <span class="material-symbols-outlined text-sm">download</span>
+                                    Descargar CSV
                                 </button>
-                                <button onclick="viewMap()" class="flex flex-col items-center justify-center p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20 hover:bg-emerald-500/10 transition-colors group">
-                                    <span class="material-symbols-outlined text-emerald-500 text-2xl mb-2 group-hover:scale-110 transition-transform">map</span>
-                                    <span class="text-xs font-medium text-slate-700 dark:text-slate-300">Ver Mapa</span>
+                            </div>
+
+                            <!-- Maintenance CSV -->
+                            <div class="bg-white dark:bg-[#2a1d15] rounded-lg p-4 border border-slate-200 dark:border-slate-800">
+                                <div class="flex items-center gap-3 mb-3">
+                                    <div class="p-2 bg-amber-100 dark:bg-amber-500/20 rounded-lg">
+                                        <span class="material-symbols-outlined text-amber-600 dark:text-amber-400">engineering</span>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-900 dark:text-white">Mantenimientos</h4>
+                                        <p class="text-xs text-slate-500">Historial completo</p>
+                                    </div>
+                                </div>
+                                <p class="text-sm text-slate-600 dark:text-slate-300 mb-4">Registros de mantenimientos realizados.</p>
+                                <button onclick="downloadCSV('maintenance')" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition flex items-center justify-center gap-2">
+                                    <span class="material-symbols-outlined text-sm">download</span>
+                                    Descargar CSV
                                 </button>
-                                <button onclick="scheduleMaintenance()" class="flex flex-col items-center justify-center p-4 rounded-lg bg-amber-500/5 border border-amber-500/20 hover:bg-amber-500/10 transition-colors group">
-                                    <span class="material-symbols-outlined text-amber-500 text-2xl mb-2 group-hover:scale-110 transition-transform">schedule</span>
-                                    <span class="text-xs font-medium text-slate-700 dark:text-slate-300">Mantenimiento</span>
+                            </div>
+                        </div>
+
+                        <!-- Per Screen CSV -->
+                        <div class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+                            <h4 class="font-bold text-slate-900 dark:text-white mb-4">Descarga por Pantalla Específica</h4>
+                            <div class="flex items-center gap-4">
+                                <select id="screen-select" class="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-[#2a1d15]">
+                                    <option value="">Seleccionar pantalla...</option>
+                                    <!-- Las opciones se llenarán dinámicamente -->
+                                </select>
+                                <button onclick="downloadScreenCSV()" class="px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition flex items-center gap-2">
+                                    <span class="material-symbols-outlined">download</span>
+                                    Descargar
                                 </button>
                             </div>
                         </div>
@@ -393,279 +471,140 @@
 </div>
 
 <script>
-    class Dashboard {
+    class DashboardManager {
         constructor() {
             this.screens = [];
-            this.totals = {};
-            this.chart = null;
+            this.charts = {};
             this.currentFilter = 'all';
-            this.currentPage = 1;
-            this.itemsPerPage = 5;
         }
 
         async init() {
-            await this.loadData();
+            await this.loadScreens();
+            this.initCharts();
             this.setupSearch();
-            this.setupPagination();
-            this.setupKeyboardShortcuts();
+            this.setupEventListeners();
+            this.updateKPIs();
+            this.renderScreens();
+            this.populateScreenSelect();
         }
 
-        setupKeyboardShortcuts() {
-            document.addEventListener('keydown', (e) => {
-                if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-                    e.preventDefault();
-                    document.getElementById('global-search').focus();
-                }
-                if (e.key === 'Escape') {
-                    document.getElementById('global-search').value = '';
-                    this.filterScreens();
-                }
-            });
-        }
-
-        async loadData() {
+        async loadScreens() {
             try {
-                const res = await fetch('/techview/api/overview');
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
-                
-                if (data.overview_data) {
-                    this.screens = data.overview_data.map(screen => ({
-                        ...screen,
-                        // Datos de ejemplo para pantallas
-                        location: screen.location || getRandomLocation(),
-                        status: screen.status || getRandomStatus(),
-                        last_seen: screen.last_seen || new Date(Date.now() - Math.random() * 86400000).toISOString(),
-                        revenue: screen.monthly_margin || Math.random() * 5000 + 1000,
-                        roi: screen.roi_months || Math.random() * 36 + 1
-                    }));
-                    
-                    this.totals = data.totals || {};
-                    
-                    this.renderKPIs();
-                    this.updateScreenStats();
-                    this.renderScreens();
-                    this.renderChart(data.financials_history);
-                    this.renderAlerts();
-                    
-                    document.getElementById('asset-count').innerText = `${this.screens.length} pantallas`;
-                }
-            } catch (e) {
-                console.error("Error loading dashboard:", e);
-                this.showError("Error de conexión: " + e.message);
+                // Simular carga de datos
+                this.screens = [
+                    {
+                        id: 'ARG-001',
+                        name: 'Pantalla Centro Comercial',
+                        location: 'Centro Comercial Galerías',
+                        status: 'online',
+                        revenue: 8500,
+                        expenses: 3200,
+                        roi: 14.5,
+                        lastMaintenance: '2024-02-15',
+                        uptime: '99.8%'
+                    },
+                    {
+                        id: 'ARG-002',
+                        name: 'Pantalla Aeropuerto',
+                        location: 'Aeropuerto Internacional',
+                        status: 'online',
+                        revenue: 12000,
+                        expenses: 4500,
+                        roi: 18.2,
+                        lastMaintenance: '2024-02-10',
+                        uptime: '99.5%'
+                    },
+                    {
+                        id: 'ARG-003',
+                        name: 'Pantalla Estación Central',
+                        location: 'Estación de Metro',
+                        status: 'maintenance',
+                        revenue: 6500,
+                        expenses: 2800,
+                        roi: 22.1,
+                        lastMaintenance: '2024-02-18',
+                        uptime: '98.2%'
+                    },
+                    {
+                        id: 'ARG-004',
+                        name: 'Pantalla Plaza Mayor',
+                        location: 'Plaza Principal',
+                        status: 'offline',
+                        revenue: 7200,
+                        expenses: 3100,
+                        roi: 16.8,
+                        lastMaintenance: '2024-01-25',
+                        uptime: '95.4%'
+                    },
+                    {
+                        id: 'ARG-005',
+                        name: 'Pantalla Zona Financiera',
+                        location: 'Distrito Financiero',
+                        status: 'online',
+                        revenue: 10500,
+                        expenses: 3800,
+                        roi: 12.3,
+                        lastMaintenance: '2024-02-12',
+                        uptime: '99.9%'
+                    },
+                    {
+                        id: 'ARG-006',
+                        name: 'Pantalla Universidad',
+                        location: 'Campus Universitario',
+                        status: 'online',
+                        revenue: 5800,
+                        expenses: 2200,
+                        roi: 25.4,
+                        lastMaintenance: '2024-02-05',
+                        uptime: '99.6%'
+                    },
+                    {
+                        id: 'ARG-007',
+                        name: 'Pantalla Hospital',
+                        location: 'Hospital Central',
+                        status: 'maintenance',
+                        revenue: 4800,
+                        expenses: 2100,
+                        roi: 28.7,
+                        lastMaintenance: '2024-02-20',
+                        uptime: '97.8%'
+                    },
+                    {
+                        id: 'ARG-008',
+                        name: 'Pantalla Estadio',
+                        location: 'Estadio Municipal',
+                        status: 'online',
+                        revenue: 9200,
+                        expenses: 3500,
+                        roi: 15.2,
+                        lastMaintenance: '2024-02-08',
+                        uptime: '99.7%'
+                    }
+                ];
+            } catch (error) {
+                console.error('Error loading screens:', error);
             }
         }
 
-        renderKPIs() {
-            const fmt = n => new Intl.NumberFormat('en-US', { 
-                style: 'currency', 
-                currency: 'USD', 
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0 
-            }).format(n || 0);
-
-            // CAPEX
-            const totalCapex = this.totals.total_capex || this.screens.reduce((sum, s) => sum + (s.capex || 15000), 0);
-            document.getElementById('kpi-capex').innerText = fmt(totalCapex);
-            
-            const capexBudget = 1500000;
-            const capexPercentage = Math.min((totalCapex / capexBudget) * 100, 100);
-            document.getElementById('capex-percentage').innerText = `${capexPercentage.toFixed(0)}%`;
-            document.getElementById('capex-bar').style.width = `${capexPercentage}%`;
-
-            // OPEX
-            const totalOpex = this.totals.total_monthly_opex || this.screens.reduce((sum, s) => sum + (s.opex || 500), 0);
-            document.getElementById('kpi-opex').innerText = fmt(totalOpex);
-            
-            // Revenue
-            const totalRevenue = this.totals.total_monthly_revenue || this.screens.reduce((sum, s) => sum + (s.revenue || 0), 0);
-            document.getElementById('kpi-revenue').innerText = fmt(totalRevenue);
-            
-            // Revenue trend
-            const revenueTrend = totalRevenue > (this.totals.last_month_revenue || totalRevenue * 0.9) ? 'up' : 'down';
-            const trendEl = document.getElementById('revenue-trend');
-            if (revenueTrend === 'up') {
-                trendEl.className = 'inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30';
-                trendEl.innerHTML = '<span class="material-symbols-outlined text-[14px] mr-1">trending_up</span> +12%';
-            } else {
-                trendEl.className = 'inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300 border border-red-200 dark:border-red-500/30';
-                trendEl.innerHTML = '<span class="material-symbols-outlined text-[14px] mr-1">trending_down</span> -5%';
-            }
-
-            // ROI
-            const avgROI = this.totals.average_roi || this.screens.reduce((sum, s) => sum + (s.roi || 0), 0) / Math.max(this.screens.length, 1);
-            document.getElementById('kpi-roi').innerText = avgROI.toFixed(1);
-            
-            // ROI Status
-            const roiStatusEl = document.getElementById('roi-status');
-            if (avgROI < 18) {
-                roiStatusEl.textContent = 'Excelente';
-                roiStatusEl.className = 'text-xs text-emerald-600 dark:text-emerald-400 font-medium';
-            } else if (avgROI < 24) {
-                roiStatusEl.textContent = 'En Rango';
-                roiStatusEl.className = 'text-xs text-blue-600 dark:text-blue-400 font-medium';
-            } else {
-                roiStatusEl.textContent = 'Requiere Atención';
-                roiStatusEl.className = 'text-xs text-red-600 dark:text-red-400 font-medium';
-            }
-        }
-
-        updateScreenStats() {
-            const online = this.screens.filter(s => s.status === 'online').length;
-            const offline = this.screens.filter(s => s.status === 'offline').length;
-            const maintenance = this.screens.filter(s => s.status === 'maintenance').length;
-            const total = this.screens.length;
-
-            document.getElementById('active-screens').textContent = online;
-            document.getElementById('maintenance-screens').textContent = maintenance;
-            document.getElementById('offline-screens').textContent = offline;
-
-            document.getElementById('active-bar').style.width = total > 0 ? `${(online / total) * 100}%` : '0%';
-            document.getElementById('maintenance-bar').style.width = total > 0 ? `${(maintenance / total) * 100}%` : '0%';
-            document.getElementById('offline-bar').style.width = total > 0 ? `${(offline / total) * 100}%` : '0%';
-        }
-
-        renderScreens(filteredScreens = null) {
-            const screensToShow = filteredScreens || this.screens;
-            const startIndex = (this.currentPage - 1) * this.itemsPerPage;
-            const endIndex = startIndex + this.itemsPerPage;
-            const paginatedScreens = screensToShow.slice(startIndex, endIndex);
-            const totalPages = Math.ceil(screensToShow.length / this.itemsPerPage);
-
-            const tbody = document.getElementById('screens-table-body');
-            
-            if (!screensToShow.length) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="6" class="px-6 py-8 text-center text-slate-400 dark:text-slate-500">
-                            <div class="flex flex-col items-center gap-2">
-                                <span class="material-symbols-outlined">inventory_2</span>
-                                <span>No hay pantallas registradas</span>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-
-            tbody.innerHTML = paginatedScreens.map(screen => {
-                const statusConfig = this.getStatusConfig(screen.status);
-                const revenue = screen.revenue || 0;
-                const roi = screen.roi || 0;
-                const roiPercentage = Math.min((roi / 36) * 100, 100);
-                const roiColor = roiPercentage >= 80 ? 'bg-emerald-500' : 
-                                roiPercentage >= 50 ? 'bg-amber-500' : 'bg-red-500';
-
-                return `
-                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
-                        <td class="px-6 py-4">
-                            <div class="flex items-center gap-3">
-                                <div class="size-10 rounded-lg ${statusConfig.bg} flex items-center justify-center text-white">
-                                    <span class="material-symbols-outlined text-lg">tv</span>
-                                </div>
-                                <div>
-                                    <p class="font-bold text-slate-900 dark:text-white text-sm">${screen.pc_name || screen.device_id}</p>
-                                    <p class="text-xs text-slate-500 font-mono">${screen.device_id}</p>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <p class="text-sm text-slate-700 dark:text-slate-300">${screen.location || 'Sin ubicación'}</p>
-                            <p class="text-xs text-slate-500">Última vista: ${formatTimeAgo(screen.last_seen)}</p>
-                        </td>
-                        <td class="px-6 py-4">
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusConfig.colorClass} border ${statusConfig.borderClass}">
-                                <span class="size-1.5 rounded-full ${statusConfig.dotClass}"></span>
-                                ${statusConfig.text}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 text-right">
-                            <p class="font-mono font-bold ${revenue >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'} text-sm">
-                                ${revenue >= 0 ? '+$' : '-$'}${Math.abs(revenue).toLocaleString('en-US', {minimumFractionDigits: 0})}
-                            </p>
-                            <p class="text-xs text-slate-500">Mensual</p>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="flex items-center gap-3">
-                                <div class="flex-1">
-                                    <div class="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden w-24">
-                                        <div class="h-full ${roiColor} rounded-full" style="width: ${roiPercentage}%"></div>
-                                    </div>
-                                    <p class="text-xs text-slate-500 mt-1">${roi.toFixed(1)} meses</p>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 text-center">
-                            <a href="/techview.html?device_id=${encodeURIComponent(screen.device_id)}" 
-                               class="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-primary border border-primary/20 bg-primary/5 hover:bg-primary hover:text-white rounded-md transition-all group-hover:border-primary/40">
-                                Gestionar
-                            </a>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-
-            // Update pagination controls
-            document.getElementById('prev-page').disabled = this.currentPage <= 1;
-            document.getElementById('next-page').disabled = this.currentPage >= totalPages;
-            document.getElementById('table-info').textContent = 
-                `Mostrando ${startIndex + 1}-${Math.min(endIndex, screensToShow.length)} de ${screensToShow.length} pantallas`;
-        }
-
-        getStatusConfig(status) {
-            const configs = {
-                online: {
-                    text: 'En línea',
-                    colorClass: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400',
-                    borderClass: 'border-emerald-200 dark:border-emerald-500/30',
-                    dotClass: 'bg-emerald-500',
-                    bg: 'status-online'
-                },
-                offline: {
-                    text: 'Desconectada',
-                    colorClass: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400',
-                    borderClass: 'border-red-200 dark:border-red-500/30',
-                    dotClass: 'bg-red-500',
-                    bg: 'status-offline'
-                },
-                maintenance: {
-                    text: 'Mantenimiento',
-                    colorClass: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400',
-                    borderClass: 'border-amber-200 dark:border-amber-500/30',
-                    dotClass: 'bg-amber-500',
-                    bg: 'status-maintenance'
-                }
-            };
-            return configs[status] || configs.offline;
-        }
-
-        renderChart(hist) {
-            const ctx = document.getElementById('financialChart').getContext('2d');
-            
-            if (this.chart) {
-                this.chart.destroy();
-            }
-
-            const labels = hist?.months?.length ? hist.months : ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'];
-            const sales = hist?.sales?.length ? hist.sales : [45000, 52000, 61000, 73000, 82000, 95000];
-            const costs = hist?.costs?.length ? hist.costs : [32000, 38000, 42000, 48000, 52000, 58000];
-
-            this.chart = new Chart(ctx, {
+        initCharts() {
+            // Revenue Chart
+            const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+            this.charts.revenue = new Chart(revenueCtx, {
                 type: 'line',
                 data: {
-                    labels: labels,
+                    labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
                     datasets: [
                         {
-                            label: 'Ventas',
-                            data: sales,
+                            label: 'Ingresos',
+                            data: [65000, 72000, 85000, 92000, 105000, 115000, 108000, 112000, 118000, 125000, 132000, 140000],
                             borderColor: '#10B981',
                             backgroundColor: 'rgba(16, 185, 129, 0.1)',
                             tension: 0.4,
                             fill: true
                         },
                         {
-                            label: 'Costos',
-                            data: costs,
+                            label: 'Gastos',
+                            data: [28000, 32000, 38000, 42000, 45000, 48000, 46000, 47000, 49000, 51000, 53000, 55000],
                             borderColor: '#EF4444',
                             backgroundColor: 'rgba(239, 68, 68, 0.1)',
                             tension: 0.4,
@@ -679,37 +618,12 @@
                     plugins: {
                         legend: {
                             position: 'top',
-                            labels: {
-                                usePointStyle: true,
-                                padding: 20
-                            }
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                            callbacks: {
-                                label: function(context) {
-                                    return `${context.dataset.label}: $${context.parsed.y.toLocaleString()}`;
-                                }
-                            }
                         }
                     },
                     scales: {
-                        x: {
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                color: '#64748b'
-                            }
-                        },
                         y: {
                             beginAtZero: true,
-                            grid: {
-                                color: 'rgba(100, 116, 139, 0.1)'
-                            },
                             ticks: {
-                                color: '#64748b',
                                 callback: function(value) {
                                     return '$' + value/1000 + 'k';
                                 }
@@ -718,217 +632,614 @@
                     }
                 }
             });
+
+            // Status Chart
+            const statusCtx = document.getElementById('statusChart').getContext('2d');
+            this.charts.status = new Chart(statusCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['En Línea', 'Mantenimiento', 'Desconectadas'],
+                    datasets: [{
+                        data: [5, 2, 1],
+                        backgroundColor: [
+                            '#10B981',
+                            '#F59E0B',
+                            '#EF4444'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.label}: ${context.raw} pantallas`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
 
-        renderAlerts() {
-            const alerts = this.screens.filter(s => 
-                s.status === 'offline' || 
-                (s.revenue || 0) < 0 ||
-                (s.last_seen && (Date.now() - new Date(s.last_seen).getTime()) > 3600000)
-            );
+        updateKPIs() {
+            const totalScreens = this.screens.length;
+            const onlineScreens = this.screens.filter(s => s.status === 'online').length;
+            const maintenanceScreens = this.screens.filter(s => s.status === 'maintenance').length;
+            const offlineScreens = this.screens.filter(s => s.status === 'offline').length;
             
-            document.getElementById('alert-count').innerText = alerts.length;
-            const container = document.getElementById('alerts-list');
+            const totalRevenue = this.screens.reduce((sum, s) => sum + s.revenue, 0);
+            const totalExpenses = this.screens.reduce((sum, s) => sum + s.expenses, 0);
+            const averageROI = this.screens.reduce((sum, s) => sum + s.roi, 0) / this.screens.length;
+
+            // Update KPI values
+            document.getElementById('total-screens').textContent = totalScreens;
+            document.getElementById('active-screens').textContent = onlineScreens;
+            document.getElementById('maintenance-screens').textContent = maintenanceScreens;
+            document.getElementById('monthly-revenue').textContent = `$${totalRevenue.toLocaleString()}`;
+            document.getElementById('average-roi').textContent = averageROI.toFixed(1);
+            document.getElementById('active-alerts').textContent = offlineScreens;
             
-            if (alerts.length === 0) {
-                container.innerHTML = '<div class="text-center p-4 text-slate-400 dark:text-slate-500 text-xs italic">Sistema estable</div>';
+            // Update revenue trend
+            const revenueTrend = document.getElementById('revenue-trend');
+            const isGrowing = totalRevenue > (totalExpenses * 1.5);
+            revenueTrend.className = isGrowing ? 
+                'inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30' :
+                'inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300 border border-red-200 dark:border-red-500/30';
+            revenueTrend.innerHTML = isGrowing ? 
+                '<span class="material-symbols-outlined text-[14px] mr-1">trending_up</span> Creciente' :
+                '<span class="material-symbols-outlined text-[14px] mr-1">trending_down</span> Decreciente';
+
+            // Update ROI status
+            const roiStatus = document.getElementById('roi-status');
+            if (averageROI < 18) {
+                roiStatus.textContent = 'Excelente';
+                roiStatus.className = 'text-xs text-emerald-600 dark:text-emerald-400 font-medium';
+            } else if (averageROI < 24) {
+                roiStatus.textContent = 'Bueno';
+                roiStatus.className = 'text-xs text-blue-600 dark:text-blue-400 font-medium';
+            } else {
+                roiStatus.textContent = 'Requiere Atención';
+                roiStatus.className = 'text-xs text-red-600 dark:text-red-400 font-medium';
+            }
+
+            // Update alerts breakdown
+            const alertsBreakdown = document.getElementById('alerts-breakdown');
+            if (offlineScreens === 0) {
+                alertsBreakdown.textContent = 'Sistema estable';
+                alertsBreakdown.className = 'text-xs text-emerald-600 dark:text-emerald-400 font-medium';
+            } else {
+                alertsBreakdown.textContent = `${offlineScreens} pantalla(s) desconectada(s)`;
+                alertsBreakdown.className = 'text-xs text-red-600 dark:text-red-400 font-medium';
+            }
+
+            // Update status chart
+            this.charts.status.data.datasets[0].data = [onlineScreens, maintenanceScreens, offlineScreens];
+            this.charts.status.update();
+        }
+
+        renderScreens() {
+            const grid = document.getElementById('screens-grid');
+            const filteredScreens = this.currentFilter === 'all' ? 
+                this.screens : 
+                this.screens.filter(s => s.status === this.currentFilter);
+
+            document.getElementById('screens-count').textContent = `${filteredScreens.length} pantallas`;
+
+            if (filteredScreens.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-12 text-slate-400 dark:text-slate-500">
+                        <div class="flex flex-col items-center gap-2">
+                            <span class="material-symbols-outlined text-2xl">search_off</span>
+                            <p>No se encontraron pantallas</p>
+                        </div>
+                    </div>
+                `;
                 return;
             }
 
-            container.innerHTML = alerts.slice(0, 5).map(alert => {
-                let type, icon, color;
-                
-                if (alert.status === 'offline') {
-                    type = 'Desconectada';
-                    icon = 'wifi_off';
-                    color = 'red';
-                } else if ((alert.revenue || 0) < 0) {
-                    type = 'Déficit';
-                    icon = 'trending_down';
-                    color = 'red';
-                } else {
-                    type = 'Sin conexión reciente';
-                    icon = 'schedule';
-                    color = 'amber';
-                }
+            grid.innerHTML = filteredScreens.map(screen => {
+                const statusConfig = this.getStatusConfig(screen.status);
+                const profit = screen.revenue - screen.expenses;
+                const profitClass = profit >= 0 ? 'text-emerald-600' : 'text-red-600';
 
                 return `
-                    <div class="flex gap-3 p-3 rounded-lg bg-${color}-50 dark:bg-${color}-900/10 border-l-4 border-${color}-500 items-start">
-                        <span class="material-symbols-outlined text-${color}-500 text-sm mt-0.5">${icon}</span>
-                        <div class="flex-1">
-                            <p class="text-sm font-semibold text-slate-900 dark:text-white mb-1">${type}</p>
-                            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                                ${alert.pc_name || alert.device_id}
-                            </p>
+                    <div class="screen-card bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-800 overflow-hidden hover:border-primary/30 transition-all">
+                        <div class="p-6">
+                            <div class="flex items-start justify-between mb-4">
+                                <div>
+                                    <h4 class="font-bold text-slate-900 dark:text-white text-lg">${screen.name}</h4>
+                                    <p class="text-sm text-slate-500 mt-1">${screen.location}</p>
+                                </div>
+                                <div class="${statusConfig.bg} size-10 rounded-lg flex items-center justify-center text-white">
+                                    <span class="material-symbols-outlined text-lg">tv</span>
+                                </div>
+                            </div>
+
+                            <div class="space-y-3 mb-6">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-slate-500">Estado:</span>
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusConfig.colorClass}">
+                                        <span class="size-1.5 rounded-full ${statusConfig.dotClass}"></span>
+                                        ${statusConfig.text}
+                                    </span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-slate-500">Ingresos:</span>
+                                    <span class="font-bold text-emerald-600">$${screen.revenue.toLocaleString()}</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-slate-500">Gastos:</span>
+                                    <span class="font-bold text-red-600">$${screen.expenses.toLocaleString()}</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-slate-500">ROI:</span>
+                                    <span class="font-bold ${screen.roi < 18 ? 'text-emerald-600' : screen.roi < 24 ? 'text-blue-600' : 'text-red-600'}">
+                                        ${screen.roi.toFixed(1)} meses
+                                    </span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-slate-500">Uptime:</span>
+                                    <span class="font-bold text-slate-900 dark:text-white">${screen.uptime}</span>
+                                </div>
+                            </div>
+
+                            <div class="pt-4 border-t border-slate-200 dark:border-slate-800">
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Ganancia:</span>
+                                    <span class="text-lg font-bold ${profitClass}">$${Math.abs(profit).toLocaleString()}</span>
+                                </div>
+                                <a href="techview.html?device_id=${screen.id}" class="block w-full text-center px-4 py-2.5 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition">
+                                    Ver Detalles
+                                </a>
+                            </div>
                         </div>
                     </div>
                 `;
             }).join('');
+        }
 
-            if (alerts.length > 5) {
-                container.innerHTML += `
-                    <div class="text-center pt-2">
-                        <span class="text-xs text-slate-500">+${alerts.length - 5} alertas más</span>
-                    </div>
-                `;
-            }
+        getStatusConfig(status) {
+            const configs = {
+                online: {
+                    text: 'En Línea',
+                    colorClass: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400',
+                    dotClass: 'bg-emerald-500',
+                    bg: 'status-online'
+                },
+                offline: {
+                    text: 'Desconectada',
+                    colorClass: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400',
+                    dotClass: 'bg-red-500',
+                    bg: 'status-offline'
+                },
+                maintenance: {
+                    text: 'Mantenimiento',
+                    colorClass: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400',
+                    dotClass: 'bg-amber-500',
+                    bg: 'status-maintenance'
+                }
+            };
+            return configs[status] || configs.offline;
         }
 
         setupSearch() {
             const searchInput = document.getElementById('global-search');
             searchInput.addEventListener('input', (e) => {
-                this.filterScreens(e.target.value.toLowerCase());
+                const term = e.target.value.toLowerCase();
+                this.filterScreensBySearch(term);
             });
         }
 
-        filterScreens(searchTerm = '') {
-            let filtered = this.screens;
-            
-            // Apply search filter
-            if (searchTerm) {
-                filtered = filtered.filter(screen => 
-                    screen.device_id.toLowerCase().includes(searchTerm) ||
-                    (screen.pc_name && screen.pc_name.toLowerCase().includes(searchTerm)) ||
-                    (screen.location && screen.location.toLowerCase().includes(searchTerm))
-                );
-            }
-            
-            // Apply status filter
-            if (this.currentFilter !== 'all') {
-                filtered = filtered.filter(screen => screen.status === this.currentFilter);
-            }
-            
-            this.currentPage = 1;
-            this.renderScreens(filtered);
+        filterScreensBySearch(term) {
+            const filtered = this.screens.filter(screen => 
+                screen.name.toLowerCase().includes(term) ||
+                screen.location.toLowerCase().includes(term) ||
+                screen.id.toLowerCase().includes(term)
+            );
+
+            this.renderFilteredScreens(filtered);
         }
 
-        filterByStatus(status) {
-            this.currentFilter = status;
-            this.filterScreens(document.getElementById('global-search').value.toLowerCase());
-        }
+        renderFilteredScreens(filtered) {
+            const grid = document.getElementById('screens-grid');
+            document.getElementById('screens-count').textContent = `${filtered.length} pantallas`;
 
-        setupPagination() {
-            document.getElementById('prev-page').addEventListener('click', () => {
-                if (this.currentPage > 1) {
-                    this.currentPage--;
-                    this.renderScreens();
-                }
-            });
-
-            document.getElementById('next-page').addEventListener('click', () => {
-                const filtered = this.getFilteredScreens();
-                const totalPages = Math.ceil(filtered.length / this.itemsPerPage);
-                if (this.currentPage < totalPages) {
-                    this.currentPage++;
-                    this.renderScreens();
-                }
-            });
-        }
-
-        getFilteredScreens() {
-            const searchTerm = document.getElementById('global-search').value.toLowerCase();
-            let filtered = this.screens;
-            
-            if (searchTerm) {
-                filtered = filtered.filter(screen => 
-                    screen.device_id.toLowerCase().includes(searchTerm) ||
-                    (screen.pc_name && screen.pc_name.toLowerCase().includes(searchTerm))
-                );
-            }
-            
-            if (this.currentFilter !== 'all') {
-                filtered = filtered.filter(screen => screen.status === this.currentFilter);
-            }
-            
-            return filtered;
-        }
-
-        showError(message) {
-            const tbody = document.getElementById('screens-table-body');
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="6" class="px-6 py-8 text-center text-red-400 dark:text-red-400">
+            if (filtered.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-12 text-slate-400 dark:text-slate-500">
                         <div class="flex flex-col items-center gap-2">
-                            <span class="material-symbols-outlined">error</span>
-                            <span>${message}</span>
+                            <span class="material-symbols-outlined text-2xl">search_off</span>
+                            <p>No se encontraron pantallas</p>
                         </div>
-                    </td>
-                </tr>
-            `;
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = filtered.map(screen => {
+                const statusConfig = this.getStatusConfig(screen.status);
+                const profit = screen.revenue - screen.expenses;
+                const profitClass = profit >= 0 ? 'text-emerald-600' : 'text-red-600';
+
+                return `
+                    <div class="screen-card bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-800 overflow-hidden hover:border-primary/30 transition-all">
+                        <div class="p-6">
+                            <div class="flex items-start justify-between mb-4">
+                                <div>
+                                    <h4 class="font-bold text-slate-900 dark:text-white text-lg">${screen.name}</h4>
+                                    <p class="text-sm text-slate-500 mt-1">${screen.location}</p>
+                                </div>
+                                <div class="${statusConfig.bg} size-10 rounded-lg flex items-center justify-center text-white">
+                                    <span class="material-symbols-outlined text-lg">tv</span>
+                                </div>
+                            </div>
+
+                            <div class="space-y-3 mb-6">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-slate-500">Estado:</span>
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusConfig.colorClass}">
+                                        <span class="size-1.5 rounded-full ${statusConfig.dotClass}"></span>
+                                        ${statusConfig.text}
+                                    </span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-slate-500">Ingresos:</span>
+                                    <span class="font-bold text-emerald-600">$${screen.revenue.toLocaleString()}</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-slate-500">Gastos:</span>
+                                    <span class="font-bold text-red-600">$${screen.expenses.toLocaleString()}</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-slate-500">ROI:</span>
+                                    <span class="font-bold ${screen.roi < 18 ? 'text-emerald-600' : screen.roi < 24 ? 'text-blue-600' : 'text-red-600'}">
+                                        ${screen.roi.toFixed(1)} meses
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="pt-4 border-t border-slate-200 dark:border-slate-800">
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Ganancia:</span>
+                                    <span class="text-lg font-bold ${profitClass}">$${Math.abs(profit).toLocaleString()}</span>
+                                </div>
+                                <a href="techview.html?device_id=${screen.id}" class="block w-full text-center px-4 py-2.5 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition">
+                                    Ver Detalles
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
-        changeChartType(type) {
-            // Aquí puedes cambiar el tipo de gráfico si es necesario
-            console.log('Cambiar tipo de gráfico a:', type);
+        setupEventListeners() {
+            // Smooth scroll to sections
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth' });
+                    }
+                });
+            });
+        }
+
+        filterScreens(status) {
+            this.currentFilter = status;
+            this.renderScreens();
+        }
+
+        populateScreenSelect() {
+            const select = document.getElementById('screen-select');
+            select.innerHTML = '<option value="">Seleccionar pantalla...</option>';
+            
+            this.screens.forEach(screen => {
+                const option = document.createElement('option');
+                option.value = screen.id;
+                option.textContent = `${screen.id} - ${screen.name}`;
+                select.appendChild(option);
+            });
         }
     }
 
-    // Helper functions
-    function getRandomLocation() {
-        const locations = [
-            'Centro Comercial Galerías',
-            'Plaza Mayor',
-            'Aeropuerto Internacional',
-            'Estación Central',
-            'Zona Financiera',
-            'Paseo de la Reforma',
-            'Centro Histórico',
-            'Plaza de Toros'
+    // Funciones globales
+    const dashboardManager = new DashboardManager();
+
+    function refreshDashboard() {
+        dashboardManager.loadScreens();
+        dashboardManager.updateKPIs();
+        dashboardManager.renderScreens();
+        dashboardManager.populateScreenSelect();
+        showNotification('Dashboard actualizado', 'success');
+    }
+
+    function changeChartRange(range) {
+        // Cambiar rango de gráficas
+        showNotification(`Gráfica cambiada a vista ${range === 'monthly' ? 'mensual' : 'trimestral'}`, 'info');
+    }
+
+    function downloadStatusReport() {
+        generateCSV('status-report', [
+            ['Pantalla', 'Estado', 'Último Mantenimiento', 'Uptime', 'ROI'],
+            ...dashboardManager.screens.map(s => [s.name, s.status, s.lastMaintenance, s.uptime, s.roi])
+        ]);
+    }
+
+    function generateReport(type, period) {
+        const reportTypes = {
+            'rentabilidad': 'Reporte de Rentabilidad',
+            'incidencias': 'Reporte de Incidencias',
+            'mantenimientos': 'Reporte de Mantenimientos',
+            'refacciones': 'Reporte de Refacciones'
+        };
+
+        const periodText = {
+            'daily': 'diario',
+            'weekly': 'semanal',
+            'monthly': 'mensual',
+            'quarterly': 'trimestral'
+        };
+
+        const data = generateReportData(type, period);
+        generateCSV(`${type}-${period}-${new Date().toISOString().split('T')[0]}`, data);
+        
+        showNotification(`${reportTypes[type]} ${periodText[period]} generado`, 'success');
+    }
+
+    function generateFullReport() {
+        const date = new Date().toISOString().split('T')[0];
+        const data = [
+            ['REPORTE COMPLETO - ARGOS DOOH', `Fecha: ${date}`],
+            [''],
+            ['RESUMEN GENERAL'],
+            ['Total Pantallas', dashboardManager.screens.length],
+            ['Pantallas En Línea', dashboardManager.screens.filter(s => s.status === 'online').length],
+            ['Pantallas en Mantenimiento', dashboardManager.screens.filter(s => s.status === 'maintenance').length],
+            ['Pantallas Desconectadas', dashboardManager.screens.filter(s => s.status === 'offline').length],
+            ['Ingresos Totales', `$${dashboardManager.screens.reduce((sum, s) => sum + s.revenue, 0).toLocaleString()}`],
+            ['Gastos Totales', `$${dashboardManager.screens.reduce((sum, s) => sum + s.expenses, 0).toLocaleString()}`],
+            ['ROI Promedio', `${(dashboardManager.screens.reduce((sum, s) => sum + s.roi, 0) / dashboardManager.screens.length).toFixed(1)} meses`],
+            [''],
+            ['DETALLE POR PANTALLA'],
+            ['ID', 'Nombre', 'Ubicación', 'Estado', 'Ingresos', 'Gastos', 'ROI', 'Último Mantenimiento'],
+            ...dashboardManager.screens.map(s => [s.id, s.name, s.location, s.status, `$${s.revenue}`, `$${s.expenses}`, `${s.roi} meses`, s.lastMaintenance])
         ];
-        return locations[Math.floor(Math.random() * locations.length)];
+
+        generateCSV(`reporte-completo-${date}`, data);
+        showNotification('Reporte completo generado', 'success');
     }
 
-    function getRandomStatus() {
-        const statuses = ['online', 'online', 'online', 'offline', 'maintenance'];
-        return statuses[Math.floor(Math.random() * statuses.length)];
+    function generateReportData(type, period) {
+        const date = new Date();
+        let headers, rows;
+
+        switch(type) {
+            case 'rentabilidad':
+                headers = ['Período', 'Pantalla', 'Ingresos', 'Gastos', 'Ganancia', 'Margen %'];
+                rows = dashboardManager.screens.map(s => [
+                    period,
+                    s.name,
+                    `$${s.revenue}`,
+                    `$${s.expenses}`,
+                    `$${s.revenue - s.expenses}`,
+                    `${(((s.revenue - s.expenses) / s.revenue) * 100).toFixed(1)}%`
+                ]);
+                break;
+            
+            case 'incidencias':
+                headers = ['Fecha', 'Pantalla', 'Tipo Incidencia', 'Duración (horas)', 'Causa', 'Solución'];
+                rows = [
+                    ['2024-02-20', 'ARG-003', 'Desconexión', '2.5', 'Problema eléctrico', 'Reinicio del sistema'],
+                    ['2024-02-18', 'ARG-007', 'Mantenimiento', '4.0', 'Preventivo programado', 'Limpieza y revisión'],
+                    ['2024-02-15', 'ARG-001', 'Problema visual', '1.0', 'Pixel dañado', 'Reemplazo de módulo']
+                ];
+                break;
+            
+            case 'mantenimientos':
+                headers = ['Fecha', 'Pantalla', 'Tipo', 'Horas', 'Costo', 'Técnico', 'Descripción'];
+                rows = [
+                    ['2024-02-20', 'ARG-007', 'Preventivo', '4.0', '$600', 'Juan Pérez', 'Revisión completa'],
+                    ['2024-02-18', 'ARG-003', 'Correctivo', '3.5', '$850', 'María López', 'Cambio de fuente de poder'],
+                    ['2024-02-15', 'ARG-001', 'Preventivo', '3.0', '$450', 'Carlos Ruiz', 'Limpieza y calibración']
+                ];
+                break;
+            
+            case 'refacciones':
+                headers = ['Refacción', 'Número de Serie', 'Costo', 'Stock Actual', 'Último Uso', 'Vida Útil Restante'];
+                rows = [
+                    ['Módulo LED', 'LED-2024-001', '$250', '12', '2024-02-15', '24 meses'],
+                    ['Fuente de Poder', 'PWR-2024-002', '$180', '3', '2024-02-18', '18 meses'],
+                    ['Novastar MCTRL300', 'NOVA-2024-003', '$350', '5', '2024-02-10', '36 meses'],
+                    ['Cable FAT', 'CBL-2024-004', '$45', '20', '2024-02-05', '12 meses']
+                ];
+                break;
+            
+            default:
+                headers = ['Columna 1', 'Columna 2'];
+                rows = [['Dato 1', 'Dato 2']];
+        }
+
+        return [headers, ...rows];
     }
 
-    function formatTimeAgo(dateString) {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffMs = now - date;
-        const diffMins = Math.floor(diffMs / 60000);
+    function downloadCSV(type) {
+        let data;
+        const date = new Date().toISOString().split('T')[0];
+
+        switch(type) {
+            case 'screens':
+                data = [
+                    ['ID', 'Nombre', 'Ubicación', 'Estado', 'Ingresos', 'Gastos', 'ROI (meses)', 'Último Mantenimiento', 'Uptime'],
+                    ...dashboardManager.screens.map(s => [s.id, s.name, s.location, s.status, s.revenue, s.expenses, s.roi, s.lastMaintenance, s.uptime])
+                ];
+                break;
+            
+            case 'finances':
+                data = [
+                    ['Mes', 'Ingresos Totales', 'Gastos Totales', 'Ganancia Neta', 'ROI Promedio'],
+                    ['Enero', '65000', '28000', '37000', '16.5'],
+                    ['Febrero', '72000', '32000', '40000', '15.8'],
+                    ['Marzo', '85000', '38000', '47000', '14.2'],
+                    ['Abril', '92000', '42000', '50000', '13.5']
+                ];
+                break;
+            
+            case 'maintenance':
+                data = [
+                    ['Fecha', 'Pantalla', 'Tipo', 'Horas', 'Costo', 'Técnico', 'Descripción'],
+                    ['2024-02-20', 'ARG-007', 'Preventivo', '4.0', '600', 'Juan Pérez', 'Revisión completa'],
+                    ['2024-02-18', 'ARG-003', 'Correctivo', '3.5', '850', 'María López', 'Cambio de fuente de poder'],
+                    ['2024-02-15', 'ARG-001', 'Preventivo', '3.0', '450', 'Carlos Ruiz', 'Limpieza y calibración'],
+                    ['2024-02-10', 'ARG-002', 'Correctivo', '2.5', '750', 'Ana García', 'Reemplazo de módulo LED']
+                ];
+                break;
+            
+            default:
+                data = [['Datos', 'Valor'], ['Ejemplo', '123']];
+        }
+
+        generateCSV(`${type}-${date}`, data);
+        showNotification(`CSV de ${type} descargado`, 'success');
+    }
+
+    function downloadAllCSV() {
+        const date = new Date().toISOString().split('T')[0];
         
-        if (diffMins < 1) return 'Ahora mismo';
-        if (diffMins < 60) return `Hace ${diffMins} min`;
+        // Crear ZIP con todos los CSV
+        const allData = [
+            { name: `pantallas-${date}.csv`, data: dashboardManager.screens.map(s => [s.id, s.name, s.location, s.status, s.revenue, s.expenses, s.roi]) },
+            { name: `finanzas-${date}.csv`, data: [
+                ['Mes', 'Ingresos', 'Gastos', 'Ganancia'],
+                ['Enero', '65000', '28000', '37000'],
+                ['Febrero', '72000', '32000', '40000'],
+                ['Marzo', '85000', '38000', '47000']
+            ]},
+            { name: `mantenimientos-${date}.csv`, data: [
+                ['Fecha', 'Pantalla', 'Tipo', 'Costo'],
+                ['2024-02-20', 'ARG-007', 'Preventivo', '600'],
+                ['2024-02-18', 'ARG-003', 'Correctivo', '850']
+            ]}
+        ];
+
+        // Descargar cada archivo
+        allData.forEach(item => {
+            generateCSV(item.name.replace('.csv', ''), item.data);
+        });
+
+        showNotification('Todos los archivos CSV descargados', 'success');
+    }
+
+    function downloadScreenCSV() {
+        const select = document.getElementById('screen-select');
+        const screenId = select.value;
         
-        const diffHours = Math.floor(diffMins / 60);
-        if (diffHours < 24) return `Hace ${diffHours} h`;
+        if (!screenId) {
+            showNotification('Por favor selecciona una pantalla', 'error');
+            return;
+        }
+
+        const screen = dashboardManager.screens.find(s => s.id === screenId);
+        if (!screen) {
+            showNotification('Pantalla no encontrada', 'error');
+            return;
+        }
+
+        const date = new Date().toISOString().split('T')[0];
+        const data = [
+            ['INFORMACIÓN DE PANTALLA'],
+            ['ID:', screen.id],
+            ['Nombre:', screen.name],
+            ['Ubicación:', screen.location],
+            ['Estado:', screen.status],
+            [''],
+            ['DATOS FINANCIEROS'],
+            ['Ingresos Mensuales:', `$${screen.revenue}`],
+            ['Gastos Mensuales:', `$${screen.expenses}`],
+            ['Ganancia Neta:', `$${screen.revenue - screen.expenses}`],
+            ['ROI:', `${screen.roi} meses`],
+            [''],
+            ['OTROS DATOS'],
+            ['Último Mantenimiento:', screen.lastMaintenance],
+            ['Uptime:', screen.uptime],
+            ['Fecha Reporte:', date]
+        ];
+
+        generateCSV(`${screen.id}-reporte-${date}`, data);
+        showNotification(`Reporte de ${screen.name} descargado`, 'success');
+    }
+
+    function generateCSV(filename, data) {
+        const csvContent = data.map(row => 
+            row.map(cell => `"${cell}"`).join(',')
+        ).join('\n');
         
-        const diffDays = Math.floor(diffHours / 24);
-        return `Hace ${diffDays} d`;
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', `${filename}.csv`);
+        link.style.visibility = 'hidden';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 
-    // Action functions
-    function addNewScreen() {
-        alert('Funcionalidad para agregar nueva pantalla - Implementar según necesidad');
+    function showNotification(message, type = 'info') {
+        // Crear notificación
+        const notification = document.createElement('div');
+        const typeClasses = {
+            'success': 'bg-emerald-500 text-white',
+            'error': 'bg-red-500 text-white',
+            'info': 'bg-blue-500 text-white'
+        };
+
+        notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${typeClasses[type]} animate-fade-in`;
+        notification.innerHTML = `
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined">
+                    ${type === 'success' ? 'check_circle' : type === 'error' ? 'error' : 'info'}
+                </span>
+                <span>${message}</span>
+            </div>
+        `;
+
+        document.body.appendChild(notification);
+
+        // Remover después de 3 segundos
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
     }
 
-    function generateReport() {
-        alert('Funcionalidad para generar reporte - Implementar según necesidad');
-    }
-
-    function viewMap() {
-        alert('Funcionalidad para ver mapa - Implementar según necesidad');
-    }
-
-    function scheduleMaintenance() {
-        alert('Funcionalidad para programar mantenimiento - Implementar según necesidad');
-    }
-
-    function markAllAsRead() {
-        alert('Marcar todas las alertas como leídas');
-    }
-
-    function viewAllAlerts() {
-        alert('Ver todas las alertas');
-    }
-
-    // Initialize dashboard
+    // Inicializar dashboard cuando se cargue la página
     document.addEventListener('DOMContentLoaded', () => {
-        const dashboard = new Dashboard();
-        dashboard.init();
+        dashboardManager.init();
     });
+
+    // Añadir estilo para animación de notificación
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.3s ease-out;
+        }
+    `;
+    document.head.appendChild(style);
 </script>
 </body>
 </html>
