@@ -16,10 +16,11 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: "#F97316", // Naranja Argos
+                        primary: "#F97316",
                         secondary: "#3B82F6",
                         success: "#10B981",
                         danger: "#EF4444",
+                        warning: "#F59E0B",
                         dark: "#0F172A",
                         surface: "#FFFFFF",
                         background: "#F8FAFC"
@@ -46,7 +47,7 @@
             </div>
             <div>
                 <h1 class="text-lg font-bold text-slate-900 leading-none">Argos DOOH</h1>
-                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1">Centro de Comando</p>
+                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1">Centro de Comando Financiero</p>
             </div>
         </div>
 
@@ -65,6 +66,10 @@
         </div>
 
         <div class="flex items-center gap-3">
+            <button onclick="window.location.href='/techview/pauta'" class="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition flex items-center gap-2">
+                <span class="material-icons-outlined">add</span>
+                <span class="text-sm font-bold">Nueva Pauta</span>
+            </button>
             <button onclick="window.location.reload()" class="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition">
                 <span class="material-icons-outlined">refresh</span>
             </button>
@@ -73,7 +78,7 @@
 
     <main class="flex-1 overflow-y-auto p-6 scroll-smooth custom-scroll w-full mx-auto relative">
         
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 fade-in">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8 fade-in">
             <div class="bg-surface p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
                 <p class="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Inversión Total (CAPEX)</p>
                 <h3 class="text-2xl font-black text-slate-900 tracking-tight" id="kpi-capex">$0.00</h3>
@@ -87,10 +92,17 @@
             </div>
 
             <div class="bg-surface p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
-                <p class="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Ingresos Mensuales</p>
+                <p class="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Ingresos por Pauta</p>
                 <div class="flex items-baseline gap-2">
                     <h3 class="text-2xl font-black text-slate-900 tracking-tight" id="kpi-revenue">$0.00</h3>
-                    <span class="text-xs font-bold text-success bg-success/10 px-1.5 py-0.5 rounded">Proyectado</span>
+                    <span class="text-xs font-bold text-success bg-success/10 px-1.5 py-0.5 rounded" id="pauta-count">0 pautas</span>
+                </div>
+            </div>
+
+            <div class="bg-surface p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+                <p class="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Margen Neto Mensual</p>
+                <div class="flex items-baseline gap-2">
+                    <h3 class="text-2xl font-black text-slate-900 tracking-tight" id="kpi-margin">$0.00</h3>
                 </div>
             </div>
 
@@ -111,9 +123,14 @@
                     <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                         <div class="flex items-center gap-3">
                             <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                <span class="material-icons-outlined text-slate-400">inventory_2</span> Inventario
+                                <span class="material-icons-outlined text-slate-400">inventory_2</span> Inventario Financiero
                             </h2>
                             <span class="px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-600 text-xs font-bold" id="asset-count">0</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="exportToExcel()" class="px-3 py-1.5 bg-green-500 text-white text-xs font-bold rounded-lg hover:bg-green-600 transition">
+                                Exportar Excel
+                            </button>
                         </div>
                     </div>
 
@@ -121,14 +138,17 @@
                         <table class="w-full text-left border-collapse">
                             <thead class="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                                 <tr>
-                                    <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider w-1/3">Pantalla / ID</th>
-                                    <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">Finanzas</th>
+                                    <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider w-1/5">Pantalla</th>
+                                    <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">CAPEX</th>
+                                    <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">OPEX/Mes</th>
+                                    <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">Pautas Activas</th>
+                                    <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">Margen</th>
                                     <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">ROI</th>
                                     <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider text-right">Acción</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100 text-sm" id="assets-table-body">
-                                <tr><td colspan="4" class="p-8 text-center text-slate-400">Cargando...</td></tr>
+                                <tr><td colspan="7" class="p-8 text-center text-slate-400">Cargando datos financieros...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -138,18 +158,30 @@
             <div class="lg:col-span-4 flex flex-col gap-6">
                 
                 <div class="bg-surface p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">Rentabilidad Global</h3>
+                    <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">Distribución de Ingresos</h3>
                     <div class="relative h-60 w-full">
-                        <canvas id="financialChart"></canvas>
+                        <canvas id="revenueChart"></canvas>
                     </div>
                 </div>
 
                 <div class="bg-surface p-6 rounded-2xl border border-slate-200 shadow-sm flex-1">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Pautas Activas</h3>
+                        <button onclick="window.location.href='/techview/pauta'" class="text-xs bg-primary text-white px-3 py-1 rounded-lg font-bold hover:bg-orange-600">
+                            + Agregar
+                        </button>
+                    </div>
+                    <div class="space-y-3 overflow-y-auto max-h-[250px] custom-scroll" id="active-pautas">
+                        <div class="text-center p-4 text-slate-400 text-xs italic">Cargando pautas...</div>
+                    </div>
+                </div>
+
+                <div class="bg-surface p-6 rounded-2xl border border-slate-200 shadow-sm">
                     <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex justify-between">
-                        <span>Alertas</span>
+                        <span>Alertas Financieras</span>
                         <span class="bg-red-100 text-red-600 text-[10px] px-2 py-0.5 rounded-full" id="alert-count">0</span>
                     </h3>
-                    <div class="space-y-3 overflow-y-auto max-h-[250px] custom-scroll" id="alerts-list">
+                    <div class="space-y-3 overflow-y-auto max-h-[200px] custom-scroll" id="alerts-list">
                         <div class="text-center p-4 text-slate-400 text-xs italic">Sin alertas activas</div>
                     </div>
                 </div>
@@ -158,10 +190,54 @@
         </div>
     </main>
 
+    <!-- Modal para agregar pauta -->
+    <div id="pauta-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-md">
+            <div class="p-6 border-b">
+                <h3 class="text-lg font-bold text-slate-800">Nueva Pauta Publicitaria</h3>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Pantalla</label>
+                    <select id="pauta-device" class="w-full p-2 border border-slate-300 rounded-lg">
+                        <option value="">Seleccionar pantalla...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Cliente</label>
+                    <input type="text" id="pauta-cliente" class="w-full p-2 border border-slate-300 rounded-lg" placeholder="Nombre del cliente">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Monto ($)</label>
+                    <input type="number" id="pauta-monto" class="w-full p-2 border border-slate-300 rounded-lg" placeholder="0.00">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Fecha Inicio</label>
+                        <input type="date" id="pauta-inicio" class="w-full p-2 border border-slate-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Fecha Fin</label>
+                        <input type="date" id="pauta-fin" class="w-full p-2 border border-slate-300 rounded-lg">
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 border-t flex justify-end gap-3">
+                <button onclick="closePautaModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">
+                    Cancelar
+                </button>
+                <button onclick="savePauta()" class="px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-orange-600">
+                    Guardar Pauta
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         class Dashboard {
             constructor() {
                 this.assets = [];
+                this.pautas = [];
                 this.chart = null;
             }
 
@@ -178,7 +254,7 @@
 
             async loadData() {
                 try {
-                    // CORRECCIÓN CLAVE: Asegurar la ruta correcta
+                    // Cargar datos financieros
                     const res = await fetch('/techview/api/overview');
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const data = await res.json();
@@ -187,96 +263,244 @@
                         this.assets = data.overview_data;
                         this.renderKPIs(data.totals);
                         this.renderTable(this.assets);
-                        this.renderChart(data.financials_history);
-                        this.renderAlerts(this.assets);
+                        this.renderRevenueChart(data.revenue_breakdown);
                         document.getElementById('asset-count').innerText = data.totals.device_count || 0;
                     }
+
+                    // Cargar pautas activas
+                    await this.loadPautas();
+
                 } catch (e) {
                     console.error("Error loading dashboard:", e);
-                    document.getElementById('assets-table-body').innerHTML = `<tr><td colspan="4" class="p-8 text-center text-red-400 text-xs">Error de conexión: ${e.message}</td></tr>`;
+                    document.getElementById('assets-table-body').innerHTML = `<tr><td colspan="7" class="p-8 text-center text-red-400 text-xs">Error de conexión: ${e.message}</td></tr>`;
+                }
+            }
+
+            async loadPautas() {
+                try {
+                    const res = await fetch('/techview/api/pautas/active');
+                    if (res.ok) {
+                        this.pautas = await res.json();
+                        this.renderPautas(this.pautas);
+                        this.updatePautaCount();
+                    }
+                } catch (e) {
+                    console.error("Error loading pautas:", e);
                 }
             }
 
             renderKPIs(t) {
-                const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n || 0);
+                const fmt = n => new Intl.NumberFormat('en-US', { 
+                    style: 'currency', 
+                    currency: 'USD', 
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0 
+                }).format(n || 0);
+                
                 document.getElementById('kpi-capex').innerText = fmt(t.total_capex);
                 document.getElementById('kpi-opex').innerText = fmt(t.total_monthly_opex);
                 document.getElementById('kpi-revenue').innerText = fmt(t.total_monthly_revenue);
+                document.getElementById('kpi-margin').innerText = fmt(t.total_margin_monthly);
                 document.getElementById('kpi-roi').innerText = (t.average_roi || 0).toFixed(1);
             }
 
             renderTable(data) {
                 const tbody = document.getElementById('assets-table-body');
-                if (!data.length) { tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-xs text-slate-400">Sin resultados.</td></tr>`; return; }
+                if (!data.length) { 
+                    tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-xs text-slate-400">No hay pantallas registradas.</td></tr>`; 
+                    return; 
+                }
 
-                tbody.innerHTML = data.map(item => `
-                    <tr class="hover:bg-slate-50 transition border-b border-slate-50 group">
-                        <td class="p-4">
-                            <div class="flex items-center gap-3">
-                                <div class="h-8 w-8 rounded bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-xs shrink-0">LED</div>
-                                <div class="min-w-0">
-                                    <p class="font-bold text-slate-700 text-sm truncate max-w-[180px]">${item.pc_name || item.device_id}</p>
-                                    <p class="text-[10px] text-slate-400 font-mono truncate max-w-[150px]">${item.device_id}</p>
+                tbody.innerHTML = data.map(item => {
+                    // Calcular pautas activas para esta pantalla
+                    const pautasActivas = this.pautas.filter(p => p.device_id === item.device_id).length;
+                    
+                    return `
+                        <tr class="hover:bg-slate-50 transition border-b border-slate-50 group">
+                            <td class="p-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="h-8 w-8 rounded ${item.monthly_margin > 0 ? 'bg-green-100' : 'bg-red-100'} flex items-center justify-center ${item.monthly_margin > 0 ? 'text-green-600' : 'text-red-600'} font-bold text-xs shrink-0">
+                                        ${item.monthly_margin > 0 ? '✓' : '⚠'}
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="font-bold text-slate-700 text-sm truncate max-w-[150px]">${item.location || 'Sin ubicación'}</p>
+                                        <p class="text-[10px] text-slate-400 font-mono truncate max-w-[140px]">${item.device_id}</p>
+                                    </div>
                                 </div>
-                            </div>
-                        </td>
-                        <td class="p-4">
-                            <span class="text-xs font-bold ${item.monthly_margin > 0 ? 'text-emerald-600' : 'text-red-600'}">
-                                $${item.monthly_margin?.toLocaleString()}
-                            </span>
-                            <span class="text-[10px] text-slate-400 block">Margen Mensual</span>
-                        </td>
-                        <td class="p-4">
-                            <span class="text-xs font-bold text-slate-700">${item.roi_months?.toFixed(1)} m</span>
-                        </td>
-                        <td class="p-4 text-right">
-                            <a href="/techview/management?device_id=${encodeURIComponent(item.device_id)}" 
-                               class="inline-flex items-center px-3 py-1.5 bg-white border border-slate-200 hover:border-primary hover:text-primary text-slate-600 rounded-lg text-xs font-bold transition shadow-sm">
-                                Gestionar
-                            </a>
-                        </td>
-                    </tr>
-                `).join('');
+                            </td>
+                            <td class="p-4">
+                                <span class="text-xs font-bold text-blue-600">
+                                    ${formatCurrency(item.total_capex || 0)}
+                                </span>
+                            </td>
+                            <td class="p-4">
+                                <span class="text-xs font-bold text-orange-600">
+                                    ${formatCurrency(item.total_opex_monthly || 0)}
+                                </span>
+                            </td>
+                            <td class="p-4">
+                                <span class="text-xs font-bold ${pautasActivas > 0 ? 'text-green-600' : 'text-slate-400'}">
+                                    ${pautasActivas} pautas
+                                </span>
+                            </td>
+                            <td class="p-4">
+                                <span class="text-xs font-bold ${item.monthly_margin > 0 ? 'text-emerald-600' : 'text-red-600'}">
+                                    ${formatCurrency(item.monthly_margin || 0)}
+                                </span>
+                            </td>
+                            <td class="p-4">
+                                <span class="text-xs font-bold ${item.roi_months < 24 ? 'text-green-600' : 'text-amber-600'}">
+                                    ${item.roi_months?.toFixed(1)} m
+                                </span>
+                            </td>
+                            <td class="p-4 text-right">
+                                <div class="flex gap-2 justify-end">
+                                    <button onclick="addPautaToDevice('${item.device_id}')" 
+                                            class="inline-flex items-center px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-bold transition">
+                                        + Pauta
+                                    </button>
+                                    <a href="/techview/management?device_id=${encodeURIComponent(item.device_id)}" 
+                                       class="inline-flex items-center px-3 py-1.5 bg-white border border-slate-200 hover:border-primary hover:text-primary text-slate-600 rounded-lg text-xs font-bold transition shadow-sm">
+                                        Gestionar
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
             }
 
-            renderChart(hist) {
-                const ctx = document.getElementById('financialChart').getContext('2d');
+            renderRevenueChart(data) {
+                const ctx = document.getElementById('revenueChart').getContext('2d');
                 if(this.chart) this.chart.destroy();
                 
-                // Fallback si no hay datos históricos
-                const labels = hist?.months?.length ? hist.months : ['N/A'];
-                const sales = hist?.sales?.length ? hist.sales : [0];
-                const costs = hist?.costs?.length ? hist.costs : [0];
-
                 this.chart = new Chart(ctx, {
-                    type: 'bar',
+                    type: 'doughnut',
                     data: {
-                        labels: labels,
-                        datasets: [
-                            { label: 'Ventas', data: sales, backgroundColor: '#10B981', borderRadius: 4 },
-                            { label: 'Costos', data: costs, backgroundColor: '#EF4444', borderRadius: 4 }
-                        ]
+                        labels: data?.labels || ['Pautas', 'Otros Ingresos'],
+                        datasets: [{
+                            data: data?.values || [0, 0],
+                            backgroundColor: ['#10B981', '#3B82F6', '#8B5CF6', '#F59E0B'],
+                            borderWidth: 0
+                        }]
                     },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { x: { grid: { display: false } }, y: { display: false } } }
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { 
+                                position: 'bottom',
+                                labels: { padding: 20 }
+                            }
+                        },
+                        cutout: '70%'
+                    }
                 });
             }
 
-            renderAlerts(data) {
-                const alerts = data.filter(d => d.monthly_margin < 0 || d.status === 'offline');
-                document.getElementById('alert-count').innerText = alerts.length;
-                const container = document.getElementById('alerts-list');
-                
-                if (alerts.length === 0) {
-                    container.innerHTML = '<div class="text-center p-4 text-slate-400 text-xs italic">Sistema estable.</div>';
+            renderPautas(pautas) {
+                const container = document.getElementById('active-pautas');
+                if (!pautas.length) {
+                    container.innerHTML = '<div class="text-center p-4 text-slate-400 text-xs italic">No hay pautas activas</div>';
                     return;
                 }
 
-                container.innerHTML = alerts.map(a => `
-                    <div class="p-3 rounded-xl border flex gap-3 items-start ${a.monthly_margin < 0 ? 'bg-red-50 border-red-100 text-red-700' : 'bg-amber-50 border-amber-100 text-amber-700'}">
-                        <span class="material-icons-outlined text-sm mt-0.5">${a.monthly_margin < 0 ? 'trending_down' : 'wifi_off'}</span>
-                        <div>
-                            <p class="text-xs font-bold leading-tight">${a.monthly_margin < 0 ? 'Déficit Financiero' : 'Desconectado'}</p>
-                            <p class="text-[10px] opacity-80 truncate max-w-[150px]">${a.device_id}</p>
+                container.innerHTML = pautas.slice(0, 5).map(pauta => `
+                    <div class="p-3 rounded-xl border border-green-100 bg-green-50/50">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <p class="text-xs font-bold text-green-700 leading-tight">${pauta.cliente || 'Cliente'}</p>
+                                <p class="text-[10px] text-green-600 truncate max-w-[150px]">${pauta.device_id}</p>
+                            </div>
+                            <span class="text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded">${formatCurrency(pauta.monto)}</span>
+                        </div>
+                        <div class="text-[10px] text-slate-500 flex justify-between">
+                            <span>${formatDate(pauta.fecha_inicio)}</span>
+                            <span>${formatDate(pauta.fecha_fin)}</span>
+                        </div>
+                    </div>
+                `).join('');
+
+                // Mostrar contador si hay más pautas
+                if (pautas.length > 5) {
+                    container.innerHTML += `
+                        <div class="text-center pt-2">
+                            <button onclick="window.location.href='/techview/pauta'" 
+                                    class="text-xs text-primary hover:text-orange-600 font-bold">
+                                + ${pautas.length - 5} más pautas activas
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+
+            updatePautaCount() {
+                const totalPautas = this.pautas.length;
+                const totalRevenue = this.pautas.reduce((sum, p) => sum + (parseFloat(p.monto) || 0), 0);
+                
+                document.getElementById('pauta-count').innerText = `${totalPautas} pautas`;
+                this.updateAlerts();
+            }
+
+            updateAlerts() {
+                const alerts = [];
+                
+                // Alertas por margen negativo
+                this.assets.forEach(asset => {
+                    if (asset.monthly_margin < 0) {
+                        alerts.push({
+                            type: 'danger',
+                            message: `Déficit en ${asset.device_id}`,
+                            details: `Margen: ${formatCurrency(asset.monthly_margin)}`
+                        });
+                    }
+                    
+                    // Alertas por ROI alto (>36 meses)
+                    if (asset.roi_months > 36) {
+                        alerts.push({
+                            type: 'warning',
+                            message: `ROI alto en ${asset.device_id}`,
+                            details: `${asset.roi_months.toFixed(1)} meses`
+                        });
+                    }
+                    
+                    // Alertas por pantallas sin pautas
+                    const pautasActivas = this.pautas.filter(p => p.device_id === asset.device_id).length;
+                    if (pautasActivas === 0 && asset.monthly_margin < (asset.total_opex_monthly || 0)) {
+                        alerts.push({
+                            type: 'warning',
+                            message: `Sin pautas en ${asset.device_id}`,
+                            details: 'Ingresos insuficientes'
+                        });
+                    }
+                });
+
+                document.getElementById('alert-count').innerText = alerts.length;
+                this.renderAlerts(alerts);
+            }
+
+            renderAlerts(alerts) {
+                const container = document.getElementById('alerts-list');
+                
+                if (alerts.length === 0) {
+                    container.innerHTML = '<div class="text-center p-4 text-slate-400 text-xs italic">Sistema estable</div>';
+                    return;
+                }
+
+                container.innerHTML = alerts.map(alert => `
+                    <div class="p-3 rounded-xl border ${alert.type === 'danger' ? 'border-red-100 bg-red-50' : 'border-amber-100 bg-amber-50'}">
+                        <div class="flex gap-3 items-start">
+                            <span class="material-icons-outlined text-sm mt-0.5 ${alert.type === 'danger' ? 'text-red-600' : 'text-amber-600'}">
+                                ${alert.type === 'danger' ? 'warning' : 'info'}
+                            </span>
+                            <div class="flex-1">
+                                <p class="text-xs font-bold leading-tight ${alert.type === 'danger' ? 'text-red-700' : 'text-amber-700'}">
+                                    ${alert.message}
+                                </p>
+                                <p class="text-[10px] ${alert.type === 'danger' ? 'text-red-600' : 'text-amber-600'} opacity-80">
+                                    ${alert.details}
+                                </p>
+                            </div>
                         </div>
                     </div>
                 `).join('');
@@ -287,11 +511,124 @@
                     const term = e.target.value.toLowerCase();
                     const filtered = this.assets.filter(a => 
                         a.device_id.toLowerCase().includes(term) || 
-                        (a.pc_name && a.pc_name.toLowerCase().includes(term))
+                        (a.location && a.location.toLowerCase().includes(term))
                     );
                     this.renderTable(filtered);
                 });
             }
+        }
+
+        // Funciones auxiliares
+        function formatCurrency(val) {
+            if (val >= 1000000) {
+                return '$' + (val / 1000000).toFixed(1) + 'M';
+            } else if (val >= 1000) {
+                return '$' + (val / 1000).toFixed(1) + 'K';
+            }
+            return new Intl.NumberFormat('es-MX', { 
+                style: 'currency', 
+                currency: 'MXN',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(val || 0);
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
+        }
+
+        // Funciones para pautas
+        function showPautaModal() {
+            document.getElementById('pauta-modal').classList.remove('hidden');
+            loadDeviceOptions();
+        }
+
+        function closePautaModal() {
+            document.getElementById('pauta-modal').classList.add('hidden');
+        }
+
+        function addPautaToDevice(deviceId) {
+            showPautaModal();
+            document.getElementById('pauta-device').value = deviceId;
+        }
+
+        async function loadDeviceOptions() {
+            try {
+                const res = await fetch('/techview/api/devices');
+                if (res.ok) {
+                    const devices = await res.json();
+                    const select = document.getElementById('pauta-device');
+                    select.innerHTML = '<option value="">Seleccionar pantalla...</option>' +
+                        devices.map(d => `<option value="${d.device_id}">${d.device_id} - ${d.location || 'Sin ubicación'}</option>`).join('');
+                }
+            } catch (e) {
+                console.error("Error loading devices:", e);
+            }
+        }
+
+        async function savePauta() {
+            const pautaData = {
+                device_id: document.getElementById('pauta-device').value,
+                cliente: document.getElementById('pauta-cliente').value,
+                monto: parseFloat(document.getElementById('pauta-monto').value) || 0,
+                fecha_inicio: document.getElementById('pauta-inicio').value,
+                fecha_fin: document.getElementById('pauta-fin').value,
+                status: 'active'
+            };
+
+            if (!pautaData.device_id || !pautaData.cliente || pautaData.monto <= 0) {
+                alert('Por favor completa todos los campos requeridos');
+                return;
+            }
+
+            try {
+                const res = await fetch('/techview/api/pauta', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(pautaData)
+                });
+
+                if (res.ok) {
+                    alert('Pauta guardada exitosamente');
+                    closePautaModal();
+                    app.loadData(); // Recargar datos
+                    
+                    // Actualizar revenue en la pantalla correspondiente
+                    await updateDeviceRevenue(pautaData.device_id, pautaData.monto);
+                } else {
+                    throw new Error('Error al guardar la pauta');
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function updateDeviceRevenue(deviceId, montoPauta) {
+            try {
+                // Obtener revenue actual
+                const res = await fetch(`/techview/api/device/${deviceId}/revenue`);
+                const data = await res.json();
+                
+                // Calcular nuevo revenue
+                const currentRevenue = parseFloat(data.revenue_monthly) || 0;
+                const newRevenue = currentRevenue + montoPauta;
+                
+                // Actualizar en la base de datos
+                await fetch(`/techview/api/device/${deviceId}/revenue`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ revenue_monthly: newRevenue })
+                });
+            } catch (e) {
+                console.error("Error updating revenue:", e);
+            }
+        }
+
+        function exportToExcel() {
+            // Implementar exportación a Excel
+            alert('Exportación a Excel - Funcionalidad en desarrollo');
         }
 
         const app = new Dashboard();
