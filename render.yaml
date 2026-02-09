@@ -1,35 +1,78 @@
 services:
-  # Servicio 1: Discord Bot (SyncOps)
+  # ============================================
+  # SERVICIO 1: DISCORD BOT
+  # ============================================
   - type: web
     name: syncops-discord-bot
     env: python
     runtime: python
-    buildCommand: chmod +x build.sh && ./build.sh
-    startCommand: chmod +x start.sh && ./start.sh discord
+    region: oregon  # o virginia, frankfurt, etc.
+    
+    # Comandos de build y start
+    buildCommand: |
+      chmod +x build.sh
+      ./build.sh
+    startCommand: |
+      chmod +x start.sh
+      ./start.sh discord
+    
+    # Variables de entorno (SEGURAS - sync: false)
     envVars:
+      # DISCORD (SECRETO)
       - key: DISCORD_TOKEN
         sync: false
+        generateValue: false
+      
+      # SUPABASE (SECRETO)
       - key: SUPABASE_URL
-        value: https://jxwdncxtnhmrufvdxuti.supabase.co
+        sync: false
       - key: SUPABASE_KEY
-        value: sb_secret_3uwlOhDBw6O7_McDI6xoyQ_BDjmgFc0
+        sync: false
+      
+      # CONFIGURACIÓN
+      - key: GUILD_ID
+        value: 1448770446638973131
+      - key: CANAL_GENERAL_ID
+        value: 1457449842107220123
       - key: PIN_SECRET
         value: "1234"
+      
+      # RENDER
       - key: RENDER
         value: "true"
+      - key: PORT
+        value: 10000
+      - key: PYTHON_VERSION
+        value: 3.11.0
+    
+    # Plan y auto-deploy
     plan: free
     autoDeploy: true
+    
+    # Health check
     healthCheckPath: /health
-    domains:
-      - syncops-bot.onrender.com
+    healthCheckTimeout: 30
+    
+    # Dominios (opcional)
+    # domains:
+    #   - syncops-bot.onrender.com
 
-  # Servicio 2: Flask API (tu aplicación existente)
+  # ============================================
+  # SERVICIO 2: FLASK API
+  # ============================================
   - type: web
     name: monitor-nuc-api
     env: python
     runtime: python
-    buildCommand: chmod +x build.sh && ./build.sh
-    startCommand: chmod +x start.sh && ./start.sh flask
+    region: oregon
+    
+    buildCommand: |
+      chmod +x build.sh
+      ./build.sh
+    startCommand: |
+      chmod +x start.sh
+      ./start.sh flask
+    
     envVars:
       - key: FLASK_ENV
         value: production
@@ -37,5 +80,11 @@ services:
         value: src/routes/app.py
       - key: RENDER
         value: "true"
+      - key: PORT
+        value: 10001  # Diferente puerto para evitar conflicto
+    
     plan: free
     autoDeploy: true
+    
+    healthCheckPath: /
+    healthCheckTimeout: 30
