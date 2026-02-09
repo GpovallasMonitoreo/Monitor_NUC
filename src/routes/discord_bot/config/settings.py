@@ -1,22 +1,59 @@
+"""
+Configuración central para SyncOps Discord Bot
+"""
+
 import os
 import sys
 from dotenv import load_dotenv
 
-# Añadir ruta para imports
+# Añadir rutas para imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
 discord_bot_dir = os.path.dirname(current_dir)
 src_dir = os.path.dirname(discord_bot_dir)
-if src_dir not in sys.path:
-    sys.path.insert(0, src_dir)
+project_root = os.path.dirname(src_dir)
 
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+# Cargar variables de entorno
 load_dotenv()
+
+print(f"⚙️  Cargando configuración desde: {current_dir}")
 
 # ==============================================================================
 # CONFIGURACIÓN BÁSICA - DISCORD
 # ==============================================================================
-DISCORD_BOT_TOKEN = os.getenv("DISCORD_TOKEN")  # ¡AÑADE ESTA LÍNEA!
+DISCORD_BOT_TOKEN = os.getenv("DISCORD_TOKEN")
 GUILD_ID = 1448770446638973131
 CANAL_GENERAL_ID = 1457449842107220123
+
+# ==============================================================================
+# VERIFICACIÓN DE CONFIGURACIÓN
+# ==============================================================================
+def verificar_configuracion():
+    """Verificar que toda la configuración esté presente"""
+    errores = []
+    
+    if not DISCORD_BOT_TOKEN:
+        errores.append("DISCORD_TOKEN no configurado")
+    
+    if not os.getenv("SUPABASE_URL"):
+        errores.append("SUPABASE_URL no configurado")
+    
+    if not os.getenv("SUPABASE_KEY"):
+        errores.append("SUPABASE_KEY no configurado")
+    
+    if errores:
+        print("⚠️ ADVERTENCIAS DE CONFIGURACIÓN:")
+        for error in errores:
+            print(f"   • {error}")
+        return False
+    
+    print("✅ Configuración verificada correctamente")
+    return True
+
+# Ejecutar verificación
+verificar_configuracion()
 
 # ==============================================================================
 # 🗄️ BASE DE DATOS (SUPABASE)
@@ -59,26 +96,31 @@ MAPA_MOTIVOS = {
 }
 
 # ==============================================================================
-# COLORES
+# COLORES PARA EMBEDS
 # ==============================================================================
-COLOR_EMBED = 0x3498DB
-COLOR_EXITO = 0x2ECC71
-COLOR_ALERTA = 0xE74C3C
-COLOR_REASIGNADO = 0x9B59B6
+COLOR_EMBED = 0x3498DB        # Azul
+COLOR_EXITO = 0x2ECC71        # Verde
+COLOR_ALERTA = 0xE74C3C       # Rojo
+COLOR_REASIGNADO = 0x9B59B6   # Púrpura
+COLOR_ANALISIS = 0xF39C12     # Naranja
+COLOR_INFO = 0xF1C40F         # Amarillo
 
 # ==============================================================================
-# ANALISIS
+# TIEMPOS Y SLA
 # ==============================================================================
-COLOR_ANALISIS = 0xF39C12  # Color naranja para análisis
+SLA_DEFAULT = 24  # Horas por defecto
+SLA_URGENTE = 4   # Horas para tickets urgentes
 
 # ==============================================================================
 # SEGURIDAD
 # ==============================================================================
-PIN_SECRET = os.getenv("PIN_SECRET", "1234")  # Valor por defecto
+PIN_SECRET = os.getenv("PIN_SECRET", "1234")
 
 # ==============================================================================
-# RENDER CONFIG
+# ENTORNO
 # ==============================================================================
-IS_RENDER = os.environ.get('RENDER', False) or os.environ.get('PORT', False)
-if IS_RENDER:
-    print("⚡ Ejecutando en entorno Render - Discord Bot")
+IS_RENDER = os.environ.get('RENDER') == 'true' or os.environ.get('PORT') is not None
+ENVIRONMENT = "production" if IS_RENDER else "development"
+
+print(f"🌍 Entorno: {ENVIRONMENT}")
+print(f"🏗️  Estructura: {project_root}")
