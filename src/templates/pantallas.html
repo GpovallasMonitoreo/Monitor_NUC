@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html class="light" lang="es">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Argos DOOH - Todas las Pantallas</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f97415",
+                        "primary-dark": "#c2570e",
+                        "background-light": "#f8f7f5",
+                        "background-dark": "#23170f",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#2d2420",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .screen-row:hover {
+            background: linear-gradient(90deg, rgba(249, 116, 21, 0.05) 0%, transparent 100%);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 antialiased">
+    <!-- Header -->
+    <header class="flex h-16 items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-surface-light dark:bg-surface-dark px-8">
+        <div class="flex items-center gap-2">
+            <div class="flex items-center justify-center size-8 rounded-lg bg-primary text-white">
+                <span class="material-symbols-outlined">ad_units</span>
+            </div>
+            <div class="flex flex-col">
+                <h1 class="text-slate-900 dark:text-white text-base font-bold">Argos DOOH</h1>
+                <p class="text-slate-500 dark:text-slate-400 text-xs">Todas las Pantallas</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <a href="/" class="px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-lg transition">
+                ← Volver al Dashboard
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="p-8">
+        <div class="max-w-[1600px] mx-auto">
+            <!-- Header Section -->
+            <div class="flex items-center justify-between mb-8">
+                <div>
+                    <h2 class="text-3xl font-bold text-slate-900 dark:text-white">Todas las Pantallas</h2>
+                    <p class="text-slate-500 dark:text-slate-400 mt-2">Gestión completa de todas las pantallas del sistema</p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="exportAllScreens()" class="px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition flex items-center gap-2">
+                        <span class="material-symbols-outlined">download</span>
+                        Exportar CSV
+                    </button>
+                    <button onclick="addNewScreen()" class="px-4 py-2 bg-emerald-500 text-white font-bold rounded-lg hover:bg-emerald-600 transition flex items-center gap-2">
+                        <span class="material-symbols-outlined">add</span>
+                        Nueva Pantalla
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white dark:bg-surface-dark rounded-xl p-6 border border-slate-200 dark:border-slate-800">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Total Pantallas</p>
+                            <p class="text-3xl font-bold text-slate-900 dark:text-white mt-2" id="total-count">0</p>
+                        </div>
+                        <div class="p-3 bg-blue-100 dark:bg-blue-500/20 rounded-lg">
+                            <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">tv</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white dark:bg-surface-dark rounded-xl p-6 border border-slate-200 dark:border-slate-800">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 dark:text-slate-400">En Línea</p>
+                            <p class="text-3xl font-bold text-emerald-600 dark:text-emerald-400 mt-2" id="online-count">0</p>
+                        </div>
+                        <div class="p-3 bg-emerald-100 dark:bg-emerald-500/20 rounded-lg">
+                            <span class="material-symbols-outlined text-emerald-600 dark:text-emerald-400">wifi</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white dark:bg-surface-dark rounded-xl p-6 border border-slate-200 dark:border-slate-800">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Mantenimiento</p>
+                            <p class="text-3xl font-bold text-amber-600 dark:text-amber-400 mt-2" id="maintenance-count">0</p>
+                        </div>
+                        <div class="p-3 bg-amber-100 dark:bg-amber-500/20 rounded-lg">
+                            <span class="material-symbols-outlined text-amber-600 dark:text-amber-400">engineering</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white dark:bg-surface-dark rounded-xl p-6 border border-slate-200 dark:border-slate-800">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Desconectadas</p>
+                            <p class="text-3xl font-bold text-red-600 dark:text-red-400 mt-2" id="offline-count">0</p>
+                        </div>
+                        <div class="p-3 bg-red-100 dark:bg-red-500/20 rounded-lg">
+                            <span class="material-symbols-outlined text-red-600 dark:text-red-400">wifi_off</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Screens Table -->
+            <div class="bg-white dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-800 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div class="relative">
+                                <span class="material-symbols-outlined text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">search</span>
+                                <input id="search-screens" class="pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm w-64" placeholder="Buscar pantallas..." type="text"/>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="filterScreens('all')" class="px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors">
+                                    Todas
+                                </button>
+                                <button onclick="filterScreens('online')" class="px-3 py-1.5 text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-500/30 transition-colors">
+                                    En línea
+                                </button>
+                                <button onclick="filterScreens('offline')" class="px-3 py-1.5 text-xs font-medium bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors">
+                                    Desconectadas
+                                </button>
+                            </div>
+                        </div>
+                        <button onclick="refreshScreens()" class="p-2 text-slate-500 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition">
+                            <span class="material-symbols-outlined">refresh</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                                <th class="py-4 px-6 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pantalla</th>
+                                <th class="py-4 px-6 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">ID</th>
+                                <th class="py-4 px-6 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ubicación</th>
+                                <th class="py-4 px-6 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Estado</th>
+                                <th class="py-4 px-6 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ingresos</th>
+                                <th class="py-4 px-6 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Gastos</th>
+                                <th class="py-4 px-6 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">ROI</th>
+                                <th class="py-4 px-6 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="screens-table">
+                            <!-- Las pantallas se cargarán aquí -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let screens = [];
+        let currentFilter = 'all';
+
+        async function loadScreens() {
+            try {
+                // Simular carga de pantallas
+                screens = [
+                    {
+                        id: 'ARG-001',
+                        name: 'Pantalla Centro Comercial',
+                        location: 'Centro Comercial Galerías',
+                        status: 'online',
+                        revenue: 8500,
+                        expenses: 3200,
+                        roi: 14.5,
+                        lastMaintenance: '2024-02-15',
+                        uptime: '99.8%'
+                    },
+                    {
+                        id: 'ARG-002',
+                        name: 'Pantalla Aeropuerto',
+                        location: 'Aeropuerto Internacional',
+                        status: 'online',
+                        revenue: 12000,
+                        expenses: 4500,
+                        roi: 18.2,
+                        lastMaintenance: '2024-02-10',
+                        uptime: '99.5%'
+                    },
+                    {
+                        id: 'ARG-003',
+                        name: 'Pantalla Estación Central',
+                        location: 'Estación de Metro',
+                        status: 'maintenance',
+                        revenue: 6500,
+                        expenses: 2800,
+                        roi: 22.1,
+                        lastMaintenance: '2024-02-18',
+                        uptime: '98.2%'
+                    },
+                    {
+                        id: 'ARG-004',
+                        name: 'Pantalla Plaza Mayor',
+                        location: 'Plaza Principal',
+                        status: 'offline',
+                        revenue: 7200,
+                        expenses: 3100,
+                        roi: 16.8,
+                        lastMaintenance: '2024-01-25',
+                        uptime: '95.4%'
+                    },
+                    {
+                        id: 'ARG-005',
+                        name: 'Pantalla Zona Financiera',
+                        location: 'Distrito Financiero',
+                        status: 'online',
+                        revenue: 10500,
+                        expenses: 3800,
+                        roi: 12.3,
+                        lastMaintenance: '2024-02-12',
+                        uptime: '99.9%'
+                    },
+                    {
+                        id: 'ARG-006',
+                        name: 'Pantalla Universidad',
+                        location: 'Campus Universitario',
+                        status: 'online',
+                        revenue: 5800,
+                        expenses: 2200,
+                        roi: 25.4,
+                        lastMaintenance: '2024-02-05',
+                        uptime: '99.6%'
+                    },
+                    {
+                        id: 'ARG-007',
+                        name: 'Pantalla Hospital',
+                        location: 'Hospital Central',
+                        status: 'maintenance',
+                        revenue: 4800,
+                        expenses: 2100,
+                        roi: 28.7,
+                        lastMaintenance: '2024-02-20',
+                        uptime: '97.8%'
+                    },
+                    {
+                        id: 'ARG-008',
+                        name: 'Pantalla Estadio',
+                        location: 'Estadio Municipal',
+                        status: 'online',
+                        revenue: 9200,
+                        expenses: 3500,
+                        roi: 15.2,
+                        lastMaintenance: '2024-02-08',
+                        uptime: '99.7%'
+                    },
+                    {
+                        id: 'ARG-009',
+                        name: 'Pantalla Terminal',
+                        location: 'Terminal de Autobuses',
+                        status: 'online',
+                        revenue: 7800,
+                        expenses: 2900,
+                        roi: 19.3,
+                        lastMaintenance: '2024-02-14',
+                        uptime: '99.3%'
+                    },
+                    {
+                        id: 'ARG-010',
+                        name: 'Pantalla Mercado',
+                        location: 'Mercado Municipal',
+                        status: 'offline',
+                        revenue: 4200,
+                        expenses: 1900,
+                        roi: 31.5,
+                        lastMaintenance: '2024-01-30',
+                        uptime: '94.2%'
+                    }
+                ];
+
+                updateStats();
+                renderScreens();
+            } catch (error) {
+                console.error('Error loading screens:', error);
+            }
+        }
+
+        function updateStats() {
+            const total = screens.length;
+            const online = screens.filter(s => s.status === 'online').length;
+            const maintenance = screens.filter(s => s.status === 'maintenance').length;
+            const offline = screens.filter(s => s.status === 'offline').length;
+
+            document.getElementById('total-count').textContent = total;
+            document.getElementById('online-count').textContent = online;
+            document.getElementById('maintenance-count').textContent = maintenance;
+            document.getElementById('offline-count').textContent = offline;
+        }
+
+        function renderScreens() {
+            const filteredScreens = currentFilter === 'all' ? 
+                screens : 
+                screens.filter(s => s.status === currentFilter);
+
+            const tableBody = document.getElementById('screens-table');
+            
+            if (filteredScreens.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="py-12 text-center text-slate-400 dark:text-slate-500">
+                            <div class="flex flex-col items-center gap-2">
+                                <span class="material-symbols-outlined text-2xl">search_off</span>
+                                <p>No se encontraron pantallas</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tableBody.innerHTML = filteredScreens.map(screen => {
+                const statusConfig = getStatusConfig(screen.status);
+                const profit = screen.revenue - screen.expenses;
+
+                return `
+                    <tr class="screen-row border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td class="py-4 px-6">
+                            <div class="flex items-center gap-3">
+                                <div class="size-10 rounded-lg ${statusConfig.bg} flex items-center justify-center text-white">
+                                    <span class="material-symbols-outlined text-lg">tv</span>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-slate-900 dark:text-white">${screen.name}</p>
+                                    <p class="text-xs text-slate-500">Último mantenimiento: ${screen.lastMaintenance}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-4 px-6">
+                            <span class="font-mono text-sm text-slate-900 dark:text-white">${screen.id}</span>
+                        </td>
+                        <td class="py-4 px-6">
+                            <p class="text-sm text-slate-700 dark:text-slate-300">${screen.location}</p>
+                        </td>
+                        <td class="py-4 px-6">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusConfig.colorClass}">
+                                <span class="size-1.5 rounded-full ${statusConfig.dotClass}"></span>
+                                ${statusConfig.text}
+                            </span>
+                        </td>
+                        <td class="py-4 px-6">
+                            <p class="font-bold text-emerald-600 dark:text-emerald-400">$${screen.revenue.toLocaleString()}</p>
+                        </td>
+                        <td class="py-4 px-6">
+                            <p class="font-bold text-red-600 dark:text-red-400">$${screen.expenses.toLocaleString()}</p>
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="flex items-center gap-3">
+                                <div class="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden w-20">
+                                    <div class="h-full ${screen.roi < 18 ? 'bg-emerald-500' : screen.roi < 24 ? 'bg-blue-500' : 'bg-red-500'} rounded-full" style="width: ${Math.min((screen.roi / 36) * 100, 100)}%"></div>
+                                </div>
+                                <span class="text-sm font-bold text-slate-900 dark:text-white">${screen.roi.toFixed(1)}m</span>
+                            </div>
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="flex items-center gap-2">
+                                <a href="techview.html?device_id=${screen.id}" class="px-3 py-1.5 text-xs font-semibold text-primary border border-primary/20 bg-primary/5 hover:bg-primary hover:text-white rounded-md transition-all">
+                                    Gestionar
+                                </a>
+                                <button onclick="viewScreenDetails('${screen.id}')" class="p-1.5 text-slate-500 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-800 rounded">
+                                    <span class="material-symbols-outlined text-sm">visibility</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function getStatusConfig(status) {
+            const configs = {
+                online: {
+                    text: 'En Línea',
+                    colorClass: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400',
+                    dotClass: 'bg-emerald-500',
+                    bg: 'bg-gradient-to-br from-emerald-500 to-emerald-600'
+                },
+                offline: {
+                    text: 'Desconectada',
+                    colorClass: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400',
+                    dotClass: 'bg-red-500',
+                    bg: 'bg-gradient-to-br from-red-500 to-red-600'
+                },
+                maintenance: {
+                    text: 'Mantenimiento',
+                    colorClass: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400',
+                    dotClass: 'bg-amber-500',
+                    bg: 'bg-gradient-to-br from-amber-500 to-amber-600'
+                }
+            };
+            return configs[status] || configs.offline;
+        }
+
+        function filterScreens(status) {
+            currentFilter = status;
+            renderScreens();
+        }
+
+        function refreshScreens() {
+            loadScreens();
+            showNotification('Pantallas actualizadas', 'success');
+        }
+
+        function exportAllScreens() {
+            const data = [
+                ['ID', 'Nombre', 'Ubicación', 'Estado', 'Ingresos', 'Gastos', 'ROI', 'Último Mantenimiento', 'Uptime'],
+                ...screens.map(s => [s.id, s.name, s.location, s.status, s.revenue, s.expenses, s.roi, s.lastMaintenance, s.uptime])
+            ];
+            
+            const csvContent = data.map(row => 
+                row.map(cell => `"${cell}"`).join(',')
+            ).join('\n');
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            const date = new Date().toISOString().split('T')[0];
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', `todas-pantallas-${date}.csv`);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showNotification('CSV descargado exitosamente', 'success');
+        }
+
+        function addNewScreen() {
+            alert('Funcionalidad para agregar nueva pantalla');
+        }
+
+        function viewScreenDetails(screenId) {
+            window.location.href = `techview.html?device_id=${screenId}`;
+        }
+
+        // Configurar búsqueda
+        document.getElementById('search-screens').addEventListener('input', function(e) {
+            const term = e.target.value.toLowerCase();
+            const filtered = screens.filter(screen => 
+                screen.name.toLowerCase().includes(term) ||
+                screen.location.toLowerCase().includes(term) ||
+                screen.id.toLowerCase().includes(term)
+            );
+            
+            if (filtered.length === 0) {
+                document.getElementById('screens-table').innerHTML = `
+                    <tr>
+                        <td colspan="8" class="py-12 text-center text-slate-400 dark:text-slate-500">
+                            <div class="flex flex-col items-center gap-2">
+                                <span class="material-symbols-outlined text-2xl">search_off</span>
+                                <p>No se encontraron pantallas</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            } else {
+                // Reutilizar la lógica de renderizado con los filtrados
+                const tempScreens = screens;
+                screens = filtered;
+                renderScreens();
+                screens = tempScreens;
+            }
+        });
+
+        // Función de notificación
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            const typeClasses = {
+                'success': 'bg-emerald-500 text-white',
+                'error': 'bg-red-500 text-white',
+                'info': 'bg-blue-500 text-white'
+            };
+
+            notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${typeClasses[type]} animate-fade-in`;
+            notification.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined">
+                        ${type === 'success' ? 'check_circle' : type === 'error' ? 'error' : 'info'}
+                    </span>
+                    <span>${message}</span>
+                </div>
+            `;
+
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Añadir estilo para animación
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fade-in {
+                from { opacity: 0; transform: translateY(-10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            .animate-fade-in {
+                animation: fade-in 0.3s ease-out;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Cargar pantallas al iniciar
+        document.addEventListener('DOMContentLoaded', loadScreens);
+    </script>
+</body>
+</html>
