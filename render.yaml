@@ -1,0 +1,41 @@
+services:
+  # Servicio 1: Discord Bot (SyncOps)
+  - type: web
+    name: syncops-discord-bot
+    env: python
+    runtime: python
+    buildCommand: chmod +x build.sh && ./build.sh
+    startCommand: chmod +x start.sh && ./start.sh discord
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: SUPABASE_URL
+        value: https://jxwdncxtnhmrufvdxuti.supabase.co
+      - key: SUPABASE_KEY
+        value: sb_secret_3uwlOhDBw6O7_McDI6xoyQ_BDjmgFc0
+      - key: PIN_SECRET
+        value: "1234"
+      - key: RENDER
+        value: "true"
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /health
+    domains:
+      - syncops-bot.onrender.com
+
+  # Servicio 2: Flask API (tu aplicación existente)
+  - type: web
+    name: monitor-nuc-api
+    env: python
+    runtime: python
+    buildCommand: chmod +x build.sh && ./build.sh
+    startCommand: chmod +x start.sh && ./start.sh flask
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_APP
+        value: src/routes/app.py
+      - key: RENDER
+        value: "true"
+    plan: free
+    autoDeploy: true
