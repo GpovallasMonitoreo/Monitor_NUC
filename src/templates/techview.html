@@ -3,11 +3,10 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>Argos DOOH - Gestión Completa de Pantalla</title>
+    <title>Argos DOOH - Gestión de Pantalla</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <script>
         tailwind.config = {
@@ -23,92 +22,45 @@
                     fontFamily: {
                         "display": ["Inter", "sans-serif"]
                     },
-                    borderRadius: { 
-                        "DEFAULT": "0.375rem", 
-                        "lg": "0.5rem", 
-                        "xl": "0.75rem", 
-                        "full": "9999px" 
-                    },
                 },
             },
         }
     </script>
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-            animation: fadeIn 0.3s ease-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .custom-scroll::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        .custom-scroll::-webkit-scrollbar-thumb {
-            background-color: #cbd5e1;
-            border-radius: 20px;
-        }
-        .status-online { 
-            background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
-            box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
-        }
-        .status-offline { 
-            background: linear-gradient(135deg, #EF4444 0%, #F87171 100%);
-            box-shadow: 0 2px 10px rgba(239, 68, 68, 0.3);
-        }
-        .status-maintenance { 
-            background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%);
-            box-shadow: 0 2px 10px rgba(245, 158, 11, 0.3);
-        }
-        .print-section {
-            break-inside: avoid;
-        }
+        body { font-family: 'Inter', sans-serif; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .section-card { transition: all 0.3s ease; }
+        .section-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
     </style>
 </head>
-<body class="bg-background-light dark:bg-background-dark text-[#181411] dark:text-white min-h-screen flex flex-col font-display antialiased">
+<body class="bg-background-light dark:bg-background-dark text-[#181411] dark:text-white min-h-screen font-display antialiased">
     <!-- Main Wrapper -->
     <div class="flex h-screen w-full overflow-hidden">
-        <!-- Left Sidebar -->
-        <aside class="flex w-64 flex-col border-r border-[#e5e7eb] dark:border-[#3a2d25] bg-white dark:bg-[#2a1d15] flex-shrink-0 z-20">
+        <!-- Sidebar Específica -->
+        <aside class="flex w-64 flex-col border-r border-[#e5e7eb] dark:border-[#3a2d25] bg-white dark:bg-[#2a1d15] flex-shrink-0">
             <div class="flex h-16 items-center px-6 border-b border-[#e5e7eb] dark:border-[#3a2d25]">
                 <div class="flex items-center gap-2">
                     <div class="size-8 flex items-center justify-center bg-primary rounded-lg text-white">
-                        <span class="material-symbols-outlined">grid_view</span>
+                        <span class="material-symbols-outlined">tv</span>
                     </div>
                     <div class="flex flex-col">
-                        <h2 class="text-[#181411] dark:text-white text-base font-bold leading-none">Argos DOOH</h2>
-                        <p class="text-slate-500 dark:text-slate-400 text-xs font-medium mt-1">Gestión de Pantalla</p>
+                        <h2 class="text-[#181411] dark:text-white text-base font-bold leading-none">Gestión de Pantalla</h2>
+                        <p class="text-slate-500 dark:text-slate-400 text-xs font-medium mt-1" id="screen-id-display">ARG-001</p>
                     </div>
                 </div>
             </div>
             
-            <!-- Device Info -->
+            <!-- Screen Info -->
             <div class="p-4 border-b border-[#e5e7eb] dark:border-[#3a2d25]">
-                <div class="flex items-center gap-3">
-                    <div class="size-12 rounded-lg status-online flex items-center justify-center text-white">
-                        <span class="material-symbols-outlined text-xl">tv</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <h3 class="font-bold text-[#181411] dark:text-white text-sm truncate" id="current-screen-name">Cargando...</h3>
-                        <p class="text-xs text-slate-500 truncate" id="current-screen-id">ID: Cargando...</p>
-                    </div>
-                </div>
-                <div class="mt-3">
-                    <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800" id="screen-status-badge">
-                        <span class="relative flex h-2 w-2">
-                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                        </span>
-                        Cargando...
+                <h3 id="screen-name-display" class="font-bold text-[#181411] dark:text-white text-sm mb-2">Cargando...</h3>
+                <div class="flex items-center gap-2">
+                    <span id="screen-status" class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                        <span class="size-2 rounded-full bg-emerald-500"></span>
+                        En Línea
                     </span>
+                    <span id="screen-uptime" class="text-xs text-slate-500">99.8%</span>
                 </div>
             </div>
 
@@ -130,26 +82,24 @@
                     <span class="material-symbols-outlined">engineering</span>
                     <span class="text-sm font-medium">Mantenimientos</span>
                 </a>
-                <a href="#" class="tab-nav flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group" data-tab="inventario">
-                    <span class="material-symbols-outlined">inventory_2</span>
-                    <span class="text-sm font-medium">Inventario</span>
-                </a>
                 <a href="#" class="tab-nav flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group" data-tab="refacciones">
                     <span class="material-symbols-outlined">precision_manufacturing</span>
-                    <span class="text-sm font-medium">Refacciones</span>
-                </a>
-                <a href="#" class="tab-nav flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group" data-tab="retiros">
-                    <span class="material-symbols-outlined">move_up</span>
-                    <span class="text-sm font-medium">Retiros</span>
+                    <span class="text-sm font-medium">Refacciones Usadas</span>
                 </a>
                 <a href="#" class="tab-nav flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group" data-tab="reubicaciones">
                     <span class="material-symbols-outlined">location_on</span>
                     <span class="text-sm font-medium">Reubicaciones</span>
                 </a>
-                <div class="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
-                    <a href="/inventario.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-primary hover:bg-primary/5 transition-colors group">
-                        <span class="material-symbols-outlined">warehouse</span>
-                        <span class="text-sm font-medium">Inventario Global</span>
+                <a href="#" class="tab-nav flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group" data-tab="retiros">
+                    <span class="material-symbols-outlined">move_up</span>
+                    <span class="text-sm font-medium">Retiros</span>
+                </a>
+                
+                <!-- Back to Dashboard -->
+                <div class="pt-6 mt-6 border-t border-slate-100 dark:border-slate-800">
+                    <a href="/" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group">
+                        <span class="material-symbols-outlined">arrow_back</span>
+                        <span class="text-sm font-medium">Volver al Dashboard</span>
                     </a>
                 </div>
             </nav>
@@ -158,167 +108,137 @@
         <!-- Main Content -->
         <main class="flex-1 flex flex-col h-full overflow-hidden bg-background-light dark:bg-background-dark">
             <!-- Top Header -->
-            <header class="flex h-16 items-center justify-between gap-4 border-b border-[#e5e7eb] dark:border-[#3a2d25] bg-white/80 dark:bg-[#2a1d15]/80 px-8 backdrop-blur-md sticky top-0 z-10">
+            <header class="flex h-16 items-center justify-between gap-4 border-b border-[#e5e7eb] dark:border-[#3a2d25] bg-white/80 dark:bg-[#2a1d15]/80 px-8 backdrop-blur-md">
                 <div>
-                    <h1 class="text-xl font-bold text-[#181411] dark:text-white" id="screen-title">Gestión de Pantalla</h1>
-                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1" id="screen-subtitle">Cargando información...</p>
+                    <h1 id="screen-title" class="text-xl font-bold text-[#181411] dark:text-white">Gestión de Pantalla</h1>
+                    <p id="screen-location" class="text-sm text-slate-500 dark:text-slate-400 mt-1">Cargando ubicación...</p>
                 </div>
                 <div class="flex items-center gap-4">
-                    <!-- Report Generator -->
-                    <div class="relative group">
-                        <button onclick="toggleReportMenu()" class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary-dark transition shadow-md shadow-primary/20">
-                            <span class="material-symbols-outlined">summarize</span>
-                            Generar Reporte
-                        </button>
-                        <div id="report-menu" class="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-[#2a1d15] rounded-lg shadow-lg border border-slate-200 dark:border-slate-800 py-2 z-50 hidden">
-                            <button onclick="generateReport('rentabilidad')" class="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2">
-                                <span class="material-symbols-outlined text-emerald-500">trending_up</span>
-                                Reporte de Rentabilidad
-                            </button>
-                            <button onclick="generateReport('incidencias')" class="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2">
-                                <span class="material-symbols-outlined text-red-500">warning</span>
-                                Reporte de Incidencias
-                            </button>
-                            <button onclick="generateReport('mantenimientos')" class="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2">
-                                <span class="material-symbols-outlined text-amber-500">engineering</span>
-                                Reporte de Mantenimientos
-                            </button>
-                            <button onclick="generateReport('refacciones')" class="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2">
-                                <span class="material-symbols-outlined text-blue-500">inventory_2</span>
-                                Reporte de Refacciones
-                            </button>
-                            <div class="border-t border-slate-200 dark:border-slate-800 my-2"></div>
-                            <button onclick="generateFullReport()" class="w-full px-4 py-2 text-left text-sm font-bold text-primary hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2">
-                                <span class="material-symbols-outlined">description</span>
-                                Reporte Completo
-                            </button>
-                        </div>
-                    </div>
-                    
                     <!-- Quick Actions -->
-                    <button onclick="refreshData()" class="p-2 text-slate-500 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition">
-                        <span class="material-symbols-outlined">refresh</span>
+                    <button onclick="generateScreenReport()" class="px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition flex items-center gap-2">
+                        <span class="material-symbols-outlined">summarize</span>
+                        Reporte Directivo
                     </button>
-                    <button onclick="exportData()" class="p-2 text-slate-500 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition">
-                        <span class="material-symbols-outlined">download</span>
+                    <button onclick="refreshScreenData()" class="p-2 text-slate-500 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition">
+                        <span class="material-symbols-outlined">refresh</span>
                     </button>
                 </div>
             </header>
 
             <!-- Tab Content -->
-            <div class="flex-1 overflow-y-auto p-8 custom-scroll">
+            <div class="flex-1 overflow-y-auto p-8">
                 <!-- Dashboard Tab -->
                 <div id="dashboard" class="tab-content active">
                     <div class="max-w-[1400px] mx-auto">
-                        <!-- KPI Cards -->
+                        <!-- Screen Stats -->
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                            <!-- ROI Card -->
-                            <div class="bg-white dark:bg-[#2a1d15] rounded-xl p-6 shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25]">
+                            <div class="section-card bg-white dark:bg-[#2a1d15] rounded-xl p-6 border border-[#e5e7eb] dark:border-[#3a2d25]">
                                 <div class="flex items-center justify-between mb-4">
                                     <div>
                                         <p class="text-sm font-medium text-slate-500 dark:text-slate-400">ROI Actual</p>
-                                        <h3 class="text-2xl font-bold text-[#181411] dark:text-white mt-1" id="roi-value">0.0%</h3>
+                                        <p class="text-2xl font-bold text-[#181411] dark:text-white mt-1">14.5 meses</p>
                                     </div>
                                     <div class="p-3 bg-emerald-100 dark:bg-emerald-500/20 rounded-lg">
                                         <span class="material-symbols-outlined text-emerald-600 dark:text-emerald-400">trending_up</span>
                                     </div>
                                 </div>
-                                <div class="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                    <div class="h-full bg-emerald-500 rounded-full" id="roi-bar" style="width: 0%"></div>
+                                <div class="text-xs text-slate-500">Meta: 24 meses</div>
+                                <div class="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-2">
+                                    <div class="h-full bg-emerald-500 rounded-full w-3/5"></div>
                                 </div>
                             </div>
 
-                            <!-- Monthly Revenue -->
-                            <div class="bg-white dark:bg-[#2a1d15] rounded-xl p-6 shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25]">
+                            <div class="section-card bg-white dark:bg-[#2a1d15] rounded-xl p-6 border border-[#e5e7eb] dark:border-[#3a2d25]">
                                 <div class="flex items-center justify-between mb-4">
                                     <div>
                                         <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Ingresos Mensuales</p>
-                                        <h3 class="text-2xl font-bold text-[#181411] dark:text-white mt-1" id="monthly-revenue">$0.00</h3>
+                                        <p class="text-2xl font-bold text-[#181411] dark:text-white mt-1">$8,500</p>
                                     </div>
                                     <div class="p-3 bg-blue-100 dark:bg-blue-500/20 rounded-lg">
                                         <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">payments</span>
                                     </div>
                                 </div>
-                                <p class="text-xs text-slate-500 dark:text-slate-400" id="revenue-trend">Cargando...</p>
+                                <div class="text-xs text-emerald-500 flex items-center">
+                                    <span class="material-symbols-outlined text-sm mr-1">arrow_upward</span>
+                                    +8% vs mes anterior
+                                </div>
                             </div>
 
-                            <!-- Monthly Expenses -->
-                            <div class="bg-white dark:bg-[#2a1d15] rounded-xl p-6 shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25]">
+                            <div class="section-card bg-white dark:bg-[#2a1d15] rounded-xl p-6 border border-[#e5e7eb] dark:border-[#3a2d25]">
                                 <div class="flex items-center justify-between mb-4">
                                     <div>
                                         <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Gastos Mensuales</p>
-                                        <h3 class="text-2xl font-bold text-[#181411] dark:text-white mt-1" id="monthly-expenses">$0.00</h3>
+                                        <p class="text-2xl font-bold text-[#181411] dark:text-white mt-1">$3,200</p>
                                     </div>
                                     <div class="p-3 bg-red-100 dark:bg-red-500/20 rounded-lg">
                                         <span class="material-symbols-outlined text-red-600 dark:text-red-400">credit_card</span>
                                     </div>
                                 </div>
-                                <p class="text-xs text-slate-500 dark:text-slate-400" id="expenses-breakdown">Cargando...</p>
+                                <div class="text-xs text-slate-500">OPEX mensual</div>
                             </div>
 
-                            <!-- Profit Margin -->
-                            <div class="bg-white dark:bg-[#2a1d15] rounded-xl p-6 shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25]">
+                            <div class="section-card bg-white dark:bg-[#2a1d15] rounded-xl p-6 border border-[#e5e7eb] dark:border-[#3a2d25]">
                                 <div class="flex items-center justify-between mb-4">
                                     <div>
-                                        <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Margen de Ganancia</p>
-                                        <h3 class="text-2xl font-bold text-[#181411] dark:text-white mt-1" id="profit-margin">$0.00</h3>
+                                        <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Ganancia Neta</p>
+                                        <p class="text-2xl font-bold text-[#181411] dark:text-white mt-1">$5,300</p>
                                     </div>
                                     <div class="p-3 bg-purple-100 dark:bg-purple-500/20 rounded-lg">
                                         <span class="material-symbols-outlined text-purple-600 dark:text-purple-400">show_chart</span>
                                     </div>
                                 </div>
-                                <div class="flex items-center gap-2">
-                                    <span class="text-xs font-medium" id="margin-percentage">0%</span>
-                                    <span class="text-xs text-slate-500 dark:text-slate-400">del total</span>
-                                </div>
+                                <div class="text-xs text-emerald-500">62.4% de margen</div>
                             </div>
                         </div>
 
-                        <!-- Charts Section -->
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                            <!-- Profitability Chart -->
-                            <div class="bg-white dark:bg-[#2a1d15] rounded-xl p-6 shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25]">
-                                <h3 class="text-lg font-bold text-[#181411] dark:text-white mb-6">Rentabilidad Mensual</h3>
-                                <div class="h-80">
-                                    <canvas id="profitabilityChart"></canvas>
-                                </div>
-                            </div>
-
-                            <!-- Incidents Chart -->
-                            <div class="bg-white dark:bg-[#2a1d15] rounded-xl p-6 shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25]">
-                                <h3 class="text-lg font-bold text-[#181411] dark:text-white mb-6">Frecuencia de Incidencias</h3>
-                                <div class="h-80">
-                                    <canvas id="incidentsChart"></canvas>
-                                </div>
+                        <!-- Performance Chart -->
+                        <div class="bg-white dark:bg-[#2a1d15] rounded-xl shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25] p-6 mb-8">
+                            <h3 class="text-lg font-bold text-[#181411] dark:text-white mb-6">Rendimiento Mensual</h3>
+                            <div class="h-80">
+                                <canvas id="performanceChart"></canvas>
                             </div>
                         </div>
 
-                        <!-- Maintenance & Alerts -->
+                        <!-- Quick Overview -->
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            <!-- Recent Maintenance -->
-                            <div class="bg-white dark:bg-[#2a1d15] rounded-xl p-6 shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25]">
-                                <div class="flex items-center justify-between mb-6">
-                                    <h3 class="text-lg font-bold text-[#181411] dark:text-white">Mantenimientos Recientes</h3>
-                                    <button onclick="showTab('mantenimientos')" class="text-sm text-primary font-medium hover:underline">Ver todos</button>
-                                </div>
-                                <div class="space-y-4" id="recent-maintenance">
-                                    <div class="text-center py-8 text-slate-400 dark:text-slate-500">
-                                        <span class="material-symbols-outlined text-2xl mb-2">engineering</span>
-                                        <p>No hay mantenimientos recientes</p>
+                            <div class="bg-white dark:bg-[#2a1d15] rounded-xl shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25] p-6">
+                                <h3 class="text-lg font-bold text-[#181411] dark:text-white mb-6">Información Técnica</h3>
+                                <div class="space-y-4">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm text-slate-500">Instalación</span>
+                                        <span class="font-medium">15/01/2024</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm text-slate-500">Último Mantenimiento</span>
+                                        <span class="font-medium">15/02/2024</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm text-slate-500">Uptime</span>
+                                        <span class="font-medium text-emerald-600">99.8%</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm text-slate-500">Horas de Operación</span>
+                                        <span class="font-medium">1,248 horas</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- System Alerts -->
-                            <div class="bg-white dark:bg-[#2a1d15] rounded-xl p-6 shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25]">
-                                <div class="flex items-center justify-between mb-6">
-                                    <h3 class="text-lg font-bold text-[#181411] dark:text-white">Alertas del Sistema</h3>
-                                    <span class="px-2 py-1 rounded bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400 text-xs font-bold" id="alerts-count">0</span>
-                                </div>
-                                <div class="space-y-3" id="system-alerts">
-                                    <div class="text-center py-8 text-slate-400 dark:text-slate-500">
-                                        <span class="material-symbols-outlined text-2xl mb-2">check_circle</span>
-                                        <p>Sistema estable</p>
+                            <div class="bg-white dark:bg-[#2a1d15] rounded-xl shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25] p-6">
+                                <h3 class="text-lg font-bold text-[#181411] dark:text-white mb-6">Alertas Activas</h3>
+                                <div class="space-y-3">
+                                    <div class="p-3 bg-red-50 dark:bg-red-500/10 rounded-lg border border-red-200 dark:border-red-500/20">
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <span class="material-symbols-outlined text-red-500 text-sm">warning</span>
+                                            <span class="text-sm font-medium">Mantenimiento Preventivo</span>
+                                        </div>
+                                        <p class="text-xs text-slate-500">Programado para 15/03/2024</p>
+                                    </div>
+                                    <div class="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-lg border border-amber-200 dark:border-amber-500/20">
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <span class="material-symbols-outlined text-amber-500 text-sm">info</span>
+                                            <span class="text-sm font-medium">Garantía del Equipo</span>
+                                        </div>
+                                        <p class="text-xs text-slate-500">Vence en 45 días</p>
                                     </div>
                                 </div>
                             </div>
@@ -329,65 +249,96 @@
                 <!-- Instalación Tab -->
                 <div id="instalacion" class="tab-content">
                     <div class="max-w-[1400px] mx-auto">
-                        <div class="bg-white dark:bg-[#2a1d15] rounded-xl shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25] overflow-hidden">
-                            <div class="px-6 py-4 border-b border-[#e5e7eb] dark:border-[#3a2d25] flex justify-between items-center">
-                                <h3 class="text-lg font-bold text-[#181411] dark:text-white">Costos de Instalación (CAPEX)</h3>
-                                <div class="flex gap-2">
-                                    <button onclick="editInstallation()" class="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition">
-                                        Editar Costos
-                                    </button>
-                                    <button onclick="calculateTotalCapex()" class="px-3 py-1.5 text-sm font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition">
-                                        Calcular Total
+                        <div class="bg-white dark:bg-[#2a1d15] rounded-xl shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25] p-6">
+                            <h3 class="text-xl font-bold text-[#181411] dark:text-white mb-6">Costos de Instalación (CAPEX)</h3>
+                            
+                            <!-- Upload de Imágenes -->
+                            <div class="mb-8">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h4 class="font-bold text-[#181411] dark:text-white">Imágenes de la Instalación</h4>
+                                    <button onclick="uploadInstallationImages()" class="px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition flex items-center gap-2">
+                                        <span class="material-symbols-outlined">add_photo_alternate</span>
+                                        Subir Imágenes
                                     </button>
                                 </div>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div class="aspect-square bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                                        <span class="material-symbols-outlined text-slate-400">photo</span>
+                                    </div>
+                                    <div class="aspect-square bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                                        <span class="material-symbols-outlined text-slate-400">photo</span>
+                                    </div>
+                                    <div class="aspect-square bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                                        <span class="material-symbols-outlined text-slate-400">photo</span>
+                                    </div>
+                                    <div class="aspect-square bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                                        <span class="material-symbols-outlined text-slate-400">photo</span>
+                                    </div>
+                                </div>
                             </div>
+
+                            <!-- Detalle de Costos -->
                             <div class="overflow-x-auto">
                                 <table class="w-full">
                                     <thead>
                                         <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-[#e5e7eb] dark:border-[#3a2d25]">
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">ID de pantalla</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pantalla</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Costo pantalla</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Costo obra civil</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Costo estructura</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Costo Medidor CFE</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Instalación eléctrica</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Novastar MCTRL300</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">UPS CyberPower 1000VA</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">NUC ASUS Intel i5</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pastilla 3X100A QO</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pastilla 2X20A QO</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Cámara HIKVISION</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Teltonika RUT 955</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">PoE Utepo</th>
+                                            <th class="py-3 px-4 text-left text-sm font-semibold text-slate-700 dark:text-slate-300">Concepto</th>
+                                            <th class="py-3 px-4 text-left text-sm font-semibold text-slate-700 dark:text-slate-300">Costo Unitario</th>
+                                            <th class="py-3 px-4 text-left text-sm font-semibold text-slate-700 dark:text-slate-300">Cantidad</th>
+                                            <th class="py-3 px-4 text-left text-sm font-semibold text-slate-700 dark:text-slate-300">Subtotal</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="installation-table">
-                                        <!-- Los datos se cargarán dinámicamente -->
-                                    </tbody>
-                                    <tfoot class="bg-slate-50 dark:bg-slate-800/50 border-t border-[#e5e7eb] dark:border-[#3a2d25]">
-                                        <tr>
-                                            <td colspan="2" class="py-3 px-4 text-right font-bold text-[#181411] dark:text-white">TOTAL CAPEX:</td>
-                                            <td class="py-3 px-4 font-bold text-[#181411] dark:text-white" id="capex-screen">$0.00</td>
-                                            <td class="py-3 px-4 font-bold text-[#181411] dark:text-white" id="capex-civil">$0.00</td>
-                                            <td class="py-3 px-4 font-bold text-[#181411] dark:text-white" id="capex-structure">$0.00</td>
-                                            <td class="py-3 px-4 font-bold text-[#181411] dark:text-white" id="capex-cfe">$0.00</td>
-                                            <td class="py-3 px-4 font-bold text-[#181411] dark:text-white" id="capex-electric">$0.00</td>
-                                            <td class="py-3 px-4 font-bold text-[#181411] dark:text-white" id="capex-novastar">$0.00</td>
-                                            <td class="py-3 px-4 font-bold text-[#181411] dark:text-white" id="capex-ups">$0.00</td>
-                                            <td class="py-3 px-4 font-bold text-[#181411] dark:text-white" id="capex-nuc">$0.00</td>
-                                            <td class="py-3 px-4 font-bold text-[#181411] dark:text-white" id="capex-pastilla-100a">$0.00</td>
-                                            <td class="py-3 px-4 font-bold text-[#181411] dark:text-white" id="capex-pastilla-20a">$0.00</td>
-                                            <td class="py-3 px-4 font-bold text-[#181411] dark:text-white" id="capex-camera">$0.00</td>
-                                            <td class="py-3 px-4 font-bold text-[#181411] dark:text-white" id="capex-teltonika">$0.00</td>
-                                            <td class="py-3 px-4 font-bold text-[#181411] dark:text-white" id="capex-poe">$0.00</td>
+                                    <tbody>
+                                        <tr class="border-b border-[#e5e7eb] dark:border-[#3a2d25]">
+                                            <td class="py-3 px-4">Pantalla LED Principal</td>
+                                            <td class="py-3 px-4">$15,000.00</td>
+                                            <td class="py-3 px-4">1</td>
+                                            <td class="py-3 px-4 font-bold">$15,000.00</td>
                                         </tr>
+                                        <tr class="border-b border-[#e5e7eb] dark:border-[#3a2d25]">
+                                            <td class="py-3 px-4">Obra Civil y Estructura</td>
+                                            <td class="py-3 px-4">$8,000.00</td>
+                                            <td class="py-3 px-4">1</td>
+                                            <td class="py-3 px-4 font-bold">$8,000.00</td>
+                                        </tr>
+                                        <tr class="border-b border-[#e5e7eb] dark:border-[#3a2d25]">
+                                            <td class="py-3 px-4">Instalación Eléctrica CFE</td>
+                                            <td class="py-3 px-4">$1,200.00</td>
+                                            <td class="py-3 px-4">1</td>
+                                            <td class="py-3 px-4 font-bold">$1,200.00</td>
+                                        </tr>
+                                        <tr class="border-b border-[#e5e7eb] dark:border-[#3a2d25]">
+                                            <td class="py-3 px-4">Sistema de Control (Novastar)</td>
+                                            <td class="py-3 px-4">$2,500.00</td>
+                                            <td class="py-3 px-4">1</td>
+                                            <td class="py-3 px-4 font-bold">$2,500.00</td>
+                                        </tr>
+                                        <tr class="border-b border-[#e5e7eb] dark:border-[#3a2d25]">
+                                            <td class="py-3 px-4">Sistema de Respaldo (UPS)</td>
+                                            <td class="py-3 px-4">$800.00</td>
+                                            <td class="py-3 px-4">1</td>
+                                            <td class="py-3 px-4 font-bold">$800.00</td>
+                                        </tr>
+                                        <tr class="border-b border-[#e5e7eb] dark:border-[#3a2d25]">
+                                            <td class="py-3 px-4">Computadora NUC</td>
+                                            <td class="py-3 px-4">$1,200.00</td>
+                                            <td class="py-3 px-4">1</td>
+                                            <td class="py-3 px-4 font-bold">$1,200.00</td>
+                                        </tr>
+                                    </tbody>
+                                    <tfoot class="bg-slate-50 dark:bg-slate-800/50">
                                         <tr>
-                                            <td colspan="14" class="py-3 px-4 text-right font-bold text-lg text-primary">TOTAL GENERAL:</td>
-                                            <td class="py-3 px-4 font-bold text-lg text-primary" id="total-capex">$0.00</td>
+                                            <td colspan="3" class="py-3 px-4 text-right font-bold text-lg text-primary">TOTAL CAPEX:</td>
+                                            <td class="py-3 px-4 font-bold text-lg text-primary">$28,700.00</td>
                                         </tr>
                                     </tfoot>
                                 </table>
+                            </div>
+
+                            <!-- Notas de Instalación -->
+                            <div class="mt-8 p-4 bg-slate-50 dark:bg-slate-800/30 rounded-lg">
+                                <h4 class="font-bold text-[#181411] dark:text-white mb-2">Notas de Instalación</h4>
+                                <textarea class="w-full px-4 py-2 border border-[#e5e7eb] dark:border-[#3a2d25] rounded-lg bg-white dark:bg-[#2a1d15] h-32" placeholder="Agregar notas importantes sobre la instalación..."></textarea>
                             </div>
                         </div>
                     </div>
@@ -396,59 +347,122 @@
                 <!-- Gastos Mensuales Tab -->
                 <div id="gastos" class="tab-content">
                     <div class="max-w-[1400px] mx-auto">
-                        <div class="bg-white dark:bg-[#2a1d15] rounded-xl shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25] overflow-hidden">
-                            <div class="px-6 py-4 border-b border-[#e5e7eb] dark:border-[#3a2d25] flex justify-between items-center">
-                                <h3 class="text-lg font-bold text-[#181411] dark:text-white">Gastos Mensuales (OPEX)</h3>
-                                <div class="flex gap-2">
-                                    <button onclick="addMonthlyExpense()" class="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition">
-                                        + Agregar Gasto
-                                    </button>
-                                    <button onclick="calculateMonthlyTotal()" class="px-3 py-1.5 text-sm font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition">
-                                        Calcular Mensual
-                                    </button>
+                        <div class="bg-white dark:bg-[#2a1d15] rounded-xl shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25] p-6">
+                            <div class="flex items-center justify-between mb-6">
+                                <h3 class="text-xl font-bold text-[#181411] dark:text-white">Gastos Mensuales (OPEX)</h3>
+                                <button onclick="addMonthlyExpense()" class="px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition flex items-center gap-2">
+                                    <span class="material-symbols-outlined">add</span>
+                                    Agregar Gasto
+                                </button>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                                <div class="bg-slate-50 dark:bg-slate-800/30 rounded-lg p-4">
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <div class="p-2 bg-blue-100 dark:bg-blue-500/20 rounded-lg">
+                                            <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">home</span>
+                                        </div>
+                                        <div>
+                                            <p class="font-bold text-[#181411] dark:text-white">Renta del Predio</p>
+                                            <p class="text-sm text-slate-500">Mensual</p>
+                                        </div>
+                                    </div>
+                                    <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">$2,000.00</p>
+                                </div>
+
+                                <div class="bg-slate-50 dark:bg-slate-800/30 rounded-lg p-4">
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <div class="p-2 bg-emerald-100 dark:bg-emerald-500/20 rounded-lg">
+                                            <span class="material-symbols-outlined text-emerald-600 dark:text-emerald-400">bolt</span>
+                                        </div>
+                                        <div>
+                                            <p class="font-bold text-[#181411] dark:text-white">Consumo CFE</p>
+                                            <p class="text-sm text-slate-500">Mensual</p>
+                                        </div>
+                                    </div>
+                                    <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">$450.00</p>
+                                </div>
+
+                                <div class="bg-slate-50 dark:bg-slate-800/30 rounded-lg p-4">
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <div class="p-2 bg-purple-100 dark:bg-purple-500/20 rounded-lg">
+                                            <span class="material-symbols-outlined text-purple-600 dark:text-purple-400">wifi</span>
+                                        </div>
+                                        <div>
+                                            <p class="font-bold text-[#181411] dark:text-white">Internet Fibra</p>
+                                            <p class="text-sm text-slate-500">Mensual</p>
+                                        </div>
+                                    </div>
+                                    <p class="text-2xl font-bold text-purple-600 dark:text-purple-400">$120.00</p>
                                 </div>
                             </div>
+
+                            <!-- Historial de Gastos -->
                             <div class="overflow-x-auto">
                                 <table class="w-full">
                                     <thead>
                                         <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-[#e5e7eb] dark:border-[#3a2d25]">
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">ID de pantalla</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pantalla</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Renta del predio</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">CFE</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Internet fibra</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Internet redundancia</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Licencia Teltonika</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Licencia TeamViewer</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Licencia CMS</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Licencia Hikvision</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Licencia portal UPS</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Licencia QTM</th>
+                                            <th class="py-3 px-4 text-left text-sm font-semibold text-slate-700 dark:text-slate-300">Concepto</th>
+                                            <th class="py-3 px-4 text-left text-sm font-semibold text-slate-700 dark:text-slate-300">Mes</th>
+                                            <th class="py-3 px-4 text-left text-sm font-semibold text-slate-700 dark:text-slate-300">Monto</th>
+                                            <th class="py-3 px-4 text-left text-sm font-semibold text-slate-700 dark:text-slate-300">Estado</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="monthly-expenses-table">
-                                        <!-- Los datos se cargarán dinámicamente -->
+                                    <tbody>
+                                        <tr class="border-b border-[#e5e7eb] dark:border-[#3a2d25]">
+                                            <td class="py-3 px-4">Renta del Predio</td>
+                                            <td class="py-3 px-4">Febrero 2024</td>
+                                            <td class="py-3 px-4 font-bold">$2,000.00</td>
+                                            <td class="py-3 px-4">
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
+                                                    Pagado
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr class="border-b border-[#e5e7eb] dark:border-[#3a2d25]">
+                                            <td class="py-3 px-4">Consumo CFE</td>
+                                            <td class="py-3 px-4">Febrero 2024</td>
+                                            <td class="py-3 px-4 font-bold">$450.00</td>
+                                            <td class="py-3 px-4">
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
+                                                    Pagado
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr class="border-b border-[#e5e7eb] dark:border-[#3a2d25]">
+                                            <td class="py-3 px-4">Internet Fibra</td>
+                                            <td class="py-3 px-4">Febrero 2024</td>
+                                            <td class="py-3 px-4 font-bold">$120.00</td>
+                                            <td class="py-3 px-4">
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">
+                                                    Pendiente
+                                                </span>
+                                            </td>
+                                        </tr>
                                     </tbody>
-                                    <tfoot class="bg-slate-50 dark:bg-slate-800/50 border-t border-[#e5e7eb] dark:border-[#3a2d25]">
-                                        <tr>
-                                            <td colspan="2" class="py-3 px-4 text-right font-bold text-[#181411] dark:text-white">TOTAL MENSUAL:</td>
-                                            <td class="py-3 px-4 font-bold text-[#181411] dark:text-white" id="total-renta">$0.00</td>
-                                            <td class="py-3 px-4 font-bold text-[#181411] dark:text-white" id="total-cfe">$0.00</td>
-                                            <td class="py-3 px-4 font-bold text-[#181411] dark:text-white" id="total-internet">$0.00</td>
-                                            <td class="py-3 px-4 font-bold text-[#181411] dark:text-white" id="total-redundancia">$0.00</td>
-                                            <td class="py-3 px-4 font-bold text-[#181411] dark:text-white" id="total-teltonika">$0.00</td>
-                                            <td class="py-3 px-4 font-bold text-[#181411] dark:text-white" id="total-teamviewer">$0.00</td>
-                                            <td class="py-3 px-4 font-bold text-[#181411] dark:text-white" id="total-cms">$0.00</td>
-                                            <td class="py-3 px-4 font-bold text-[#181411] dark:text-white" id="total-hikvision">$0.00</td>
-                                            <td class="py-3 px-4 font-bold text-[#181411] dark:text-white" id="total-ups-license">$0.00</td>
-                                            <td class="py-3 px-4 font-bold text-[#181411] dark:text-white" id="total-qtm">$0.00</td>
-                                        </tr>
-                                        <tr>
-                                            <td colspan="11" class="py-3 px-4 text-right font-bold text-lg text-primary">TOTAL OPEX MENSUAL:</td>
-                                            <td class="py-3 px-4 font-bold text-lg text-primary" id="total-monthly-opex">$0.00</td>
-                                        </tr>
-                                    </tfoot>
                                 </table>
+                            </div>
+
+                            <div class="mt-8 p-6 bg-slate-50 dark:bg-slate-800/30 rounded-lg">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm text-slate-500">Total OPEX Mensual</p>
+                                        <p class="text-3xl font-bold text-primary">$3,200.00</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-slate-500">Ingresos Mensuales</p>
+                                        <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">$8,500.00</p>
+                                    </div>
+                                </div>
+                                <div class="mt-4">
+                                    <div class="h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                        <div class="h-full bg-primary rounded-full w-2/3"></div>
+                                    </div>
+                                    <div class="flex justify-between text-xs text-slate-500 mt-1">
+                                        <span>OPEX: $3,200</span>
+                                        <span>Margen: 62.4%</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -457,91 +471,45 @@
                 <!-- Mantenimientos Tab -->
                 <div id="mantenimientos" class="tab-content">
                     <div class="max-w-[1400px] mx-auto">
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             <!-- Formulario de Mantenimiento -->
-                            <div class="lg:col-span-2">
+                            <div>
                                 <div class="bg-white dark:bg-[#2a1d15] rounded-xl shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25] p-6">
-                                    <h3 class="text-lg font-bold text-[#181411] dark:text-white mb-6">Registrar Mantenimiento</h3>
-                                    <div class="space-y-6">
-                                        <!-- Tipo de Mantenimiento -->
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div>
-                                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Tipo de Mantenimiento</label>
-                                                <div class="flex gap-4">
-                                                    <label class="flex items-center">
-                                                        <input type="radio" name="maintenance-type" value="preventivo" class="mr-2" checked onchange="calculateMaintenanceCost()">
-                                                        <span class="text-sm">Preventivo</span>
-                                                    </label>
-                                                    <label class="flex items-center">
-                                                        <input type="radio" name="maintenance-type" value="correctivo" class="mr-2" onchange="calculateMaintenanceCost()">
-                                                        <span class="text-sm">Correctivo</span>
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Fecha</label>
-                                                <input type="date" id="maintenance-date" class="w-full px-4 py-2 border border-[#e5e7eb] dark:border-[#3a2d25] rounded-lg bg-white dark:bg-[#2a1d15]" value="<?php echo date('Y-m-d'); ?>">
-                                            </div>
-                                        </div>
-
-                                        <!-- Horas de Mantenimiento -->
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div>
-                                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Horas de Mantenimiento</label>
-                                                <input type="number" id="maintenance-hours" class="w-full px-4 py-2 border border-[#e5e7eb] dark:border-[#3a2d25] rounded-lg bg-white dark:bg-[#2a1d15]" min="0" step="0.5" value="0" onchange="calculateMaintenanceCost()">
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Costo por Hora</label>
-                                                <div class="flex items-center gap-2">
-                                                    <span class="text-2xl font-bold text-primary">$</span>
-                                                    <input type="number" id="hourly-cost" class="w-full px-4 py-2 border border-[#e5e7eb] dark:border-[#3a2d25] rounded-lg bg-white dark:bg-[#2a1d15]" min="0" value="150" onchange="calculateMaintenanceCost()">
-                                                    <span class="text-sm text-slate-500">/hora</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Dióxido de Titanio -->
+                                    <h3 class="text-xl font-bold text-[#181411] dark:text-white mb-6">Registrar Mantenimiento</h3>
+                                    
+                                    <div class="space-y-4">
                                         <div>
-                                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Dióxido de Titanio (kg)</label>
-                                            <div class="flex items-center gap-2">
-                                                <input type="number" id="dioxide-amount" class="w-32 px-4 py-2 border border-[#e5e7eb] dark:border-[#3a2d25] rounded-lg bg-white dark:bg-[#2a1d15]" min="0" step="0.1" value="0" onchange="calculateMaintenanceCost()">
-                                                <span class="text-sm text-slate-500">× $45.00/kg</span>
+                                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Tipo de Mantenimiento</label>
+                                            <div class="flex gap-4">
+                                                <label class="flex items-center">
+                                                    <input type="radio" name="maintenance-type" value="preventivo" class="mr-2" checked>
+                                                    <span class="text-sm">Preventivo</span>
+                                                </label>
+                                                <label class="flex items-center">
+                                                    <input type="radio" name="maintenance-type" value="correctivo" class="mr-2">
+                                                    <span class="text-sm">Correctivo</span>
+                                                </label>
                                             </div>
                                         </div>
 
-                                        <!-- Refacciones Utilizadas -->
                                         <div>
-                                            <div class="flex items-center justify-between mb-2">
-                                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Refacciones Utilizadas</label>
-                                                <button type="button" onclick="addSparePartRow()" class="text-sm text-primary font-medium hover:underline">
-                                                    + Agregar Refacción
-                                                </button>
-                                            </div>
-                                            <div class="space-y-2" id="spare-parts-container">
-                                                <!-- Las refacciones se agregarán dinámicamente -->
-                                            </div>
+                                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Fecha</label>
+                                            <input type="date" class="w-full px-4 py-2 border border-[#e5e7eb] dark:border-[#3a2d25] rounded-lg bg-white dark:bg-[#2a1d15]">
                                         </div>
 
-                                        <!-- Descripción -->
                                         <div>
-                                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Descripción del Mantenimiento</label>
-                                            <textarea id="maintenance-description" class="w-full px-4 py-2 border border-[#e5e7eb] dark:border-[#3a2d25] rounded-lg bg-white dark:bg-[#2a1d15] h-32" placeholder="Describa el trabajo realizado..."></textarea>
+                                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Descripción</label>
+                                            <textarea class="w-full px-4 py-2 border border-[#e5e7eb] dark:border-[#3a2d25] rounded-lg bg-white dark:bg-[#2a1d15] h-32" placeholder="Describa el mantenimiento realizado..."></textarea>
                                         </div>
 
-                                        <!-- Costo Total -->
-                                        <div class="pt-4 border-t border-[#e5e7eb] dark:border-[#3a2d25]">
-                                            <div class="flex items-center justify-between">
-                                                <span class="text-lg font-bold text-[#181411] dark:text-white">Costo Total del Mantenimiento:</span>
-                                                <span class="text-2xl font-bold text-primary" id="maintenance-total-cost">$0.00</span>
-                                            </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Costo del Mantenimiento</label>
+                                            <input type="number" class="w-full px-4 py-2 border border-[#e5e7eb] dark:border-[#3a2d25] rounded-lg bg-white dark:bg-[#2a1d15]" placeholder="0.00">
                                         </div>
 
-                                        <!-- Botón de Guardar -->
-                                        <div class="pt-4">
-                                            <button onclick="saveMaintenance()" class="w-full px-4 py-3 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition">
-                                                Guardar Mantenimiento
-                                            </button>
-                                        </div>
+                                        <button onclick="saveMaintenance()" class="w-full px-4 py-3 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition">
+                                            Guardar Mantenimiento
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -549,12 +517,46 @@
                             <!-- Historial de Mantenimientos -->
                             <div>
                                 <div class="bg-white dark:bg-[#2a1d15] rounded-xl shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25] p-6 h-full">
-                                    <h3 class="text-lg font-bold text-[#181411] dark:text-white mb-6">Historial de Mantenimientos</h3>
-                                    <div class="space-y-4 overflow-y-auto max-h-[600px]" id="maintenance-history">
-                                        <!-- Los mantenimientos se cargarán dinámicamente -->
-                                        <div class="text-center py-8 text-slate-400 dark:text-slate-500">
-                                            <span class="material-symbols-outlined text-2xl mb-2">history</span>
-                                            <p>No hay mantenimientos registrados</p>
+                                    <h3 class="text-xl font-bold text-[#181411] dark:text-white mb-6">Historial de Mantenimientos</h3>
+                                    
+                                    <div class="space-y-4">
+                                        <div class="p-4 border border-[#e5e7eb] dark:border-[#3a2d25] rounded-lg">
+                                            <div class="flex justify-between items-start mb-2">
+                                                <div>
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
+                                                        Preventivo
+                                                    </span>
+                                                    <span class="text-sm text-slate-500 ml-2">15/02/2024</span>
+                                                </div>
+                                                <span class="font-bold text-primary">$600.00</span>
+                                            </div>
+                                            <p class="text-sm text-slate-700 dark:text-slate-300">Mantenimiento preventivo programado mensual</p>
+                                        </div>
+
+                                        <div class="p-4 border border-[#e5e7eb] dark:border-[#3a2d25] rounded-lg">
+                                            <div class="flex justify-between items-start mb-2">
+                                                <div>
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">
+                                                        Correctivo
+                                                    </span>
+                                                    <span class="text-sm text-slate-500 ml-2">10/01/2024</span>
+                                                </div>
+                                                <span class="font-bold text-primary">$850.00</span>
+                                            </div>
+                                            <p class="text-sm text-slate-700 dark:text-slate-300">Cambio de módulo LED defectuoso</p>
+                                        </div>
+
+                                        <div class="p-4 border border-[#e5e7eb] dark:border-[#3a2d25] rounded-lg">
+                                            <div class="flex justify-between items-start mb-2">
+                                                <div>
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
+                                                        Preventivo
+                                                    </span>
+                                                    <span class="text-sm text-slate-500 ml-2">15/12/2023</span>
+                                                </div>
+                                                <span class="font-bold text-primary">$450.00</span>
+                                            </div>
+                                            <p class="text-sm text-slate-700 dark:text-slate-300">Limpieza general y revisión de sistemas</p>
                                         </div>
                                     </div>
                                 </div>
@@ -563,92 +565,89 @@
                     </div>
                 </div>
 
-                <!-- Inventario Tab -->
-                <div id="inventario" class="tab-content">
-                    <div class="max-w-[1400px] mx-auto">
-                        <div class="bg-white dark:bg-[#2a1d15] rounded-xl shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25] overflow-hidden">
-                            <div class="px-6 py-4 border-b border-[#e5e7eb] dark:border-[#3a2d25] flex justify-between items-center">
-                                <h3 class="text-lg font-bold text-[#181411] dark:text-white">Inventario de Componentes</h3>
-                                <div class="flex gap-2">
-                                    <button onclick="addInventoryItem()" class="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition">
-                                        + Nuevo Componente
-                                    </button>
-                                    <button onclick="syncWithGlobalInventory()" class="px-3 py-1.5 text-sm font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition">
-                                        Sincronizar
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="overflow-x-auto">
-                                <table class="w-full">
-                                    <thead>
-                                        <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-[#e5e7eb] dark:border-[#3a2d25]">
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Componente</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Número de Serie</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Estado</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Fecha Instalación</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Garantía</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="inventory-table">
-                                        <!-- Los datos se cargarán dinámicamente -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Refacciones Tab -->
+                <!-- Refacciones Usadas Tab -->
                 <div id="refacciones" class="tab-content">
                     <div class="max-w-[1400px] mx-auto">
-                        <div class="bg-white dark:bg-[#2a1d15] rounded-xl shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25] overflow-hidden">
-                            <div class="px-6 py-4 border-b border-[#e5e7eb] dark:border-[#3a2d25] flex justify-between items-center">
-                                <h3 class="text-lg font-bold text-[#181411] dark:text-white">Registro de Refacciones</h3>
-                                <div class="flex gap-2">
-                                    <button onclick="addSparePart()" class="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition">
-                                        + Nueva Refacción
-                                    </button>
-                                    <button onclick="exportSpareParts()" class="px-3 py-1.5 text-sm font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition">
-                                        Exportar
-                                    </button>
-                                </div>
+                        <div class="bg-white dark:bg-[#2a1d15] rounded-xl shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25] p-6">
+                            <div class="flex items-center justify-between mb-6">
+                                <h3 class="text-xl font-bold text-[#181411] dark:text-white">Refacciones Usadas</h3>
+                                <button onclick="registerSparePart()" class="px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition flex items-center gap-2">
+                                    <span class="material-symbols-outlined">add</span>
+                                    Registrar Uso
+                                </button>
                             </div>
+
                             <div class="overflow-x-auto">
                                 <table class="w-full">
                                     <thead>
                                         <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-[#e5e7eb] dark:border-[#3a2d25]">
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Refacción</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Número de Serie</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Costo Unitario</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Stock</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Último Uso</th>
-                                            <th class="py-3 px-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Acciones</th>
+                                            <th class="py-3 px-4 text-left text-sm font-semibold text-slate-700 dark:text-slate-300">Refacción</th>
+                                            <th class="py-3 px-4 text-left text-sm font-semibold text-slate-700 dark:text-slate-300">Fecha Uso</th>
+                                            <th class="py-3 px-4 text-left text-sm font-semibold text-slate-700 dark:text-slate-300">Costo Unitario</th>
+                                            <th class="py-3 px-4 text-left text-sm font-semibold text-slate-700 dark:text-slate-300">Cantidad</th>
+                                            <th class="py-3 px-4 text-left text-sm font-semibold text-slate-700 dark:text-slate-300">Total</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="spare-parts-table">
-                                        <!-- Los datos se cargarán dinámicamente -->
+                                    <tbody>
+                                        <tr class="border-b border-[#e5e7eb] dark:border-[#3a2d25]">
+                                            <td class="py-3 px-4">
+                                                <div class="flex items-center gap-3">
+                                                    <div class="size-10 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                                                        <span class="material-symbols-outlined text-slate-500">inventory</span>
+                                                    </div>
+                                                    <div>
+                                                        <p class="font-medium">Módulo LED</p>
+                                                        <p class="text-xs text-slate-500">Nº Serie: LED-2024-001</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="py-3 px-4">10/01/2024</td>
+                                            <td class="py-3 px-4">$250.00</td>
+                                            <td class="py-3 px-4">1</td>
+                                            <td class="py-3 px-4 font-bold">$250.00</td>
+                                        </tr>
+                                        <tr class="border-b border-[#e5e7eb] dark:border-[#3a2d25]">
+                                            <td class="py-3 px-4">
+                                                <div class="flex items-center gap-3">
+                                                    <div class="size-10 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                                                        <span class="material-symbols-outlined text-slate-500">power</span>
+                                                    </div>
+                                                    <div>
+                                                        <p class="font-medium">Fuente de Poder</p>
+                                                        <p class="text-xs text-slate-500">Nº Serie: PWR-2023-015</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="py-3 px-4">05/12/2023</td>
+                                            <td class="py-3 px-4">$180.00</td>
+                                            <td class="py-3 px-4">1</td>
+                                            <td class="py-3 px-4 font-bold">$180.00</td>
+                                        </tr>
+                                        <tr class="border-b border-[#e5e7eb] dark:border-[#3a2d25]">
+                                            <td class="py-3 px-4">
+                                                <div class="flex items-center gap-3">
+                                                    <div class="size-10 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                                                        <span class="material-symbols-outlined text-slate-500">cable</span>
+                                                    </div>
+                                                    <div>
+                                                        <p class="font-medium">Cable FAT</p>
+                                                        <p class="text-xs text-slate-500">Lote: CBL-2023-042</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="py-3 px-4">20/11/2023</td>
+                                            <td class="py-3 px-4">$45.00</td>
+                                            <td class="py-3 px-4">2</td>
+                                            <td class="py-3 px-4 font-bold">$90.00</td>
+                                        </tr>
                                     </tbody>
+                                    <tfoot class="bg-slate-50 dark:bg-slate-800/50">
+                                        <tr>
+                                            <td colspan="4" class="py-3 px-4 text-right font-bold">Total en Refacciones:</td>
+                                            <td class="py-3 px-4 font-bold text-lg text-primary">$520.00</td>
+                                        </tr>
+                                    </tfoot>
                                 </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Retiros Tab -->
-                <div id="retiros" class="tab-content">
-                    <div class="max-w-[1400px] mx-auto">
-                        <div class="bg-white dark:bg-[#2a1d15] rounded-xl shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25] p-8 text-center">
-                            <div class="max-w-md mx-auto">
-                                <span class="material-symbols-outlined text-4xl text-slate-400 dark:text-slate-500 mb-4">construction</span>
-                                <h3 class="text-xl font-bold text-[#181411] dark:text-white mb-2">Módulo en Desarrollo</h3>
-                                <p class="text-slate-500 dark:text-slate-400 mb-6">
-                                    El módulo de retiros está actualmente en implementación. Próximamente podrás gestionar los retiros de pantallas y equipos.
-                                </p>
-                                <div class="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                                    <span class="material-symbols-outlined text-slate-500">schedule</span>
-                                    <span class="text-sm text-slate-600 dark:text-slate-400">Disponible pronto</span>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -657,16 +656,101 @@
                 <!-- Reubicaciones Tab -->
                 <div id="reubicaciones" class="tab-content">
                     <div class="max-w-[1400px] mx-auto">
-                        <div class="bg-white dark:bg-[#2a1d15] rounded-xl shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25] p-8 text-center">
-                            <div class="max-w-md mx-auto">
-                                <span class="material-symbols-outlined text-4xl text-slate-400 dark:text-slate-500 mb-4">construction</span>
-                                <h3 class="text-xl font-bold text-[#181411] dark:text-white mb-2">Módulo en Desarrollo</h3>
-                                <p class="text-slate-500 dark:text-slate-400 mb-6">
-                                    El módulo de reubicaciones está actualmente en implementación. Próximamente podrás gestionar las reubicaciones de pantallas.
-                                </p>
-                                <div class="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                                    <span class="material-symbols-outlined text-slate-500">schedule</span>
-                                    <span class="text-sm text-slate-600 dark:text-slate-400">Disponible pronto</span>
+                        <div class="bg-white dark:bg-[#2a1d15] rounded-xl shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25] p-6">
+                            <div class="flex items-center justify-between mb-6">
+                                <h3 class="text-xl font-bold text-[#181411] dark:text-white">Historial de Reubicaciones</h3>
+                                <button onclick="registerRelocation()" class="px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition flex items-center gap-2">
+                                    <span class="material-symbols-outlined">add_location</span>
+                                    Registrar Reubicación
+                                </button>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div class="p-6 border border-[#e5e7eb] dark:border-[#3a2d25] rounded-lg">
+                                    <div class="flex items-start justify-between mb-4">
+                                        <div>
+                                            <h4 class="font-bold text-[#181411] dark:text-white">Reubicación a Nuevo Centro Comercial</h4>
+                                            <p class="text-sm text-slate-500">Fecha: 15/01/2024</p>
+                                        </div>
+                                        <span class="px-3 py-1 bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 rounded-full text-sm font-medium">
+                                            Completada
+                                        </span>
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <p class="text-sm text-slate-500 mb-1">Ubicación Anterior</p>
+                                            <p class="font-medium">Plaza del Sol</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm text-slate-500 mb-1">Nueva Ubicación</p>
+                                            <p class="font-medium">Centro Comercial Galerías</p>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4">
+                                        <p class="text-sm text-slate-500 mb-1">Costo de Reubicación</p>
+                                        <p class="text-lg font-bold text-primary">$1,500.00</p>
+                                    </div>
+                                </div>
+
+                                <div class="p-6 border border-[#e5e7eb] dark:border-[#3a2d25] rounded-lg bg-slate-50 dark:bg-slate-800/30">
+                                    <div class="flex items-start justify-between mb-4">
+                                        <div>
+                                            <h4 class="font-bold text-[#181411] dark:text-white">Ubicación Original</h4>
+                                            <p class="text-sm text-slate-500">Fecha: 15/01/2023</p>
+                                        </div>
+                                        <span class="px-3 py-1 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 rounded-full text-sm font-medium">
+                                            Instalación Inicial
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-slate-500 mb-1">Ubicación</p>
+                                        <p class="font-medium">Plaza del Sol</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Retiros Tab -->
+                <div id="retiros" class="tab-content">
+                    <div class="max-w-[1400px] mx-auto">
+                        <div class="bg-white dark:bg-[#2a1d15] rounded-xl shadow-sm border border-[#e5e7eb] dark:border-[#3a2d25] p-6">
+                            <div class="flex items-center justify-between mb-6">
+                                <h3 class="text-xl font-bold text-[#181411] dark:text-white">Gestión de Retiros</h3>
+                                <button onclick="scheduleRetirement()" class="px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition flex items-center gap-2">
+                                    <span class="material-symbols-outlined">schedule</span>
+                                    Programar Retiro
+                                </button>
+                            </div>
+
+                            <div class="space-y-6">
+                                <div class="p-6 border border-[#e5e7eb] dark:border-[#3a2d25] rounded-lg">
+                                    <h4 class="font-bold text-[#181411] dark:text-white mb-4">Retiros Programados</h4>
+                                    <p class="text-slate-500 dark:text-slate-400">No hay retiros programados actualmente.</p>
+                                </div>
+
+                                <div class="p-6 border border-[#e5e7eb] dark:border-[#3a2d25] rounded-lg bg-slate-50 dark:bg-slate-800/30">
+                                    <h4 class="font-bold text-[#181411] dark:text-white mb-4">Retiros Completados</h4>
+                                    <p class="text-slate-500 dark:text-slate-400">No hay historial de retiros completados.</p>
+                                </div>
+
+                                <div class="p-6 border border-[#e5e7eb] dark:border-[#3a2d25] rounded-lg">
+                                    <h4 class="font-bold text-[#181411] dark:text-white mb-4">Estadísticas de Retiro</h4>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div class="text-center p-4 bg-slate-50 dark:bg-slate-800/30 rounded-lg">
+                                            <p class="text-sm text-slate-500">Días en Operación</p>
+                                            <p class="text-2xl font-bold text-[#181411] dark:text-white mt-1">415</p>
+                                        </div>
+                                        <div class="text-center p-4 bg-slate-50 dark:bg-slate-800/30 rounded-lg">
+                                            <p class="text-sm text-slate-500">ROI Acumulado</p>
+                                            <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">92%</p>
+                                        </div>
+                                        <div class="text-center p-4 bg-slate-50 dark:bg-slate-800/30 rounded-lg">
+                                            <p class="text-sm text-slate-500">ROI Restante</p>
+                                            <p class="text-2xl font-bold text-primary">58%</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -676,77 +760,148 @@
         </main>
     </div>
 
-    <!-- Modal para editar costos -->
-    <div id="editModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white dark:bg-[#2a1d15] rounded-xl shadow-lg w-full max-w-2xl mx-4">
+    <!-- Modal para Reporte Directivo -->
+    <div id="reportModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-[#2a1d15] rounded-xl shadow-lg w-full max-w-4xl mx-4">
             <div class="px-6 py-4 border-b border-[#e5e7eb] dark:border-[#3a2d25] flex justify-between items-center">
-                <h3 class="text-lg font-bold text-[#181411] dark:text-white" id="modal-title">Editar Costo</h3>
-                <button onclick="closeModal()" class="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+                <h3 class="text-lg font-bold text-[#181411] dark:text-white">Generar Reporte Directivo</h3>
+                <button onclick="closeReportModal()" class="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
             <div class="p-6">
-                <div id="modal-content">
-                    <!-- El contenido del modal se cargará dinámicamente -->
+                <div class="space-y-6">
+                    <div>
+                        <h4 class="font-bold text-[#181411] dark:text-white mb-2">Tipo de Análisis</h4>
+                        <select id="report-analysis-type" class="w-full px-4 py-2 border border-[#e5e7eb] dark:border-[#3a2d25] rounded-lg bg-white dark:bg-[#2a1d15]">
+                            <option value="estrategico">Análisis Estratégico</option>
+                            <option value="financiero">Análisis Financiero Avanzado</option>
+                            <option value="operativo">Análisis Operativo</option>
+                            <option value="rentabilidad">Análisis de Rentabilidad</option>
+                            <option value="inversion">Análisis de Inversión</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <h4 class="font-bold text-[#181411] dark:text-white mb-2">Período de Análisis</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="date" id="report-start-date" class="w-full px-4 py-2 border border-[#e5e7eb] dark:border-[#3a2d25] rounded-lg bg-white dark:bg-[#2a1d15]">
+                            <input type="date" id="report-end-date" class="w-full px-4 py-2 border border-[#e5e7eb] dark:border-[#3a2d25] rounded-lg bg-white dark:bg-[#2a1d15]">
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="font-bold text-[#181411] dark:text-white mb-2">Nivel de Detalle</h4>
+                        <div class="flex gap-4">
+                            <label class="flex items-center">
+                                <input type="radio" name="report-detail" value="ejecutivo" class="mr-2" checked>
+                                <span class="text-sm">Ejecutivo (Resumido)</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="report-detail" value="directivo" class="mr-2">
+                                <span class="text-sm">Directivo (Detallado)</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="report-detail" value="tecnico" class="mr-2">
+                                <span class="text-sm">Técnico (Completo)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="font-bold text-[#181411] dark:text-white mb-2">Secciones a Incluir</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <label class="flex items-center">
+                                <input type="checkbox" class="mr-2" checked>
+                                <span class="text-sm">Resumen Ejecutivo</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" class="mr-2" checked>
+                                <span class="text-sm">Análisis Financiero</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" class="mr-2" checked>
+                                <span class="text-sm">ROI y Rentabilidad</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" class="mr-2" checked>
+                                <span class="text-sm">Análisis de Operación</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" class="mr-2">
+                                <span class="text-sm">Comparativa Histórica</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" class="mr-2" checked>
+                                <span class="text-sm">Recomendaciones Estratégicas</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-[#e5e7eb] dark:border-[#3a2d25]">
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="font-bold text-[#181411] dark:text-white">Formato de Salida:</span>
+                            <span class="px-3 py-1 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 rounded-full text-sm font-medium">
+                                PDF Ejecutivo
+                            </span>
+                        </div>
+                        
+                        <button onclick="generateDirectivePDF()" class="w-full px-6 py-3 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined">picture_as_pdf</span>
+                            Generar Reporte Directivo en PDF
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Scripts principales -->
     <script>
-        // Variables globales
         let currentScreen = null;
         let currentTab = 'dashboard';
-        let maintenanceCounter = 0;
-        let inventoryData = [];
-        let sparePartsData = [];
-
-        // Inicializar la aplicación
-        document.addEventListener('DOMContentLoaded', function() {
-            loadScreenData();
-            setupEventListeners();
-            initializeCharts();
-            loadMaintenanceHistory();
-            loadInventoryData();
-            loadSparePartsData();
-        });
 
         // Cargar datos de la pantalla
-        async function loadScreenData() {
+        document.addEventListener('DOMContentLoaded', function() {
             const urlParams = new URLSearchParams(window.location.search);
             const deviceId = urlParams.get('device_id') || 'ARG-001';
+            
+            // Cargar datos de ejemplo
+            loadScreenData(deviceId);
+            setupTabNavigation();
+            initializeCharts();
+        });
 
-            try {
-                // Simular carga de datos
-                currentScreen = {
-                    device_id: deviceId,
-                    pc_name: `Pantalla ${deviceId}`,
-                    status: 'online',
-                    location: 'Centro Comercial Principal',
-                    installation_date: '2024-01-15',
-                    capex_data: getDefaultCapexData(),
-                    opex_data: getDefaultOpexData(),
-                    monthly_revenue: 8500,
-                    maintenance_history: [],
-                    inventory: getDefaultInventory(),
-                    spare_parts: getDefaultSpareParts()
-                };
+        function loadScreenData(deviceId) {
+            // Datos de ejemplo
+            currentScreen = {
+                id: deviceId,
+                name: `Pantalla ${deviceId}`,
+                location: 'Centro Comercial Galerías',
+                status: 'online',
+                uptime: '99.8%',
+                installationDate: '2024-01-15',
+                monthlyRevenue: 8500,
+                monthlyExpenses: 3200,
+                roi: 14.5
+            };
 
-                updateScreenInfo();
-                updateDashboard();
-                renderInstallationTable();
-                renderMonthlyExpensesTable();
-                renderInventoryTable();
-                renderSparePartsTable();
-            } catch (error) {
-                console.error('Error loading screen data:', error);
-            }
+            // Actualizar UI
+            document.getElementById('screen-id-display').textContent = deviceId;
+            document.getElementById('screen-name-display').textContent = currentScreen.name;
+            document.getElementById('screen-title').textContent = currentScreen.name;
+            document.getElementById('screen-location').textContent = currentScreen.location;
+            
+            // Actualizar estado
+            const statusElement = document.getElementById('screen-status');
+            statusElement.textContent = currentScreen.status === 'online' ? 'En Línea' : 'Desconectada';
+            statusElement.className = currentScreen.status === 'online' 
+                ? 'inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                : 'inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+            
+            document.getElementById('screen-uptime').textContent = currentScreen.uptime;
         }
 
-        // Configurar event listeners
-        function setupEventListeners() {
-            // Navegación por pestañas
+        function setupTabNavigation() {
             document.querySelectorAll('.tab-nav').forEach(link => {
                 link.addEventListener('click', function(e) {
                     e.preventDefault();
@@ -754,23 +909,15 @@
                     showTab(tab);
                 });
             });
-
-            // Cerrar modal al hacer clic fuera
-            document.getElementById('editModal').addEventListener('click', function(e) {
-                if (e.target === this) {
-                    closeModal();
-                }
-            });
         }
 
-        // Mostrar pestaña
         function showTab(tabName) {
             // Ocultar todas las pestañas
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
 
-            // Remover clase activa de todos los enlaces
+            // Actualizar enlaces activos
             document.querySelectorAll('.tab-nav').forEach(link => {
                 link.classList.remove('bg-primary/10', 'text-primary');
                 link.classList.add('text-slate-600', 'dark:text-slate-400');
@@ -789,376 +936,33 @@
             currentTab = tabName;
         }
 
-        // Actualizar información de la pantalla
-        function updateScreenInfo() {
-            if (!currentScreen) return;
-
-            document.getElementById('current-screen-name').textContent = currentScreen.pc_name;
-            document.getElementById('current-screen-id').textContent = `ID: ${currentScreen.device_id}`;
-            document.getElementById('screen-title').textContent = currentScreen.pc_name;
-            document.getElementById('screen-subtitle').textContent = `ID: ${currentScreen.device_id} | ${currentScreen.location}`;
-            
-            const statusBadge = document.getElementById('screen-status-badge');
-            if (currentScreen.status === 'online') {
-                statusBadge.className = 'inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800';
-                statusBadge.innerHTML = '<span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span> En Línea';
-            } else {
-                statusBadge.className = 'inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800';
-                statusBadge.innerHTML = '<span class="relative flex h-2 w-2"><span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span></span> Desconectada';
-            }
-        }
-
-        // Actualizar dashboard
-        function updateDashboard() {
-            if (!currentScreen) return;
-
-            const fmt = n => new Intl.NumberFormat('en-US', { 
-                style: 'currency', 
-                currency: 'USD', 
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0 
-            }).format(n || 0);
-
-            // Calcular totales
-            const totalCapex = currentScreen.capex_data.reduce((sum, item) => sum + item.cost, 0);
-            const totalMonthlyOpex = currentScreen.opex_data.reduce((sum, item) => sum + item.monthly_cost, 0);
-            const monthlyRevenue = currentScreen.monthly_revenue || 0;
-            const profitMargin = monthlyRevenue - totalMonthlyOpex;
-            const marginPercentage = monthlyRevenue > 0 ? (profitMargin / monthlyRevenue) * 100 : 0;
-
-            // Actualizar KPIs
-            document.getElementById('monthly-revenue').textContent = fmt(monthlyRevenue);
-            document.getElementById('monthly-expenses').textContent = fmt(totalMonthlyOpex);
-            document.getElementById('profit-margin').textContent = fmt(profitMargin);
-            document.getElementById('margin-percentage').textContent = `${marginPercentage.toFixed(1)}%`;
-            
-            // ROI
-            const roiPercentage = totalCapex > 0 ? ((monthlyRevenue - totalMonthlyOpex) / totalCapex) * 100 : 0;
-            document.getElementById('roi-value').textContent = `${roiPercentage.toFixed(1)}%`;
-            document.getElementById('roi-bar').style.width = `${Math.min(roiPercentage, 100)}%`;
-            
-            // Tendencia de ingresos
-            const revenueTrend = document.getElementById('revenue-trend');
-            if (profitMargin > 0) {
-                revenueTrend.textContent = '↑ Rentable este mes';
-                revenueTrend.className = 'text-xs text-emerald-500 dark:text-emerald-400';
-            } else {
-                revenueTrend.textContent = '↓ En déficit este mes';
-                revenueTrend.className = 'text-xs text-red-500 dark:text-red-400';
-            }
-
-            // Desglose de gastos
-            const breakdown = currentScreen.opex_data
-                .map(item => `${item.name}: ${fmt(item.monthly_cost)}`)
-                .join(' | ');
-            document.getElementById('expenses-breakdown').textContent = breakdown;
-        }
-
-        // Renderizar tabla de instalación
-        function renderInstallationTable() {
-            if (!currentScreen) return;
-
-            const tableBody = document.getElementById('installation-table');
-            const fmt = n => new Intl.NumberFormat('en-US', { 
-                style: 'currency', 
-                currency: 'USD', 
-                minimumFractionDigits: 2 
-            }).format(n || 0);
-
-            let rowHTML = `
-                <tr class="border-b border-[#e5e7eb] dark:border-[#3a2d25] hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                    <td class="py-3 px-4 font-mono text-sm">${currentScreen.device_id}</td>
-                    <td class="py-3 px-4 font-medium">${currentScreen.pc_name}</td>
-            `;
-
-            // Agregar cada costo
-            currentScreen.capex_data.forEach(item => {
-                rowHTML += `<td class="py-3 px-4">${fmt(item.cost)}</td>`;
-            });
-
-            rowHTML += `</tr>`;
-            tableBody.innerHTML = rowHTML;
-
-            // Actualizar totales por columna
-            currentScreen.capex_data.forEach((item, index) => {
-                const totalId = `capex-${item.id}`;
-                const element = document.getElementById(totalId);
-                if (element) {
-                    element.textContent = fmt(item.cost);
-                }
-            });
-
-            // Calcular total general
-            const total = currentScreen.capex_data.reduce((sum, item) => sum + item.cost, 0);
-            document.getElementById('total-capex').textContent = fmt(total);
-        }
-
-        // Renderizar tabla de gastos mensuales
-        function renderMonthlyExpensesTable() {
-            if (!currentScreen) return;
-
-            const tableBody = document.getElementById('monthly-expenses-table');
-            const fmt = n => new Intl.NumberFormat('en-US', { 
-                style: 'currency', 
-                currency: 'USD', 
-                minimumFractionDigits: 2 
-            }).format(n || 0);
-
-            let rowHTML = `
-                <tr class="border-b border-[#e5e7eb] dark:border-[#3a2d25] hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                    <td class="py-3 px-4 font-mono text-sm">${currentScreen.device_id}</td>
-                    <td class="py-3 px-4 font-medium">${currentScreen.pc_name}</td>
-            `;
-
-            // Agregar cada gasto mensual
-            currentScreen.opex_data.forEach(item => {
-                rowHTML += `<td class="py-3 px-4">${fmt(item.monthly_cost)}</td>`;
-            });
-
-            rowHTML += `</tr>`;
-            tableBody.innerHTML = rowHTML;
-
-            // Actualizar totales por columna
-            currentScreen.opex_data.forEach(item => {
-                const totalId = `total-${item.id}`;
-                const element = document.getElementById(totalId);
-                if (element) {
-                    element.textContent = fmt(item.monthly_cost);
-                }
-            });
-
-            // Calcular total mensual
-            const total = currentScreen.opex_data.reduce((sum, item) => sum + item.monthly_cost, 0);
-            document.getElementById('total-monthly-opex').textContent = fmt(total);
-        }
-
-        // Cargar historial de mantenimientos
-        function loadMaintenanceHistory() {
-            // Simular datos de mantenimiento
-            const maintenanceHistory = [
-                {
-                    id: 1,
-                    date: '2024-01-15',
-                    type: 'preventivo',
-                    hours: 4,
-                    cost: 600,
-                    description: 'Mantenimiento preventivo programado'
-                },
-                {
-                    id: 2,
-                    date: '2024-02-10',
-                    type: 'correctivo',
-                    hours: 2.5,
-                    cost: 500,
-                    description: 'Cambio de módulo LED defectuoso'
-                }
-            ];
-
-            const container = document.getElementById('maintenance-history');
-            if (maintenanceHistory.length === 0) {
-                container.innerHTML = '<div class="text-center py-8 text-slate-400 dark:text-slate-500"><span class="material-symbols-outlined text-2xl mb-2">history</span><p>No hay mantenimientos registrados</p></div>';
-                return;
-            }
-
-            let html = '';
-            maintenanceHistory.forEach(maintenance => {
-                const typeClass = maintenance.type === 'preventivo' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400';
-                const typeText = maintenance.type === 'preventivo' ? 'Preventivo' : 'Correctivo';
-                
-                html += `
-                    <div class="p-4 rounded-lg border border-[#e5e7eb] dark:border-[#3a2d25]">
-                        <div class="flex justify-between items-start mb-2">
-                            <div>
-                                <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${typeClass} border">
-                                    ${typeText}
-                                </span>
-                                <span class="text-sm text-slate-500 ml-2">${maintenance.date}</span>
-                            </div>
-                            <span class="font-bold text-primary">$${maintenance.cost.toLocaleString()}</span>
-                        </div>
-                        <p class="text-sm text-slate-700 dark:text-slate-300 mb-2">${maintenance.description}</p>
-                        <div class="flex justify-between text-xs text-slate-500">
-                            <span>${maintenance.hours} horas</span>
-                            <button onclick="deleteMaintenance(${maintenance.id})" class="text-red-500 hover:text-red-700">
-                                <span class="material-symbols-outlined text-sm">delete</span>
-                            </button>
-                        </div>
-                    </div>
-                `;
-            });
-
-            container.innerHTML = html;
-        }
-
-        // Cargar datos del inventario
-        function loadInventoryData() {
-            // Simular datos de inventario
-            inventoryData = getDefaultInventory();
-        }
-
-        // Renderizar tabla de inventario
-        function renderInventoryTable() {
-            const tableBody = document.getElementById('inventory-table');
-            
-            if (inventoryData.length === 0) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="6" class="py-8 text-center text-slate-400 dark:text-slate-500">
-                            <div class="flex flex-col items-center gap-2">
-                                <span class="material-symbols-outlined">inventory_2</span>
-                                <p>No hay componentes en inventario</p>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-
-            let html = '';
-            inventoryData.forEach(item => {
-                const statusClass = item.status === 'activo' ? 
-                    'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 
-                    'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400';
-                
-                html += `
-                    <tr class="border-b border-[#e5e7eb] dark:border-[#3a2d25] hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                        <td class="py-3 px-4">
-                            <div class="flex items-center gap-3">
-                                <div class="size-10 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
-                                    <span class="material-symbols-outlined text-slate-500">devices</span>
-                                </div>
-                                <div>
-                                    <p class="font-medium text-sm">${item.name}</p>
-                                    <p class="text-xs text-slate-500">${item.category}</p>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="py-3 px-4 font-mono text-sm">${item.serial}</td>
-                        <td class="py-3 px-4">
-                            <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${statusClass}">
-                                ${item.status === 'activo' ? 'Activo' : 'Inactivo'}
-                            </span>
-                        </td>
-                        <td class="py-3 px-4 text-sm">${item.installation_date}</td>
-                        <td class="py-3 px-4 text-sm">${item.warranty}</td>
-                        <td class="py-3 px-4">
-                            <button onclick="editInventoryItem('${item.id}')" class="text-primary hover:text-primary-dark mr-3">
-                                <span class="material-symbols-outlined text-sm">edit</span>
-                            </button>
-                            <button onclick="removeInventoryItem('${item.id}')" class="text-red-500 hover:text-red-700">
-                                <span class="material-symbols-outlined text-sm">delete</span>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            tableBody.innerHTML = html;
-        }
-
-        // Cargar datos de refacciones
-        function loadSparePartsData() {
-            // Simular datos de refacciones
-            sparePartsData = getDefaultSpareParts();
-        }
-
-        // Renderizar tabla de refacciones
-        function renderSparePartsTable() {
-            const tableBody = document.getElementById('spare-parts-table');
-            const fmt = n => new Intl.NumberFormat('en-US', { 
-                style: 'currency', 
-                currency: 'USD', 
-                minimumFractionDigits: 2 
-            }).format(n || 0);
-
-            if (sparePartsData.length === 0) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="6" class="py-8 text-center text-slate-400 dark:text-slate-500">
-                            <div class="flex flex-col items-center gap-2">
-                                <span class="material-symbols-outlined">precision_manufacturing</span>
-                                <p>No hay refacciones registradas</p>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-
-            let html = '';
-            sparePartsData.forEach(item => {
-                html += `
-                    <tr class="border-b border-[#e5e7eb] dark:border-[#3a2d25] hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                        <td class="py-3 px-4">
-                            <div class="flex items-center gap-3">
-                                <div class="size-10 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
-                                    <span class="material-symbols-outlined text-slate-500">inventory</span>
-                                </div>
-                                <div>
-                                    <p class="font-medium text-sm">${item.name}</p>
-                                    <p class="text-xs text-slate-500">${item.category}</p>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="py-3 px-4 font-mono text-sm">${item.serial || 'N/A'}</td>
-                        <td class="py-3 px-4 font-medium">${fmt(item.unit_cost)}</td>
-                        <td class="py-3 px-4">
-                            <span class="inline-flex items-center gap-2">
-                                <span class="text-lg font-bold ${item.stock > 5 ? 'text-emerald-600' : item.stock > 2 ? 'text-amber-600' : 'text-red-600'}">${item.stock}</span>
-                                <span class="text-sm text-slate-500">unidades</span>
-                            </span>
-                        </td>
-                        <td class="py-3 px-4 text-sm">${item.last_used || 'Nunca'}</td>
-                        <td class="py-3 px-4">
-                            <button onclick="useSparePart('${item.id}')" class="text-primary hover:text-primary-dark mr-3">
-                                <span class="material-symbols-outlined text-sm">add_shopping_cart</span>
-                            </button>
-                            <button onclick="editSparePart('${item.id}')" class="text-primary hover:text-primary-dark mr-3">
-                                <span class="material-symbols-outlined text-sm">edit</span>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            tableBody.innerHTML = html;
-        }
-
-        // Inicializar gráficas
         function initializeCharts() {
-            // Gráfica de Rentabilidad
-            const profitabilityCtx = document.getElementById('profitabilityChart').getContext('2d');
-            new Chart(profitabilityCtx, {
+            // Gráfica de rendimiento
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
-                    datasets: [
-                        {
-                            label: 'Ingresos',
-                            data: [6500, 7200, 8000, 8500, 9000, 9500, 9200, 8800, 9300, 9700, 10100, 10500],
-                            borderColor: '#10B981',
-                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                            tension: 0.4,
-                            fill: true
-                        },
-                        {
-                            label: 'Gastos',
-                            data: [4200, 4500, 4800, 5200, 5500, 5800, 5600, 5400, 5700, 5900, 6100, 6300],
-                            borderColor: '#EF4444',
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                            tension: 0.4,
-                            fill: true
-                        }
-                    ]
+                    labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
+                    datasets: [{
+                        label: 'Ingresos',
+                        data: [6500, 7200, 8000, 8500, 9000, 9500],
+                        borderColor: '#10B981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'Gastos',
+                        data: [4200, 4500, 4800, 5200, 5500, 5800],
+                        borderColor: '#EF4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                        }
-                    },
+                    plugins: { legend: { position: 'top' } },
                     scales: {
                         y: {
                             beginAtZero: true,
@@ -1171,343 +975,94 @@
                     }
                 }
             });
-
-            // Gráfica de Incidencias
-            const incidentsCtx = document.getElementById('incidentsChart').getContext('2d');
-            new Chart(incidentsCtx, {
-                type: 'bar',
-                data: {
-                    labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
-                    datasets: [
-                        {
-                            label: 'Incidencias',
-                            data: [3, 5, 2, 4, 6, 3],
-                            backgroundColor: '#F59E0B',
-                            borderRadius: 4
-                        },
-                        {
-                            label: 'Mantenimientos',
-                            data: [1, 2, 1, 3, 2, 1],
-                            backgroundColor: '#3B82F6',
-                            borderRadius: 4
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                stepSize: 1
-                            }
-                        }
-                    }
-                }
-            });
         }
 
-        // Funciones para mantenimientos
-        function calculateMaintenanceCost() {
-            const hours = parseFloat(document.getElementById('maintenance-hours').value) || 0;
-            const hourlyCost = parseFloat(document.getElementById('hourly-cost').value) || 0;
-            const dioxideAmount = parseFloat(document.getElementById('dioxide-amount').value) || 0;
-            const dioxideCost = dioxideAmount * 45; // $45 por kg
-
-            // Calcular costo de refacciones
-            let sparePartsCost = 0;
-            const sparePartRows = document.querySelectorAll('#spare-parts-container .spare-part-row');
-            sparePartRows.forEach(row => {
-                const costInput = row.querySelector('.spare-part-cost');
-                if (costInput) {
-                    sparePartsCost += parseFloat(costInput.value) || 0;
-                }
-            });
-
-            const totalCost = (hours * hourlyCost) + dioxideCost + sparePartsCost;
-            document.getElementById('maintenance-total-cost').textContent = 
-                `$${totalCost.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-        }
-
-        function addSparePartRow() {
-            maintenanceCounter++;
-            const container = document.getElementById('spare-parts-container');
-            const newRow = document.createElement('div');
-            newRow.className = 'spare-part-row flex items-center gap-2';
-            newRow.innerHTML = `
-                <input type="text" class="flex-1 px-3 py-2 border border-[#e5e7eb] dark:border-[#3a2d25] rounded-lg bg-white dark:bg-[#2a1d15]" placeholder="Nombre de la refacción">
-                <input type="number" class="w-32 px-3 py-2 border border-[#e5e7eb] dark:border-[#3a2d25] rounded-lg bg-white dark:bg-[#2a1d15] spare-part-cost" placeholder="Costo" min="0" step="0.01" onchange="calculateMaintenanceCost()">
-                <button type="button" onclick="this.parentElement.remove(); calculateMaintenanceCost();" class="text-red-500 hover:text-red-700">
-                    <span class="material-symbols-outlined">delete</span>
-                </button>
-            `;
-            container.appendChild(newRow);
-        }
-
-        function saveMaintenance() {
-            const type = document.querySelector('input[name="maintenance-type"]:checked').value;
-            const date = document.getElementById('maintenance-date').value;
-            const hours = document.getElementById('maintenance-hours').value;
-            const description = document.getElementById('maintenance-description').value;
-            const totalCost = document.getElementById('maintenance-total-cost').textContent;
-
-            alert(`Mantenimiento ${type} guardado:\nFecha: ${date}\nHoras: ${hours}\nCosto: ${totalCost}\nDescripción: ${description}`);
-            
-            // Limpiar formulario
-            document.getElementById('maintenance-hours').value = 0;
-            document.getElementById('dioxide-amount').value = 0;
-            document.getElementById('maintenance-description').value = '';
-            document.getElementById('spare-parts-container').innerHTML = '';
-            calculateMaintenanceCost();
-            
-            // Recargar historial
-            loadMaintenanceHistory();
-        }
-
-        // Funciones para generar reportes
-        function toggleReportMenu() {
-            const menu = document.getElementById('report-menu');
-            menu.classList.toggle('hidden');
-        }
-
-        function generateReport(type) {
-            const reportTitles = {
-                'rentabilidad': 'Reporte de Rentabilidad',
-                'incidencias': 'Reporte de Incidencias',
-                'mantenimientos': 'Reporte de Mantenimientos',
-                'refacciones': 'Reporte de Refacciones'
-            };
-
-            alert(`Generando ${reportTitles[type]}...\nEl reporte será descargado automáticamente.`);
-            toggleReportMenu();
-        }
-
-        function generateFullReport() {
-            html2canvas(document.querySelector('#dashboard')).then(canvas => {
-                const link = document.createElement('a');
-                link.download = `reporte-completo-${currentScreen.device_id}-${new Date().toISOString().split('T')[0]}.png`;
-                link.href = canvas.toDataURL();
-                link.click();
-            });
-            toggleReportMenu();
-        }
-
-        // Funciones auxiliares
-        function refreshData() {
-            loadScreenData();
-            loadMaintenanceHistory();
-            loadInventoryData();
-            loadSparePartsData();
-            alert('Datos actualizados correctamente');
-        }
-
-        function exportData() {
-            alert('Exportando datos...');
-        }
-
-        function editInstallation() {
-            openModal('Editar Costos de Instalación', 'Aquí puedes editar los costos de instalación.');
+        // Funciones específicas de cada tab
+        function uploadInstallationImages() {
+            alert('Funcionalidad para subir imágenes de instalación');
         }
 
         function addMonthlyExpense() {
-            openModal('Agregar Gasto Mensual', 'Aquí puedes agregar un nuevo gasto mensual.');
+            alert('Funcionalidad para agregar gasto mensual');
         }
 
-        function calculateTotalCapex() {
-            alert('Calculando total CAPEX...');
+        function saveMaintenance() {
+            alert('Mantenimiento guardado exitosamente');
         }
 
-        function calculateMonthlyTotal() {
-            alert('Calculando total OPEX mensual...');
+        function registerSparePart() {
+            alert('Funcionalidad para registrar uso de refacción');
         }
 
-        function addInventoryItem() {
-            openModal('Agregar Componente al Inventario', 'Aquí puedes agregar un nuevo componente al inventario.');
+        function registerRelocation() {
+            alert('Funcionalidad para registrar reubicación');
         }
 
-        function syncWithGlobalInventory() {
-            alert('Sincronizando con inventario global...');
+        function scheduleRetirement() {
+            alert('Funcionalidad para programar retiro');
         }
 
-        function addSparePart() {
-            openModal('Agregar Refacción', 'Aquí puedes agregar una nueva refacción.');
+        // Funciones de reporte
+        function generateScreenReport() {
+            document.getElementById('reportModal').classList.remove('hidden');
         }
 
-        function exportSpareParts() {
-            alert('Exportando lista de refacciones...');
+        function closeReportModal() {
+            document.getElementById('reportModal').classList.add('hidden');
         }
 
-        function useSparePart(id) {
-            alert(`Usando refacción ${id} en mantenimiento...`);
-        }
-
-        function editSparePart(id) {
-            openModal('Editar Refacción', `Editando refacción ${id}`);
-        }
-
-        function editInventoryItem(id) {
-            openModal('Editar Componente', `Editando componente ${id}`);
-        }
-
-        function removeInventoryItem(id) {
-            if (confirm('¿Estás seguro de eliminar este componente?')) {
-                alert(`Componente ${id} eliminado`);
-            }
-        }
-
-        function deleteMaintenance(id) {
-            if (confirm('¿Estás seguro de eliminar este mantenimiento?')) {
-                alert(`Mantenimiento ${id} eliminado`);
-            }
-        }
-
-        function openModal(title, content) {
-            document.getElementById('modal-title').textContent = title;
-            document.getElementById('modal-content').innerHTML = `
-                <div class="space-y-4">
-                    <p>${content}</p>
-                    <div class="flex justify-end gap-3 pt-4">
-                        <button onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition">
-                            Cancelar
-                        </button>
-                        <button onclick="saveModalChanges()" class="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition">
-                            Guardar Cambios
-                        </button>
-                    </div>
-                </div>
-            `;
-            document.getElementById('editModal').classList.remove('hidden');
-        }
-
-        function closeModal() {
-            document.getElementById('editModal').classList.add('hidden');
-        }
-
-        function saveModalChanges() {
-            alert('Cambios guardados correctamente');
-            closeModal();
-        }
-
-        // Funciones para datos de ejemplo
-        function getDefaultCapexData() {
-            return [
-                { id: 'screen', name: 'Costo pantalla', cost: 15000 },
-                { id: 'civil', name: 'Costo obra civil', cost: 5000 },
-                { id: 'structure', name: 'Costo estructura', cost: 8000 },
-                { id: 'cfe', name: 'Costo Medidor CFE', cost: 1200 },
-                { id: 'electric', name: 'Instalación eléctrica', cost: 3000 },
-                { id: 'novastar', name: 'Novastar MCTRL300', cost: 2500 },
-                { id: 'ups', name: 'UPS CyberPower 1000VA', cost: 800 },
-                { id: 'nuc', name: 'NUC ASUS Intel i5', cost: 1200 },
-                { id: 'pastilla-100a', name: 'Pastilla 3X100A QO', cost: 450 },
-                { id: 'pastilla-20a', name: 'Pastilla 2X20A QO', cost: 180 },
-                { id: 'camera', name: 'Cámara HIKVISION', cost: 3200 },
-                { id: 'teltonika', name: 'Teltonika RUT 955', cost: 280 },
-                { id: 'poe', name: 'PoE Utepo', cost: 150 }
-            ];
-        }
-
-        function getDefaultOpexData() {
-            return [
-                { id: 'renta', name: 'Renta del predio', monthly_cost: 2000 },
-                { id: 'cfe', name: 'CFE', monthly_cost: 450 },
-                { id: 'internet', name: 'Internet fibra', monthly_cost: 120 },
-                { id: 'redundancia', name: 'Internet redundancia', monthly_cost: 80 },
-                { id: 'teltonika', name: 'Licencia Teltonika', monthly_cost: 25 },
-                { id: 'teamviewer', name: 'Licencia TeamViewer', monthly_cost: 40 },
-                { id: 'cms', name: 'Licencia CMS', monthly_cost: 150 },
-                { id: 'hikvision', name: 'Licencia Hikvision', monthly_cost: 30 },
-                { id: 'ups-license', name: 'Licencia portal UPS', monthly_cost: 15 },
-                { id: 'qtm', name: 'Licencia QTM', monthly_cost: 50 }
-            ];
-        }
-
-        function getDefaultInventory() {
-            return [
-                {
-                    id: '1',
-                    name: 'Módulo LED Principal',
-                    category: 'Pantalla',
-                    serial: 'LED-MOD-2024-001',
-                    status: 'activo',
-                    installation_date: '2024-01-15',
-                    warranty: 'Hasta 2026-01-15'
-                },
-                {
-                    id: '2',
-                    name: 'Fuente de Poder 12V',
-                    category: 'Electrónica',
-                    serial: 'PWR-2024-002',
-                    status: 'activo',
-                    installation_date: '2024-01-15',
-                    warranty: 'Hasta 2025-01-15'
-                },
-                {
-                    id: '3',
-                    name: 'Novastar MCTRL300',
-                    category: 'Controlador',
-                    serial: 'NOVA-CTRL-2024-003',
-                    status: 'activo',
-                    installation_date: '2024-01-15',
-                    warranty: 'Hasta 2026-01-15'
-                }
-            ];
-        }
-
-        function getDefaultSpareParts() {
-            return [
-                {
-                    id: 'SP-001',
-                    name: 'Módulo LED de Repuesto',
-                    category: 'Pantalla',
-                    serial: 'LED-REP-001',
-                    unit_cost: 250,
-                    stock: 5,
-                    last_used: '2024-02-10'
-                },
-                {
-                    id: 'SP-002',
-                    name: 'Fuente de Poder',
-                    category: 'Electrónica',
-                    serial: 'PWR-REP-001',
-                    unit_cost: 180,
-                    stock: 3,
-                    last_used: null
-                },
-                {
-                    id: 'SP-003',
-                    name: 'Tarjeta Receptora',
-                    category: 'Electrónica',
-                    serial: 'RCV-CARD-001',
-                    unit_cost: 120,
-                    stock: 8,
-                    last_used: null
-                },
-                {
-                    id: 'SP-004',
-                    name: 'Cable FAT',
-                    category: 'Cableado',
-                    serial: null,
-                    unit_cost: 45,
-                    stock: 20,
-                    last_used: '2024-01-20'
-                }
-            ];
-        }
-
-        // Cerrar menú de reportes al hacer clic fuera
-        document.addEventListener('click', function(event) {
-            const reportMenu = document.getElementById('report-menu');
-            const reportButton = document.querySelector('button[onclick="toggleReportMenu()"]');
+        function generateDirectivePDF() {
+            alert('Generando reporte directivo en PDF con análisis avanzado...');
+            closeReportModal();
             
-            if (!reportMenu.contains(event.target) && !reportButton.contains(event.target)) {
-                reportMenu.classList.add('hidden');
+            // Simular generación de PDF
+            setTimeout(() => {
+                alert('Reporte directivo generado exitosamente. Se descargará automáticamente.');
+                
+                // Datos del reporte directivo
+                const reportData = {
+                    pantalla: currentScreen.name,
+                    id: currentScreen.id,
+                    ubicacion: currentScreen.location,
+                    fecha: new Date().toLocaleDateString('es-MX'),
+                    analisis: document.getElementById('report-analysis-type').value,
+                    periodo: {
+                        inicio: document.getElementById('report-start-date').value,
+                        fin: document.getElementById('report-end-date').value
+                    },
+                    nivel: document.querySelector('input[name="report-detail"]:checked').value,
+                    
+                    // Análisis ejecutivo
+                    ejecutivo: {
+                        roi: currentScreen.roi + ' meses',
+                        rentabilidad: '62.4%',
+                        uptime: currentScreen.uptime,
+                        ingresosMensuales: '$' + currentScreen.monthlyRevenue.toLocaleString(),
+                        gastosMensuales: '$' + currentScreen.monthlyExpenses.toLocaleString(),
+                        gananciaNeta: '$' + (currentScreen.monthlyRevenue - currentScreen.monthlyExpenses).toLocaleString()
+                    },
+                    
+                    // Recomendaciones estratégicas
+                    recomendaciones: [
+                        'Optimizar gastos operativos para mejorar ROI',
+                        'Programar mantenimiento preventivo para Q2 2024',
+                        'Considerar expansión a ubicaciones similares',
+                        'Evaluar renovación de equipos en 12 meses'
+                    ]
+                };
+                
+                console.log('Reporte directivo generado:', reportData);
+            }, 2000);
+        }
+
+        function refreshScreenData() {
+            alert('Datos de pantalla actualizados');
+        }
+
+        // Cerrar modal al hacer clic fuera
+        document.getElementById('reportModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeReportModal();
             }
         });
     </script>
