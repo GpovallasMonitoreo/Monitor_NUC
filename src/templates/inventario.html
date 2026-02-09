@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html class="light" lang="es">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Argos DOOH - Inventario Global</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f97415",
+                        "background-light": "#f8f7f5",
+                        "background-dark": "#23170f",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    }
+                },
+            },
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .inventory-card {
+            transition: all 0.3s ease;
+        }
+        .inventory-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-[#181411] dark:text-white min-h-screen font-display">
+    <!-- Header -->
+    <header class="flex items-center justify-between border-b border-[#e5e7eb] dark:border-[#3a2d25] bg-white dark:bg-[#2a1d15] px-8 py-4">
+        <div class="flex items-center gap-4">
+            <a href="/" class="flex items-center gap-2">
+                <div class="size-8 flex items-center justify-center bg-primary rounded-lg text-white">
+                    <span class="material-symbols-outlined">grid_view</span>
+                </div>
+                <h2 class="text-[#181411] dark:text-white text-lg font-bold">Argos DOOH</h2>
+            </a>
+            <div class="hidden md:flex items-center gap-6 ml-8">
+                <a href="/" class="text-[#8c725f] hover:text-primary text-sm font-medium">Dashboard</a>
+                <a href="/techview.html" class="text-[#8c725f] hover:text-primary text-sm font-medium">Pantallas</a>
+                <a href="#" class="text-primary text-sm font-bold">Inventario</a>
+                <a href="#" class="text-[#8c725f] hover:text-primary text-sm font-medium">Reportes</a>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <div class="relative">
+                <span class="material-symbols-outlined text-[#8c725f] absolute left-3 top-1/2 -translate-y-1/2">search</span>
+                <input class="pl-10 pr-4 py-2 bg-[#f5f2f0] dark:bg-[#3a2d25] dark:text-white rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 w-64 border-none" placeholder="Buscar por número de serie..." type="text"/>
+            </div>
+            <button onclick="addNewItem()" class="px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition">
+                + Nuevo Item
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="p-8">
+        <div class="max-w-[1600px] mx-auto">
+            <!-- Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white dark:bg-[#2a1d15] rounded-xl p-6 border border-[#e5e7eb] dark:border-[#3a2d25]">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Total Items</p>
+                            <p class="text-3xl font-bold text-[#181411] dark:text-white mt-2">142</p>
+                        </div>
+                        <div class="p-3 bg-blue-100 dark:bg-blue-500/20 rounded-lg">
+                            <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">inventory_2</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white dark:bg-[#2a1d15] rounded-xl p-6 border border-[#e5e7eb] dark:border-[#3a2d25]">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 dark:text-slate-400">En Stock</p>
+                            <p class="text-3xl font-bold text-[#181411] dark:text-white mt-2">89</p>
+                        </div>
+                        <div class="p-3 bg-emerald-100 dark:bg-emerald-500/20 rounded-lg">
+                            <span class="material-symbols-outlined text-emerald-600 dark:text-emerald-400">check_circle</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white dark:bg-[#2a1d15] rounded-xl p-6 border border-[#e5e7eb] dark:border-[#3a2d25]">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 dark:text-slate-400">En Uso</p>
+                            <p class="text-3xl font-bold text-[#181411] dark:text-white mt-2">48</p>
+                        </div>
+                        <div class="p-3 bg-amber-100 dark:bg-amber-500/20 rounded-lg">
+                            <span class="material-symbols-outlined text-amber-600 dark:text-amber-400">build</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white dark:bg-[#2a1d15] rounded-xl p-6 border border-[#e5e7eb] dark:border-[#3a2d25]">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Bajo Stock</p>
+                            <p class="text-3xl font-bold text-[#181411] dark:text-white mt-2">5</p>
+                        </div>
+                        <div class="p-3 bg-red-100 dark:bg-red-500/20 rounded-lg">
+                            <span class="material-symbols-outlined text-red-600 dark:text-red-400">warning</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inventory Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- Item Card 1 -->
+                <div class="inventory-card bg-white dark:bg-[#2a1d15] rounded-xl border border-[#e5e7eb] dark:border-[#3a2d25] overflow-hidden">
+                    <div class="p-6">
+                        <div class="flex items-start justify-between mb-4">
+                            <div>
+                                <h3 class="font-bold text-[#181411] dark:text-white text-lg">Módulo LED</h3>
+                                <p class="text-sm text-slate-500 mt-1">Pantalla P3</p>
+                            </div>
+                            <span class="px-2 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
+                                En Stock
+                            </span>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <p class="text-sm text-slate-500 mb-1">Número de Serie</p>
+                            <p class="font-mono text-[#181411] dark:text-white">LED-MOD-P3-2024-001</p>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <p class="text-sm text-slate-500 mb-1">Stock</p>
+                                <p class="font-bold text-[#181411] dark:text-white">12 unidades</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-slate-500 mb-1">Costo</p>
+                                <p class="font-bold text-primary">$250.00 c/u</p>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <p class="text-sm text-slate-500 mb-2">Imagen</p>
+                            <div class="h-32 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                                <span class="material-symbols-outlined text-slate-400 text-3xl">photo_camera</span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <button onclick="useItem('LED-MOD-P3-2024-001')" class="flex-1 px-3 py-2 bg-primary/10 text-primary font-medium rounded-lg hover:bg-primary/20 transition">
+                                Usar
+                            </button>
+                            <button onclick="editItem('LED-MOD-P3-2024-001')" class="px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                                <span class="material-symbols-outlined text-sm">edit</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Item Card 2 -->
+                <div class="inventory-card bg-white dark:bg-[#2a1d15] rounded-xl border border-[#e5e7eb] dark:border-[#3a2d25] overflow-hidden">
+                    <div class="p-6">
+                        <div class="flex items-start justify-between mb-4">
+                            <div>
+                                <h3 class="font-bold text-[#181411] dark:text-white text-lg">Fuente de Poder</h3>
+                                <p class="text-sm text-slate-500 mt-1">12V 200W</p>
+                            </div>
+                            <span class="px-2 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">
+                                Bajo Stock
+                            </span>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <p class="text-sm text-slate-500 mb-1">Número de Serie</p>
+                            <p class="font-mono text-[#181411] dark:text-white">PWR-12V-200W-001</p>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <p class="text-sm text-slate-500 mb-1">Stock</p>
+                                <p class="font-bold text-red-600 dark:text-red-400">2 unidades</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-slate-500 mb-1">Costo</p>
+                                <p class="font-bold text-primary">$180.00 c/u</p>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <p class="text-sm text-slate-500 mb-2">Imagen</p>
+                            <div class="h-32 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                                <span class="material-symbols-outlined text-slate-400 text-3xl">electric_bolt</span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <button onclick="useItem('PWR-12V-200W-001')" class="flex-1 px-3 py-2 bg-primary/10 text-primary font-medium rounded-lg hover:bg-primary/20 transition">
+                                Usar
+                            </button>
+                            <button onclick="editItem('PWR-12V-200W-001')" class="px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                                <span class="material-symbols-outlined text-sm">edit</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Item Card 3 -->
+                <div class="inventory-card bg-white dark:bg-[#2a1d15] rounded-xl border border-[#e5e7eb] dark:border-[#3a2d25] overflow-hidden">
+                    <div class="p-6">
+                        <div class="flex items-start justify-between mb-4">
+                            <div>
+                                <h3 class="font-bold text-[#181411] dark:text-white text-lg">Novastar MCTRL300</h3>
+                                <p class="text-sm text-slate-500 mt-1">Controlador</p>
+                            </div>
+                            <span class="px-2 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
+                                En Stock
+                            </span>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <p class="text-sm text-slate-500 mb-1">Número de Serie</p>
+                            <p class="font-mono text-[#181411] dark:text-white">NOVA-MCTRL-300-001</p>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <p class="text-sm text-slate-500 mb-1">Stock</p>
+                                <p class="font-bold text-[#181411] dark:text-white">5 unidades</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-slate-500 mb-1">Costo</p>
+                                <p class="font-bold text-primary">$350.00 c/u</p>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <p class="text-sm text-slate-500 mb-2">Imagen</p>
+                            <div class="h-32 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                                <span class="material-symbols-outlined text-slate-400 text-3xl">memory</span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <button onclick="useItem('NOVA-MCTRL-300-001')" class="flex-1 px-3 py-2 bg-primary/10 text-primary font-medium rounded-lg hover:bg-primary/20 transition">
+                                Usar
+                            </button>
+                            <button onclick="editItem('NOVA-MCTRL-300-001')" class="px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                                <span class="material-symbols-outlined text-sm">edit</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add New Item Card -->
+                <div class="inventory-card bg-white dark:bg-[#2a1d15] rounded-xl border-2 border-dashed border-[#e5e7eb] dark:border-[#3a2d25] overflow-hidden flex items-center justify-center min-h-[400px]">
+                    <button onclick="addNewItem()" class="flex flex-col items-center gap-3 text-primary hover:text-primary-dark transition-colors">
+                        <div class="size-16 rounded-full bg-primary/10 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-3xl">add</span>
+                        </div>
+                        <span class="font-bold text-lg">Agregar Nuevo Item</span>
+                        <span class="text-sm text-slate-500 dark:text-slate-400">Clic para agregar</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function addNewItem() {
+            alert('Agregar nuevo item al inventario global');
+        }
+
+        function useItem(serial) {
+            if (confirm(`¿Usar item con número de serie ${serial}?`)) {
+                alert(`Item ${serial} marcado como en uso`);
+            }
+        }
+
+        function editItem(serial) {
+            alert(`Editando item ${serial}`);
+        }
+    </script>
+</body>
+</html>
