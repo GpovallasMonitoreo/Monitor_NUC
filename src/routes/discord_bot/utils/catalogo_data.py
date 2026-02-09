@@ -1,3 +1,7 @@
+"""
+Catálogo de soluciones y SLA para soporte técnico
+"""
+
 # ==============================================================================
 # 📚 CATÁLOGO DE SOPORTE - GENERADO DESDE EXCEL (COMPLETO)
 # ==============================================================================
@@ -372,4 +376,4 @@ CATALOGO_SOPORTE = {
     }
 }
 
-SLA_POR_SOLUCION = {} # Ya no es necesario
+print("✅ Catálogo de soporte cargado")
