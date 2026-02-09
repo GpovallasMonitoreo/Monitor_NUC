@@ -1,14 +1,15 @@
-# requirements.txt - VERSIÓN CORREGIDA
+# requirements.txt - Versión limpia
 
-# ============================================
-# FLASK APP DEPENDENCIES (SOLO ESTAS)
-# ============================================
-flask>=2.3.0
-flask-cors>=4.0.0
-requests>=2.31.0
-python-dateutil>=2.8.2
+# Flask y dependencias básicas
+flask>=3.0.0
 gunicorn>=20.1.0
-
-# Si necesitas estas para Flask, déjalas:
 python-dotenv>=1.0.0
-pandas>=2.0.0  # Solo si lo usa Flask
+
+# Flask extensions
+flask-cors>=4.0.0
+
+# Utilidades
+requests>=2.31.0
+
+# Si realmente necesitas pandas (verifica)
+# pandas>=2.0.0
