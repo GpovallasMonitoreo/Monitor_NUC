@@ -1,6 +1,6 @@
 """
 SyncOps Discord Bot - Main Entry Point
-Versión segura para Render
+Versión optimizada para Render (Web Service con health checks)
 """
 
 import discord
@@ -11,8 +11,13 @@ import traceback
 import sys
 import logging
 from datetime import datetime
+import threading
+from aiohttp import web
 
-# Configurar logging detallado
+# ==============================================================================
+# CONFIGURACIÓN DE LOGGING
+# ==============================================================================
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -20,7 +25,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Añadir ruta para imports
+# ==============================================================================
+# CONFIGURACIÓN DE RUTAS
+# ==============================================================================
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 src_dir = os.path.dirname(current_dir)
 project_root = os.path.dirname(src_dir)
@@ -35,26 +43,155 @@ print(f"📁 Directorio: {current_dir}")
 print(f"🐍 Python: {sys.version}")
 print(f"📅 Inicio: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
-# Verificar si estamos en Render
-IS_RENDER = os.environ.get('RENDER') == 'true' or os.environ.get('PORT') is not None
-if IS_RENDER:
-    print("🌍 ENTORNO: RENDER (Producción)")
+# ==============================================================================
+# SERVIDOR WEB PARA HEALTH CHECKS (RENDER WEB SERVICE)
+# ==============================================================================
+
+class HealthServer:
+    """Servidor web minimalista para health checks de Render"""
     
-    # Importar keep_alive solo en Render
-    try:
-        from keep_alive import keep_alive
-        keep_alive()
-        print("✅ Keep-alive activado")
-    except ImportError as e:
-        print(f"⚠️  Keep-alive no disponible: {e}")
-else:
-    print("💻 ENTORNO: LOCAL (Desarrollo)")
+    def __init__(self, host='0.0.0.0', port=10000):
+        self.host = host
+        self.port = port
+        self.app = web.Application()
+        self.setup_routes()
+        self.runner = None
+        self.site = None
+        
+    def setup_routes(self):
+        """Configurar rutas del servidor web"""
+        self.app.add_routes([
+            web.get('/', self.handle_root),
+            web.get('/health', self.handle_health),
+            web.get('/ping', self.handle_ping),
+            web.get('/info', self.handle_info),
+            web.get('/status', self.handle_status)
+        ])
+    
+    async def handle_root(self, request):
+        """Manejar ruta raíz"""
+        html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>🤖 SyncOps Discord Bot</title>
+            <style>
+                body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
+                .status { padding: 15px; border-radius: 8px; margin: 20px 0; }
+                .online { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+                .endpoints { background-color: #f8f9fa; padding: 15px; border-radius: 8px; }
+                .endpoint { margin: 5px 0; font-family: monospace; }
+            </style>
+        </head>
+        <body>
+            <h1>🤖 SyncOps Discord Bot</h1>
+            <div class="status online">
+                <strong>✅ Estado:</strong> Bot activo y funcionando
+            </div>
+            <p>Este es un bot de Discord para gestión de tickets de soporte.</p>
+            
+            <h3>📊 Endpoints disponibles:</h3>
+            <div class="endpoints">
+                <div class="endpoint"><strong>GET</strong> /health → Health check para Render</div>
+                <div class="endpoint"><strong>GET</strong> /ping → Respuesta "pong"</div>
+                <div class="endpoint"><strong>GET</strong> /status → Estado del bot</div>
+                <div class="endpoint"><strong>GET</strong> /info → Información del sistema</div>
+            </div>
+            
+            <h3>🔧 Comandos de Discord:</h3>
+            <ul>
+                <li><code>/reporte</code> → Crear nuevo ticket</li>
+                <li><code>/analisis</code> → Ver estadísticas</li>
+                <li><code>/ayuda</code> → Mostrar ayuda</li>
+            </ul>
+            
+            <p><em>Sistema operativo desde: {time}</em></p>
+        </body>
+        </html>
+        """.format(time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        return web.Response(text=html, content_type='text/html')
+    
+    async def handle_health(self, request):
+        """Endpoint de health check para Render"""
+        return web.Response(
+            text="✅ OK - SyncOps Bot\n",
+            status=200,
+            headers={'Content-Type': 'text/plain; charset=utf-8'}
+        )
+    
+    async def handle_ping(self, request):
+        """Endpoint de ping"""
+        return web.Response(
+            text="🏓 Pong!\n",
+            headers={'Content-Type': 'text/plain; charset=utf-8'}
+        )
+    
+    async def handle_info(self, request):
+        """Endpoint de información del sistema"""
+        import platform
+        info = f"""
+🤖 SyncOps Discord Bot - Información del Sistema
+===============================================
+• Estado: Activo
+• Hora: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+• Python: {platform.python_version()}
+• Plataforma: {platform.platform()}
+• Directorio: {os.getcwd()}
+• Entorno: {'Render' if os.getenv('RENDER') else 'Local'}
+• Puerto: {self.port}
+• PID: {os.getpid()}
+===============================================
+        """
+        return web.Response(
+            text=info,
+            headers={'Content-Type': 'text/plain; charset=utf-8'}
+        )
+    
+    async def handle_status(self, request):
+        """Endpoint de estado del bot"""
+        bot_status = "❓ Desconocido"
+        if 'bot' in globals() and bot and hasattr(bot, 'is_ready'):
+            bot_status = "✅ Conectado" if bot.is_ready() else "🔄 Conectando..."
+        
+        status_data = {
+            "bot": bot_status,
+            "webserver": "✅ Activo",
+            "timestamp": datetime.now().isoformat(),
+            "service": "syncops-discord-bot",
+            "environment": os.getenv('RENDER', 'development')
+        }
+        
+        import json
+        return web.Response(
+            text=json.dumps(status_data, indent=2),
+            content_type='application/json'
+        )
+    
+    async def start(self):
+        """Iniciar servidor web"""
+        self.runner = web.AppRunner(self.app)
+        await self.runner.setup()
+        self.site = web.TCPSite(self.runner, self.host, self.port)
+        await self.site.start()
+        print(f"🌍 Servidor web iniciado en http://{self.host}:{self.port}")
+        print(f"🔗 Health check: http://{self.host}:{self.port}/health")
+    
+    async def stop(self):
+        """Detener servidor web"""
+        if self.site:
+            await self.site.stop()
+        if self.runner:
+            await self.runner.cleanup()
+        print("🌍 Servidor web detenido")
+
+# ==============================================================================
+# INICIALIZACIÓN DEL BOT DE DISCORD
+# ==============================================================================
 
 # Cargar variables de entorno
 try:
     from dotenv import load_dotenv
     
-    # Intentar cargar .env desde múltiples ubicaciones
     env_paths = [
         os.path.join(project_root, '.env'),
         os.path.join(current_dir, '.env'),
@@ -67,7 +204,7 @@ try:
             print(f"✅ Variables cargadas desde: {env_path}")
             break
     else:
-        print("ℹ️  No se encontró archivo .env, usando variables de entorno del sistema")
+        print("ℹ️  No se encontró archivo .env, usando variables del sistema")
         
 except ImportError:
     print("⚠️  python-dotenv no instalado, usando variables de entorno del sistema")
@@ -81,7 +218,6 @@ if not DISCORD_TOKEN:
     print("   - Local: Archivo .env")
     sys.exit(1)
 else:
-    # Mostrar info del token (sin revelarlo completo)
     token_preview = DISCORD_TOKEN[:10] + "..." + DISCORD_TOKEN[-5:] if len(DISCORD_TOKEN) > 15 else "***"
     print(f"✅ Discord Token: Presente ({len(DISCORD_TOKEN)} caracteres)")
     print(f"🔐 Token preview: {token_preview}")
@@ -100,7 +236,10 @@ bot = commands.Bot(
     case_insensitive=True
 )
 
-# Eventos del bot
+# ==============================================================================
+# EVENTOS DEL BOT
+# ==============================================================================
+
 @bot.event
 async def on_ready():
     """Evento cuando el bot se conecta exitosamente"""
@@ -216,25 +355,9 @@ async def on_command_error(ctx, error):
     except:
         pass
 
-# Cargar cogs/módulos
-async def cargar_cogs():
-    """Cargar todos los módulos del bot"""
-    cogs_to_load = [
-        "discord_bot.cogs.tickets",
-        "discord_bot.cogs.analisis"
-    ]
-    
-    print("📦 Cargando módulos...")
-    
-    for cog in cogs_to_load:
-        try:
-            await bot.load_extension(cog)
-            print(f"   ✅ {cog}")
-        except Exception as e:
-            print(f"   ❌ {cog}: {e}")
-            traceback.print_exc()
-    
-    print("✅ Módulos cargados")
+# ==============================================================================
+# COMANDOS DEL BOT
+# ==============================================================================
 
 # Comando de ayuda básico
 @bot.tree.command(name="ayuda", description="Muestra información de ayuda")
@@ -284,7 +407,33 @@ async def ayuda(interaction: discord.Interaction):
     
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
-# Función principal
+# ==============================================================================
+# CARGAR COGS/MÓDULOS
+# ==============================================================================
+
+async def cargar_cogs():
+    """Cargar todos los módulos del bot"""
+    cogs_to_load = [
+        "discord_bot.cogs.tickets",
+        "discord_bot.cogs.analisis"
+    ]
+    
+    print("📦 Cargando módulos...")
+    
+    for cog in cogs_to_load:
+        try:
+            await bot.load_extension(cog)
+            print(f"   ✅ {cog}")
+        except Exception as e:
+            print(f"   ❌ {cog}: {e}")
+            traceback.print_exc()
+    
+    print("✅ Módulos cargados")
+
+# ==============================================================================
+# FUNCIÓN PRINCIPAL
+# ==============================================================================
+
 async def main():
     """Función principal de arranque del bot"""
     print("🚀 Iniciando SyncOps Discord Bot...")
@@ -311,6 +460,11 @@ async def main():
         print("⚠️  Algunos archivos esenciales no fueron encontrados")
         print("💡 Verifica la estructura del proyecto")
     
+    # Iniciar servidor web para health checks
+    print("🌍 Iniciando servidor web para health checks...")
+    health_server = HealthServer(host='0.0.0.0', port=int(os.getenv('PORT', 10000)))
+    await health_server.start()
+    
     # Cargar cogs
     await cargar_cogs()
     
@@ -333,11 +487,17 @@ async def main():
         print(f"💥 ERROR CRÍTICO: {e}")
         traceback.print_exc()
     finally:
+        # Detener servidor web
+        await health_server.stop()
+        
         if not bot.is_closed():
             await bot.close()
         print("✅ Bot desconectado")
 
-# Punto de entrada
+# ==============================================================================
+# PUNTO DE ENTRADA
+# ==============================================================================
+
 if __name__ == "__main__":
     try:
         asyncio.run(main())
