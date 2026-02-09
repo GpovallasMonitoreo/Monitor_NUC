@@ -6,6 +6,9 @@
     <title>Argos DOOH - Dashboard Principal</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Cargar Supabase primero -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/assets/js/supabase-client.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <script id="tailwind-config">
@@ -56,7 +59,7 @@
         </div>
         
         <nav class="flex-1 overflow-y-auto px-3 py-6 space-y-1">
-            <a href="/" class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/10 text-primary dark:text-primary transition-colors group">
+            <a href="index.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/10 text-primary dark:text-primary transition-colors group">
                 <span class="material-symbols-outlined">dashboard</span>
                 <span class="text-sm font-semibold">Dashboard</span>
             </a>
@@ -120,7 +123,7 @@
                         <div class="flex justify-between items-start">
                             <div>
                                 <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Total Pantallas</p>
-                                <h3 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">12</h3>
+                                <h3 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight" id="total-screens">0</h3>
                             </div>
                             <div class="p-2 bg-blue-100 dark:bg-blue-500/20 rounded-lg text-blue-600 dark:text-blue-400">
                                 <span class="material-symbols-outlined text-[20px]">tv</span>
@@ -128,9 +131,9 @@
                         </div>
                         <div class="mt-4">
                             <div class="flex items-center justify-between text-xs">
-                                <span class="text-emerald-600 dark:text-emerald-400">10 en línea</span>
-                                <span class="text-amber-600 dark:text-amber-400">1 mantenimiento</span>
-                                <span class="text-red-600 dark:text-red-400">1 desconectada</span>
+                                <span class="text-emerald-600 dark:text-emerald-400" id="online-screens">0 en línea</span>
+                                <span class="text-amber-600 dark:text-amber-400" id="maintenance-screens">0 mantenimiento</span>
+                                <span class="text-red-600 dark:text-red-400" id="offline-screens">0 desconectada</span>
                             </div>
                         </div>
                     </div>
@@ -139,16 +142,16 @@
                         <div class="flex justify-between items-start">
                             <div>
                                 <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Ingresos Mensuales</p>
-                                <h3 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">$85,400</h3>
+                                <h3 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight" id="monthly-revenue">$0</h3>
                             </div>
                             <div class="p-2 bg-emerald-100 dark:bg-emerald-500/20 rounded-lg text-emerald-600 dark:text-emerald-400">
                                 <span class="material-symbols-outlined text-[20px]">trending_up</span>
                             </div>
                         </div>
                         <div class="mt-4">
-                            <span class="inline-flex items-center text-xs text-emerald-600 dark:text-emerald-400">
+                            <span class="inline-flex items-center text-xs text-emerald-600 dark:text-emerald-400" id="revenue-trend">
                                 <span class="material-symbols-outlined text-sm mr-1">arrow_upward</span>
-                                +12% vs mes anterior
+                                Cargando...
                             </span>
                         </div>
                     </div>
@@ -157,7 +160,7 @@
                         <div class="flex justify-between items-start">
                             <div>
                                 <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">ROI Promedio</p>
-                                <h3 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">18.2</h3>
+                                <h3 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight" id="average-roi">0</h3>
                             </div>
                             <div class="p-2 bg-purple-100 dark:bg-purple-500/20 rounded-lg text-purple-600 dark:text-purple-400">
                                 <span class="material-symbols-outlined text-[20px]">paid</span>
@@ -166,7 +169,7 @@
                         <div class="mt-4">
                             <span class="text-xs text-slate-500">Meta: 24 meses</span>
                             <div class="h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mt-1">
-                                <div class="h-full bg-purple-500 rounded-full w-3/4"></div>
+                                <div class="h-full bg-purple-500 rounded-full" id="roi-bar"></div>
                             </div>
                         </div>
                     </div>
@@ -175,14 +178,14 @@
                         <div class="flex justify-between items-start">
                             <div>
                                 <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Uptime Promedio</p>
-                                <h3 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">98.7%</h3>
+                                <h3 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight" id="average-uptime">0%</h3>
                             </div>
                             <div class="p-2 bg-cyan-100 dark:bg-cyan-500/20 rounded-lg text-cyan-600 dark:text-cyan-400">
                                 <span class="material-symbols-outlined text-[20px]">verified</span>
                             </div>
                         </div>
                         <div class="mt-4">
-                            <span class="text-xs text-emerald-600 dark:text-emerald-400">Excelente desempeño</span>
+                            <span class="text-xs text-emerald-600 dark:text-emerald-400" id="uptime-status">Cargando...</span>
                         </div>
                     </div>
                 </div>
@@ -213,92 +216,11 @@
                         </a>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div class="screen-card bg-white dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-800 p-6">
-                            <div class="flex items-start justify-between mb-4">
-                                <div>
-                                    <div class="inline-flex items-center gap-2 px-3 py-1 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 rounded-full text-xs font-medium mb-2">
-                                        <span class="size-1.5 rounded-full bg-emerald-500"></span>
-                                        Mejor ROI
-                                    </div>
-                                    <h4 class="font-bold text-slate-900 dark:text-white">Pantalla Aeropuerto</h4>
-                                    <p class="text-sm text-slate-500">ARG-002</p>
-                                </div>
-                                <div class="size-12 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white">
-                                    <span class="material-symbols-outlined">flight_takeoff</span>
-                                </div>
-                            </div>
-                            <div class="space-y-3">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-sm text-slate-500">ROI:</span>
-                                    <span class="font-bold text-emerald-600 dark:text-emerald-400">18.2 meses</span>
-                                </div>
-                                <div class="flex items-center justify-between">
-                                    <span class="text-sm text-slate-500">Ingresos:</span>
-                                    <span class="font-bold text-slate-900 dark:text-white">$12,000</span>
-                                </div>
-                            </div>
-                            <a href="techview.html?device_id=ARG-002" class="mt-6 block w-full text-center px-4 py-2.5 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition">
-                                Ver Detalles
-                            </a>
-                        </div>
-                        
-                        <div class="screen-card bg-white dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-800 p-6">
-                            <div class="flex items-start justify-between mb-4">
-                                <div>
-                                    <div class="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 rounded-full text-xs font-medium mb-2">
-                                        <span class="size-1.5 rounded-full bg-blue-500"></span>
-                                        Mayor Ingreso
-                                    </div>
-                                    <h4 class="font-bold text-slate-900 dark:text-white">Pantalla Zona Financiera</h4>
-                                    <p class="text-sm text-slate-500">ARG-005</p>
-                                </div>
-                                <div class="size-12 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white">
-                                    <span class="material-symbols-outlined">business_center</span>
-                                </div>
-                            </div>
-                            <div class="space-y-3">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-sm text-slate-500">Ingresos:</span>
-                                    <span class="font-bold text-blue-600 dark:text-blue-400">$10,500</span>
-                                </div>
-                                <div class="flex items-center justify-between">
-                                    <span class="text-sm text-slate-500">Uptime:</span>
-                                    <span class="font-bold text-slate-900 dark:text-white">99.9%</span>
-                                </div>
-                            </div>
-                            <a href="techview.html?device_id=ARG-005" class="mt-6 block w-full text-center px-4 py-2.5 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition">
-                                Ver Detalles
-                            </a>
-                        </div>
-                        
-                        <div class="screen-card bg-white dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-800 p-6">
-                            <div class="flex items-start justify-between mb-4">
-                                <div>
-                                    <div class="inline-flex items-center gap-2 px-3 py-1 bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 rounded-full text-xs font-medium mb-2">
-                                        <span class="size-1.5 rounded-full bg-amber-500"></span>
-                                        Requiere Atención
-                                    </div>
-                                    <h4 class="font-bold text-slate-900 dark:text-white">Pantalla Hospital</h4>
-                                    <p class="text-sm text-slate-500">ARG-007</p>
-                                </div>
-                                <div class="size-12 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-white">
-                                    <span class="material-symbols-outlined">local_hospital</span>
-                                </div>
-                            </div>
-                            <div class="space-y-3">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-sm text-slate-500">Estado:</span>
-                                    <span class="font-bold text-amber-600 dark:text-amber-400">Mantenimiento</span>
-                                </div>
-                                <div class="flex items-center justify-between">
-                                    <span class="text-sm text-slate-500">ROI:</span>
-                                    <span class="font-bold text-red-600 dark:text-red-400">28.7 meses</span>
-                                </div>
-                            </div>
-                            <a href="techview.html?device_id=ARG-007" class="mt-6 block w-full text-center px-4 py-2.5 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition">
-                                Gestionar
-                            </a>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="featured-screens">
+                        <!-- Las pantallas se cargarán aquí -->
+                        <div class="col-span-full text-center py-12 text-slate-400">
+                            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+                            <p class="mt-4">Cargando pantallas...</p>
                         </div>
                     </div>
                 </div>
@@ -307,53 +229,13 @@
                 <div class="bg-white dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-800 p-6">
                     <div class="flex items-center justify-between mb-6">
                         <h3 class="text-lg font-bold text-slate-900 dark:text-white">Alertas Recientes</h3>
-                        <span class="px-2 py-1 bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold rounded">3 activas</span>
+                        <span class="px-2 py-1 bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold rounded" id="alerts-count">0 activas</span>
                     </div>
                     
-                    <div class="space-y-4">
-                        <div class="flex items-center justify-between p-4 bg-red-50 dark:bg-red-500/10 rounded-lg border border-red-200 dark:border-red-500/20">
-                            <div class="flex items-center gap-3">
-                                <div class="p-2 bg-red-100 dark:bg-red-500/20 rounded-lg">
-                                    <span class="material-symbols-outlined text-red-600 dark:text-red-400">warning</span>
-                                </div>
-                                <div>
-                                    <p class="font-medium text-slate-900 dark:text-white">Pantalla Plaza Mayor desconectada</p>
-                                    <p class="text-sm text-slate-500">ARG-004 • Hace 2 horas</p>
-                                </div>
-                            </div>
-                            <a href="techview.html?device_id=ARG-004" class="text-sm font-medium text-primary hover:text-primary-dark">
-                                Ver →
-                            </a>
-                        </div>
-                        
-                        <div class="flex items-center justify-between p-4 bg-amber-50 dark:bg-amber-500/10 rounded-lg border border-amber-200 dark:border-amber-500/20">
-                            <div class="flex items-center gap-3">
-                                <div class="p-2 bg-amber-100 dark:bg-amber-500/20 rounded-lg">
-                                    <span class="material-symbols-outlined text-amber-600 dark:text-amber-400">engineering</span>
-                                </div>
-                                <div>
-                                    <p class="font-medium text-slate-900 dark:text-white">Mantenimiento preventivo pendiente</p>
-                                    <p class="text-sm text-slate-500">ARG-003 • Vence en 3 días</p>
-                                </div>
-                            </div>
-                            <a href="techview.html?device_id=ARG-003" class="text-sm font-medium text-primary hover:text-primary-dark">
-                                Programar →
-                            </a>
-                        </div>
-                        
-                        <div class="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-500/10 rounded-lg border border-blue-200 dark:border-blue-500/20">
-                            <div class="flex items-center gap-3">
-                                <div class="p-2 bg-blue-100 dark:bg-blue-500/20 rounded-lg">
-                                    <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">inventory_2</span>
-                                </div>
-                                <div>
-                                    <p class="font-medium text-slate-900 dark:text-white">Bajo stock de refacciones</p>
-                                    <p class="text-sm text-slate-500">Módulos LED • Solo 3 unidades</p>
-                                </div>
-                            </div>
-                            <a href="inventario.html" class="text-sm font-medium text-primary hover:text-primary-dark">
-                                Revisar →
-                            </a>
+                    <div class="space-y-4" id="recent-alerts">
+                        <div class="text-center py-8 text-slate-400">
+                            <span class="material-symbols-outlined text-2xl">notifications_none</span>
+                            <p class="mt-2">No hay alertas recientes</p>
                         </div>
                     </div>
                 </div>
@@ -371,17 +253,267 @@
         day: 'numeric'
     });
 
-    // Inicializar gráficas
-    document.addEventListener('DOMContentLoaded', function() {
+    let revenueChart = null;
+    let statusChart = null;
+
+    // Inicializar dashboard
+    document.addEventListener('DOMContentLoaded', async function() {
+        await loadDashboardData();
+        initializeCharts();
+    });
+
+    async function loadDashboardData() {
+        try {
+            console.log('🔄 Cargando datos del dashboard...');
+            
+            if (!window.supabaseClient) {
+                throw new Error('Supabase no está inicializado');
+            }
+
+            // Cargar todas las pantallas
+            const { data: screens, error } = await window.supabaseClient
+                .from('pantallas')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            // Actualizar KPIs
+            updateKPIs(screens);
+            
+            // Actualizar pantallas destacadas
+            updateFeaturedScreens(screens);
+            
+            // Actualizar alertas
+            updateAlerts(screens);
+            
+            // Actualizar gráficas
+            updateCharts(screens);
+
+        } catch (error) {
+            console.error('❌ Error cargando datos:', error);
+            showNotification('Error al cargar datos del dashboard', 'error');
+        }
+    }
+
+    function updateKPIs(screens) {
+        const totalScreens = screens.length;
+        const onlineScreens = screens.filter(s => s.estado === 'online').length;
+        const maintenanceScreens = screens.filter(s => s.estado === 'maintenance').length;
+        const offlineScreens = screens.filter(s => s.estado === 'offline').length;
+        
+        const totalRevenue = screens.reduce((sum, s) => sum + (s.ingresos_mensuales || 0), 0);
+        const totalExpenses = screens.reduce((sum, s) => sum + (s.gastos_mensuales || 0), 0);
+        const averageROI = screens.length > 0 
+            ? screens.reduce((sum, s) => sum + (s.roi || 0), 0) / screens.length 
+            : 0;
+        const averageUptime = screens.length > 0
+            ? screens.reduce((sum, s) => sum + (parseFloat(s.uptime) || 0), 0) / screens.length
+            : 0;
+
+        // Actualizar elementos DOM
+        document.getElementById('total-screens').textContent = totalScreens;
+        document.getElementById('online-screens').textContent = `${onlineScreens} en línea`;
+        document.getElementById('maintenance-screens').textContent = `${maintenanceScreens} mantenimiento`;
+        document.getElementById('offline-screens').textContent = `${offlineScreens} desconectada`;
+        
+        document.getElementById('monthly-revenue').textContent = `$${totalRevenue.toLocaleString()}`;
+        document.getElementById('average-roi').textContent = averageROI.toFixed(1);
+        document.getElementById('average-uptime').textContent = `${averageUptime.toFixed(1)}%`;
+        
+        // Actualizar tendencia de ingresos
+        const revenueTrend = document.getElementById('revenue-trend');
+        const revenueGrowth = totalRevenue > (totalExpenses * 1.5) ? '+12%' : '-8%';
+        const trendIcon = totalRevenue > (totalExpenses * 1.5) ? 'arrow_upward' : 'arrow_downward';
+        const trendColor = totalRevenue > (totalExpenses * 1.5) ? 'text-emerald-600' : 'text-red-600';
+        
+        revenueTrend.innerHTML = `
+            <span class="material-symbols-outlined text-sm mr-1">${trendIcon}</span>
+            ${revenueGrowth} vs mes anterior
+        `;
+        revenueTrend.className = `inline-flex items-center text-xs ${trendColor}`;
+        
+        // Actualizar barra de ROI
+        const roiPercentage = Math.min((averageROI / 24) * 100, 100);
+        document.getElementById('roi-bar').style.width = `${roiPercentage}%`;
+        
+        // Actualizar estado de uptime
+        const uptimeStatus = document.getElementById('uptime-status');
+        if (averageUptime >= 99) {
+            uptimeStatus.textContent = 'Excelente desempeño';
+            uptimeStatus.className = 'text-xs text-emerald-600 dark:text-emerald-400';
+        } else if (averageUptime >= 95) {
+            uptimeStatus.textContent = 'Buen desempeño';
+            uptimeStatus.className = 'text-xs text-blue-600 dark:text-blue-400';
+        } else {
+            uptimeStatus.textContent = 'Requiere atención';
+            uptimeStatus.className = 'text-xs text-red-600 dark:text-red-400';
+        }
+    }
+
+    function updateFeaturedScreens(screens) {
+        const container = document.getElementById('featured-screens');
+        
+        if (!screens || screens.length === 0) {
+            container.innerHTML = `
+                <div class="col-span-full text-center py-12 text-slate-400">
+                    <span class="material-symbols-outlined text-2xl">tv_off</span>
+                    <p class="mt-2">No hay pantallas registradas</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Ordenar por ROI (mejores primero) y tomar las primeras 3
+        const featured = [...screens]
+            .sort((a, b) => (b.roi || 0) - (a.roi || 0))
+            .slice(0, 3);
+
+        container.innerHTML = featured.map(screen => {
+            const statusConfig = getStatusConfig(screen.estado);
+            const profit = (screen.ingresos_mensuales || 0) - (screen.gastos_mensuales || 0);
+            
+            return `
+                <div class="screen-card bg-white dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-800 p-6">
+                    <div class="flex items-start justify-between mb-4">
+                        <div>
+                            <div class="inline-flex items-center gap-2 px-3 py-1 ${statusConfig.bgClass} ${statusConfig.textClass} rounded-full text-xs font-medium mb-2">
+                                <span class="size-1.5 rounded-full ${statusConfig.dotClass}"></span>
+                                ${statusConfig.text}
+                            </div>
+                            <h4 class="font-bold text-slate-900 dark:text-white">${screen.nombre}</h4>
+                            <p class="text-sm text-slate-500">${screen.id}</p>
+                        </div>
+                        <div class="size-12 rounded-lg ${statusConfig.gradient} flex items-center justify-center text-white">
+                            <span class="material-symbols-outlined">tv</span>
+                        </div>
+                    </div>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-slate-500">ROI:</span>
+                            <span class="font-bold ${screen.roi < 18 ? 'text-emerald-600' : screen.roi < 24 ? 'text-blue-600' : 'text-red-600'}">
+                                ${screen.roi?.toFixed(1) || '0.0'} meses
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-slate-500">Ingresos:</span>
+                            <span class="font-bold text-slate-900 dark:text-white">$${(screen.ingresos_mensuales || 0).toLocaleString()}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-slate-500">Uptime:</span>
+                            <span class="font-bold text-cyan-600 dark:text-cyan-400">${screen.uptime || '0%'}</span>
+                        </div>
+                    </div>
+                    <a href="techview.html?device_id=${screen.id}" class="mt-6 block w-full text-center px-4 py-2.5 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition">
+                        Ver Detalles
+                    </a>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function updateAlerts(screens) {
+        const container = document.getElementById('recent-alerts');
+        const alertsCount = document.getElementById('alerts-count');
+        
+        // Encontrar pantallas con alertas
+        const alerts = screens.filter(screen => 
+            screen.estado === 'offline' || 
+            screen.estado === 'maintenance' ||
+            (screen.uptime && parseFloat(screen.uptime) < 95)
+        );
+        
+        alertsCount.textContent = `${alerts.length} activa${alerts.length !== 1 ? 's' : ''}`;
+        
+        if (alerts.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-8 text-slate-400">
+                    <span class="material-symbols-outlined text-2xl">check_circle</span>
+                    <p class="mt-2">Sistema estable</p>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = alerts.map(screen => {
+            let alertType = '';
+            let alertMessage = '';
+            let alertIcon = '';
+            let alertClass = '';
+            
+            if (screen.estado === 'offline') {
+                alertType = 'Crítica';
+                alertMessage = `${screen.nombre} desconectada`;
+                alertIcon = 'warning';
+                alertClass = 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20';
+            } else if (screen.estado === 'maintenance') {
+                alertType = 'Mantenimiento';
+                alertMessage = `${screen.nombre} en mantenimiento`;
+                alertIcon = 'engineering';
+                alertClass = 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20';
+            } else if (parseFloat(screen.uptime) < 95) {
+                alertType = 'Advertencia';
+                alertMessage = `${screen.nombre} uptime bajo: ${screen.uptime}`;
+                alertIcon = 'info';
+                alertClass = 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20';
+            }
+            
+            return `
+                <div class="flex items-center justify-between p-4 ${alertClass} rounded-lg border">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 ${alertIcon === 'warning' ? 'bg-red-100 dark:bg-red-500/20' : alertIcon === 'engineering' ? 'bg-amber-100 dark:bg-amber-500/20' : 'bg-blue-100 dark:bg-blue-500/20'} rounded-lg">
+                            <span class="material-symbols-outlined ${alertIcon === 'warning' ? 'text-red-600 dark:text-red-400' : alertIcon === 'engineering' ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'}">${alertIcon}</span>
+                        </div>
+                        <div>
+                            <p class="font-medium text-slate-900 dark:text-white">${alertMessage}</p>
+                            <p class="text-sm text-slate-500">${screen.id} • ${alertType}</p>
+                        </div>
+                    </div>
+                    <a href="techview.html?device_id=${screen.id}" class="text-sm font-medium text-primary hover:text-primary-dark">
+                        Ver →
+                    </a>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function getStatusConfig(status) {
+        const configs = {
+            'online': {
+                text: 'En Línea',
+                bgClass: 'bg-emerald-100 dark:bg-emerald-500/20',
+                textClass: 'text-emerald-700 dark:text-emerald-400',
+                dotClass: 'bg-emerald-500',
+                gradient: 'bg-gradient-to-br from-emerald-500 to-emerald-600'
+            },
+            'offline': {
+                text: 'Desconectada',
+                bgClass: 'bg-red-100 dark:bg-red-500/20',
+                textClass: 'text-red-700 dark:text-red-400',
+                dotClass: 'bg-red-500',
+                gradient: 'bg-gradient-to-br from-red-500 to-red-600'
+            },
+            'maintenance': {
+                text: 'Mantenimiento',
+                bgClass: 'bg-amber-100 dark:bg-amber-500/20',
+                textClass: 'text-amber-700 dark:text-amber-400',
+                dotClass: 'bg-amber-500',
+                gradient: 'bg-gradient-to-br from-amber-500 to-amber-600'
+            }
+        };
+        return configs[status] || configs.offline;
+    }
+
+    function initializeCharts() {
         // Gráfica de ingresos
         const revenueCtx = document.getElementById('revenueChart').getContext('2d');
-        new Chart(revenueCtx, {
+        revenueChart = new Chart(revenueCtx, {
             type: 'line',
             data: {
                 labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
                 datasets: [{
                     label: 'Ingresos',
-                    data: [65000, 72000, 85000, 92000, 105000, 115000, 108000, 112000, 118000, 125000, 132000, 140000],
+                    data: Array(12).fill(0),
                     borderColor: '#10B981',
                     backgroundColor: 'rgba(16, 185, 129, 0.1)',
                     tension: 0.4,
@@ -407,12 +539,12 @@
 
         // Gráfica de estados
         const statusCtx = document.getElementById('statusChart').getContext('2d');
-        new Chart(statusCtx, {
+        statusChart = new Chart(statusCtx, {
             type: 'doughnut',
             data: {
                 labels: ['En Línea', 'Mantenimiento', 'Desconectadas'],
                 datasets: [{
-                    data: [10, 1, 1],
+                    data: [0, 0, 0],
                     backgroundColor: ['#10B981', '#F59E0B', '#EF4444'],
                     borderWidth: 2,
                     borderColor: '#ffffff'
@@ -433,11 +565,76 @@
                 }
             }
         });
-    });
-
-    function refreshDashboard() {
-        alert('Dashboard actualizado');
     }
+
+    function updateCharts(screens) {
+        if (!revenueChart || !statusChart) return;
+        
+        // Actualizar gráfica de estados
+        const onlineCount = screens.filter(s => s.estado === 'online').length;
+        const maintenanceCount = screens.filter(s => s.estado === 'maintenance').length;
+        const offlineCount = screens.filter(s => s.estado === 'offline').length;
+        
+        statusChart.data.datasets[0].data = [onlineCount, maintenanceCount, offlineCount];
+        statusChart.update();
+        
+        // Simular datos históricos para la gráfica de ingresos
+        const currentMonth = new Date().getMonth();
+        const revenueData = Array(12).fill(0);
+        
+        // Generar datos de ejemplo basados en el total actual
+        const baseRevenue = screens.reduce((sum, s) => sum + (s.ingresos_mensuales || 0), 0) / 1000;
+        
+        for (let i = 0; i <= currentMonth; i++) {
+            revenueData[i] = Math.round(baseRevenue * (0.7 + Math.random() * 0.6));
+        }
+        
+        revenueChart.data.datasets[0].data = revenueData;
+        revenueChart.update();
+    }
+
+    async function refreshDashboard() {
+        await loadDashboardData();
+        showNotification('Dashboard actualizado', 'success');
+    }
+
+    function showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        const typeClasses = {
+            'success': 'bg-emerald-500 text-white',
+            'error': 'bg-red-500 text-white',
+            'info': 'bg-blue-500 text-white'
+        };
+
+        notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${typeClasses[type]} animate-fade-in`;
+        notification.innerHTML = `
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined">
+                    ${type === 'success' ? 'check_circle' : type === 'error' ? 'error' : 'info'}
+                </span>
+                <span>${message}</span>
+            </div>
+        `;
+
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
+
+    // Añadir estilo para animación
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.3s ease-out;
+        }
+    `;
+    document.head.appendChild(style);
 </script>
 </body>
 </html>
