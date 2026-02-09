@@ -1,7 +1,13 @@
 """
-SyncOps Discord Bot
-Sistema de tickets para operaciones de NUC
+Utilidades para el bot de Discord
 """
 
-__version__ = "1.0.0"
-__author__ = "SyncOps Team"
+from .texto import limpiar_texto, truncar_texto, formatear_lista
+from .catalogo_data import CATALOGO_SOPORTE
+
+__all__ = [
+    'limpiar_texto',
+    'truncar_texto', 
+    'formatear_lista',
+    'CATALOGO_SOPORTE'
+]
