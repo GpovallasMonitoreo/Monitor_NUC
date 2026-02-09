@@ -1,681 +1,301 @@
 <!DOCTYPE html>
-<html class="light" lang="es">
+<html lang="es" class="light">
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>Argos DOOH - Dashboard Finanzas</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <title>Argos DOOH - Executive Command Center</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Cargar Supabase primero -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="/assets/js/supabase-client.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <script id="tailwind-config">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+    
+    <script>
         tailwind.config = {
             darkMode: "class",
             theme: {
                 extend: {
                     colors: {
-                        "primary": "#f97415",
-                        "primary-dark": "#c2570e",
-                        "background-light": "#f8f7f5",
-                        "background-dark": "#23170f",
-                        "surface-light": "#ffffff",
-                        "surface-dark": "#2d2420",
+                        primary: "#F97316", // Naranja Argos
+                        secondary: "#3B82F6",
+                        success: "#10B981",
+                        danger: "#EF4444",
+                        dark: "#0F172A",
+                        surface: "#FFFFFF",
+                        background: "#F8FAFC"
                     },
-                    fontFamily: {
-                        "display": ["Inter", "sans-serif"],
-                        "body": ["Inter", "sans-serif"],
-                    },
-                },
-            },
-        }
+                    fontFamily: { sans: ["Inter", "sans-serif"] }
+                }
+            }
+        };
     </script>
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .kpi-card { transition: all 0.3s ease; }
-        .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        .screen-card { transition: all 0.3s ease; }
-        .screen-card:hover { transform: translateY(-4px); box-shadow: 0 15px 30px rgba(249, 116, 21, 0.1); }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
         .fade-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 antialiased">
-<div class="flex h-screen w-full overflow-hidden">
-    <!-- Sidebar Principal -->
-    <aside class="flex w-64 flex-col border-r border-slate-200 dark:border-slate-800 bg-surface-light dark:bg-surface-dark flex-shrink-0 z-20">
-        <div class="flex h-16 items-center px-6 border-b border-slate-100 dark:border-slate-800/50">
-            <div class="flex items-center gap-2">
-                <div class="flex items-center justify-center size-8 rounded-lg bg-primary text-white">
-                    <span class="material-symbols-outlined text-[20px]">dashboard</span>
+
+<body class="bg-background text-slate-800 font-sans h-screen flex flex-col overflow-hidden">
+
+    <header class="bg-surface border-b border-slate-200 h-16 flex flex-shrink-0 items-center justify-between px-6 shadow-sm z-30">
+        <div class="flex items-center gap-4">
+            <div class="size-10 bg-dark rounded-xl flex items-center justify-center text-white shadow-lg">
+                <span class="material-icons-outlined text-xl">analytics</span>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold text-slate-900 leading-none">Argos DOOH</h1>
+                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1">Centro de Comando</p>
+            </div>
+        </div>
+
+        <div class="flex-1 max-w-2xl mx-8 hidden md:block">
+            <div class="relative group">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span class="material-icons-outlined text-slate-400">search</span>
                 </div>
-                <div class="flex flex-col">
-                    <h1 class="text-slate-900 dark:text-white text-base font-bold leading-none tracking-tight">Argos DOOH</h1>
-                    <p class="text-slate-500 dark:text-slate-400 text-xs font-medium mt-1">Dashboard Finanzas</p>
+                <input type="text" id="global-search" 
+                       class="block w-full pl-10 pr-4 py-2 bg-slate-100 border-none rounded-xl text-sm focus:ring-2 focus:ring-primary/50 focus:bg-white transition-all placeholder-slate-400 font-medium" 
+                       placeholder="Buscar pantalla por ID, ubicación...">
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                    <span class="text-[10px] text-slate-400 font-mono border border-slate-300 rounded px-1.5 py-0.5">CTRL+K</span>
                 </div>
             </div>
         </div>
+
+        <div class="flex items-center gap-3">
+            <button onclick="window.location.reload()" class="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition">
+                <span class="material-icons-outlined">refresh</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 overflow-y-auto p-6 scroll-smooth custom-scroll w-full mx-auto relative">
         
-        <nav class="flex-1 overflow-y-auto px-3 py-6 space-y-1">
-            <!-- Enlace a tu index principal -->
-            <a href="/" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group">
-                <span class="material-symbols-outlined">arrow_back</span>
-                <span class="text-sm font-medium">Volver al Sistema Principal</span>
-            </a>
-            
-            <a href="dashboard_finanzas.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/10 text-primary dark:text-primary transition-colors group">
-                <span class="material-symbols-outlined">dashboard</span>
-                <span class="text-sm font-semibold">Dashboard Finanzas</span>
-            </a>
-            
-            <a href="pantallas.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group">
-                <span class="material-symbols-outlined">tv</span>
-                <span class="text-sm font-medium">Todas las Pantallas</span>
-            </a>
-            
-            <a href="inventario.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group">
-                <span class="material-symbols-outlined">inventory_2</span>
-                <span class="text-sm font-medium">Inventario Global</span>
-            </a>
-            
-            <a href="reportes.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group">
-                <span class="material-symbols-outlined">summarize</span>
-                <span class="text-sm font-medium">Generar Reportes PDF</span>
-            </a>
-            
-            <a href="csv.html" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors group">
-                <span class="material-symbols-outlined">download</span>
-                <span class="text-sm font-medium">Descarga CSV</span>
-            </a>
-        </nav>
-        
-        <div class="p-4 border-t border-slate-100 dark:border-slate-800/50">
-            <div class="flex items-center gap-3">
-                <div class="size-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-primary text-sm">person</span>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 fade-in">
+            <div class="bg-surface p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+                <p class="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Inversión Total (CAPEX)</p>
+                <h3 class="text-2xl font-black text-slate-900 tracking-tight" id="kpi-capex">$0.00</h3>
+                <div class="mt-3 h-1 w-full bg-slate-100 rounded-full"><div class="h-full bg-blue-500 w-3/4 rounded-full"></div></div>
+            </div>
+
+            <div class="bg-surface p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+                <p class="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Gasto Mensual (OPEX)</p>
+                <h3 class="text-2xl font-black text-slate-900 tracking-tight" id="kpi-opex">$0.00</h3>
+                <p class="text-xs text-slate-400 mt-1 flex items-center gap-1"><span class="material-icons-outlined text-[14px]">info</span> Recurrente</p>
+            </div>
+
+            <div class="bg-surface p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+                <p class="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">Ingresos Mensuales</p>
+                <div class="flex items-baseline gap-2">
+                    <h3 class="text-2xl font-black text-slate-900 tracking-tight" id="kpi-revenue">$0.00</h3>
+                    <span class="text-xs font-bold text-success bg-success/10 px-1.5 py-0.5 rounded">Proyectado</span>
                 </div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-slate-900 dark:text-white truncate">Departamento Finanzas</p>
-                    <p class="text-xs text-slate-500 truncate">Sistema Argos DOOH</p>
+            </div>
+
+            <div class="bg-surface p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+                <p class="text-slate-500 text-[11px] font-bold uppercase tracking-wider mb-1">ROI Promedio</p>
+                <div class="flex items-baseline gap-2">
+                    <h3 class="text-2xl font-black text-slate-900 tracking-tight" id="kpi-roi">0.0</h3>
+                    <span class="text-sm font-medium text-slate-500">meses</span>
                 </div>
+                <div class="mt-3 flex gap-1"><span class="h-1.5 w-1.5 rounded-full bg-success"></span><span class="text-[10px] text-slate-400 font-medium">Meta: < 24m</span></div>
             </div>
         </div>
-    </aside>
 
-    <!-- Main Content -->
-    <main class="flex-1 flex flex-col h-full overflow-hidden bg-background-light dark:bg-background-dark">
-        <!-- Top Header -->
-        <header class="flex h-16 items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 bg-surface-light/80 dark:bg-surface-dark/80 px-8 backdrop-blur-md sticky top-0 z-10">
-            <h2 class="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Dashboard Financiero</h2>
-            <div class="flex items-center gap-4">
-                <div class="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                    <span class="material-symbols-outlined text-slate-500 text-sm">calendar_today</span>
-                    <span class="text-sm text-slate-700 dark:text-slate-300" id="current-date"></span>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 fade-in" style="animation-delay: 0.1s;">
+            
+            <div class="lg:col-span-8 flex flex-col gap-6">
+                <div class="bg-surface rounded-2xl border border-slate-200 shadow-sm flex flex-col h-full overflow-hidden">
+                    <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                        <div class="flex items-center gap-3">
+                            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <span class="material-icons-outlined text-slate-400">inventory_2</span> Inventario
+                            </h2>
+                            <span class="px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-600 text-xs font-bold" id="asset-count">0</span>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto flex-1 custom-scroll">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                                <tr>
+                                    <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider w-1/3">Pantalla / ID</th>
+                                    <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">Finanzas</th>
+                                    <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">ROI</th>
+                                    <th class="p-4 text-[10px] font-black text-slate-400 uppercase tracking-wider text-right">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-sm" id="assets-table-body">
+                                <tr><td colspan="4" class="p-8 text-center text-slate-400">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                <button onclick="refreshDashboard()" class="rounded-full p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors">
-                    <span class="material-symbols-outlined">refresh</span>
-                </button>
             </div>
-        </header>
 
-        <!-- Content -->
-        <div class="flex-1 overflow-y-auto p-8">
-            <div class="max-w-[1600px] mx-auto">
-                <!-- KPI Section -->
-                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
-                    <div class="kpi-card bg-white dark:bg-surface-dark rounded-xl p-6 shadow-sm border border-slate-200/60 dark:border-slate-800 fade-in">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Total Pantallas Activas</p>
-                                <h3 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight" id="total-screens">0</h3>
-                            </div>
-                            <div class="p-2 bg-blue-100 dark:bg-blue-500/20 rounded-lg text-blue-600 dark:text-blue-400">
-                                <span class="material-symbols-outlined text-[20px]">tv</span>
-                            </div>
-                        </div>
-                        <div class="mt-4">
-                            <div class="flex items-center justify-between text-xs">
-                                <span class="text-emerald-600 dark:text-emerald-400" id="online-screens">0 en línea</span>
-                                <span class="text-amber-600 dark:text-amber-400" id="maintenance-screens">0 mantenimiento</span>
-                                <span class="text-red-600 dark:text-red-400" id="offline-screens">0 desconectada</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="kpi-card bg-white dark:bg-surface-dark rounded-xl p-6 shadow-sm border border-slate-200/60 dark:border-slate-800 fade-in" style="animation-delay: 0.1s;">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Ingresos Mensuales</p>
-                                <h3 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight" id="monthly-revenue">$0</h3>
-                            </div>
-                            <div class="p-2 bg-emerald-100 dark:bg-emerald-500/20 rounded-lg text-emerald-600 dark:text-emerald-400">
-                                <span class="material-symbols-outlined text-[20px]">trending_up</span>
-                            </div>
-                        </div>
-                        <div class="mt-4">
-                            <span class="inline-flex items-center text-xs text-emerald-600 dark:text-emerald-400" id="revenue-trend">
-                                <span class="material-symbols-outlined text-sm mr-1">arrow_upward</span>
-                                Cargando...
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="kpi-card bg-white dark:bg-surface-dark rounded-xl p-6 shadow-sm border border-slate-200/60 dark:border-slate-800 fade-in" style="animation-delay: 0.2s;">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">ROI Promedio</p>
-                                <h3 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight" id="average-roi">0</h3>
-                            </div>
-                            <div class="p-2 bg-purple-100 dark:bg-purple-500/20 rounded-lg text-purple-600 dark:text-purple-400">
-                                <span class="material-symbols-outlined text-[20px]">paid</span>
-                            </div>
-                        </div>
-                        <div class="mt-4">
-                            <span class="text-xs text-slate-500">Meta: 24 meses</span>
-                            <div class="h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mt-1">
-                                <div class="h-full bg-purple-500 rounded-full" id="roi-bar"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="kpi-card bg-white dark:bg-surface-dark rounded-xl p-6 shadow-sm border border-slate-200/60 dark:border-slate-800 fade-in" style="animation-delay: 0.3s;">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Margen de Ganancia</p>
-                                <h3 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight" id="profit-margin">0%</h3>
-                            </div>
-                            <div class="p-2 bg-cyan-100 dark:bg-cyan-500/20 rounded-lg text-cyan-600 dark:text-cyan-400">
-                                <span class="material-symbols-outlined text-[20px]">show_chart</span>
-                            </div>
-                        </div>
-                        <div class="mt-4">
-                            <span class="text-xs text-emerald-600 dark:text-emerald-400" id="margin-status">Cargando...</span>
-                        </div>
+            <div class="lg:col-span-4 flex flex-col gap-6">
+                
+                <div class="bg-surface p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">Rentabilidad Global</h3>
+                    <div class="relative h-60 w-full">
+                        <canvas id="financialChart"></canvas>
                     </div>
                 </div>
 
-                <!-- Charts Section -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                    <div class="bg-white dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-800 p-6">
-                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-6">Rendimiento Financiero Mensual</h3>
-                        <div class="h-80">
-                            <canvas id="revenueChart"></canvas>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-white dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-800 p-6">
-                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-6">Distribución por Estado</h3>
-                        <div class="h-80">
-                            <canvas id="statusChart"></canvas>
-                        </div>
+                <div class="bg-surface p-6 rounded-2xl border border-slate-200 shadow-sm flex-1">
+                    <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex justify-between">
+                        <span>Alertas</span>
+                        <span class="bg-red-100 text-red-600 text-[10px] px-2 py-0.5 rounded-full" id="alert-count">0</span>
+                    </h3>
+                    <div class="space-y-3 overflow-y-auto max-h-[250px] custom-scroll" id="alerts-list">
+                        <div class="text-center p-4 text-slate-400 text-xs italic">Sin alertas activas</div>
                     </div>
                 </div>
 
-                <!-- Pantallas con Mejor ROI -->
-                <div class="mb-8">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-xl font-bold text-slate-900 dark:text-white">Pantallas con Mejor ROI</h3>
-                        <a href="pantallas.html" class="text-sm font-medium text-primary hover:text-primary-dark transition">
-                            Ver todas las pantallas →
-                        </a>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="best-roi-screens">
-                        <!-- Las pantallas se cargarán aquí -->
-                        <div class="col-span-full text-center py-12 text-slate-400">
-                            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-                            <p class="mt-4">Cargando pantallas...</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Alertas Financieras -->
-                <div class="bg-white dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-800 p-6">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-lg font-bold text-slate-900 dark:text-white">Alertas Financieras</h3>
-                        <span class="px-2 py-1 bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold rounded" id="alerts-count">0 activas</span>
-                    </div>
-                    
-                    <div class="space-y-4" id="financial-alerts">
-                        <div class="text-center py-8 text-slate-400">
-                            <span class="material-symbols-outlined text-2xl">notifications_none</span>
-                            <p class="mt-2">No hay alertas financieras</p>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </main>
-</div>
 
-<script>
-    // Actualizar fecha actual
-    document.getElementById('current-date').textContent = new Date().toLocaleDateString('es-MX', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
-
-    let revenueChart = null;
-    let statusChart = null;
-
-    // Inicializar dashboard
-    document.addEventListener('DOMContentLoaded', async function() {
-        await loadDashboardData();
-        initializeCharts();
-    });
-
-    async function loadDashboardData() {
-        try {
-            console.log('🔄 Cargando datos financieros...');
-            
-            if (!window.supabaseClient) {
-                throw new Error('Supabase no está inicializado');
+    <script>
+        class Dashboard {
+            constructor() {
+                this.assets = [];
+                this.chart = null;
             }
 
-            // Cargar todas las pantallas
-            const { data: screens, error } = await window.supabaseClient
-                .from('pantallas')
-                .select('*')
-                .order('created_at', { ascending: false });
+            async init() {
+                await this.loadData();
+                this.setupSearch();
+                document.addEventListener('keydown', (e) => {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                        e.preventDefault();
+                        document.getElementById('global-search').focus();
+                    }
+                });
+            }
 
-            if (error) throw error;
+            async loadData() {
+                try {
+                    // CORRECCIÓN CLAVE: Asegurar la ruta correcta
+                    const res = await fetch('/techview/api/overview');
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const data = await res.json();
+                    
+                    if (data.overview_data) {
+                        this.assets = data.overview_data;
+                        this.renderKPIs(data.totals);
+                        this.renderTable(this.assets);
+                        this.renderChart(data.financials_history);
+                        this.renderAlerts(this.assets);
+                        document.getElementById('asset-count').innerText = data.totals.device_count || 0;
+                    }
+                } catch (e) {
+                    console.error("Error loading dashboard:", e);
+                    document.getElementById('assets-table-body').innerHTML = `<tr><td colspan="4" class="p-8 text-center text-red-400 text-xs">Error de conexión: ${e.message}</td></tr>`;
+                }
+            }
 
-            // Actualizar KPIs financieros
-            updateFinancialKPIs(screens);
-            
-            // Actualizar pantallas con mejor ROI
-            updateBestROIScreens(screens);
-            
-            // Actualizar alertas financieras
-            updateFinancialAlerts(screens);
-            
-            // Actualizar gráficas
-            updateCharts(screens);
+            renderKPIs(t) {
+                const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n || 0);
+                document.getElementById('kpi-capex').innerText = fmt(t.total_capex);
+                document.getElementById('kpi-opex').innerText = fmt(t.total_monthly_opex);
+                document.getElementById('kpi-revenue').innerText = fmt(t.total_monthly_revenue);
+                document.getElementById('kpi-roi').innerText = (t.average_roi || 0).toFixed(1);
+            }
 
-        } catch (error) {
-            console.error('❌ Error cargando datos:', error);
-            showNotification('Error al cargar datos financieros', 'error');
-        }
-    }
+            renderTable(data) {
+                const tbody = document.getElementById('assets-table-body');
+                if (!data.length) { tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-xs text-slate-400">Sin resultados.</td></tr>`; return; }
 
-    function updateFinancialKPIs(screens) {
-        const totalScreens = screens.length;
-        const onlineScreens = screens.filter(s => s.estado === 'online').length;
-        const maintenanceScreens = screens.filter(s => s.estado === 'maintenance').length;
-        const offlineScreens = screens.filter(s => s.estado === 'offline').length;
-        
-        const totalRevenue = screens.reduce((sum, s) => sum + (s.ingresos_mensuales || 0), 0);
-        const totalExpenses = screens.reduce((sum, s) => sum + (s.gastos_mensuales || 0), 0);
-        const totalProfit = totalRevenue - totalExpenses;
-        const profitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
-        
-        const averageROI = screens.length > 0 
-            ? screens.reduce((sum, s) => sum + (s.roi || 0), 0) / screens.length 
-            : 0;
-
-        // Actualizar elementos DOM
-        document.getElementById('total-screens').textContent = totalScreens;
-        document.getElementById('online-screens').textContent = `${onlineScreens} en línea`;
-        document.getElementById('maintenance-screens').textContent = `${maintenanceScreens} mantenimiento`;
-        document.getElementById('offline-screens').textContent = `${offlineScreens} desconectada`;
-        
-        document.getElementById('monthly-revenue').textContent = `$${totalRevenue.toLocaleString()}`;
-        document.getElementById('average-roi').textContent = averageROI.toFixed(1);
-        document.getElementById('profit-margin').textContent = `${profitMargin.toFixed(1)}%`;
-        
-        // Actualizar tendencia de ingresos
-        const revenueTrend = document.getElementById('revenue-trend');
-        const revenueGrowth = totalRevenue > (totalExpenses * 1.5) ? '+12%' : '-8%';
-        const trendIcon = totalRevenue > (totalExpenses * 1.5) ? 'arrow_upward' : 'arrow_downward';
-        const trendColor = totalRevenue > (totalExpenses * 1.5) ? 'text-emerald-600' : 'text-red-600';
-        
-        revenueTrend.innerHTML = `
-            <span class="material-symbols-outlined text-sm mr-1">${trendIcon}</span>
-            ${revenueGrowth} vs mes anterior
-        `;
-        revenueTrend.className = `inline-flex items-center text-xs ${trendColor}`;
-        
-        // Actualizar barra de ROI
-        const roiPercentage = Math.min((averageROI / 24) * 100, 100);
-        document.getElementById('roi-bar').style.width = `${roiPercentage}%`;
-        
-        // Actualizar estado de margen
-        const marginStatus = document.getElementById('margin-status');
-        if (profitMargin >= 50) {
-            marginStatus.textContent = 'Margen excelente';
-            marginStatus.className = 'text-xs text-emerald-600 dark:text-emerald-400';
-        } else if (profitMargin >= 30) {
-            marginStatus.textContent = 'Margen saludable';
-            marginStatus.className = 'text-xs text-blue-600 dark:text-blue-400';
-        } else if (profitMargin >= 10) {
-            marginStatus.textContent = 'Margen aceptable';
-            marginStatus.className = 'text-xs text-amber-600 dark:text-amber-400';
-        } else {
-            marginStatus.textContent = 'Margen bajo';
-            marginStatus.className = 'text-xs text-red-600 dark:text-red-400';
-        }
-    }
-
-    function updateBestROIScreens(screens) {
-        const container = document.getElementById('best-roi-screens');
-        
-        if (!screens || screens.length === 0) {
-            container.innerHTML = `
-                <div class="col-span-full text-center py-12 text-slate-400">
-                    <span class="material-symbols-outlined text-2xl">tv_off</span>
-                    <p class="mt-2">No hay pantallas registradas</p>
-                </div>
-            `;
-            return;
-        }
-
-        // Ordenar por ROI (mejores primero) y tomar las primeras 3
-        const bestROI = [...screens]
-            .sort((a, b) => (b.roi || 0) - (a.roi || 0))
-            .slice(0, 3);
-
-        container.innerHTML = bestROI.map(screen => {
-            const statusConfig = getStatusConfig(screen.estado);
-            const profit = (screen.ingresos_mensuales || 0) - (screen.gastos_mensuales || 0);
-            const profitMargin = (screen.ingresos_mensuales || 0) > 0 
-                ? (profit / (screen.ingresos_mensuales || 1) * 100) 
-                : 0;
-            
-            return `
-                <div class="screen-card bg-white dark:bg-surface-dark rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-800 p-6">
-                    <div class="flex items-start justify-between mb-4">
-                        <div>
-                            <div class="inline-flex items-center gap-2 px-3 py-1 ${profitMargin >= 50 ? 'bg-emerald-100 text-emerald-700' : profitMargin >= 30 ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'} rounded-full text-xs font-medium mb-2">
-                                <span class="material-symbols-outlined text-sm">trending_up</span>
-                                ROI: ${screen.roi?.toFixed(1) || '0.0'} meses
+                tbody.innerHTML = data.map(item => `
+                    <tr class="hover:bg-slate-50 transition border-b border-slate-50 group">
+                        <td class="p-4">
+                            <div class="flex items-center gap-3">
+                                <div class="h-8 w-8 rounded bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-xs shrink-0">LED</div>
+                                <div class="min-w-0">
+                                    <p class="font-bold text-slate-700 text-sm truncate max-w-[180px]">${item.pc_name || item.device_id}</p>
+                                    <p class="text-[10px] text-slate-400 font-mono truncate max-w-[150px]">${item.device_id}</p>
+                                </div>
                             </div>
-                            <h4 class="font-bold text-slate-900 dark:text-white">${screen.nombre}</h4>
-                            <p class="text-sm text-slate-500">${screen.id}</p>
-                        </div>
-                        <div class="size-12 rounded-lg ${statusConfig.gradient} flex items-center justify-center text-white">
-                            <span class="material-symbols-outlined">paid</span>
-                        </div>
-                    </div>
-                    <div class="space-y-3">
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm text-slate-500">Ingresos:</span>
-                            <span class="font-bold text-slate-900 dark:text-white">$${(screen.ingresos_mensuales || 0).toLocaleString()}</span>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm text-slate-500">Gastos:</span>
-                            <span class="font-bold text-red-600 dark:text-red-400">$${(screen.gastos_mensuales || 0).toLocaleString()}</span>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm text-slate-500">Margen:</span>
-                            <span class="font-bold ${profitMargin >= 50 ? 'text-emerald-600' : profitMargin >= 30 ? 'text-blue-600' : 'text-amber-600'}">
-                                ${profitMargin.toFixed(1)}%
+                        </td>
+                        <td class="p-4">
+                            <span class="text-xs font-bold ${item.monthly_margin > 0 ? 'text-emerald-600' : 'text-red-600'}">
+                                $${item.monthly_margin?.toLocaleString()}
                             </span>
-                        </div>
-                    </div>
-                    <a href="techview.html?device_id=${screen.id}" class="mt-6 block w-full text-center px-4 py-2.5 bg-primary text-white font-bold rounded-lg hover:bg-primary-dark transition">
-                        Ver Análisis Financiero
-                    </a>
-                </div>
-            `;
-        }).join('');
-    }
-
-    function updateFinancialAlerts(screens) {
-        const container = document.getElementById('financial-alerts');
-        const alertsCount = document.getElementById('alerts-count');
-        
-        // Encontrar pantallas con alertas financieras
-        const alerts = screens.filter(screen => {
-            const profit = (screen.ingresos_mensuales || 0) - (screen.gastos_mensuales || 0);
-            const profitMargin = (screen.ingresos_mensuales || 0) > 0 
-                ? (profit / (screen.ingresos_mensuales || 1) * 100) 
-                : 0;
-            
-            return profitMargin < 10 || // Margen muy bajo
-                   (screen.roi || 0) > 36 || // ROI muy alto
-                   profit < 0; // Pérdidas
-        });
-        
-        alertsCount.textContent = `${alerts.length} activa${alerts.length !== 1 ? 's' : ''}`;
-        
-        if (alerts.length === 0) {
-            container.innerHTML = `
-                <div class="text-center py-8 text-slate-400">
-                    <span class="material-symbols-outlined text-2xl">check_circle</span>
-                    <p class="mt-2">Estado financiero estable</p>
-                </div>
-            `;
-            return;
-        }
-        
-        container.innerHTML = alerts.map(screen => {
-            const profit = (screen.ingresos_mensuales || 0) - (screen.gastos_mensuales || 0);
-            const profitMargin = (screen.ingresos_mensuales || 0) > 0 
-                ? (profit / (screen.ingresos_mensuales || 1) * 100) 
-                : 0;
-            
-            let alertType = '';
-            let alertMessage = '';
-            let alertIcon = '';
-            let alertClass = '';
-            
-            if (profit < 0) {
-                alertType = 'PÉRDIDAS';
-                alertMessage = `${screen.nombre} con pérdidas de $${Math.abs(profit).toLocaleString()}`;
-                alertIcon = 'warning';
-                alertClass = 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20';
-            } else if (profitMargin < 10) {
-                alertType = 'MARGEN BAJO';
-                alertMessage = `${screen.nombre} margen solo ${profitMargin.toFixed(1)}%`;
-                alertIcon = 'info';
-                alertClass = 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20';
-            } else if ((screen.roi || 0) > 36) {
-                alertType = 'ROI ALTO';
-                alertMessage = `${screen.nombre} ROI de ${screen.roi?.toFixed(1) || '0'} meses`;
-                alertIcon = 'trending_up';
-                alertClass = 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20';
+                            <span class="text-[10px] text-slate-400 block">Margen Mensual</span>
+                        </td>
+                        <td class="p-4">
+                            <span class="text-xs font-bold text-slate-700">${item.roi_months?.toFixed(1)} m</span>
+                        </td>
+                        <td class="p-4 text-right">
+                            <a href="/techview/management?device_id=${encodeURIComponent(item.device_id)}" 
+                               class="inline-flex items-center px-3 py-1.5 bg-white border border-slate-200 hover:border-primary hover:text-primary text-slate-600 rounded-lg text-xs font-bold transition shadow-sm">
+                                Gestionar
+                            </a>
+                        </td>
+                    </tr>
+                `).join('');
             }
-            
-            return `
-                <div class="flex items-center justify-between p-4 ${alertClass} rounded-lg border">
-                    <div class="flex items-center gap-3">
-                        <div class="p-2 ${alertIcon === 'warning' ? 'bg-red-100 dark:bg-red-500/20' : alertIcon === 'info' ? 'bg-amber-100 dark:bg-amber-500/20' : 'bg-blue-100 dark:bg-blue-500/20'} rounded-lg">
-                            <span class="material-symbols-outlined ${alertIcon === 'warning' ? 'text-red-600 dark:text-red-400' : alertIcon === 'info' ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'}">${alertIcon}</span>
-                        </div>
-                        <div>
-                            <p class="font-medium text-slate-900 dark:text-white">${alertMessage}</p>
-                            <p class="text-sm text-slate-500">${screen.id} • ${alertType}</p>
-                        </div>
-                    </div>
-                    <a href="techview.html?device_id=${screen.id}" class="text-sm font-medium text-primary hover:text-primary-dark">
-                        Analizar →
-                    </a>
-                </div>
-            `;
-        }).join('');
-    }
 
-    function getStatusConfig(status) {
-        const configs = {
-            'online': {
-                text: 'En Línea',
-                bgClass: 'bg-emerald-100 dark:bg-emerald-500/20',
-                textClass: 'text-emerald-700 dark:text-emerald-400',
-                dotClass: 'bg-emerald-500',
-                gradient: 'bg-gradient-to-br from-emerald-500 to-emerald-600'
-            },
-            'offline': {
-                text: 'Desconectada',
-                bgClass: 'bg-red-100 dark:bg-red-500/20',
-                textClass: 'text-red-700 dark:text-red-400',
-                dotClass: 'bg-red-500',
-                gradient: 'bg-gradient-to-br from-red-500 to-red-600'
-            },
-            'maintenance': {
-                text: 'Mantenimiento',
-                bgClass: 'bg-amber-100 dark:bg-amber-500/20',
-                textClass: 'text-amber-700 dark:text-amber-400',
-                dotClass: 'bg-amber-500',
-                gradient: 'bg-gradient-to-br from-amber-500 to-amber-600'
-            }
-        };
-        return configs[status] || configs.offline;
-    }
+            renderChart(hist) {
+                const ctx = document.getElementById('financialChart').getContext('2d');
+                if(this.chart) this.chart.destroy();
+                
+                // Fallback si no hay datos históricos
+                const labels = hist?.months?.length ? hist.months : ['N/A'];
+                const sales = hist?.sales?.length ? hist.sales : [0];
+                const costs = hist?.costs?.length ? hist.costs : [0];
 
-    function initializeCharts() {
-        // Gráfica de ingresos vs gastos
-        const revenueCtx = document.getElementById('revenueChart').getContext('2d');
-        revenueChart = new Chart(revenueCtx, {
-            type: 'bar',
-            data: {
-                labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
-                datasets: [
-                    {
-                        label: 'Ingresos',
-                        data: Array(12).fill(0),
-                        backgroundColor: '#10B981',
-                        borderRadius: 4
+                this.chart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: 'Ventas', data: sales, backgroundColor: '#10B981', borderRadius: 4 },
+                            { label: 'Costos', data: costs, backgroundColor: '#EF4444', borderRadius: 4 }
+                        ]
                     },
-                    {
-                        label: 'Gastos',
-                        data: Array(12).fill(0),
-                        backgroundColor: '#EF4444',
-                        borderRadius: 4
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { 
-                    legend: { position: 'top' },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return `${context.dataset.label}: $${context.raw.toLocaleString()}`;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return '$' + value/1000 + 'k';
-                            }
-                        }
-                    }
-                }
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { x: { grid: { display: false } }, y: { display: false } } }
+                });
             }
-        });
 
-        // Gráfica de distribución
-        const statusCtx = document.getElementById('statusChart').getContext('2d');
-        statusChart = new Chart(statusCtx, {
-            type: 'pie',
-            data: {
-                labels: ['Rentables (ROI < 24)', 'Aceptables (ROI 24-36)', 'Críticas (ROI > 36)'],
-                datasets: [{
-                    data: [0, 0, 0],
-                    backgroundColor: ['#10B981', '#F59E0B', '#EF4444'],
-                    borderWidth: 2,
-                    borderColor: '#ffffff'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'bottom' },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return `${context.label}: ${context.raw} pantallas`;
-                            }
-                        }
-                    }
+            renderAlerts(data) {
+                const alerts = data.filter(d => d.monthly_margin < 0 || d.status === 'offline');
+                document.getElementById('alert-count').innerText = alerts.length;
+                const container = document.getElementById('alerts-list');
+                
+                if (alerts.length === 0) {
+                    container.innerHTML = '<div class="text-center p-4 text-slate-400 text-xs italic">Sistema estable.</div>';
+                    return;
                 }
+
+                container.innerHTML = alerts.map(a => `
+                    <div class="p-3 rounded-xl border flex gap-3 items-start ${a.monthly_margin < 0 ? 'bg-red-50 border-red-100 text-red-700' : 'bg-amber-50 border-amber-100 text-amber-700'}">
+                        <span class="material-icons-outlined text-sm mt-0.5">${a.monthly_margin < 0 ? 'trending_down' : 'wifi_off'}</span>
+                        <div>
+                            <p class="text-xs font-bold leading-tight">${a.monthly_margin < 0 ? 'Déficit Financiero' : 'Desconectado'}</p>
+                            <p class="text-[10px] opacity-80 truncate max-w-[150px]">${a.device_id}</p>
+                        </div>
+                    </div>
+                `).join('');
             }
-        });
-    }
 
-    function updateCharts(screens) {
-        if (!revenueChart || !statusChart) return;
-        
-        // Calcular distribución por ROI
-        const profitable = screens.filter(s => (s.roi || 0) < 24).length;
-        const acceptable = screens.filter(s => (s.roi || 0) >= 24 && (s.roi || 0) <= 36).length;
-        const critical = screens.filter(s => (s.roi || 0) > 36).length;
-        
-        statusChart.data.datasets[0].data = [profitable, acceptable, critical];
-        statusChart.update();
-        
-        // Simular datos históricos mensuales
-        const currentMonth = new Date().getMonth();
-        const revenueData = Array(12).fill(0);
-        const expenseData = Array(12).fill(0);
-        
-        // Generar datos de ejemplo basados en el total actual
-        const baseRevenue = screens.reduce((sum, s) => sum + (s.ingresos_mensuales || 0), 0) / 1000;
-        const baseExpenses = screens.reduce((sum, s) => sum + (s.gastos_mensuales || 0), 0) / 1000;
-        
-        for (let i = 0; i <= currentMonth; i++) {
-            revenueData[i] = Math.round(baseRevenue * (0.7 + Math.random() * 0.6));
-            expenseData[i] = Math.round(baseExpenses * (0.7 + Math.random() * 0.6));
+            setupSearch() {
+                document.getElementById('global-search').addEventListener('input', (e) => {
+                    const term = e.target.value.toLowerCase();
+                    const filtered = this.assets.filter(a => 
+                        a.device_id.toLowerCase().includes(term) || 
+                        (a.pc_name && a.pc_name.toLowerCase().includes(term))
+                    );
+                    this.renderTable(filtered);
+                });
+            }
         }
-        
-        revenueChart.data.datasets[0].data = revenueData;
-        revenueChart.data.datasets[1].data = expenseData;
-        revenueChart.update();
-    }
 
-    async function refreshDashboard() {
-        await loadDashboardData();
-        showNotification('Dashboard financiero actualizado', 'success');
-    }
-
-    function showNotification(message, type = 'info') {
-        const notification = document.createElement('div');
-        const typeClasses = {
-            'success': 'bg-emerald-500 text-white',
-            'error': 'bg-red-500 text-white',
-            'info': 'bg-blue-500 text-white'
-        };
-
-        notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${typeClasses[type]} animate-fade-in`;
-        notification.innerHTML = `
-            <div class="flex items-center gap-3">
-                <span class="material-symbols-outlined">
-                    ${type === 'success' ? 'check_circle' : type === 'error' ? 'error' : 'info'}
-                </span>
-                <span>${message}</span>
-            </div>
-        `;
-
-        document.body.appendChild(notification);
-
-        setTimeout(() => {
-            notification.remove();
-        }, 3000);
-    }
-
-    // Añadir estilo para animación
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes fade-in {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {
-            animation: fade-in 0.3s ease-out;
-        }
-    `;
-    document.head.appendChild(style);
-</script>
+        const app = new Dashboard();
+        document.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
 </body>
 </html>
