@@ -1,10 +1,17 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-from core.database import db
-from config import settings
 import io
-import pandas as pd # Necesitas: pip install pandas
+import pandas as pd  # Necesitas: pip install pandas
+
+# Imports absolutos seguros (compatibles local y Render)
+try:
+    from discord_bot.core.database import db
+    from discord_bot.config import settings
+except ImportError:
+    from core.database import db
+    from config import settings
+
 
 class AnalisisTickets(commands.Cog):
     def __init__(self, bot):
@@ -15,8 +22,15 @@ class AnalisisTickets(commands.Cog):
     async def analisis(self, interaction: discord.Interaction, sitio: str = None):
         await interaction.response.defer(ephemeral=True)
         
-        # 1. Obtener Datos
-        tickets = await db.obtener_datos_analisis(filtro_sitio=sitio)
+        # 1. Obtener Datos (con protección de errores)
+        try:
+            tickets = await db.obtener_datos_analisis(filtro_sitio=sitio)
+        except Exception:
+            await interaction.followup.send(
+                "❌ Error consultando la base de datos.",
+                ephemeral=True
+            )
+            return
         
         if not tickets:
             await interaction.followup.send("📭 No hay datos para mostrar.", ephemeral=True)
@@ -37,7 +51,8 @@ class AnalisisTickets(commands.Cog):
 
         # 3. Crear Reporte Visual
         embed = discord.Embed(title="📊 Análisis de Operaciones", color=settings.COLOR_ANALISIS)
-        if sitio: embed.description = f"Datos filtrados para: **{sitio}**"
+        if sitio:
+            embed.description = f"Datos filtrados para: **{sitio}**"
         
         embed.add_field(name="Total Tickets", value=str(total), inline=True)
         embed.add_field(name="🔴 Abiertos", value=str(abiertos), inline=True)
@@ -45,6 +60,7 @@ class AnalisisTickets(commands.Cog):
         embed.add_field(name="🔥 Top Incidencias", value=f"```{top_fallas}```", inline=False)
         
         await interaction.followup.send(embed=embed, ephemeral=True)
+
 
 async def setup(bot):
     await bot.add_cog(AnalisisTickets(bot))
