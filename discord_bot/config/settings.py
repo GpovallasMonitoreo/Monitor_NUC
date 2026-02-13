@@ -1,12 +1,13 @@
 import os
 from dotenv import load_dotenv
 
+# Cargar variables de entorno en local (en Render no afecta)
 load_dotenv()
 
 # ==============================================================================
 # CONFIGURACIÓN BÁSICA - DISCORD
 # ==============================================================================
-DISCORD_BOT_TOKEN = os.getenv("DISCORD_TOKEN")  # ¡AÑADE ESTA LÍNEA!
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GUILD_ID = 1448770446638973131
 CANAL_GENERAL_ID = 1457449842107220123
 
@@ -61,4 +62,4 @@ COLOR_REASIGNADO = 0x9B59B6
 # ==============================================================================
 # SEGURIDAD
 # ==============================================================================
-PIN_SECRET = os.getenv("PIN_SECRET", "1234")  # Valor por defecto
+PIN_SECRET = os.getenv("PIN_SECRET", "1234")
