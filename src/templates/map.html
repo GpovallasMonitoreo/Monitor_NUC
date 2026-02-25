@@ -1,1103 +1,178 @@
-{% extends 'base.html' %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor de Riesgos Corporativos | Perímetro 250m</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
-{% block header_title %}Mapa de Infraestructura y Riesgos Corporativos{% endblock %}
+    <style>
+        #map { height: 100vh; width: 100%; z-index: 1; }
+        .sidebar { 
+            position: absolute; top: 10px; right: 10px; width: 360px; 
+            max-height: 95vh; background: white; z-index: 1000; 
+            border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); 
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+        .site-list::-webkit-scrollbar { width: 5px; }
+        .site-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-slate-50">
 
-{% block content %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<div id="map"></div>
 
-<style>
-    /* --- ESTILOS NUCLEO MANTENIDOS --- */
-    #app-container { 
-        position: relative; 
-        height: calc(100vh - 5rem); 
-        width: 100%; 
-        overflow: hidden; 
-        background: #f1f5f9; 
-        border: 1px solid #cbd5e1; 
-        border-radius: 6px; 
-    }
-    #map { 
-        height: 100%; 
-        width: 100%; 
-        z-index: 1; 
-        background: #e2e8f0; 
-    }
-    #sidebar { 
-        position: absolute; 
-        top: 0; 
-        bottom: 0; 
-        right: 0; 
-        width: 350px; 
-        background: #ffffff; 
-        box-shadow: -2px 0 10px rgba(0,0,0,0.1); 
-        z-index: 2000; 
-        display: flex; 
-        flex-direction: column; 
-        transition: transform 0.3s ease; 
-        border-left: 1px solid #e2e8f0; 
-    }
-    #sidebar.collapsed { 
-        transform: translateX(100%); 
-    }
-    #sidebar-toggle { 
-        position: absolute; 
-        top: 20px; 
-        right: 365px; 
-        z-index: 2001; 
-        background: #334155; 
-        color: white; 
-        border: none; 
-        width: 40px; 
-        height: 40px; 
-        border-radius: 6px; 
-        cursor: pointer; 
-        display: flex; 
-        align-items: center; 
-        justify-content: center; 
-        transition: all 0.3s ease; 
-    }
-    #sidebar.collapsed + #sidebar-toggle { 
-        right: 20px; 
-    }
-    
-    .sidebar-header { 
-        padding: 18px 20px; 
-        background: #f8fafc; 
-        border-bottom: 1px solid #e2e8f0; 
-        display: flex; 
-        justify-content: space-between; 
-        align-items: center; 
-    }
-    .sidebar-content { 
-        flex: 1; 
-        overflow-y: auto; 
-        padding: 15px; 
-    }
-    
-    /* KPI CARDS */
-    .kpi-dashboard { 
-        position: absolute; 
-        top: 15px; 
-        left: 15px; 
-        z-index: 1000; 
-        display: flex; 
-        gap: 10px; 
-    }
-    .kpi-card { 
-        background: white; 
-        padding: 10px 15px; 
-        border-radius: 8px; 
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); 
-        border: 1px solid #e2e8f0; 
-        min-width: 120px; 
-    }
-    .kpi-value { 
-        font-size: 1.25rem; 
-        font-weight: 800; 
-        display: block; 
-    }
-    
-    /* MARKERS */
-    .nuc-marker { 
-        display: flex; 
-        justify-content: center; 
-        align-items: center; 
-        background: white; 
-        border-radius: 6px; 
-        border: 2px solid #64748b; 
-        width: 28px; 
-        height: 28px; 
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-    }
-    .nuc-online { 
-        border-color: #10b981; 
-        color: #10b981; 
-        background: #f0fdf4; 
-    }
-    .nuc-offline { 
-        border-color: #ef4444; 
-        color: #ef4444; 
-        background: #fef2f2; 
-    }
-    .nuc-critical { 
-        border-color: #f59e0b; 
-        color: #f59e0b; 
-        animation: pulse 1.5s infinite; 
-    }
-    
-    @keyframes pulse { 
-        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); } 
-        70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); } 
-        100% { transform: scale(1); } 
-    }
-    
-    .control-card { 
-        background: white; 
-        border: 1px solid #e2e8f0; 
-        border-radius: 8px; 
-        margin-bottom: 10px; 
-        overflow: hidden; 
-    }
-    .card-header { 
-        padding: 12px 15px; 
-        background: #f8fafc; 
-        font-weight: 700; 
-        font-size: 0.8rem; 
-        cursor: pointer; 
-        display: flex; 
-        justify-content: space-between; 
-    }
-    .layer-toggle { 
-        padding: 8px 15px; 
-        display: flex; 
-        justify-content: space-between; 
-        align-items: center; 
-        border-top: 1px solid #f1f5f9; 
-        font-size: 0.75rem; 
-    }
-    
-    /* SWITCH STYLES */
-    .switch { 
-        position: relative; 
-        width: 30px; 
-        height: 16px; 
-    }
-    .switch input { 
-        opacity: 0; 
-        width: 0; 
-        height: 0; 
-    }
-    .slider { 
-        position: absolute; 
-        cursor: pointer; 
-        top: 0; 
-        left: 0; 
-        right: 0; 
-        bottom: 0; 
-        background: #cbd5e1; 
-        transition: .2s; 
-        border-radius: 20px; 
-    }
-    .slider:before { 
-        position: absolute; 
-        content: ""; 
-        height: 12px; 
-        width: 12px; 
-        left: 2px; 
-        bottom: 2px; 
-        background: white; 
-        transition: .2s; 
-        border-radius: 50%; 
-    }
-    input:checked + .slider { 
-        background: #4f46e5; 
-    }
-    input:checked + .slider:before { 
-        transform: translateX(14px); 
-    }
+<div class="sidebar">
+    <div class="p-5 bg-slate-900 text-white">
+        <h2 class="text-xl font-bold flex items-center gap-2">
+            <i class="fa-solid fa-expand text-blue-400"></i> Gestión de Riesgos
+        </h2>
+        <p class="text-[10px] opacity-60 mt-1 uppercase tracking-widest">Cobertura: Cuadro de 250 Metros</p>
+    </div>
 
-    /* MODAL */
-    #incident-modal { 
-        position: fixed; 
-        inset: 0; 
-        background: rgba(15, 23, 42, 0.7); 
-        z-index: 3000; 
-        display: none; 
-        justify-content: center; 
-        align-items: center; 
-        backdrop-filter: blur(4px); 
-    }
-    .modal-box { 
-        background: white; 
-        padding: 24px; 
-        border-radius: 16px; 
-        width: 400px; 
-    }
-
-    /* NUEVOS ESTILOS PARA FILTROS DE CALOR */
-    .layer-info { 
-        display: flex; 
-        align-items: center; 
-        gap: 10px; 
-    }
-    .color-dot { 
-        width: 10px; 
-        height: 10px; 
-        border-radius: 50%; 
-        display: inline-block; 
-    }
-    
-    /* Estilos para card body hidden */
-    .card-body { 
-        padding: 0; 
-    }
-    .hidden { 
-        display: none !important; 
-    }
-    
-    /* Iconos FontAwesome Custom (POI) */
-    .custom-fa-icon { 
-        display: flex !important; 
-        justify-content: center !important; 
-        align-items: center !important; 
-        background: white; 
-        border-radius: 50%; 
-        border: 1px solid #94a3b8; 
-        box-shadow: 0 2px 4px rgba(0,0,0,0.15); 
-    }
-    
-    /* Text colors */
-    .text-emerald-600 { color: #059669; }
-    .text-rose-600 { color: #e11d48; }
-    .text-amber-500 { color: #f59e0b; }
-    .text-blue-600 { color: #2563eb; }
-    .text-slate-400 { color: #94a3b8; }
-    .text-slate-800 { color: #1e293b; }
-    .text-slate-500 { color: #64748b; }
-    .text-indigo-500 { color: #6366f1; }
-    
-    /* Margin y padding utilities */
-    .mr-2 { margin-right: 0.5rem; }
-    .mb-2 { margin-bottom: 0.5rem; }
-    .mb-4 { margin-bottom: 1rem; }
-    .mt-2 { margin-top: 0.5rem; }
-    .gap-2 { gap: 0.5rem; }
-    .space-y-4 > * + * { margin-top: 1rem; }
-    
-    /* Flex utilities */
-    .flex { display: flex; }
-    .items-center { align-items: center; }
-    .justify-end { justify-content: flex-end; }
-    .justify-between { justify-content: space-between; }
-    
-    /* Border utilities */
-    .border { border: 1px solid #e2e8f0; }
-    .border-b { border-bottom: 1px solid #f1f5f9; }
-    .rounded-lg { border-radius: 0.5rem; }
-    .rounded { border-radius: 0.25rem; }
-    
-    /* Width utilities */
-    .w-full { width: 100%; }
-    
-    /* Padding utilities */
-    .p-2 { padding: 0.5rem; }
-    
-    /* Font utilities */
-    .font-bold { font-weight: 700; }
-    .text-xs { font-size: 0.75rem; }
-    .text-sm { font-size: 0.875rem; }
-    
-    /* Background colors */
-    .bg-white { background-color: white; }
-    .bg-rose-600 { background-color: #e11d48; }
-    
-    /* Shadow */
-    .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
-    
-    /* Cursor */
-    .cursor-pointer { cursor: pointer; }
-    
-    /* Hover effects */
-    .hover\:bg-slate-50:hover { background-color: #f8fafc; }
-    
-    /* LEGENDA DE COLOR DE RED */
-    .red-legend {
-        position: absolute;
-        bottom: 30px;
-        left: 15px;
-        z-index: 1000;
-        background: white;
-        padding: 10px 15px;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-        border: 1px solid #e2e8f0;
-        font-size: 0.75rem;
-    }
-    
-    .legend-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 5px;
-    }
-    
-    .legend-color {
-        width: 15px;
-        height: 15px;
-        border-radius: 3px;
-    }
-</style>
-
-<div id="app-container">
-    <div class="kpi-dashboard">
-        <div class="kpi-card">
-            <span style="font-size: 10px; font-weight: bold; color: #94a3b8; text-transform: uppercase;">En Línea</span>
-            <span class="kpi-value text-emerald-600" id="kpi-online">0</span>
+    <div class="grid grid-cols-3 gap-2 p-4 bg-slate-50 border-b">
+        <div class="text-center p-2 bg-white rounded-lg shadow-sm border-b-4 border-rose-500">
+            <div id="count-red" class="text-xl font-black text-slate-800">0</div>
+            <div class="text-[9px] font-bold text-rose-500 uppercase">Críticos</div>
         </div>
-        <div class="kpi-card">
-            <span style="font-size: 10px; font-weight: bold; color: #94a3b8; text-transform: uppercase;">Alertas</span>
-            <span class="kpi-value text-rose-600" id="kpi-issues">0</span>
+        <div class="text-center p-2 bg-white rounded-lg shadow-sm border-b-4 border-amber-500">
+            <div id="count-yellow" class="text-xl font-black text-slate-800">0</div>
+            <div class="text-[9px] font-bold text-amber-500 uppercase">Atención</div>
         </div>
-        <div class="kpi-card">
-            <span style="font-size: 10px; font-weight: bold; color: #94a3b8; text-transform: uppercase;">Zonas Afectadas</span>
-            <span class="kpi-value text-amber-500" id="kpi-zones">0</span>
-        </div>
-        <div class="kpi-card">
-            <span style="font-size: 10px; font-weight: bold; color: #94a3b8; text-transform: uppercase;">Velocidad Promedio</span>
-            <span class="kpi-value text-blue-600" id="avg-speed">--</span>
+        <div class="text-center p-2 bg-white rounded-lg shadow-sm border-b-4 border-emerald-500">
+            <div id="count-green" class="text-xl font-black text-slate-800">0</div>
+            <div class="text-[9px] font-bold text-emerald-500 uppercase">Estables</div>
         </div>
     </div>
 
-    <!-- NUEVA: Leyenda de color de red -->
-    <div class="red-legend" id="red-legend" style="display: none;">
-        <div style="font-weight: bold; margin-bottom: 8px; font-size: 0.8rem;">Calidad de Red por Zona</div>
-        <div class="legend-item">
-            <div class="legend-color" style="background-color: #16a34a;"></div>
-            <span>Alta velocidad (>50 Mbps)</span>
-        </div>
-        <div class="legend-item">
-            <div class="legend-color" style="background-color: #eab308;"></div>
-            <span>Velocidad media (10-50 Mbps)</span>
-        </div>
-        <div class="legend-item">
-            <div class="legend-color" style="background-color: #ef4444;"></div>
-            <span>Baja velocidad (<10 Mbps)</span>
-        </div>
-        <div class="legend-item">
-            <div class="legend-color" style="background-color: #7c3aed;"></div>
-            <span>Sin datos</span>
+    <div class="px-4 py-3 border-b">
+        <div class="relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400"></i>
+            <input type="text" id="site-search" placeholder="Filtrar por sitio..." 
+                   class="w-full pl-10 pr-4 py-2 bg-slate-100 border-none rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                   onkeyup="filtrarSitios()">
         </div>
     </div>
 
-    <div id="map"></div>
-
-    <div id="sidebar">
-        <div class="sidebar-header">
-            <div>
-                <h2 class="text-sm font-bold text-slate-800 uppercase">Control de Infraestructura</h2>
-                <small class="text-slate-400">CDMX - Latencia & Riesgo</small>
-            </div>
-            <i class="fa-solid fa-server text-indigo-500"></i>
-        </div>
-        <div class="sidebar-content">
-            <div class="control-card" style="border-left: 4px solid #4f46e5;">
-                <div class="card-header"><span>MODO DE MAPA</span></div>
-                <div class="layer-toggle">
-                    <span>Análisis Operativo</span>
-                    <label class="switch">
-                        <input type="radio" name="vm" checked onchange="setMapMode('analysis')">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="layer-toggle">
-                    <span>Mapa de Riesgos (Zonas)</span>
-                    <label class="switch">
-                        <input type="radio" name="vm" onchange="setMapMode('risk')">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-            </div>
-
-            <div class="control-card">
-                <div class="card-header"><span>FILTROS DE CALOR</span></div>
-                <div class="layer-toggle">
-                    <div class="layer-info">
-                        <span class="color-dot" style="background:#2563eb;"></span>
-                        <span>Red Internet</span>
-                    </div>
-                    <label class="switch">
-                        <input type="radio" name="exclusive-mode" checked onchange="activateHeatMode('red')">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="layer-toggle">
-                    <div class="layer-info">
-                        <span class="color-dot" style="background:#ef4444;"></span>
-                        <span>Afluencia Peatonal</span>
-                    </div>
-                    <label class="switch">
-                        <input type="radio" name="exclusive-mode" onchange="activateHeatMode('afluencia')">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="layer-toggle">
-                    <div class="layer-info">
-                        <span class="color-dot" style="background:#0f172a;"></span>
-                        <span>Fallas Eléctricas</span>
-                    </div>
-                    <label class="switch">
-                        <input type="radio" name="exclusive-mode" onchange="activateHeatMode('fallas')">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-            </div>
-
-            <!-- NUEVO: Filtro de Hora para Afluencia -->
-            <div class="control-card" id="time-filter-container" style="display: none;">
-                <div class="card-header" onclick="toggleCard(this)">
-                    <span><i class="fa-solid fa-clock mr-2"></i> Filtro de Hora (Afluencia)</span>
-                    <i class="fa-solid fa-chevron-down text-slate-400"></i>
-                </div>
-                <div class="card-body hidden">
-                    <div style="padding: 15px;">
-                        <select id="heatmap-time-selector" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 0.25rem; font-size: 0.875rem; background: white;" onchange="updateAfluenciaHeatmap(this.value)">
-                            <option value="off">Desactivado</option>
-                            <option value="6">06:00 AM - Inicio Jornada</option>
-                            <option value="9" selected>09:00 AM - Hora Pico</option>
-                            <option value="12">12:00 PM - Mediodía</option>
-                            <option value="15">03:00 PM - Tarde</option>
-                            <option value="18">06:00 PM - Salida Laboral</option>
-                            <option value="21">09:00 PM - Noche</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <div class="control-card">
-                <div class="card-header"><span>REFERENCIAS</span></div>
-                <div class="layer-toggle">
-                    <span>Metro CDMX</span>
-                    <label class="switch">
-                        <input type="checkbox" checked onchange="toggleLayer('metro', this.checked)">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="layer-toggle">
-                    <span>Sitios de Interés (POI)</span>
-                    <label class="switch">
-                        <input type="checkbox" checked onchange="toggleLayer('poi', this.checked)">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-            </div>
-
-            <!-- NUEVO: Mostrar velocidad por zona -->
-            <div class="control-card" id="speed-zones-panel">
-                <div class="card-header" onclick="toggleCard(this)">
-                    <span><i class="fa-solid fa-gauge-high mr-2"></i> Velocidad por Zona</span>
-                    <i class="fa-solid fa-chevron-down text-slate-400"></i>
-                </div>
-                <div class="card-body hidden">
-                    <div style="padding: 15px;">
-                        <div id="speed-zones-list" style="font-size: 0.8rem;">
-                            <!-- Aquí se cargarán las zonas dinámicamente -->
-                            <div style="text-align: center; color: #94a3b8; padding: 10px;">
-                                Cargando datos de velocidad...
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="dynamic-panels"></div>
-        </div>
-    </div>
-    <button id="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
-</div>
-
-<div id="incident-modal">
-    <div class="modal-box">
-        <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
-            <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> 
-            Reporte de Causa Externa
-        </h3>
-        <p class="text-xs text-slate-500 mb-4">Equipo: <b id="modal-dev-name"></b></p>
-        <div class="space-y-4">
-            <select id="inc-type" style="width: 100%; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; font-size: 0.875rem;">
-                <option value="energia">Corte de Energía (CFE)</option>
-                <option value="vandalismo">Vandalismo</option>
-                <option value="mantenimiento">Mantenimiento Local</option>
-            </select>
-            <textarea id="inc-desc" rows="3" style="width: 100%; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; font-size: 0.875rem;" placeholder="Detalles adicionales..."></textarea>
-            <div class="flex justify-end gap-2">
-                <button onclick="closeModal()" style="padding: 0.5rem 1rem; font-size: 0.75rem; font-weight: bold; color: #94a3b8;">Cancelar</button>
-                <button onclick="submitIncident()" style="padding: 0.5rem 1.5rem; background-color: #e11d48; color: white; border-radius: 0.5rem; font-size: 0.75rem; font-weight: bold; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">Registrar</button>
-            </div>
-        </div>
-    </div>
+    <div id="site-list" class="flex-1 overflow-y-auto site-list"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-<script src="{{ url_for('static', filename='js/datos_speedtest.js') }}"></script>
-
 <script>
-// Variables globales necesarias
-let map = null;
-let currentMode = 'analysis';
-let afluenciaHeatmapLayers = {};
-let redZonesLayer = null; // NUEVO: Capa para zonas de red
-let riskZonesLayer = null; // NUEVO: Capa para zonas de riesgo superpuestas
-
-// Capas extendidas con los filtros de calor
-const layers = {
-    // Capas originales del primer código
-    high: L.layerGroup(), 
-    mid: L.layerGroup(), 
-    low: L.layerGroup(),
-    metro: L.layerGroup(), 
-    poi: L.layerGroup(),
-    afluencia: L.layerGroup(), 
-    fallas: L.layerGroup(),
-    'BioBox': L.layerGroup(), 
-    'ViaVerde': L.layerGroup(), 
-    'Ecovallas': L.layerGroup(), 
-    'General': L.layerGroup(),
-    autoRiskZones: L.layerGroup(),
-    
-    // Nueva capa para fallas eléctricas (del segundo código)
-    fallas_electricas: L.layerGroup(),
-    
-    // NUEVAS CAPAS ADICIONALES
-    redZones: L.layerGroup(), // Para zonas de red con color
-    riskZonesOverlay: L.layerGroup() // Para zonas de riesgo superpuestas
-};
-
-const markerRegistry = {};
-
-// --- DATOS ESTÁTICOS PARA HEATMAPS ---
-const DATA_INTERMITENCIAS = [
-    [19.357, -99.299, 1.0], [19.388, -99.193, 0.9], [19.288, -99.167, 0.8], [19.278, -99.102, 0.75],
-    [19.309, -99.123, 0.7], [19.296, -99.192, 0.7], [19.160, -99.000, 0.9], [19.400, -99.100, 0.85],
-    [19.417, -99.114, 0.9], [19.443, -99.145, 1.0]
-];
-
-const DATA_POI = [
-    [19.4678, -99.2132, "Tecamachalco", "house", "purple"],
-    [19.4687, -99.2155, "Parque de los Venados", "tree", "purple"],
-    [19.4326, -99.1332, "Zócalo CDMX", "landmark", "purple"],
-    [19.4385, -99.1764, "Monumento Revolución", "monument", "purple"],
-    [19.4380, -99.1687, "Ángel Independencia", "star", "purple"],
-    [19.4449, -99.1820, "Museo Soumaya", "building", "purple"]
-];
-
-const PUNTOS_BASE_AFLUENCIA = [
-    [19.4326, -99.1332, 0.9], [19.4353, -99.1411, 0.85], [19.4290, -99.1380, 0.8],
-    [19.4240, -99.1650, 0.75], [19.4220, -99.1700, 0.7], [19.4330, -99.2000, 0.65], 
-    [19.4350, -99.2050, 0.6], [19.4110, -99.1800, 0.7], [19.4090, -99.1850, 0.65]
-];
-
-// NUEVO: Datos de zonas predefinidas para CDMX
-const ZONAS_CDMX = [
-    { name: "Centro Histórico", bounds: [[19.428, -99.145], [19.445, -99.125]], speed: 45, color: "#eab308" },
-    { name: "Polanco", bounds: [[19.430, -99.210], [19.445, -99.195]], speed: 85, color: "#16a34a" },
-    { name: "Roma-Condesa", bounds: [[19.410, -99.175], [19.425, -99.155]], speed: 60, color: "#16a34a" },
-    { name: "Santa Fe", bounds: [[19.350, -99.280], [19.370, -99.260]], speed: 30, color: "#ef4444" },
-    { name: "Coyoacán", bounds: [[19.340, -99.170], [19.360, -99.150]], speed: 55, color: "#eab308" },
-    { name: "Nápoles", bounds: [[19.400, -99.185], [19.410, -99.170]], speed: 70, color: "#16a34a" },
-    { name: "Del Valle", bounds: [[19.370, -99.180], [19.390, -99.160]], speed: 48, color: "#eab308" },
-    { name: "Tlalpan", bounds: [[19.280, -99.170], [19.300, -99.150]], speed: 25, color: "#ef4444" },
-    { name: "Iztapalapa", bounds: [[19.350, -99.100], [19.370, -99.080]], speed: 15, color: "#ef4444" },
-    { name: "Xochimilco", bounds: [[19.250, -99.110], [19.270, -99.090]], speed: 20, color: "#ef4444" }
-];
-
-// NUEVO: Zonas de riesgo predefinidas
-const ZONAS_RIESGO = [
-    { name: "Riesgo Alto - Centro", center: [19.4326, -99.1332], radius: 1500, color: "#ef4444", opacity: 0.3, reason: "Alta densidad de equipos" },
-    { name: "Riesgo Medio - Polanco", center: [19.437, -99.202], radius: 1200, color: "#f59e0b", opacity: 0.25, reason: "Tráfico intenso" },
-    { name: "Riesgo Bajo - Santa Fe", center: [19.360, -99.270], radius: 2000, color: "#3b82f6", opacity: 0.2, reason: "Zona industrial" },
-    { name: "Riesgo Alto - Iztapalapa", center: [19.360, -99.090], radius: 1800, color: "#ef4444", opacity: 0.3, reason: "Infraestructura antigua" },
-    { name: "Riesgo Medio - Coyoacán", center: [19.350, -99.160], radius: 1000, color: "#f59e0b", opacity: 0.25, reason: "Crecimiento rápido" }
-];
-
-// --- FUNCIONES GLOBALES ---
-window.setMapMode = function(mode) {
-    currentMode = mode;
-    
-    // Limpiar capas específicas
-    Object.values(layers).forEach(l => {
-        if (l !== layers.autoRiskZones && l !== layers.high && l !== layers.mid && l !== layers.low) {
-            map.removeLayer(l);
-        }
-    });
-    
-    if (mode === 'analysis') {
-        // Mostrar NUCs y referencias
-        map.addLayer(layers.poi); 
-        map.addLayer(layers.metro);
-        ['BioBox', 'ViaVerde', 'Ecovallas', 'General'].forEach(k => map.addLayer(layers[k]));
-        
-        // NUEVO: Mostrar zonas de red y riesgo superpuestas
-        map.addLayer(layers.redZones);
-        map.addLayer(layers.riskZonesOverlay);
-        
-        // Mantener capa de heatmap activa si está seleccionada
-        const activeHeatMode = document.querySelector('input[name="exclusive-mode"]:checked');
-        if (activeHeatMode) {
-            const modeValue = activeHeatMode.getAttribute('onchange');
-            if (modeValue.includes("'red'")) activateHeatMode('red');
-            else if (modeValue.includes("'afluencia'")) activateHeatMode('afluencia');
-            else if (modeValue.includes("'fallas'")) activateHeatMode('fallas');
-        }
-    } else if (mode === 'risk') {
-        // Mostrar zonas de riesgo y NUCs
-        map.addLayer(layers.autoRiskZones);
-        ['BioBox', 'ViaVerde', 'Ecovallas', 'General'].forEach(k => map.addLayer(layers[k]));
-        
-        // NUEVO: Mantener zonas de riesgo superpuestas
-        map.addLayer(layers.riskZonesOverlay);
+// --- DATA DE INTELIGENCIA (Con desglose de categorías) ---
+const riskIntelligence = {
+    "MX_CM_VV_COL_669": { 
+        "sat": 91.0, "color": "#ef4444", "total": 41, "top": "Pauta Digital", "lat": 19.4270, "lng": -99.1670,
+        "categories": { "Conectividad y red": 18, "Hardware": 12, "Software": 8, "Otros": 3 }
+    },
+    "MX_CM_EV_MGP_15_3378 INSURGENTES SUR 171": { 
+        "sat": 61.0, "color": "#f59e0b", "total": 26, "top": "Vandalismo", "lat": 19.4350, "lng": -99.1410,
+        "categories": { "Conectividad y red": 10, "Hardware": 8, "Software": 5, "Otros": 3 }
+    },
+    "MX_CM_VV_COL_551": { 
+        "sat": 65.0, "color": "#f59e0b", "total": 25, "top": "Vandalismo", "lat": 19.4180, "lng": -99.1620,
+        "categories": { "Conectividad y red": 12, "Hardware": 6, "Software": 4, "Otros": 3 }
+    },
+    "MX_CM_VV_COL_735": { 
+        "sat": 52.0, "color": "#f59e0b", "total": 22, "top": "Configuración", "lat": 19.4120, "lng": -99.1640,
+        "categories": { "Conectividad y red": 8, "Hardware": 7, "Software": 5, "Otros": 2 }
+    },
+    "MX_CM_VV_COL_542": { 
+        "sat": 60.0, "color": "#f59e0b", "total": 21, "top": "Falla CFE", "lat": 19.4060, "lng": -99.1750,
+        "categories": { "Conectividad y red": 15, "Hardware": 3, "Software": 2, "Otros": 1 }
     }
 };
 
-window.activateHeatMode = function(mode) {
-    // Mostrar/ocultar filtro de hora para afluencia
-    const timeFilter = document.getElementById('time-filter-container');
-    timeFilter.style.display = mode === 'afluencia' ? 'block' : 'none';
-    
-    // Mostrar/ocultar leyenda de red
-    const redLegend = document.getElementById('red-legend');
-    redLegend.style.display = mode === 'red' ? 'block' : 'none';
-    
-    // Remover capas de calor anteriores
-    map.removeLayer(layers.high);
-    map.removeLayer(layers.mid);
-    map.removeLayer(layers.low);
-    map.removeLayer(layers.afluencia);
-    map.removeLayer(layers.fallas_electricas);
-    
-    if (mode === 'red') {
-        // Red Internet
-        map.addLayer(layers.high);
-        map.addLayer(layers.mid);
-        map.addLayer(layers.low);
-        
-        // NUEVO: Mostrar zonas de red con color
-        map.addLayer(layers.redZones);
-        
-        // Actualizar lista de velocidades por zona
-        updateSpeedZonesList();
-    } else if (mode === 'afluencia') {
-        // Afluencia Peatonal
-        map.addLayer(layers.afluencia);
-        const timeSelector = document.getElementById('heatmap-time-selector');
-        updateAfluenciaHeatmap(timeSelector.value);
-    } else if (mode === 'fallas') {
-        // Fallas Eléctricas
-        map.addLayer(layers.fallas_electricas);
+// Completar base de datos para la lista de 335 sitios
+for(let i=1; i<=330; i++) {
+    const name = "SITIO_LOG_" + (1000 + i);
+    if(!riskIntelligence[name]) {
+        const totalRand = Math.floor(Math.random() * 5);
+        riskIntelligence[name] = { 
+            "sat": Math.floor(Math.random() * 30), "color": "#10b981", 
+            "total": totalRand, "top": "Operación Normal",
+            "lat": 19.43 + (Math.random() * 0.1 - 0.05), "lng": -99.13 + (Math.random() * 0.1 - 0.05),
+            "categories": { 
+                "Conectividad y red": Math.floor(totalRand * 0.5), 
+                "Hardware": Math.floor(totalRand * 0.3), 
+                "Software": totalRand - (Math.floor(totalRand * 0.5) + Math.floor(totalRand * 0.3)), 
+                "Otros": 0 
+            }
+        };
     }
-    
-    // Asegurar que los NUCs siempre estén visibles
-    ['BioBox', 'ViaVerde', 'Ecovallas', 'General'].forEach(k => {
-        if (!map.hasLayer(layers[k])) {
-            map.addLayer(layers[k]);
-        }
-    });
-    
-    // NUEVO: Asegurar que zonas de riesgo superpuestas estén visibles
-    if (!map.hasLayer(layers.riskZonesOverlay)) {
-        map.addLayer(layers.riskZonesOverlay);
-    }
-};
-
-window.updateAfluenciaHeatmap = function(h) {
-    layers.afluencia.clearLayers();
-    if (h !== 'off' && afluenciaHeatmapLayers[h]) {
-        layers.afluencia.addLayer(afluenciaHeatmapLayers[h]);
-    }
-};
-
-window.toggleLayer = function(id, show) { 
-    if(show) map.addLayer(layers[id]); 
-    else map.removeLayer(layers[id]); 
-};
-
-window.toggleSidebar = function() { 
-    document.getElementById('sidebar').classList.toggle('collapsed'); 
-};
-
-window.toggleCard = function(h) { 
-    const body = h.nextElementSibling;
-    body.classList.toggle('hidden'); 
-    const icon = h.querySelector('i.fa-chevron-down');
-    if (icon) icon.classList.toggle('fa-rotate-180');
-};
-
-window.zoomToMarker = function(name) {
-    const m = markerRegistry[name];
-    if(m) { 
-        map.flyTo(m.getLatLng(), 17); 
-        m.openPopup(); 
-    }
-};
-
-window.openIncidentModal = function(n) { 
-    document.getElementById('modal-dev-name').innerText = n; 
-    document.getElementById('incident-modal').style.display='flex'; 
-};
-
-window.closeModal = function() { 
-    document.getElementById('incident-modal').style.display='none'; 
-};
-
-window.submitIncident = function() { 
-    alert("Incidente registrado en zona."); 
-    closeModal(); 
-};
-
-// NUEVA: Función para actualizar lista de velocidades por zona
-window.updateSpeedZonesList = function() {
-    const speedZonesList = document.getElementById('speed-zones-list');
-    if (!speedZonesList) return;
-    
-    let html = '';
-    ZONAS_CDMX.forEach(zone => {
-        let statusClass = '';
-        let statusText = '';
-        
-        if (zone.speed >= 50) {
-            statusClass = 'text-emerald-600';
-            statusText = 'Alta';
-        } else if (zone.speed >= 10) {
-            statusClass = 'text-amber-500';
-            statusText = 'Media';
-        } else {
-            statusClass = 'text-rose-600';
-            statusText = 'Baja';
-        }
-        
-        html += `
-            <div style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-weight: 600;">${zone.name}</span>
-                    <span class="${statusClass}" style="font-weight: 700;">${zone.speed} Mbps</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #64748b; margin-top: 2px;">
-                    <span>Calidad: ${statusText}</span>
-                    <span style="display: flex; align-items: center; gap: 4px;">
-                        <div style="width: 10px; height: 10px; border-radius: 2px; background-color: ${zone.color};"></div>
-                        Zona
-                    </span>
-                </div>
-            </div>
-        `;
-    });
-    
-    speedZonesList.innerHTML = html || '<div style="text-align: center; color: #94a3b8; padding: 10px;">No hay datos de velocidad disponibles</div>';
-};
-
-// NUEVA: Función para crear zonas de red con color
-function createRedZones() {
-    layers.redZones.clearLayers();
-    
-    ZONAS_CDMX.forEach(zone => {
-        // Crear rectángulo para la zona
-        const rectangle = L.rectangle(zone.bounds, {
-            color: zone.color,
-            fillColor: zone.color,
-            fillOpacity: 0.15,
-            weight: 2,
-            pane: 'riskPane'
-        }).addTo(layers.redZones);
-        
-        // Añadir popup con información de velocidad
-        rectangle.bindPopup(`
-            <div style="min-width: 200px;">
-                <h4 style="margin: 0 0 8px 0; font-weight: bold;">${zone.name}</h4>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                    <span>Velocidad:</span>
-                    <span style="font-weight: bold; color: ${zone.speed >= 50 ? '#16a34a' : zone.speed >= 10 ? '#eab308' : '#ef4444'}">
-                        ${zone.speed} Mbps
-                    </span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                    <span>Calidad:</span>
-                    <span style="font-weight: bold;">${zone.speed >= 50 ? 'Alta' : zone.speed >= 10 ? 'Media' : 'Baja'}</span>
-                </div>
-                <div style="margin-top: 8px; font-size: 0.8rem; color: #64748b;">
-                    ${zone.speed >= 50 ? '✅ Conexión óptima para operaciones' : 
-                      zone.speed >= 10 ? '⚠️ Conexión aceptable' : 
-                      '🔴 Posibles problemas de conectividad'}
-                </div>
-            </div>
-        `);
-        
-        // Añadir tooltip
-        rectangle.bindTooltip(`${zone.name}: ${zone.speed} Mbps`, {
-            permanent: false,
-            direction: 'top'
-        });
-    });
 }
 
-// NUEVA: Función para crear zonas de riesgo superpuestas
-function createRiskZonesOverlay() {
-    layers.riskZonesOverlay.clearLayers();
-    
-    ZONAS_RIESGO.forEach(zone => {
-        // Crear círculo para zona de riesgo
-        const circle = L.circle(zone.center, {
-            radius: zone.radius,
-            color: zone.color,
-            fillColor: zone.color,
-            fillOpacity: zone.opacity,
-            weight: 2,
-            pane: 'riskPane'
-        }).addTo(layers.riskZonesOverlay);
-        
-        // Añadir popup con información de riesgo
-        circle.bindPopup(`
-            <div style="min-width: 220px;">
-                <h4 style="margin: 0 0 8px 0; font-weight: bold; color: ${zone.color};">${zone.name}</h4>
-                <div style="margin-bottom: 8px; padding: 8px; background-color: #f8fafc; border-radius: 4px;">
-                    <span style="font-weight: 600;">Motivo:</span>
-                    <p style="margin: 4px 0 0 0; font-size: 0.9rem;">${zone.reason}</p>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
-                    <span>Radio de afectación:</span>
-                    <span style="font-weight: bold;">${(zone.radius / 1000).toFixed(1)} km</span>
-                </div>
-            </div>
-        `);
-        
-        // Añadir tooltip
-        const riskLevel = zone.color === '#ef4444' ? 'Alto' : zone.color === '#f59e0b' ? 'Medio' : 'Bajo';
-        circle.bindTooltip(`${zone.name} - Riesgo ${riskLevel}`, {
-            permanent: false,
-            direction: 'top'
-        });
-    });
-}
+let map, markers = {};
 
-// --- FUNCIONES PRIVADAS ---
 function init() {
-    // Mapa base
-    map = L.map('map', { zoomControl: false }).setView([19.4326, -99.1332], 12);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
+    map = L.map('map', { zoomControl: false }).setView([19.43, -99.13], 13);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-    // Panes para capas
-    map.createPane('riskPane');
-    map.getPane('riskPane').style.zIndex = 450;
-    
-    map.createPane('nucPane');
-    map.getPane('nucPane').style.zIndex = 650;
-    
-    map.createPane('heatmapPane');
-    map.getPane('heatmapPane').style.zIndex = 500;
-    
-    map.createPane('redPane');
-    map.getPane('redPane').style.zIndex = 400;
+    const listCont = document.getElementById('site-list');
+    let kpis = { red: 0, yellow: 0, green: 0 };
 
-    // Inicializar todas las capas
-    initAllLayers();
-    
-    // NUEVO: Crear zonas de red y riesgo
-    createRedZones();
-    createRiskZonesOverlay();
-    
-    setMapMode('analysis');
-    fetchLiveNucs();
-    setInterval(fetchLiveNucs, 5000);
-}
+    Object.entries(riskIntelligence).forEach(([name, data]) => {
+        const offset = 0.001125; 
+        const bounds = [[data.lat - offset, data.lng - offset], [data.lat + offset, data.lng + offset]];
 
-function initAllLayers() {
-    // 1. Red Internet
-    if (typeof SPEEDTEST_DATA !== 'undefined') {
-        L.geoJson(SPEEDTEST_DATA, { 
-            style: { color: '#4f46e5', weight: 1, fillOpacity: 0.2 }, 
-            pane: 'riskPane' 
-        }).addTo(layers.high);
+        const square = L.rectangle(bounds, {
+            color: data.color, weight: 1.5, fillColor: data.color, fillOpacity: 0.4
+        }).addTo(map);
+
+        // --- CONSTRUCCIÓN DEL DESGLOSE POR CATEGORÍA PARA EL POPUP ---
+        let categoryBreakdown = `<div class="mt-2 border-t pt-2 text-[10px] text-slate-500 uppercase font-bold text-center">Desglose por Categoría</div>`;
+        Object.entries(data.categories).forEach(([cat, count]) => {
+            if(count > 0) {
+                categoryBreakdown += `<div class="flex justify-between text-[11px] py-0.5"><span>${cat}:</span> <b>${count}</b></div>`;
+            }
+        });
+
+        const popup = `
+            <div class="p-1" style="min-width:200px; font-family:sans-serif;">
+                <b class="text-sm block border-b pb-1 mb-2">${name}</b>
+                <div class="text-[11px] space-y-1">
+                    <div class="flex justify-between"><span>Saturación:</span> <b style="color:${data.color}">${data.sat}%</b></div>
+                    <div class="flex justify-between"><span>Incidencias Totales:</span> <b>${data.total}</b></div>
+                    <div class="mt-2 text-slate-400 italic">Causa Principal: ${data.top}</div>
+                </div>
+                ${categoryBreakdown}
+            </div>`;
         
-        // Calcular velocidad promedio
-        let totalSpeed = 0, count = 0;
-        if (SPEEDTEST_DATA.features) {
-            SPEEDTEST_DATA.features.forEach(f => {
-                if (f.properties && f.properties.download) {
-                    totalSpeed += f.properties.download;
-                    count++;
-                }
-            });
-            document.getElementById('avg-speed').innerText = count > 0 ? Math.round(totalSpeed / count) + " Mbps" : "N/A";
-        }
-    }
-    
-    // 2. Afluencia Heatmap
-    initAfluenciaData();
-    
-    // 3. Fallas Eléctricas
-    initFallasElectricas();
-    
-    // 4. POIs
-    DATA_POI.forEach(p => {
-        const icon = L.divIcon({ 
-            html: `<i class="fa-solid fa-${p[3]}" style="color:${p[4]}; font-size:14px;"></i>`, 
-            className: 'custom-fa-icon', 
-            iconSize: [26, 26] 
-        });
-        L.marker([p[0], p[1]], {icon: icon}).bindPopup(`<b>${p[2]}</b>`).addTo(layers.poi);
-    });
-    
-    // 5. Líneas de Metro
-    const metroLines = [
-        {color: '#f06292', points: [[19.42, -99.12], [19.43, -99.14], [19.44, -99.15]]},
-        {color: '#fbbf24', points: [[19.45, -99.10], [19.44, -99.12], [19.41, -99.13]]}
-    ];
-    metroLines.forEach(line => {
-        L.polyline(line.points, {color: line.color, weight: 4}).addTo(layers.metro);
-    });
-}
+        square.bindPopup(popup);
+        markers[name] = square;
 
-function initAfluenciaData() {
-    const horarios = [6, 9, 12, 15, 18, 21];
-    
-    horarios.forEach(hora => {
-        let factor = 0.5;
-        if(hora === 9 || hora === 18) factor = 1.0;
-        else if(hora === 6 || hora === 21) factor = 0.6;
-        else factor = 0.8;
+        if(data.sat > 70) kpis.red++; else if(data.sat > 35) kpis.yellow++; else kpis.green++;
 
-        const heatData = [];
-        PUNTOS_BASE_AFLUENCIA.forEach(punto => {
-            let intensidad = punto[2] * factor;
-            heatData.push([punto[0], punto[1], intensidad]);
-            for (let i = 0; i < 20; i++) {
-                const nLat = punto[0] + (Math.random() - 0.5) * 0.02;
-                const nLon = punto[1] + (Math.random() - 0.5) * 0.02;
-                heatData.push([nLat, nLon, intensidad * 0.7]);
-            }
-        });
-
-        afluenciaHeatmapLayers[hora] = L.heatLayer(heatData, {
-            radius: 35, 
-            blur: 25, 
-            minOpacity: 0.4, 
-            pane: 'heatmapPane',
-            gradient: {0.4: 'blue', 0.7: 'yellow', 1.0: 'red'}
-        });
-    });
-    
-    // Capa por defecto para afluencia
-    if (afluenciaHeatmapLayers[9]) {
-        layers.afluencia.addLayer(afluenciaHeatmapLayers[9]);
-    }
-}
-
-function initFallasElectricas() {
-    const heatData = [];
-    DATA_INTERMITENCIAS.forEach(punto => {
-        heatData.push([punto[0], punto[1], punto[2]]);
-        for (let i = 0; i < 30; i++) {
-            const nLat = punto[0] + (Math.random() - 0.5) * 0.04;
-            const nLon = punto[1] + (Math.random() - 0.5) * 0.04;
-            heatData.push([nLat, nLon, punto[2] * 0.6]);
-        }
-    });
-    
-    L.heatLayer(heatData, {
-        radius: 40, 
-        blur: 30, 
-        minOpacity: 0.5, 
-        pane: 'heatmapPane',
-        gradient: {0.0: 'orange', 0.5: 'red', 1.0: '#3f0000'}
-    }).addTo(layers.fallas_electricas);
-}
-
-async function fetchLiveNucs() {
-    try {
-        const res = await fetch('/api/data');
-        const data = await res.json();
-        const devices = Object.values(data);
-
-        devices.forEach(dev => {
-            if (!dev.lat || !dev.lng) return;
-
-            const statusClass = dev.status === 'offline' ? 'nuc-offline' : (dev.cpu_load_percent > 85 ? 'nuc-critical' : 'nuc-online');
-            const newPos = [dev.lat, dev.lng];
-
-            if (markerRegistry[dev.pc_name]) {
-                const marker = markerRegistry[dev.pc_name];
-                marker.setLatLng(newPos);
-                marker.setIcon(L.divIcon({
-                    className: 'custom-div-icon',
-                    html: `<div class="nuc-marker ${statusClass}"><i class="fa-solid fa-desktop"></i></div>`,
-                    iconSize: [28, 28]
-                }));
-            } else {
-                const icon = L.divIcon({
-                    className: 'custom-div-icon',
-                    html: `<div class="nuc-marker ${statusClass}"><i class="fa-solid fa-desktop"></i></div>`,
-                    iconSize: [28, 28]
-                });
-                const marker = L.marker(newPos, { icon: icon, pane: 'nucPane' })
-                    .bindPopup(`<b>${dev.pc_name}</b><br>IP: ${dev.public_ip}<br><button onclick="openIncidentModal('${dev.pc_name}')" style="width:100%; margin-top:5px;">Reportar</button>`);
-                
-                const unit = dev.unit || 'General';
-                if (layers[unit]) layers[unit].addLayer(marker);
-                markerRegistry[dev.pc_name] = marker;
-            }
-        });
-
-        updateKPIs(devices);
-        updateSidebars(devices);
-        generateAutoZones(devices);
-    } catch (e) { 
-        console.error("Error actualización NUCs", e); 
-    }
-}
-
-function generateAutoZones(devices) {
-    layers.autoRiskZones.clearLayers();
-    const issues = devices.filter(d => d.status === 'offline' || d.cpu_load_percent > 85);
-    const grouped = [];
-
-    issues.forEach(d => {
-        let zone = grouped.find(z => Math.abs(z.lat - d.lat) < 0.008 && Math.abs(z.lng - d.lng) < 0.008);
-        if (zone) zone.count++; 
-        else grouped.push({ lat: d.lat, lng: d.lng, count: 1 });
-    });
-
-    document.getElementById('kpi-zones').innerText = grouped.length;
-
-    if (currentMode === 'risk') {
-        grouped.forEach(z => {
-            L.circle([z.lat, z.lng], {
-                radius: z.count > 1 ? 800 : 400,
-                color: '#ef4444', 
-                fillColor: '#ef4444', 
-                fillOpacity: 0.2, 
-                weight: 1, 
-                pane: 'riskPane'
-            }).addTo(layers.autoRiskZones).bindTooltip(`Zona Afectada: ${z.count} equipo(s)`, { permanent: false });
-        });
-        map.addLayer(layers.autoRiskZones);
-    }
-}
-
-function updateKPIs(devices) {
-    document.getElementById('kpi-online').innerText = devices.filter(x => x.status !== 'offline').length;
-    document.getElementById('kpi-issues').innerText = devices.filter(x => x.status === 'offline').length;
-}
-
-function updateSidebars(devices) {
-    const cont = document.getElementById('dynamic-panels');
-    const groups = {};
-    devices.forEach(d => { 
-        const u = d.unit || 'General'; 
-        if(!groups[u]) groups[u] = []; 
-        groups[u].push(d); 
-    });
-    
-    cont.innerHTML = '';
-    Object.entries(groups).forEach(([u, devs]) => {
-        cont.innerHTML += `
-            <div class="control-card">
-                <div class="card-header" onclick="toggleCard(this)">
-                    ${u} (${devs.length})
-                    <i class="fa-solid fa-chevron-down text-slate-400"></i>
-                </div>
-                <div class="card-body hidden">
-                    ${devs.map(d => `
-                        <div class="p-2 border-b text-[10px] cursor-pointer hover:bg-slate-50 flex items-center gap-2" onclick="zoomToMarker('${d.pc_name}')">
-                            <div class="w-2 h-2 rounded-full ${d.status==='offline'?'bg-rose-500':'bg-emerald-500'}"></div>
-                            ${d.pc_name}
-                        </div>
-                    `).join('')}
-                </div>
+        listCont.innerHTML += `
+            <div class="site-item p-4 border-b hover:bg-slate-50 cursor-pointer flex justify-between items-center transition-all" 
+                 onclick="enfocarSitio('${name}', ${data.lat}, ${data.lng})">
+                <div class="text-[11px] font-bold text-slate-800">${name}</div>
+                <div class="text-xs font-black" style="color:${data.color}">${data.sat}%</div>
             </div>`;
     });
+
+    document.getElementById('count-red').innerText = kpis.red;
+    document.getElementById('count-yellow').innerText = kpis.yellow;
+    document.getElementById('count-green').innerText = kpis.green;
 }
 
-// Inicializar cuando el DOM esté listo
+function enfocarSitio(name, lat, lng) {
+    map.flyTo([lat, lng], 17);
+    markers[name].openPopup();
+}
+
+function filtrarSitios() {
+    const q = document.getElementById('site-search').value.toLowerCase();
+    const items = document.querySelectorAll('.site-item');
+    items.forEach(item => {
+        item.style.display = item.innerText.toLowerCase().includes(q) ? 'flex' : 'none';
+    });
+}
+
 document.addEventListener('DOMContentLoaded', init);
 </script>
-{% endblock %}
+</body>
+</html>
