@@ -1,29 +1,22 @@
-# requirements.txt - AÑADE supabase
-
-# Flask y dependencias básicas
+# Flask y Servidor Web
 flask>=3.0.0
 gunicorn>=20.1.0
 python-dotenv>=1.0.0
-
-# Flask extensions
 flask-cors>=4.0.0
 
-# Utilidades
-requests>=2.31.0
+# Discord Bot
+discord.py>=2.3.0
+aiohttp>=3.9.0
 
-# Supabase (CRÍTICO - tu app lo necesita)
+# Base de Datos (Supabase)
 supabase>=1.1.0
-
-# Pandas (si tu app lo usa, déjalo)
-pandas>=2.0.0
-
-# Otras dependencias que tu app pueda necesitar
-# aiohttp>=3.9.0  # Si usas async
-# nest-asyncio>=1.5.0  # Si usas async en Flask
-
-# Dependencias adicionales para supabase (opcional, pero recomendado)
 httpx>=0.24.0
 postgrest>=0.10.0
-realtime>=1.0.0
-gotrue>=1.0.0
-storage3>=0.6.0
+
+# Google Drive API (Resguardo de imágenes)
+google-api-python-client>=2.100.0
+google-auth-httplib2>=0.1.0
+google-auth-oauthlib>=1.1.0
+
+# Análisis de Datos
+pandas>=2.0.0
