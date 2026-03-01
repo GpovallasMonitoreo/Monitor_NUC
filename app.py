@@ -1,30 +1,27 @@
 import os
+import sys
+
+# 1. Forzar que Python vea la raíz del proyecto antes de importar nada
+base_path = os.path.dirname(os.path.abspath(__file__))
+if base_path not in sys.path:
+    sys.path.insert(0, base_path)
+
 from src import create_app
-from src.services.discord_service import DiscordBotService  # ⬅️ 1. Importamos el servicio
+from src.services.discord_service import DiscordBotService
 
 # Crear la aplicación usando la fábrica
 app = create_app()
 
 # ==============================================================================
-# 🤖 INICIO DE SERVICIOS EN SEGUNDO PLANO
+# 🤖 INICIO DEL BOT (Fuera del if __name__)
 # ==============================================================================
-# Al ponerlo aquí, garantizamos que el bot arranque en Render independientemente 
-# de cómo se ejecute el servidor web.
 try:
     discord_bot = DiscordBotService()
-    discord_bot.start()  # ⬅️ 2. Arrancamos el hilo del bot
+    discord_bot.start()
 except Exception as e:
     print(f"❌ Error crítico al iniciar el bot de Discord: {e}")
 
-# ==============================================================================
-# 🌍 ARRANQUE DEL SERVIDOR WEB
-# ==============================================================================
 if __name__ == '__main__':
-    # Detectar entorno
-    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    # Esto solo se usa para pruebas locales con 'python app.py'
     port = int(os.environ.get('PORT', 8000))
-    
-    print(f"🚀 Iniciando Argos System en puerto {port}")
-    # Nota: use_reloader=False es crucial cuando usas hilos en segundo plano
-    # para evitar que Flask inicie el bot dos veces durante el desarrollo.
-    app.run(host='0.0.0.0', port=port, debug=debug_mode, use_reloader=False)
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
