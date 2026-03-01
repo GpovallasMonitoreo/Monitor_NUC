@@ -1,15 +1,16 @@
+# src/services/discord_service.py
 import discord
 from discord.ext import commands
 import os
 import asyncio
 import logging
+import threading
 from threading import Thread
 
 logger = logging.getLogger(__name__)
 
 class DiscordBotService:
     def __init__(self):
-        # Render inyecta las variables de entorno automáticamente
         self.token = os.getenv("DISCORD_TOKEN")
         
         intents = discord.Intents.default()
@@ -18,7 +19,8 @@ class DiscordBotService:
         
         self.bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
         self.running = False
-        self._task = None
+        self.loop = None
+        self.thread = None
         self._setup_events()
 
     def _setup_events(self):
@@ -26,89 +28,93 @@ class DiscordBotService:
         async def on_ready():
             logger.info(f"✅ BOT DISCORD CONECTADO: {self.bot.user.name}")
             logger.info(f"🌐 Servidores: {len(self.bot.guilds)}")
+            
+            # Sincronizar comandos
             try:
                 logger.info("⏳ Sincronizando comandos con Discord...")
                 
-                # Sincronizar para un servidor específico (más rápido)
+                # Si hay servidores, sincronizar con el primero
                 if self.bot.guilds:
-                    guild = self.bot.guilds[0]  # Tu servidor principal
+                    guild = self.bot.guilds[0]
                     self.bot.tree.copy_global_to(guild=guild)
                     synced = await self.bot.tree.sync(guild=guild)
-                    logger.info(f"✅ Comandos sincronizados con servidor '{guild.name}': {len(synced)} comandos.")
+                    logger.info(f"✅ Comandos sincronizados con '{guild.name}': {len(synced)} comandos.")
                 
-                # También sincronizar globalmente
+                # Sincronización global
                 synced_global = await self.bot.tree.sync()
                 logger.info(f"✅ Sincronización global: {len(synced_global)} comandos.")
                 
-                # Listar comandos disponibles
+                # Listar comandos
                 commands_list = [cmd.name for cmd in self.bot.tree.get_commands()]
                 logger.info(f"📋 Comandos disponibles: {', '.join(commands_list)}")
                 
             except Exception as e:
-                logger.error(f"❌ Error al sincronizar comandos: {e}")
-                import traceback
-                traceback.print_exc()
+                logger.error(f"❌ Error sincronizando comandos: {e}")
+
+        @self.bot.event
+        async def on_command_error(ctx, error):
+            logger.error(f"Error en comando: {error}")
 
     async def _load_cogs(self):
         try:
-            # Verificar si el archivo existe
-            cog_path = "cogs/tickets.py"
-            if os.path.exists(cog_path):
-                logger.info(f"✅ Archivo {cog_path} encontrado")
-                await self.bot.load_extension("cogs.tickets")
-                logger.info("✅ Módulo 'cogs.tickets' cargado correctamente.")
-            else:
-                # Intentar con ruta alternativa
-                cog_path = "src/cogs/tickets.py"
-                if os.path.exists(cog_path):
-                    logger.info(f"✅ Archivo {cog_path} encontrado")
-                    await self.bot.load_extension("src.cogs.tickets")
-                else:
-                    logger.error(f"❌ No se encuentra el archivo tickets.py en ninguna ruta")
+            # Intentar cargar desde diferentes rutas
+            rutas_posibles = [
+                "cogs.tickets",
+                "src.cogs.tickets",
+                "app.cogs.tickets"
+            ]
+            
+            for ruta in rutas_posibles:
+                try:
+                    await self.bot.load_extension(ruta)
+                    logger.info(f"✅ Módulo '{ruta}' cargado correctamente.")
+                    return
+                except (commands.ExtensionNotFound, ImportError):
+                    continue
+                    
+            logger.error("❌ No se pudo cargar el módulo tickets.py")
                     
         except Exception as e:
             logger.error(f"❌ ERROR CARGANDO COGS: {e}")
-            import traceback
-            traceback.print_exc()
 
-    async def _run_bot(self):
-        if not self.token:
-            logger.error("❌ DISCORD_TOKEN no encontrado en las variables de entorno de Render.")
-            return
-            
-        try:
-            async with self.bot:
-                await self._load_cogs()
-                logger.info("🚀 Iniciando conexión con Discord...")
-                await self.bot.start(self.token)
-        except Exception as e:
-            logger.error(f"❌ Error de conexión con Discord: {e}")
-            self.running = False
-
-    def start(self):
-        """Inicia el bot como una tarea asíncrona en el loop principal."""
-        if not self.running:
-            self.running = True
+    def _run_bot_in_thread(self):
+        """Ejecuta el bot en un hilo con su propio loop de asyncio"""
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+        
+        async def start_bot():
+            if not self.token:
+                logger.error("❌ DISCORD_TOKEN no encontrado")
+                return
+                
             try:
-                # Obtener el loop de eventos actual o crear uno nuevo
-                try:
-                    loop = asyncio.get_running_loop()
-                except RuntimeError:
-                    # No hay loop corriendo, crear uno nuevo
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                
-                # Crear la tarea
-                self._task = asyncio.create_task(self._run_bot())
-                logger.info("🚀 Servicio de Discord iniciado como tarea asíncrona.")
-                
+                async with self.bot:
+                    await self._load_cogs()
+                    logger.info("🚀 Iniciando conexión con Discord...")
+                    await self.bot.start(self.token)
             except Exception as e:
-                logger.error(f"❌ Error al iniciar el bot: {e}")
+                logger.error(f"❌ Error en el bot: {e}")
                 self.running = False
 
+        try:
+            self.loop.run_until_complete(start_bot())
+        except Exception as e:
+            logger.error(f"❌ Error en el loop: {e}")
+
+    def start(self):
+        """Inicia el bot en un hilo separado (compatible con Flask)"""
+        if not self.running:
+            self.running = True
+            self.thread = Thread(target=self._run_bot_in_thread, daemon=True)
+            self.thread.start()
+            logger.info("🚀 Servicio de Discord iniciado en hilo separado.")
+
     def stop(self):
-        """Detiene el bot correctamente."""
-        if self.running and self._task:
+        """Detiene el bot correctamente"""
+        if self.running and self.loop:
             self.running = False
-            self._task.cancel()
+            # Cancelar tareas pendientes
+            for task in asyncio.all_tasks(self.loop):
+                task.cancel()
+            self.loop.call_soon_threadsafe(self.loop.stop)
             logger.info("🛑 Servicio de Discord detenido.")
