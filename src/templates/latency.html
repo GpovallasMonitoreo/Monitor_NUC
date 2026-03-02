@@ -1,116 +1,500 @@
-<!DOCTYPE html><html lang="es"><head>    <meta charset="UTF-8">    <meta name="viewport" content="width=device-width, initial-scale=1.0">    <title>Monitor de Operación Digital</title>        <script src="https://cdn.tailwindcss.com"></script>    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>    <script src="https://unpkg.com/lucide@latest"></script>        <style>        /* Estilos para scrollbars y estados activos */        ::-webkit-scrollbar { width: 8px; }        ::-webkit-scrollbar-track { background: #f1f5f9; }        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }                .nav-active { background-color: #4f46e5 !important; color: white !important; }        .nav-active i { color: white !important; }        #menu-inventory { transition: all 0.3s ease-in-out; }        .rotate-180 { transform: rotate(180deg); }    </style></head>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor de Operación Digital</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .nav-active { background-color: #4f46e5 !important; color: white !important; }
+        .nav-active i { color: white !important; }
+        #menu-inventory { transition: all 0.3s ease-in-out; }
+        .rotate-180 { transform: rotate(180deg); }
+    </style>
+</head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased h-screen flex overflow-hidden">
-    <aside class="w-64 bg-slate-900 text-white flex flex-col flex-shrink-0 transition-all duration-300 shadow-xl z-20">        <div class="h-16 flex items-center px-6 border-b border-slate-800 bg-slate-950">            <i data-lucide="activity" class="text-indigo-500 mr-3 w-6 h-6"></i>            <span class="font-bold text-xl tracking-tight">ARGOS</span>        </div>
-        <nav class="flex-1 overflow-y-auto py-6">            <ul class="space-y-2 px-3">                <li>                    <a href="/" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200">                        <i data-lucide="layout-grid" class="w-5 h-5 mr-3"></i>                        <span class="font-medium">Inicio</span>                    </a>                </li>
-                <li class="px-3 pt-4 pb-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">Operaciones</li>                                <li>                    <a href="/monitor" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200">                        <i data-lucide="activity" class="w-5 h-5 mr-3"></i>                        <span class="font-medium">Monitor</span>                    </a>                </li>                <li>                    <a href="/latency" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200">                        <i data-lucide="wifi" class="w-5 h-5 mr-3"></i>                        <span class="font-medium">Latencia</span>                    </a>                </li>                <li>                    <a href="/map" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200">                        <i data-lucide="map" class="w-5 h-5 mr-3"></i>                        <span class="font-medium">Mapa</span>                    </a>                </li>
-                <li class="px-3 pt-4 pb-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">Gestión</li>                <li>                    <button onclick="toggleMenu('inventory')" class="w-full flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200 outline-none">                        <i data-lucide="package" class="w-5 h-5 mr-3"></i>                        <span class="font-medium">Biblioteca</span>                        <i data-lucide="chevron-down" id="arrow-inventory" class="w-4 h-4 ml-auto transition-transform duration-300"></i>                    </button>                    <ul id="menu-inventory" class="hidden mt-1 space-y-1 px-2">                        <li><a href="/inventory/manuals" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="book-open" class="w-4 h-4 mr-3"></i> Manuales</a></li>                        <li><a href="/inventory/specs" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="file-text" class="w-4 h-4 mr-3"></i> Fichas</a></li>                        <li><a href="/inventory/logs" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="clipboard-list" class="w-4 h-4 mr-3"></i> Bitácora</a></li>                    </ul>                </li>
-                <li class="px-3 pt-4 pb-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">Módulos Externos</li>                <li>                    <a href="/techview" target="_blank" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200">                        <i data-lucide="dollar-sign" class="w-5 h-5 mr-3 group-hover:text-emerald-400"></i>                        <span class="font-medium">Costos de Operación Digital</span>                        <i data-lucide="external-link" class="w-4 h-4 ml-auto opacity-50"></i>                    </a>                </li>            </ul>        </nav>    </aside>
-    <div class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-50">        <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-8 shadow-sm z-10">            <h1 class="text-xl font-bold text-slate-800 tracking-tight">Centro de Monitoreo de Latencia y Hardware</h1>            <div class="flex items-center space-x-6">                <div class="flex items-center bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">                    <span class="relative flex h-2.5 w-2.5 mr-2">                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>                    </span>                    <span class="text-xs font-semibold text-slate-600">Sistema Operativo</span>                </div>            </div>        </header>
-        <main class="flex-1 overflow-y-auto p-8 scroll-smooth">            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script><script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-<style>    .card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 1.25rem; transition: all 0.2s; position: relative; overflow: hidden; }    .card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px -5px rgba(0,0,0,0.1); border-color: #6366f1; }    .latency-grid { display: flex; gap: 2px; margin-top: 8px; height: 10px; width: 100%; }    .latency-block { flex: 1; background-color: #e2e8f0; border-radius: 1px; height: 10px; }    .lb-low { background-color: #10b981; } .lb-med { background-color: #f59e0b; } .lb-high { background-color: #ef4444; }    .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }    .status-online { background: #10b981; box-shadow: 0 0 8px #10b981; } .status-offline { background: #ef4444; box-shadow: 0 0 8px #ef4444; } .status-warning { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }        /* ALERTA CRÍTICA (BLINKING) */    @keyframes blink-red { 0% { border-color: #ef4444; box-shadow: 0 0 5px #ef4444; } 50% { border-color: transparent; } 100% { border-color: #ef4444; box-shadow: 0 0 5px #ef4444; } }    .critical-alert { border: 2px solid #ef4444 !important; animation: blink-red 1.5s infinite; }        .latency-val-hidden { opacity: 0; }    .modal-tab { padding: 1rem; border-bottom: 2px solid transparent; font-weight: 600; color: #64748b; cursor: pointer; }    .modal-tab.active { color: #4f46e5; border-color: #4f46e5; background: #eff6ff; }    .timeline-item { position: relative; padding-left: 2rem; padding-bottom: 2rem; border-left: 2px solid #e2e8f0; }    .timeline-dot { position: absolute; left: -9px; top: 0; width: 16px; height: 16px; border-radius: 50%; background: white; border: 3px solid #cbd5e1; }</style>
-<div class="p-6 max-w-[1800px] mx-auto">    <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">        <div>            <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2"><i data-lucide="activity" class="text-indigo-600"></i> Centro de Activos Argos</h2>            <p class="text-slate-500 text-xs mt-1">Monitoreo de Sensores en Tiempo Real</p>        </div>        <div class="flex items-center gap-3">            <button onclick="exportAllToCSV()" class="bg-slate-900 hover:bg-black text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition shadow-lg">                <i data-lucide="download"></i> Exportar Sensores (CSV)            </button>            <select id="unit-filter" class="p-2.5 text-sm border border-slate-300 rounded-xl outline-none"><option value="all">Todas las Unidades</option></select>            <input type="search" id="search-bar" placeholder="Buscar PC..." class="p-2.5 text-sm border border-slate-300 rounded-xl w-64 outline-none">        </div>    </div>        <div id="loading-indicator" class="flex justify-center p-10"><i data-lucide="loader-2" class="animate-spin text-indigo-600 w-8 h-8"></i></div>    <div id="pc-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div></div>
-<div id="pc-modal-overlay" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm hidden items-center justify-center p-4 z-[999]">    <div id="pc-modal-container" class="bg-white w-full max-w-6xl h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden transform opacity-0 transition-all duration-300">        <div class="flex justify-between items-start p-6 border-b border-slate-100">            <div><h2 id="modal-pc-name" class="text-2xl font-black text-slate-800"></h2><div id="modal-status-line" class="mt-1 flex items-center gap-2 text-sm"></div></div>            <div class="flex gap-2">
-                <div id="drive-header-container" class="flex items-center gap-2 mr-2">
-                    <div id="drive-view-mode" class="hidden flex gap-2">
-                        <a id="btn-header-drive" href="#" target="_blank" class="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl text-sm font-bold border border-indigo-100 flex items-center gap-2 hover:bg-indigo-100 transition shadow-sm">
-                            <i data-lucide="file-text" class="w-4 h-4"></i> Ficha PDF
-                        </a>
-                        <button onclick="toggleHeaderDriveEdit()" class="bg-white text-slate-400 p-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition" title="Cambiar Link">
-                            <i data-lucide="edit-2" class="w-4 h-4"></i>
-                        </button>
+    <aside class="w-64 bg-slate-900 text-white flex flex-col flex-shrink-0 transition-all duration-300 shadow-xl z-20">
+        <div class="h-16 flex items-center px-6 border-b border-slate-800 bg-slate-950">
+            <i data-lucide="activity" class="text-indigo-500 mr-3 w-6 h-6"></i>
+            <span class="font-bold text-xl tracking-tight">ARGOS</span>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-6">
+            <ul class="space-y-2 px-3">
+                <li><a href="/" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200"><i data-lucide="layout-grid" class="w-5 h-5 mr-3"></i><span class="font-medium">Inicio</span></a></li>
+                <li class="px-3 pt-4 pb-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">Operaciones</li>
+                <li><a href="/monitor" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200"><i data-lucide="activity" class="w-5 h-5 mr-3"></i><span class="font-medium">Monitor</span></a></li>
+                <li><a href="/latency" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200"><i data-lucide="wifi" class="w-5 h-5 mr-3"></i><span class="font-medium">Latencia</span></a></li>
+                <li><a href="/map" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200"><i data-lucide="map" class="w-5 h-5 mr-3"></i><span class="font-medium">Mapa</span></a></li>
+                <li class="px-3 pt-4 pb-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">Gestión</li>
+                <li>
+                    <button onclick="toggleMenu('inventory')" class="w-full flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200 outline-none"><i data-lucide="package" class="w-5 h-5 mr-3"></i><span class="font-medium">Biblioteca</span><i data-lucide="chevron-down" id="arrow-inventory" class="w-4 h-4 ml-auto transition-transform duration-300"></i></button>
+                    <ul id="menu-inventory" class="hidden mt-1 space-y-1 px-2">
+                        <li><a href="/inventory/manuals" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="book-open" class="w-4 h-4 mr-3"></i> Manuales</a></li>
+                        <li><a href="/inventory/specs" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="file-text" class="w-4 h-4 mr-3"></i> Fichas</a></li>
+                        <li><a href="/inventory/logs" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="clipboard-list" class="w-4 h-4 mr-3"></i> Bitácora</a></li>
+                    </ul>
+                </li>
+                <li class="px-3 pt-4 pb-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">Módulos Externos</li>
+                <li><a href="/techview" target="_blank" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200"><i data-lucide="dollar-sign" class="w-5 h-5 mr-3 group-hover:text-emerald-400"></i><span class="font-medium">Costos de Operación Digital</span><i data-lucide="external-link" class="w-4 h-4 ml-auto opacity-50"></i></a></li>
+            </ul>
+        </nav>
+    </aside>
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-50">
+        <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-8 shadow-sm z-10">
+            <h1 class="text-xl font-bold text-slate-800 tracking-tight">Centro de Monitoreo de Latencia y Hardware</h1>
+            <div class="flex items-center space-x-6">
+                <div class="flex items-center bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
+                    <span class="relative flex h-2.5 w-2.5 mr-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                    </span>
+                    <span class="text-xs font-semibold text-slate-600">Sistema Operativo</span>
+                </div>
+            </div>
+        </header>
+        <main class="flex-1 overflow-y-auto p-8 scroll-smooth">
+            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+            <style>
+                .card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 1.25rem; transition: all 0.2s; position: relative; overflow: hidden; }
+                .card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px -5px rgba(0,0,0,0.1); border-color: #6366f1; }
+                .latency-grid { display: flex; gap: 2px; margin-top: 8px; height: 10px; width: 100%; }
+                .latency-block { flex: 1; background-color: #e2e8f0; border-radius: 1px; height: 10px; }
+                .lb-low { background-color: #10b981; } .lb-med { background-color: #f59e0b; } .lb-high { background-color: #ef4444; }
+                .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+                .status-online { background: #10b981; box-shadow: 0 0 8px #10b981; } .status-offline { background: #ef4444; box-shadow: 0 0 8px #ef4444; } .status-warning { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+                @keyframes blink-red { 0% { border-color: #ef4444; box-shadow: 0 0 5px #ef4444; } 50% { border-color: transparent; } 100% { border-color: #ef4444; box-shadow: 0 0 5px #ef4444; } }
+                .critical-alert { border: 2px solid #ef4444 !important; animation: blink-red 1.5s infinite; }
+                .latency-val-hidden { opacity: 0; }
+                .modal-tab { padding: 1rem; border-bottom: 2px solid transparent; font-weight: 600; color: #64748b; cursor: pointer; }
+                .modal-tab.active { color: #4f46e5; border-color: #4f46e5; background: #eff6ff; }
+                .timeline-item { position: relative; padding-left: 2rem; padding-bottom: 2rem; border-left: 2px solid #e2e8f0; }
+                .timeline-dot { position: absolute; left: -9px; top: 0; width: 16px; height: 16px; border-radius: 50%; background: white; border: 3px solid #cbd5e1; }
+            </style>
+            
+            <div class="p-6 max-w-[1800px] mx-auto">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2"><i data-lucide="activity" class="text-indigo-600"></i> Centro de Activos Argos</h2>
+                        <p class="text-slate-500 text-xs mt-1">Monitoreo de Sensores en Tiempo Real</p>
                     </div>
-                    <div id="drive-edit-mode" class="hidden flex items-center gap-1">
-                        <input type="url" id="input-header-drive" placeholder="Pegar URL de Ficha..." class="p-2 border border-slate-300 rounded-xl text-xs outline-none w-40 bg-slate-50 focus:bg-white transition">
-                        <button onclick="saveHeaderDriveLink()" class="bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-emerald-600 transition">Vincular</button>
-                        <button id="btn-cancel-header-drive" onclick="toggleHeaderDriveEdit()" class="text-slate-400 p-2 rounded-xl hover:bg-slate-100 transition hidden"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    <div class="flex items-center gap-3">
+                        <button onclick="exportAllToCSV()" class="bg-slate-900 hover:bg-black text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition shadow-lg"><i data-lucide="download"></i> Exportar Sensores (CSV)</button>
+                        <select id="unit-filter" class="p-2.5 text-sm border border-slate-300 rounded-xl outline-none"><option value="all">Todas las Unidades</option></select>
+                        <input type="search" id="search-bar" placeholder="Buscar PC..." class="p-2.5 text-sm border border-slate-300 rounded-xl w-64 outline-none">
                     </div>
                 </div>
-                <button onclick="closeModal()" class="text-slate-400 hover:bg-rose-50 hover:text-rose-500 p-2 rounded-xl transition"><i data-lucide="x" class="w-8 h-8"></i></button>            </div>        </div>                <div class="border-b border-slate-200 px-6"><nav class="flex space-x-1" id="modal-tabs"><button data-tab="general" class="modal-tab active">General</button><button data-tab="hardware" class="modal-tab">Sensores</button><button data-tab="predictive" class="modal-tab">Diagnóstico IA</button><button data-tab="specs" class="modal-tab">Ficha NUC & Bitácora</button></nav></div>                <div class="p-8 overflow-y-auto bg-slate-50 flex-1">            <div id="tab-general" class="tab-content">                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm"><h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">IDENTIDAD</h4><div class="space-y-3 text-sm"><div class="flex justify-between"><span class="text-slate-500">Unidad</span><span id="gen-unit" class="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded"></span></div><div class="flex justify-between"><span class="text-slate-500">IP</span><span id="gen-ip" class="font-mono text-slate-700 font-bold"></span></div><div class="flex justify-between"><span class="text-slate-500">Update</span><span id="gen-seen" class="text-slate-400 text-xs"></span></div></div></div>                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm"><h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">RECURSOS</h4><div class="space-y-4"><div><div class="flex justify-between text-xs mb-1 font-bold"><span>CPU</span><span id="gen-cpu-val"></span></div><div class="w-full bg-slate-100 rounded-full h-1.5"><div id="gen-cpu-bar" class="h-1.5 rounded-full transition-all"></div></div></div><div><div class="flex justify-between text-xs mb-1 font-bold"><span>RAM</span><span id="gen-ram-val"></span></div><div class="w-full bg-slate-100 rounded-full h-1.5"><div id="gen-ram-bar" class="h-1.5 rounded-full transition-all"></div></div></div></div></div>                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center"><div id="health-icon-container" class="mb-1"></div><span id="health-score-val" class="text-4xl font-black text-slate-800">--%</span><span class="text-[10px] font-bold text-slate-400 uppercase mt-1">Salud</span></div>                </div>                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm h-[320px]"><h4 class="text-[10px] font-bold text-slate-400 uppercase mb-2">LATENCIA HISTÓRICA</h4><canvas id="latency-chart"></canvas></div>            </div>                        <div id="tab-hardware" class="tab-content hidden"><div id="hardware-full-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div></div>                        <div id="tab-predictive" class="tab-content hidden">                <div class="flex justify-between items-center mb-6"><h3 class="text-lg font-bold">Argos IA Diagnosis</h3><button onclick="runManualAnalysis()" class="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-md"><i data-lucide="zap"></i> Analizar</button></div>                <div id="ai-loading" class="hidden p-10 text-center"><i data-lucide="loader-2" class="w-10 h-10 animate-spin mx-auto text-indigo-600"></i></div>                <div id="ai-results" class="grid grid-cols-1 md:grid-cols-2 gap-6">                    <div class="bg-white p-6 rounded-2xl border border-slate-200"><h4 class="font-bold text-rose-600 mb-4 flex items-center gap-2"><i data-lucide="alert-circle"></i>Hallazgos</h4><div id="ai-anomalies-list" class="space-y-3"></div></div>                    <div class="bg-white p-6 rounded-2xl border border-slate-200"><h4 class="font-bold text-emerald-600 mb-4 flex items-center gap-2"><i data-lucide="check-circle"></i>Acciones</h4><div id="ai-recommendations-list" class="space-y-3"></div></div>                </div>            </div>                        <div id="tab-specs" class="tab-content hidden">                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">                    <div class="lg:col-span-8 space-y-6">                        <div class="flex justify-between items-center"><h3 class="font-bold text-lg">Historial de Mantenimiento</h3><button onclick="toggleForm()" class="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2"><i data-lucide="plus"></i> Nueva Entrada</button></div>                                                <div id="log-form-container" class="hidden bg-white p-6 rounded-2xl border border-indigo-100 shadow-inner mb-6">                            <form id="new-log-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">                                <div class="md:col-span-2 bg-indigo-50 p-3 rounded-xl flex justify-between text-xs font-bold"><div>UBICACIÓN: <span id="form-loc"></span></div><div>UNIDAD: <span id="form-unit"></span></div></div>                                <div><label class="text-[10px] font-bold text-slate-400">SOLICITA</label><input type="text" id="log-req" class="w-full mt-1 p-2 border rounded-lg text-sm bg-slate-50" placeholder="Nombre"></div>                                <div><label class="text-[10px] font-bold text-slate-400">EJECUTA</label><input type="text" id="log-exec" class="w-full mt-1 p-2 border rounded-lg text-sm bg-slate-50" placeholder="Técnico"></div>                                <div><label class="text-[10px] font-bold text-slate-400">TIPO</label><select id="log-action" class="w-full mt-1 p-2 border rounded-lg text-sm bg-slate-50"><option value="Preventivo">Preventivo</option><option value="Correctivo">Correctivo</option><option value="Cambio HW">Cambio HW</option></select></div>                                <div><label class="text-[10px] font-bold text-slate-400">COMPONENTE</label><input type="text" id="log-what" class="w-full mt-1 p-2 border rounded-lg text-sm bg-slate-50" placeholder="Ej: SSD Kingston"></div>                                <div class="md:col-span-2"><label class="text-[10px] font-bold text-slate-400">DESCRIPCIÓN</label><textarea id="log-desc" rows="2" class="w-full mt-1 p-2 border rounded-lg text-sm bg-slate-50"></textarea></div>                                <div class="md:col-span-2 flex justify-end gap-2"><button type="button" onclick="toggleForm()" class="px-4 py-2 text-xs text-slate-400 font-bold">Cancelar</button><button type="button" onclick="saveLog()" class="px-6 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-md">Guardar en Bitácora</button></div>                            </form>                        </div>                        <div id="history-timeline" class="space-y-2"></div>                    </div>                    <div class="lg:col-span-4"><div class="bg-white p-6 rounded-2xl border border-slate-200 sticky top-0"><h3 class="font-black text-slate-800 mb-4 pb-2 border-b flex items-center gap-2 text-sm"><i data-lucide="cpu" class="w-4 h-4 text-indigo-500"></i> ESPECIFICACIONES NUC</h3><div id="specs-summary" class="space-y-2"></div></div></div>                </div>            </div>        </div>    </div></div>
-<script>document.addEventListener('DOMContentLoaded', () => {    const API_URL = '/api/data';    let pcDataStore = {};    let currentPc = null;    let charts = { latency: null };
-    lucide.createIcons();
-    async function updateData() {        try {            const res = await fetch(API_URL);            const rawData = await res.json();            const devices = Object.values(rawData);            devices.forEach(dev => {                if(!dev.unit) dev.unit = "CENTRO";                if(!dev.latency_history) dev.latency_history = Array(12).fill(0);                dev.latency_history.push(dev.latency_ms || dev.latency || 0);                if(dev.latency_history.length > 12) dev.latency_history.shift();                pcDataStore[dev.pc_name] = dev;            });            renderGrid();            updateFilters(devices);            if(currentPc && pcDataStore[currentPc]) refreshModalData(false);            document.getElementById('loading-indicator').style.display = 'none';        } catch (e) { console.error(e); }    }
-    function renderGrid() {        const container = document.getElementById('pc-cards-container');        const search = document.getElementById('search-bar').value.toLowerCase();        const unitFilter = document.getElementById('unit-filter').value;        container.innerHTML = '';
-        Object.values(pcDataStore).forEach(pc => {            if(unitFilter !== 'all' && pc.unit !== unitFilter) return;            if(!pc.pc_name.toLowerCase().includes(search) && !(pc.public_ip||'').includes(search)) return;
-            const lat = pc.latency_ms || pc.latency || 0;            const isCritical = lat > 100 || (pc.cpu_load_percent||0) > 70 || (pc.ram_percent||0) > 85;            const statusClass = pc.status === 'offline' ? 'status-offline' : (isCritical ? 'status-warning' : 'status-online');            const alertClass = (isCritical && pc.status !== 'offline') ? 'critical-alert' : '';
-            let blocks = '';            pc.latency_history.forEach(v => {                let color = v > 0 ? (v > 100 ? 'lb-high' : (v > 50 ? 'lb-med' : 'lb-low')) : 'bg-slate-100';                blocks += `<div class="latency-block ${color}" title="${v}ms"></div>`;            });
-            const card = document.createElement('div');            card.className = `card cursor-pointer ${alertClass}`;            card.onclick = () => openModal(pc.pc_name);            card.innerHTML = `                <div class="flex justify-between items-start mb-3"><div class="truncate"><h3 class="font-black text-slate-800 text-sm truncate">${pc.pc_name}</h3><span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">${pc.unit}</span></div><div class="status-dot ${statusClass}"></div></div>                <div class="flex justify-between items-end"><span class="text-2xl font-black text-slate-700 ${lat === 0 ? 'latency-val-hidden' : ''}">${lat}<small class="text-[10px] ml-0.5 text-slate-400">ms</small></span><div class="text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">CPU ${Math.round(pc.cpu_load_percent||0)}%</div></div>                <div class="latency-grid">${blocks}</div>`;            container.appendChild(card);        });    }
-    // EXPORTACIÓN COMPLETA (TODOS LOS SENSORES)    window.exportAllToCSV = () => {        let csv = "\uFEFFPC_Name,Unidad,IP,Status,Ultima_Conexion,CPU_%,RAM_%,Categoria,Sensor,Valor\n";        const now = new Date().toLocaleString();        Object.values(pcDataStore).forEach(pc => {            const rowBase = `"${pc.pc_name}","${pc.unit}","${pc.public_ip || ''}","${pc.status}","${now}","${pc.cpu_load_percent}%","${pc.ram_percent}%"`;            if (pc.extended_sensors) {                for (const [cat, sensors] of Object.entries(pc.extended_sensors)) {                    sensors.forEach(s => { csv += `${rowBase},"${cat}","${s.nombre || s.tipo}","${s.valor}"\n`; });                }            } else { csv += `${rowBase},"N/A","N/A","N/A"\n`; }        });        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });        const link = document.createElement("a");        link.href = URL.createObjectURL(blob);        link.download = `Reporte_Sensores_Argos_${new Date().getTime()}.csv`;        link.click();    };
-    // BITÁCORA - GUARDAR    window.saveLog = async () => {        const pc = pcDataStore[currentPc];        const log = {            pc_name: pc.pc_name,            req: document.getElementById('log-req').value || "S/N",            exec: document.getElementById('log-exec').value || "S/N",            action: document.getElementById('log-action').value,            what: document.getElementById('log-what').value || "General",            desc: document.getElementById('log-desc').value || "Sin descripción"        };        try {            const res = await fetch('/api/history/add', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(log) });            if(res.ok) { alert("Guardado en Bitácora"); updateHistoryTab(pc); toggleForm(); document.getElementById('new-log-form').reset(); }        } catch(e) { alert("Error al guardar"); }    };
-    window.toggleForm = () => document.getElementById('log-form-container').classList.toggle('hidden');
-    // IA - DIAGNÓSTICO    window.runManualAnalysis = () => {        const pc = pcDataStore[currentPc];        const loader = document.getElementById('ai-loading');        const results = document.getElementById('ai-results');        loader.classList.remove('hidden'); results.classList.add('hidden');        setTimeout(() => {            loader.classList.add('hidden'); results.classList.remove('hidden');            const listA = document.getElementById('ai-anomalies-list');            const listR = document.getElementById('ai-recommendations-list');            listA.innerHTML = ''; listR.innerHTML = '';            let a = [], r = [];            const lat = pc.latency_ms || pc.latency || 0;            if(lat > 50) { a.push("Inestabilidad de Red ("+lat+"ms)"); r.push("Verificar switch de unidad."); }            if(pc.cpu_load_percent > 70) { a.push("Uso de CPU elevado"); r.push("Revisar procesos en host."); }            if(pc.ram_percent > 85) { a.push("Memoria saturada"); r.push("Sugerido reinicio de NUC."); }            if(a.length === 0) { a.push("Sin anomalías"); r.push("Monitoreo preventivo."); }            a.forEach(i => listA.innerHTML += `<div class="p-2 bg-rose-50 text-rose-700 text-xs rounded-lg border border-rose-100 font-bold">⚠️ ${i}</div>`);            r.forEach(i => listR.innerHTML += `<div class="p-2 bg-emerald-50 text-emerald-700 text-xs rounded-lg border border-emerald-100 font-medium">✅ ${i}</div>`);            lucide.createIcons();        }, 800);    };
-    // PDF FICHA (Generación Automática en caso de necesitarse)    window.exportToPDF = () => {        const { jsPDF } = window.jspdf;        const doc = new jsPDF();        const pc = pcDataStore[currentPc];        doc.setFontSize(18); doc.text(`Ficha de Activo: ${pc.pc_name}`, 15, 20);        doc.setFontSize(10); doc.text(`Generado: ${new Date().toLocaleString()}`, 15, 28);        const data = [];        if(pc.extended_sensors) {            for(const [cat, sensors] of Object.entries(pc.extended_sensors)) {                sensors.forEach(s => data.push([cat, s.nombre || s.tipo, s.valor]));            }        }        doc.autoTable({ startY: 35, head: [['Categoría', 'Sensor', 'Valor']], body: data });        doc.save(`Ficha_${pc.pc_name}.pdf`);    };
-
-    // --- LÓGICA DEL BOTÓN SUPERIOR (FICHA PDF DINÁMICA) ---
-    window.renderHeaderDriveUI = (pc) => {
-        const viewMode = document.getElementById('drive-view-mode');
-        const editMode = document.getElementById('drive-edit-mode');
-        const btnDrive = document.getElementById('btn-header-drive');
-        const btnCancel = document.getElementById('btn-cancel-header-drive');
-        const inputUrl = document.getElementById('input-header-drive');
-
-        if (pc.drive_link && pc.drive_link.trim() !== '') {
-            viewMode.classList.remove('hidden');
-            editMode.classList.add('hidden');
-            btnDrive.href = pc.drive_link;
-            inputUrl.value = pc.drive_link;
-            btnCancel.classList.remove('hidden');
-        } else {
-            viewMode.classList.add('hidden');
-            editMode.classList.remove('hidden');
-            inputUrl.value = '';
-            btnCancel.classList.add('hidden');
-        }
-    };
-
-    window.toggleHeaderDriveEdit = () => {
-        const viewMode = document.getElementById('drive-view-mode');
-        const editMode = document.getElementById('drive-edit-mode');
-        
-        if (viewMode.classList.contains('hidden')) {
-            viewMode.classList.remove('hidden');
-            editMode.classList.add('hidden');
-        } else {
-            viewMode.classList.add('hidden');
-            editMode.classList.remove('hidden');
-            document.getElementById('input-header-drive').focus();
-        }
-    };
-
-    window.saveHeaderDriveLink = async () => {
-        const pc = pcDataStore[currentPc];
-        const newUrl = document.getElementById('input-header-drive').value.trim();
-        
-        if (newUrl !== '' && !newUrl.startsWith('http')) {
-            alert('Por favor ingresa un link válido (http:// o https://)');
-            return;
-        }
-
-        try {
-            const res = await fetch('/api/pc/update-link', { 
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify({ pc_name: pc.pc_name, drive_link: newUrl }) 
-            });
+                
+                <div id="loading-indicator" class="flex justify-center p-10"><i data-lucide="loader-2" class="animate-spin text-indigo-600 w-8 h-8"></i></div>
+                <div id="pc-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+            </div>
             
-            pc.drive_link = newUrl; 
-            window.renderHeaderDriveUI(pc);  
-            lucide.createIcons();
-        } catch(e) { 
-            pc.drive_link = newUrl;
-            window.renderHeaderDriveUI(pc);
-            lucide.createIcons();
-        }
-    };
+            <div id="pc-modal-overlay" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm hidden items-center justify-center p-4 z-[999]">
+                <div id="pc-modal-container" class="bg-white w-full max-w-6xl h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden transform opacity-0 transition-all duration-300">
+                    <div class="flex justify-between items-start p-6 border-b border-slate-100">
+                        <div><h2 id="modal-pc-name" class="text-2xl font-black text-slate-800"></h2><div id="modal-status-line" class="mt-1 flex items-center gap-2 text-sm"></div></div>
+                        <div class="flex gap-2">
+                            
+                            <div id="drive-header-container" class="flex items-center gap-2 mr-2">
+                                <div id="drive-view-mode" class="hidden flex gap-2">
+                                    <a id="btn-header-drive" href="#" target="_blank" class="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl text-sm font-bold border border-indigo-100 flex items-center gap-2 hover:bg-indigo-100 transition shadow-sm">
+                                        <i data-lucide="file-text" class="w-4 h-4"></i> Ficha PDF
+                                    </a>
+                                    <button onclick="toggleHeaderDriveEdit()" class="bg-white text-slate-400 p-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition" title="Cambiar Link">
+                                        <i data-lucide="edit-2" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                                <div id="drive-edit-mode" class="hidden flex items-center gap-1">
+                                    <input type="url" id="input-header-drive" placeholder="Pegar URL de Ficha..." class="p-2 border border-slate-300 rounded-xl text-xs outline-none w-40 bg-slate-50 focus:bg-white transition">
+                                    <button onclick="saveHeaderDriveLink()" class="bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-emerald-600 transition">Vincular</button>
+                                    <button id="btn-cancel-header-drive" onclick="toggleHeaderDriveEdit()" class="text-slate-400 p-2 rounded-xl hover:bg-slate-100 transition hidden"><i data-lucide="x" class="w-4 h-4"></i></button>
+                                </div>
+                            </div>
+                            <button onclick="closeModal()" class="text-slate-400 hover:bg-rose-50 hover:text-rose-500 p-2 rounded-xl transition"><i data-lucide="x" class="w-8 h-8"></i></button>
+                        </div>
+                    </div>
+                    
+                    <div class="border-b border-slate-200 px-6"><nav class="flex space-x-1" id="modal-tabs"><button data-tab="general" class="modal-tab active">General</button><button data-tab="hardware" class="modal-tab">Sensores</button><button data-tab="predictive" class="modal-tab">Diagnóstico IA</button><button data-tab="specs" class="modal-tab">Ficha NUC & Bitácora</button></nav></div>
+                    <div class="p-8 overflow-y-auto bg-slate-50 flex-1">
+                        <div id="tab-general" class="tab-content">
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm"><h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">IDENTIDAD</h4><div class="space-y-3 text-sm"><div class="flex justify-between"><span class="text-slate-500">Unidad</span><span id="gen-unit" class="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded"></span></div><div class="flex justify-between"><span class="text-slate-500">IP</span><span id="gen-ip" class="font-mono text-slate-700 font-bold"></span></div><div class="flex justify-between"><span class="text-slate-500">Update</span><span id="gen-seen" class="text-slate-400 text-xs"></span></div></div></div>
+                                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm"><h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">RECURSOS</h4><div class="space-y-4"><div><div class="flex justify-between text-xs mb-1 font-bold"><span>CPU</span><span id="gen-cpu-val"></span></div><div class="w-full bg-slate-100 rounded-full h-1.5"><div id="gen-cpu-bar" class="h-1.5 rounded-full transition-all"></div></div></div><div><div class="flex justify-between text-xs mb-1 font-bold"><span>RAM</span><span id="gen-ram-val"></span></div><div class="w-full bg-slate-100 rounded-full h-1.5"><div id="gen-ram-bar" class="h-1.5 rounded-full transition-all"></div></div></div></div></div>
+                                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center"><div id="health-icon-container" class="mb-1"></div><span id="health-score-val" class="text-4xl font-black text-slate-800">--%</span><span class="text-[10px] font-bold text-slate-400 uppercase mt-1">Salud</span></div>
+                            </div>
+                            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm h-[320px]"><h4 class="text-[10px] font-bold text-slate-400 uppercase mb-2">LATENCIA HISTÓRICA</h4><canvas id="latency-chart"></canvas></div>
+                        </div>
+                        
+                        <div id="tab-hardware" class="tab-content hidden"><div id="hardware-full-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div></div>
+                        
+                        <div id="tab-predictive" class="tab-content hidden">
+                            <div class="flex justify-between items-center mb-6"><h3 class="text-lg font-bold">Argos IA Diagnosis</h3><button onclick="runManualAnalysis()" class="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-md"><i data-lucide="zap"></i> Analizar</button></div>
+                            <div id="ai-loading" class="hidden p-10 text-center"><i data-lucide="loader-2" class="w-10 h-10 animate-spin mx-auto text-indigo-600"></i></div>
+                            <div id="ai-results" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="bg-white p-6 rounded-2xl border border-slate-200"><h4 class="font-bold text-rose-600 mb-4 flex items-center gap-2"><i data-lucide="alert-circle"></i>Hallazgos</h4><div id="ai-anomalies-list" class="space-y-3"></div></div>
+                                <div class="bg-white p-6 rounded-2xl border border-slate-200"><h4 class="font-bold text-emerald-600 mb-4 flex items-center gap-2"><i data-lucide="check-circle"></i>Acciones</h4><div id="ai-recommendations-list" class="space-y-3"></div></div>
+                            </div>
+                        </div>
+                        
+                        <div id="tab-specs" class="tab-content hidden">
+                            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                                <div class="lg:col-span-8 space-y-6">
+                                    <div class="flex justify-between items-center"><h3 class="font-bold text-lg">Historial de Mantenimiento</h3><button onclick="toggleForm()" class="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2"><i data-lucide="plus"></i> Nueva Entrada</button></div>
+                                    <div id="log-form-container" class="hidden bg-white p-6 rounded-2xl border border-indigo-100 shadow-inner mb-6">
+                                        <form id="new-log-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div class="md:col-span-2 bg-indigo-50 p-3 rounded-xl flex justify-between text-xs font-bold"><div>UBICACIÓN: <span id="form-loc"></span></div><div>UNIDAD: <span id="form-unit"></span></div></div>
+                                            <div><label class="text-[10px] font-bold text-slate-400">SOLICITA</label><input type="text" id="log-req" class="w-full mt-1 p-2 border rounded-lg text-sm bg-slate-50" placeholder="Nombre"></div>
+                                            <div><label class="text-[10px] font-bold text-slate-400">EJECUTA</label><input type="text" id="log-exec" class="w-full mt-1 p-2 border rounded-lg text-sm bg-slate-50" placeholder="Técnico"></div>
+                                            <div><label class="text-[10px] font-bold text-slate-400">TIPO</label><select id="log-action" class="w-full mt-1 p-2 border rounded-lg text-sm bg-slate-50"><option value="Preventivo">Preventivo</option><option value="Correctivo">Correctivo</option><option value="Cambio HW">Cambio HW</option></select></div>
+                                            <div><label class="text-[10px] font-bold text-slate-400">COMPONENTE</label><input type="text" id="log-what" class="w-full mt-1 p-2 border rounded-lg text-sm bg-slate-50" placeholder="Ej: SSD Kingston"></div>
+                                            <div class="md:col-span-2"><label class="text-[10px] font-bold text-slate-400">DESCRIPCIÓN</label><textarea id="log-desc" rows="2" class="w-full mt-1 p-2 border rounded-lg text-sm bg-slate-50"></textarea></div>
+                                            <div class="md:col-span-2 flex justify-end gap-2"><button type="button" onclick="toggleForm()" class="px-4 py-2 text-xs text-slate-400 font-bold">Cancelar</button><button type="button" onclick="saveLog()" class="px-6 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-md">Guardar en Bitácora</button></div>
+                                        </form>
+                                    </div>
+                                    <div id="history-timeline" class="space-y-2"></div>
+                                </div>
+                                <div class="lg:col-span-4"><div class="bg-white p-6 rounded-2xl border border-slate-200 sticky top-0"><h3 class="font-black text-slate-800 mb-4 pb-2 border-b flex items-center gap-2 text-sm"><i data-lucide="cpu" class="w-4 h-4 text-indigo-500"></i> ESPECIFICACIONES NUC</h3><div id="specs-summary" class="space-y-2"></div></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-    // FICHA NUC FILTRADA (Captura Intel, Kingston, Celeron, SSD)    function updateSpecsSummary(pc) {        const container = document.getElementById('specs-summary');        container.innerHTML = '';        const keywords = ['intel', 'celeron', 'kingston', 'memory', 'physical', 'disk', 'ssd', 'cpu', 'motherboard', 'bios', 'generic'];        if(pc.extended_sensors) {            for(const [cat, sensors] of Object.entries(pc.extended_sensors)) {                if(keywords.some(k => cat.toLowerCase().includes(k) || (sensors[0] && sensors[0].nombre.toLowerCase().includes(k)))) {                    sensors.forEach(s => {                        container.innerHTML += `<div class="flex justify-between border-b border-slate-50 py-1.5 items-center"><span class="text-slate-500 text-[10px] font-medium leading-tight pr-4">${s.nombre || s.tipo}</span><span class="font-bold text-slate-800 text-[10px] text-right">${s.valor}</span></div>`;                    });                }            }        }    }
-    window.openModal = (name) => {        currentPc = name;        const mod = document.getElementById('pc-modal-container');        const overlay = document.getElementById('pc-modal-overlay');        overlay.classList.replace('hidden', 'flex');        setTimeout(() => mod.classList.replace('opacity-0', 'opacity-100'), 50);        switchTab('general');        refreshModalData(true);    };
-    window.closeModal = () => {        const mod = document.getElementById('pc-modal-container');        mod.classList.replace('opacity-100', 'opacity-0');        setTimeout(() => document.getElementById('pc-modal-overlay').classList.replace('flex', 'hidden'), 300);        currentPc = null;    };
-    function refreshModalData(fullUpdate) {        const pc = pcDataStore[currentPc];        if(!pc) return;        document.getElementById('modal-pc-name').textContent = pc.pc_name;        document.getElementById('modal-status-line').innerHTML = `<span class="px-2 py-0.5 rounded text-xs font-black ${pc.status==='online'?'bg-emerald-500 text-white':'bg-rose-500 text-white'}">${pc.status ? pc.status.toUpperCase() : 'OK'}</span> | <span class="font-mono text-slate-400 font-bold">${pc.public_ip || '-'}</span>`;        document.getElementById('gen-unit').textContent = pc.unit;        document.getElementById('gen-ip').textContent = pc.public_ip || '-';        document.getElementById('gen-seen').textContent = "Sinc: " + new Date().toLocaleTimeString();        document.getElementById('gen-cpu-val').textContent = Math.round(pc.cpu_load_percent||0)+'%';        document.getElementById('gen-cpu-bar').style.width = (pc.cpu_load_percent||0)+'%';        document.getElementById('gen-cpu-bar').className = `h-1.5 rounded-full ${(pc.cpu_load_percent||0) > 70 ? 'bg-rose-500' : 'bg-indigo-500'}`;        document.getElementById('gen-ram-val').textContent = Math.round(pc.ram_percent||0)+'%';        document.getElementById('gen-ram-bar').style.width = (pc.ram_percent||0)+'%';        document.getElementById('gen-ram-bar').className = `h-1.5 rounded-full ${(pc.ram_percent||0) > 80 ? 'bg-rose-500' : 'bg-purple-500'}`;        const health = pc.status === 'offline' ? 0 : Math.max(0, 100 - (pc.cpu_load_percent*0.4) - (pc.ram_percent*0.3)).toFixed(0);        document.getElementById('health-score-val').textContent = health + '%';        document.getElementById('health-icon-container').innerHTML = `<i data-lucide="${health > 70 ? 'check-circle' : 'alert-triangle'}" class="w-8 h-8 ${health > 70 ? 'text-emerald-500' : 'text-amber-500'}"></i>`;        if(fullUpdate) {            updateLatencyChart(pc.latency_history);            updateHardwareGrid(pc);            updateSpecsSummary(pc);            updateHistoryTab(pc);            document.getElementById('form-loc').textContent = pc.pc_name;            document.getElementById('form-unit').textContent = pc.unit;            window.renderHeaderDriveUI(pc);        }        lucide.createIcons();    }
-    function updateHardwareGrid(pc) {        const grid = document.getElementById('hardware-full-grid');        grid.innerHTML = '';        if(pc.extended_sensors) {            for(const [cat, sensors] of Object.entries(pc.extended_sensors)) {                sensors.forEach(s => { grid.innerHTML += `<div class="bg-white p-3 rounded-xl border border-slate-100 shadow-sm"><span class="block text-[8px] font-black text-slate-400 uppercase">${cat}</span><span class="block text-slate-600 text-[10px] truncate">${s.nombre||s.tipo}</span><span class="block text-xs font-mono font-black text-indigo-700">${s.valor}</span></div>`; });            }        }    }
-    async function updateHistoryTab(pc) {        const timeline = document.getElementById('history-timeline');        timeline.innerHTML = '<div class="text-xs text-slate-400 p-2">Cargando bitácora...</div>';        try {            const res = await fetch('/api/history/all');            const data = await res.json();            const filtered = data.filter(l => l.pc_name === pc.pc_name);            timeline.innerHTML = filtered.length ? '' : '<p class="text-slate-400 italic text-xs">Sin registros previos.</p>';            filtered.reverse().forEach(log => {                timeline.innerHTML += `<div class="timeline-item"><div class="timeline-dot"></div><div class="text-[9px] text-slate-400">${new Date(log.timestamp).toLocaleString()}</div><div class="font-bold text-slate-700 text-xs">${log.action} - ${log.what}</div><p class="text-[10px] text-slate-500 bg-white p-2 rounded-lg border border-slate-100 mt-1">${log.desc}</p></div>`;            });        } catch(e) { timeline.innerHTML = 'Error de conexión.'; }    }
-    function updateLatencyChart(data) {        if (charts.latency) charts.latency.destroy();        const ctx = document.getElementById('latency-chart').getContext('2d');        charts.latency = new Chart(ctx, { type: 'line', data: { labels: Array(data.length).fill(''), datasets: [{ data: data, borderColor: '#4f46e5', borderWidth: 2, tension: 0.4, pointRadius: 0, fill: true, backgroundColor: 'rgba(79, 70, 229, 0.05)' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: {legend:false}, scales: {x:{display:false}, y:{beginAtZero:true, grid:{color:'#f1f5f9'}}} } });    }
-    window.switchTab = (id) => { document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden')); document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active')); document.getElementById('tab-' + id).classList.remove('hidden'); document.querySelector(`[data-tab="${id}"]`).classList.add('active'); };    function updateFilters(devices) { const select = document.getElementById('unit-filter'); if(select.options.length > 1) return; [...new Set(devices.map(d => d.unit))].forEach(u => select.appendChild(new Option(u, u))); }    document.getElementById('modal-tabs').onclick = (e) => { const btn = e.target.closest('.modal-tab'); if(btn) switchTab(btn.dataset.tab); };    document.getElementById('search-bar').oninput = renderGrid;    document.getElementById('unit-filter').onchange = renderGrid;        setInterval(updateData, 4000);    updateData();});</script>
-        </main>    </div>
-    <script>        lucide.createIcons();
-        // Función para colapsar menús        function toggleMenu(id) {            const menu = document.getElementById('menu-'+id);            const arrow = document.getElementById('arrow-'+id);            if(menu && arrow) {                menu.classList.toggle('hidden');                arrow.classList.toggle('rotate-180');            }        }
-        // Lógica para resaltar el menú activo automáticamente        document.addEventListener("DOMContentLoaded", function() {            const currentPath = window.location.pathname;            document.querySelectorAll('.nav-link').forEach(link => {                const href = link.getAttribute('href');                // Si la URL coincide exactamente                if (href === currentPath) {                    link.classList.add('nav-active');                                        // Si estamos dentro de biblioteca, abrir el menú                    if (currentPath.startsWith('/inventory')) {                        toggleMenu('inventory');                    }                }            });        });    </script>    </body></html>
+            <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const API_URL = '/api/data';
+                let pcDataStore = {};
+                let currentPc = null;
+                let charts = { latency: null };
+
+                lucide.createIcons();
+
+                async function updateData() {
+                    try {
+                        const res = await fetch(API_URL);
+                        const rawData = await res.json();
+                        const devices = Object.values(rawData);
+                        devices.forEach(dev => {
+                            if(!dev.unit) dev.unit = "CENTRO";
+                            if(!dev.latency_history) dev.latency_history = Array(12).fill(0);
+                            dev.latency_history.push(dev.latency_ms || dev.latency || 0);
+                            if(dev.latency_history.length > 12) dev.latency_history.shift();
+                            pcDataStore[dev.pc_name] = dev;
+                        });
+                        renderGrid();
+                        updateFilters(devices);
+                        if(currentPc && pcDataStore[currentPc]) refreshModalData(false);
+                        document.getElementById('loading-indicator').style.display = 'none';
+                    } catch (e) { console.error(e); }
+                }
+
+                function renderGrid() {
+                    const container = document.getElementById('pc-cards-container');
+                    const search = document.getElementById('search-bar').value.toLowerCase();
+                    const unitFilter = document.getElementById('unit-filter').value;
+                    container.innerHTML = '';
+
+                    Object.values(pcDataStore).forEach(pc => {
+                        if(unitFilter !== 'all' && pc.unit !== unitFilter) return;
+                        if(!pc.pc_name.toLowerCase().includes(search) && !(pc.public_ip||'').includes(search)) return;
+
+                        const lat = pc.latency_ms || pc.latency || 0;
+                        const isCritical = lat > 100 || (pc.cpu_load_percent||0) > 70 || (pc.ram_percent||0) > 85;
+                        const statusClass = pc.status === 'offline' ? 'status-offline' : (isCritical ? 'status-warning' : 'status-online');
+                        const alertClass = (isCritical && pc.status !== 'offline') ? 'critical-alert' : '';
+
+                        let blocks = '';
+                        pc.latency_history.forEach(v => {
+                            let color = v > 0 ? (v > 100 ? 'lb-high' : (v > 50 ? 'lb-med' : 'lb-low')) : 'bg-slate-100';
+                            blocks += `<div class="latency-block ${color}" title="${v}ms"></div>`;
+                        });
+
+                        const card = document.createElement('div');
+                        card.className = `card cursor-pointer ${alertClass}`;
+                        card.onclick = () => openModal(pc.pc_name);
+                        card.innerHTML = `
+                            <div class="flex justify-between items-start mb-3"><div class="truncate"><h3 class="font-black text-slate-800 text-sm truncate">${pc.pc_name}</h3><span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">${pc.unit}</span></div><div class="status-dot ${statusClass}"></div></div>
+                            <div class="flex justify-between items-end"><span class="text-2xl font-black text-slate-700 ${lat === 0 ? 'latency-val-hidden' : ''}">${lat}<small class="text-[10px] ml-0.5 text-slate-400">ms</small></span><div class="text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">CPU ${Math.round(pc.cpu_load_percent||0)}%</div></div>
+                            <div class="latency-grid">${blocks}</div>`;
+                        container.appendChild(card);
+                    });
+                }
+
+                /* EXPORTACIÓN COMPLETA (TODOS LOS SENSORES) */
+                window.exportAllToCSV = () => {
+                    let csv = "\uFEFFPC_Name,Unidad,IP,Status,Ultima_Conexion,CPU_%,RAM_%,Categoria,Sensor,Valor\n";
+                    const now = new Date().toLocaleString();
+                    Object.values(pcDataStore).forEach(pc => {
+                        const rowBase = `"${pc.pc_name}","${pc.unit}","${pc.public_ip || ''}","${pc.status}","${now}","${pc.cpu_load_percent}%","${pc.ram_percent}%"`;
+                        if (pc.extended_sensors) {
+                            for (const [cat, sensors] of Object.entries(pc.extended_sensors)) {
+                                sensors.forEach(s => { csv += `${rowBase},"${cat}","${s.nombre || s.tipo}","${s.valor}"\n`; });
+                            }
+                        } else { csv += `${rowBase},"N/A","N/A","N/A"\n`; }
+                    });
+                    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement("a");
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `Reporte_Sensores_Argos_${new Date().getTime()}.csv`;
+                    link.click();
+                };
+
+                /* BITÁCORA - GUARDAR */
+                window.saveLog = async () => {
+                    const pc = pcDataStore[currentPc];
+                    const log = {
+                        pc_name: pc.pc_name,
+                        req: document.getElementById('log-req').value || "S/N",
+                        exec: document.getElementById('log-exec').value || "S/N",
+                        action: document.getElementById('log-action').value,
+                        what: document.getElementById('log-what').value || "General",
+                        desc: document.getElementById('log-desc').value || "Sin descripción"
+                    };
+                    try {
+                        const res = await fetch('/api/history/add', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(log) });
+                        if(res.ok) { alert("Guardado en Bitácora"); updateHistoryTab(pc); toggleForm(); document.getElementById('new-log-form').reset(); }
+                    } catch(e) { alert("Error al guardar"); }
+                };
+
+                window.toggleForm = () => document.getElementById('log-form-container').classList.toggle('hidden');
+
+                /* IA - DIAGNÓSTICO */
+                window.runManualAnalysis = () => {
+                    const pc = pcDataStore[currentPc];
+                    const loader = document.getElementById('ai-loading');
+                    const results = document.getElementById('ai-results');
+                    loader.classList.remove('hidden'); results.classList.add('hidden');
+                    setTimeout(() => {
+                        loader.classList.add('hidden'); results.classList.remove('hidden');
+                        const listA = document.getElementById('ai-anomalies-list');
+                        const listR = document.getElementById('ai-recommendations-list');
+                        listA.innerHTML = ''; listR.innerHTML = '';
+                        let a = [], r = [];
+                        const lat = pc.latency_ms || pc.latency || 0;
+                        if(lat > 50) { a.push("Inestabilidad de Red ("+lat+"ms)"); r.push("Verificar switch de unidad."); }
+                        if(pc.cpu_load_percent > 70) { a.push("Uso de CPU elevado"); r.push("Revisar procesos en host."); }
+                        if(pc.ram_percent > 85) { a.push("Memoria saturada"); r.push("Sugerido reinicio de NUC."); }
+                        if(a.length === 0) { a.push("Sin anomalías"); r.push("Monitoreo preventivo."); }
+                        a.forEach(i => listA.innerHTML += `<div class="p-2 bg-rose-50 text-rose-700 text-xs rounded-lg border border-rose-100 font-bold">⚠️ ${i}</div>`);
+                        r.forEach(i => listR.innerHTML += `<div class="p-2 bg-emerald-50 text-emerald-700 text-xs rounded-lg border border-emerald-100 font-medium">✅ ${i}</div>`);
+                        lucide.createIcons();
+                    }, 800);
+                };
+
+                /* PDF FICHA (Generación Automática en caso de necesitarse) */
+                window.exportToPDF = () => {
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF();
+                    const pc = pcDataStore[currentPc];
+                    doc.setFontSize(18); doc.text(`Ficha de Activo: ${pc.pc_name}`, 15, 20);
+                    doc.setFontSize(10); doc.text(`Generado: ${new Date().toLocaleString()}`, 15, 28);
+                    const data = [];
+                    if(pc.extended_sensors) {
+                        for(const [cat, sensors] of Object.entries(pc.extended_sensors)) {
+                            sensors.forEach(s => data.push([cat, s.nombre || s.tipo, s.valor]));
+                        }
+                    }
+                    doc.autoTable({ startY: 35, head: [['Categoría', 'Sensor', 'Valor']], body: data });
+                    doc.save(`Ficha_${pc.pc_name}.pdf`);
+                };
+
+                /* LÓGICA DEL BOTÓN SUPERIOR (FICHA PDF DINÁMICA) */
+                window.renderHeaderDriveUI = (pc) => {
+                    const viewMode = document.getElementById('drive-view-mode');
+                    const editMode = document.getElementById('drive-edit-mode');
+                    const btnDrive = document.getElementById('btn-header-drive');
+                    const btnCancel = document.getElementById('btn-cancel-header-drive');
+                    const inputUrl = document.getElementById('input-header-drive');
+
+                    if (pc.drive_link && pc.drive_link.trim() !== '') {
+                        viewMode.classList.remove('hidden');
+                        editMode.classList.add('hidden');
+                        btnDrive.href = pc.drive_link;
+                        inputUrl.value = pc.drive_link;
+                        btnCancel.classList.remove('hidden');
+                    } else {
+                        viewMode.classList.add('hidden');
+                        editMode.classList.remove('hidden');
+                        inputUrl.value = '';
+                        btnCancel.classList.add('hidden');
+                    }
+                };
+
+                window.toggleHeaderDriveEdit = () => {
+                    const viewMode = document.getElementById('drive-view-mode');
+                    const editMode = document.getElementById('drive-edit-mode');
+                    
+                    if (viewMode.classList.contains('hidden')) {
+                        viewMode.classList.remove('hidden');
+                        editMode.classList.add('hidden');
+                    } else {
+                        viewMode.classList.add('hidden');
+                        editMode.classList.remove('hidden');
+                        document.getElementById('input-header-drive').focus();
+                    }
+                };
+
+                window.saveHeaderDriveLink = async () => {
+                    const pc = pcDataStore[currentPc];
+                    const newUrl = document.getElementById('input-header-drive').value.trim();
+                    
+                    if (newUrl !== '' && !newUrl.startsWith('http')) {
+                        alert('Por favor ingresa un link válido (http:// o https://)');
+                        return;
+                    }
+
+                    try {
+                        const res = await fetch('/api/pc/update-link', { 
+                            method: 'POST', 
+                            headers: {'Content-Type': 'application/json'}, 
+                            body: JSON.stringify({ pc_name: pc.pc_name, drive_link: newUrl }) 
+                        });
+                        
+                        pc.drive_link = newUrl; 
+                        window.renderHeaderDriveUI(pc);  
+                        lucide.createIcons();
+                    } catch(e) { 
+                        pc.drive_link = newUrl;
+                        window.renderHeaderDriveUI(pc);
+                        lucide.createIcons();
+                    }
+                };
+
+                /* FICHA NUC FILTRADA */
+                function updateSpecsSummary(pc) {
+                    const container = document.getElementById('specs-summary');
+                    container.innerHTML = '';
+                    const keywords = ['intel', 'celeron', 'kingston', 'memory', 'physical', 'disk', 'ssd', 'cpu', 'motherboard', 'bios', 'generic'];
+                    if(pc.extended_sensors) {
+                        for(const [cat, sensors] of Object.entries(pc.extended_sensors)) {
+                            if(keywords.some(k => cat.toLowerCase().includes(k) || (sensors[0] && sensors[0].nombre.toLowerCase().includes(k)))) {
+                                sensors.forEach(s => {
+                                    container.innerHTML += `<div class="flex justify-between border-b border-slate-50 py-1.5 items-center"><span class="text-slate-500 text-[10px] font-medium leading-tight pr-4">${s.nombre || s.tipo}</span><span class="font-bold text-slate-800 text-[10px] text-right">${s.valor}</span></div>`;
+                                });
+                            }
+                        }
+                    }
+                }
+
+                window.openModal = (name) => {
+                    currentPc = name;
+                    const mod = document.getElementById('pc-modal-container');
+                    const overlay = document.getElementById('pc-modal-overlay');
+                    overlay.classList.replace('hidden', 'flex');
+                    setTimeout(() => mod.classList.replace('opacity-0', 'opacity-100'), 50);
+                    switchTab('general');
+                    refreshModalData(true);
+                };
+
+                window.closeModal = () => {
+                    const mod = document.getElementById('pc-modal-container');
+                    mod.classList.replace('opacity-100', 'opacity-0');
+                    setTimeout(() => document.getElementById('pc-modal-overlay').classList.replace('flex', 'hidden'), 300);
+                    currentPc = null;
+                };
+
+                function refreshModalData(fullUpdate) {
+                    const pc = pcDataStore[currentPc];
+                    if(!pc) return;
+                    document.getElementById('modal-pc-name').textContent = pc.pc_name;
+                    document.getElementById('modal-status-line').innerHTML = `<span class="px-2 py-0.5 rounded text-xs font-black ${pc.status==='online'?'bg-emerald-500 text-white':'bg-rose-500 text-white'}">${pc.status ? pc.status.toUpperCase() : 'OK'}</span> | <span class="font-mono text-slate-400 font-bold">${pc.public_ip || '-'}</span>`;
+                    document.getElementById('gen-unit').textContent = pc.unit;
+                    document.getElementById('gen-ip').textContent = pc.public_ip || '-';
+                    document.getElementById('gen-seen').textContent = "Sinc: " + new Date().toLocaleTimeString();
+                    document.getElementById('gen-cpu-val').textContent = Math.round(pc.cpu_load_percent||0)+'%';
+                    document.getElementById('gen-cpu-bar').style.width = (pc.cpu_load_percent||0)+'%';
+                    document.getElementById('gen-cpu-bar').className = `h-1.5 rounded-full ${(pc.cpu_load_percent||0) > 70 ? 'bg-rose-500' : 'bg-indigo-500'}`;
+                    document.getElementById('gen-ram-val').textContent = Math.round(pc.ram_percent||0)+'%';
+                    document.getElementById('gen-ram-bar').style.width = (pc.ram_percent||0)+'%';
+                    document.getElementById('gen-ram-bar').className = `h-1.5 rounded-full ${(pc.ram_percent||0) > 80 ? 'bg-rose-500' : 'bg-purple-500'}`;
+                    const health = pc.status === 'offline' ? 0 : Math.max(0, 100 - (pc.cpu_load_percent*0.4) - (pc.ram_percent*0.3)).toFixed(0);
+                    document.getElementById('health-score-val').textContent = health + '%';
+                    document.getElementById('health-icon-container').innerHTML = `<i data-lucide="${health > 70 ? 'check-circle' : 'alert-triangle'}" class="w-8 h-8 ${health > 70 ? 'text-emerald-500' : 'text-amber-500'}"></i>`;
+                    
+                    if(fullUpdate) {
+                        updateLatencyChart(pc.latency_history);
+                        updateHardwareGrid(pc);
+                        updateSpecsSummary(pc);
+                        updateHistoryTab(pc);
+                        document.getElementById('form-loc').textContent = pc.pc_name;
+                        document.getElementById('form-unit').textContent = pc.unit;
+                        window.renderHeaderDriveUI(pc);
+                    }
+                    lucide.createIcons();
+                }
+
+                function updateHardwareGrid(pc) {
+                    const grid = document.getElementById('hardware-full-grid');
+                    grid.innerHTML = '';
+                    if(pc.extended_sensors) {
+                        for(const [cat, sensors] of Object.entries(pc.extended_sensors)) {
+                            sensors.forEach(s => { grid.innerHTML += `<div class="bg-white p-3 rounded-xl border border-slate-100 shadow-sm"><span class="block text-[8px] font-black text-slate-400 uppercase">${cat}</span><span class="block text-slate-600 text-[10px] truncate">${s.nombre||s.tipo}</span><span class="block text-xs font-mono font-black text-indigo-700">${s.valor}</span></div>`; });
+                        }
+                    }
+                }
+
+                async function updateHistoryTab(pc) {
+                    const timeline = document.getElementById('history-timeline');
+                    timeline.innerHTML = '<div class="text-xs text-slate-400 p-2">Cargando bitácora...</div>';
+                    try {
+                        const res = await fetch('/api/history/all');
+                        const data = await res.json();
+                        const filtered = data.filter(l => l.pc_name === pc.pc_name);
+                        timeline.innerHTML = filtered.length ? '' : '<p class="text-slate-400 italic text-xs">Sin registros previos.</p>';
+                        filtered.reverse().forEach(log => {
+                            timeline.innerHTML += `<div class="timeline-item"><div class="timeline-dot"></div><div class="text-[9px] text-slate-400">${new Date(log.timestamp).toLocaleString()}</div><div class="font-bold text-slate-700 text-xs">${log.action} - ${log.what}</div><p class="text-[10px] text-slate-500 bg-white p-2 rounded-lg border border-slate-100 mt-1">${log.desc}</p></div>`;
+                        });
+                    } catch(e) { timeline.innerHTML = 'Error de conexión.'; }
+                }
+
+                function updateLatencyChart(data) {
+                    if (charts.latency) charts.latency.destroy();
+                    const ctx = document.getElementById('latency-chart').getContext('2d');
+                    charts.latency = new Chart(ctx, { type: 'line', data: { labels: Array(data.length).fill(''), datasets: [{ data: data, borderColor: '#4f46e5', borderWidth: 2, tension: 0.4, pointRadius: 0, fill: true, backgroundColor: 'rgba(79, 70, 229, 0.05)' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: {legend:false}, scales: {x:{display:false}, y:{beginAtZero:true, grid:{color:'#f1f5f9'}}} } });
+                }
+
+                window.switchTab = (id) => { document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden')); document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active')); document.getElementById('tab-' + id).classList.remove('hidden'); document.querySelector(`[data-tab="${id}"]`).classList.add('active'); };
+                function updateFilters(devices) { const select = document.getElementById('unit-filter'); if(select.options.length > 1) return; [...new Set(devices.map(d => d.unit))].forEach(u => select.appendChild(new Option(u, u))); }
+                document.getElementById('modal-tabs').onclick = (e) => { const btn = e.target.closest('.modal-tab'); if(btn) switchTab(btn.dataset.tab); };
+                document.getElementById('search-bar').oninput = renderGrid;
+                document.getElementById('unit-filter').onchange = renderGrid;
+                
+                setInterval(updateData, 4000);
+                updateData();
+            });
+            </script>
+        </main>
+    </div>
+    <script>
+        lucide.createIcons();
+        function toggleMenu(id) {
+            const menu = document.getElementById('menu-'+id);
+            const arrow = document.getElementById('arrow-'+id);
+            if(menu && arrow) {
+                menu.classList.toggle('hidden');
+                arrow.classList.toggle('rotate-180');
+            }
+        }
+        document.addEventListener("DOMContentLoaded", function() {
+            const currentPath = window.location.pathname;
+            document.querySelectorAll('.nav-link').forEach(link => {
+                const href = link.getAttribute('href');
+                if (href === currentPath) {
+                    link.classList.add('nav-active');
+                    if (currentPath.startsWith('/inventory')) {
+                        toggleMenu('inventory');
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
