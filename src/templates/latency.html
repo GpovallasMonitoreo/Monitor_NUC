@@ -7,6 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <style>
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
@@ -114,7 +116,7 @@
                                 </div>
                                 <div id="drive-edit-mode" class="hidden flex items-center gap-1">
                                     <input type="url" id="input-header-drive" placeholder="Pegar URL de Ficha..." class="p-2 border border-slate-300 rounded-xl text-xs outline-none w-40 bg-slate-50 focus:bg-white transition">
-                                    <button onclick="saveHeaderDriveLink()" class="bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-emerald-600 transition">Vincular</button>
+                                    <button id="btn-save-header" onclick="saveHeaderDriveLink()" class="bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-emerald-600 transition">Vincular</button>
                                     <button id="btn-cancel-header-drive" onclick="toggleHeaderDriveEdit()" class="text-slate-400 p-2 rounded-xl hover:bg-slate-100 transition hidden"><i data-lucide="x" class="w-4 h-4"></i></button>
                                 </div>
                             </div>
@@ -170,6 +172,17 @@
 
             <script>
             document.addEventListener('DOMContentLoaded', () => {
+                
+                /* =========================================
+                   CONFIGURACIÓN DE SUPABASE
+                   ¡REEMPLAZA ESTAS DOS LÍNEAS CON TUS DATOS! 
+                   ========================================= */
+                const SUPABASE_URL = 'https://TU_URL_DE_SUPABASE.supabase.co';
+                const SUPABASE_ANON_KEY = 'TU_ANON_KEY';
+                
+                const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                let savedDriveLinks = {}; // Diccionario para almacenar los links desde la base de datos
+
                 const API_URL = '/api/data';
                 let pcDataStore = {};
                 let currentPc = null;
@@ -177,18 +190,45 @@
 
                 lucide.createIcons();
 
+                /* Extrae todos los links guardados al cargar la página */
+                async function fetchDriveLinksFromDB() {
+                    try {
+                        const { data, error } = await supabase
+                            .from('devices')
+                            .select('device_id, drive_link');
+                        
+                        if (!error && data) {
+                            data.forEach(item => {
+                                if(item.drive_link) {
+                                    savedDriveLinks[item.device_id] = item.drive_link;
+                                }
+                            });
+                        }
+                    } catch (e) {
+                        console.error("Error cargando links de Drive: ", e);
+                    }
+                }
+
                 async function updateData() {
                     try {
                         const res = await fetch(API_URL);
                         const rawData = await res.json();
                         const devices = Object.values(rawData);
+                        
                         devices.forEach(dev => {
                             if(!dev.unit) dev.unit = "CENTRO";
                             if(!dev.latency_history) dev.latency_history = Array(12).fill(0);
                             dev.latency_history.push(dev.latency_ms || dev.latency || 0);
                             if(dev.latency_history.length > 12) dev.latency_history.shift();
+                            
+                            // INYECCIÓN: Si Supabase tiene un link para este device_id, asignarlo
+                            if (savedDriveLinks[dev.pc_name]) {
+                                dev.drive_link = savedDriveLinks[dev.pc_name];
+                            }
+
                             pcDataStore[dev.pc_name] = dev;
                         });
+                        
                         renderGrid();
                         updateFilters(devices);
                         if(currentPc && pcDataStore[currentPc]) refreshModalData(false);
@@ -228,7 +268,7 @@
                     });
                 }
 
-                /* EXPORTACIÓN COMPLETA (TODOS LOS SENSORES) */
+                /* EXPORTACIÓN COMPLETA */
                 window.exportAllToCSV = () => {
                     let csv = "\uFEFFPC_Name,Unidad,IP,Status,Ultima_Conexion,CPU_%,RAM_%,Categoria,Sensor,Valor\n";
                     const now = new Date().toLocaleString();
@@ -289,23 +329,6 @@
                     }, 800);
                 };
 
-                /* PDF FICHA (Generación Automática en caso de necesitarse) */
-                window.exportToPDF = () => {
-                    const { jsPDF } = window.jspdf;
-                    const doc = new jsPDF();
-                    const pc = pcDataStore[currentPc];
-                    doc.setFontSize(18); doc.text(`Ficha de Activo: ${pc.pc_name}`, 15, 20);
-                    doc.setFontSize(10); doc.text(`Generado: ${new Date().toLocaleString()}`, 15, 28);
-                    const data = [];
-                    if(pc.extended_sensors) {
-                        for(const [cat, sensors] of Object.entries(pc.extended_sensors)) {
-                            sensors.forEach(s => data.push([cat, s.nombre || s.tipo, s.valor]));
-                        }
-                    }
-                    doc.autoTable({ startY: 35, head: [['Categoría', 'Sensor', 'Valor']], body: data });
-                    doc.save(`Ficha_${pc.pc_name}.pdf`);
-                };
-
                 /* LÓGICA DEL BOTÓN SUPERIOR (FICHA PDF DINÁMICA) */
                 window.renderHeaderDriveUI = (pc) => {
                     const viewMode = document.getElementById('drive-view-mode');
@@ -342,29 +365,41 @@
                     }
                 };
 
+                /* GUARDADO EN SUPABASE */
                 window.saveHeaderDriveLink = async () => {
                     const pc = pcDataStore[currentPc];
                     const newUrl = document.getElementById('input-header-drive').value.trim();
+                    const btnSave = document.getElementById('btn-save-header');
                     
                     if (newUrl !== '' && !newUrl.startsWith('http')) {
                         alert('Por favor ingresa un link válido (http:// o https://)');
                         return;
                     }
 
+                    // Prevenir múltiples clics
+                    btnSave.innerText = 'Vinculando...';
+                    btnSave.disabled = true;
+
                     try {
-                        const res = await fetch('/api/pc/update-link', { 
-                            method: 'POST', 
-                            headers: {'Content-Type': 'application/json'}, 
-                            body: JSON.stringify({ pc_name: pc.pc_name, drive_link: newUrl }) 
-                        });
+                        const { error } = await supabase
+                            .from('devices')
+                            .update({ drive_link: newUrl })
+                            .eq('device_id', pc.pc_name);
+
+                        if (error) throw error;
                         
+                        // Guardado Exitoso
                         pc.drive_link = newUrl; 
+                        savedDriveLinks[pc.pc_name] = newUrl; // Guardar en el diccionario local
                         window.renderHeaderDriveUI(pc);  
                         lucide.createIcons();
+
                     } catch(e) { 
-                        pc.drive_link = newUrl;
-                        window.renderHeaderDriveUI(pc);
-                        lucide.createIcons();
+                        console.error("Error conectando a Supabase:", e);
+                        alert("Error al vincular. Verifica tu conexión a Supabase.");
+                    } finally {
+                        btnSave.innerText = 'Vincular';
+                        btnSave.disabled = false;
                     }
                 };
 
@@ -467,8 +502,13 @@
                 document.getElementById('search-bar').oninput = renderGrid;
                 document.getElementById('unit-filter').onchange = renderGrid;
                 
-                setInterval(updateData, 4000);
-                updateData();
+                // INICIO DE LA APP
+                // 1. Cargamos primero los links de Drive
+                fetchDriveLinksFromDB().then(() => {
+                    // 2. Iniciamos el ciclo regular
+                    updateData();
+                    setInterval(updateData, 4000);
+                });
             });
             </script>
         </main>
