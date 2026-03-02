@@ -117,10 +117,11 @@
 document.addEventListener('DOMContentLoaded', () => {
     
     /* =========================================
-       CONFIGURACIÓN DE SUPABASE INYECTADA
+       CONFIGURACIÓN DE SUPABASE (MANUAL)
        ========================================= */
-    const SUPABASE_URL = '{{ SUPABASE_URL }}';
-    const SUPABASE_ANON_KEY = '{{ SUPABASE_KEY }}';
+    // Pega aquí tus credenciales reales, asegurándote de que estén entre las comillas simples.
+    const SUPABASE_URL = 'https://jxwdncxtnhmrufvdxuti.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4d2RuY3h0bmhtcnVmdmR4dXRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0MjA3NDksImV4cCI6MjA4Mzk5Njc0OX0.06T9SH2b0b28aZEmG3MMLsGBWdqA0cq7uNjss-nzNh4';
     
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     let savedDriveLinks = {}; 
