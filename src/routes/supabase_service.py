@@ -55,8 +55,24 @@ class TechViewService:
         logger.debug(f"buffer_metric: {args}, {kwargs}")
         return True
     
-    def upsert_device_status(self, device_id, status, location=None):
+    # --- MODIFICADO: Ahora soporta diccionarios completos y el formato antiguo ---
+    def upsert_device_status(self, *args, **kwargs):
         try:
+            # 1. Si recibe un paquete completo (diccionario) desde api.py
+            if len(args) == 1 and isinstance(args[0], dict):
+                data = args[0].copy()
+                clean_id = clean_device_id(data.get("device_id"))
+                data["device_id"] = clean_id
+                data["updated_at"] = datetime.now().isoformat()
+                
+                self.client.table("devices").upsert(data, on_conflict="device_id").execute()
+                return True
+
+            # 2. Si recibe el formato original (device_id, status, location)
+            device_id = args[0] if len(args) > 0 else kwargs.get("device_id")
+            status = args[1] if len(args) > 1 else kwargs.get("status")
+            location = args[2] if len(args) > 2 else kwargs.get("location")
+
             clean_id = clean_device_id(device_id)
             data = {
                 "device_id": clean_id,
