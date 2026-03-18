@@ -7,6 +7,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<!-- NUEVO: Librerías gratuitas de mapas (Leaflet) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
     .card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 1.25rem; transition: all 0.2s; position: relative; overflow: hidden; }
@@ -23,6 +26,8 @@
     .modal-tab.active { color: #4f46e5; border-color: #4f46e5; background: #eff6ff; }
     .timeline-item { position: relative; padding-left: 2rem; padding-bottom: 2rem; border-left: 2px solid #e2e8f0; }
     .timeline-dot { position: absolute; left: -9px; top: 0; width: 16px; height: 16px; border-radius: 50%; background: white; border: 3px solid #cbd5e1; }
+    /* Ajuste para que el mapa se vea bien dentro del modal */
+    #map-container { z-index: 10; }
 </style>
 
 <div class="p-6 max-w-[1800px] mx-auto">
@@ -70,20 +75,17 @@
         <div class="border-b border-slate-200 px-6"><nav class="flex space-x-1" id="modal-tabs"><button data-tab="general" class="modal-tab active">General</button><button data-tab="hardware" class="modal-tab">Sensores</button><button data-tab="predictive" class="modal-tab">Diagnóstico IA</button><button data-tab="specs" class="modal-tab">Ficha NUC & Bitácora</button></nav></div>
         <div class="p-8 overflow-y-auto bg-slate-50 flex-1">
             <div id="tab-general" class="tab-content">
-                <!-- MODIFICADO: Grid de 3 a 4 columnas para agregar Conectividad -->
                 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
                     <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm"><h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">IDENTIDAD</h4>
                         <div class="space-y-3 text-sm">
                             <div class="flex justify-between"><span class="text-slate-500">Unidad</span><span id="gen-unit" class="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded"></span></div>
                             <div class="flex justify-between"><span class="text-slate-500">IP</span><span id="gen-ip" class="font-mono text-slate-700 font-bold truncate max-w-[100px]" title=""></span></div>
-                            <!-- NUEVO: Ubicación e ISP -->
                             <div class="flex justify-between"><span class="text-slate-500">Ubicación</span><span id="gen-location" class="font-bold text-slate-700 text-[11px] text-right truncate max-w-[110px]" title=""></span></div>
                             <div class="flex justify-between"><span class="text-slate-500">ISP</span><span id="gen-isp" class="font-bold text-slate-700 text-[11px] text-right truncate max-w-[110px]" title=""></span></div>
                         </div>
                     </div>
                     <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm"><h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">RECURSOS</h4><div class="space-y-4"><div><div class="flex justify-between text-xs mb-1 font-bold"><span>CPU</span><span id="gen-cpu-val"></span></div><div class="w-full bg-slate-100 rounded-full h-1.5"><div id="gen-cpu-bar" class="h-1.5 rounded-full transition-all"></div></div></div><div><div class="flex justify-between text-xs mb-1 font-bold"><span>RAM</span><span id="gen-ram-val"></span></div><div class="w-full bg-slate-100 rounded-full h-1.5"><div id="gen-ram-bar" class="h-1.5 rounded-full transition-all"></div></div></div></div></div>
                     
-                    <!-- NUEVO: Tarjeta de Conectividad para Tracking de Caídas -->
                     <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                         <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">CONECTIVIDAD</h4>
                         <div class="space-y-3 text-sm">
@@ -96,7 +98,15 @@
 
                     <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center"><div id="health-icon-container" class="mb-1"></div><span id="health-score-val" class="text-4xl font-black text-slate-800">--%</span><span class="text-[10px] font-bold text-slate-400 uppercase mt-1">Salud</span></div>
                 </div>
-                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm h-[320px]"><h4 class="text-[10px] font-bold text-slate-400 uppercase mb-2">LATENCIA HISTÓRICA</h4><canvas id="latency-chart"></canvas></div>
+                
+                <!-- MODIFICADO: Agregamos el Mapa compartiendo el espacio con la Latencia -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm h-[320px]"><h4 class="text-[10px] font-bold text-slate-400 uppercase mb-2">LATENCIA HISTÓRICA</h4><canvas id="latency-chart"></canvas></div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm h-[320px] flex flex-col"><h4 class="text-[10px] font-bold text-slate-400 uppercase mb-2">UBICACIÓN GPS (EN VIVO)</h4>
+                        <!-- Contenedor del Mapa -->
+                        <div id="map-container" class="flex-1 rounded-xl w-full h-full border border-slate-200"></div>
+                    </div>
+                </div>
             </div>
             
             <div id="tab-hardware" class="tab-content hidden"><div id="hardware-full-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div></div>
@@ -138,7 +148,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     
     /* =========================================
-       CONFIGURACIÓN DE SUPABASE
+       CONFIGURACIÓN DE SUPABASE Y VARIABLES
        ========================================= */
     const SUPABASE_URL = 'https://jxwdncxtnhmrufvdxuti.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4d2RuY3h0bmhtcnVmdmR4dXRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0MjA3NDksImV4cCI6MjA4Mzk5Njc0OX0.06T9SH2b0b28aZEmG3MMLsGBWdqA0cq7uNjss-nzNh4';
@@ -150,12 +160,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let pcDataStore = {};
     let currentPc = null;
     let charts = { latency: null };
+    
+    // NUEVO: Variables del mapa
+    let pcMap = null;
+    let pcMarker = null;
 
     lucide.createIcons();
 
-    /* =========================================
-       FETCH CON TRIM
-       ========================================= */
     async function fetchDriveLinksFromDB() {
         try {
             const { data, error } = await supabase
@@ -174,9 +185,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /* =========================================
-       NUEVO UPDATE DATA: ESTADO ESTRICTO Y CAÍDAS
-       ========================================= */
     async function updateData() {
         try {
             const res = await fetch(API_URL);
@@ -199,13 +207,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     dev.drive_link = pcDataStore[dev.pc_name].drive_link;
                 }
 
-                // --- NUEVA LÓGICA DE DESCONEXIÓN Y ESTADO ESTRICTO ---
                 const prev = pcDataStore[dev.pc_name];
                 if (prev) {
                     dev.disconnect_count = prev.disconnect_count || 0;
                     dev.last_disconnect_time = prev.last_disconnect_time || null;
                     
-                    // Comprobar si el NUC mandó un timestamp nuevo o se quedó congelado
                     if (dev.timestamp !== prev.timestamp) {
                         dev.local_last_seen = nowLocal;
                     } else {
@@ -217,12 +223,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     dev.local_last_seen = nowLocal;
                 }
 
-                // FORZAR OFFLINE: Si pasaron 90 segundos (3 ciclos) sin actualización nueva, forzar caída
                 if (nowLocal - dev.local_last_seen > 90000) {
                     dev.status = 'offline';
                 }
 
-                // DETECTAR CAÍDA EXACTA: Transición de online a offline
                 if (prev && prev.status === 'online' && dev.status === 'offline') {
                     dev.disconnect_count += 1;
                     dev.last_disconnect_time = nowLocal;
@@ -270,7 +274,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    /* EXPORTACIÓN COMPLETA */
     window.exportAllToCSV = () => {
         let csv = "\uFEFFPC_Name,Unidad,IP,Ubicacion,ISP,Status,Ultima_Conexion,CPU_%,RAM_%,Categoria,Sensor,Valor\n";
         const now = new Date().toLocaleString();
@@ -289,7 +292,6 @@ document.addEventListener('DOMContentLoaded', () => {
         link.click();
     };
 
-    /* BITÁCORA - GUARDAR */
     window.saveLog = async () => {
         const pc = pcDataStore[currentPc];
         const log = {
@@ -308,7 +310,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.toggleForm = () => document.getElementById('log-form-container').classList.toggle('hidden');
 
-    /* IA - DIAGNÓSTICO */
     window.runManualAnalysis = () => {
         const pc = pcDataStore[currentPc];
         const loader = document.getElementById('ai-loading');
@@ -332,7 +333,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 800);
     };
 
-    /* LÓGICA DEL BOTÓN SUPERIOR (FICHA PDF DINÁMICA) */
     window.renderHeaderDriveUI = (pc) => {
         const viewMode = document.getElementById('drive-view-mode');
         const editMode = document.getElementById('drive-edit-mode');
@@ -368,7 +368,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    /* GUARDADO CON UPSERT Y TRIM */
     window.saveHeaderDriveLink = async () => {
         const pc = pcDataStore[currentPc];
         const newUrl = document.getElementById('input-header-drive').value.trim();
@@ -409,7 +408,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    /* FICHA NUC FILTRADA */
     function updateSpecsSummary(pc) {
         const container = document.getElementById('specs-summary');
         container.innerHTML = '';
@@ -446,11 +444,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const pc = pcDataStore[currentPc];
         if(!pc) return;
         
-        // Modal Header
         document.getElementById('modal-pc-name').textContent = pc.pc_name;
         document.getElementById('modal-status-line').innerHTML = `<span class="px-2 py-0.5 rounded text-xs font-black ${pc.status==='online'?'bg-emerald-500 text-white':'bg-rose-500 text-white'}">${pc.status ? pc.status.toUpperCase() : 'OK'}</span> | <span class="font-mono text-slate-400 font-bold">${pc.public_ip || '-'}</span>`;
         
-        // Identidad & Recursos
         document.getElementById('gen-unit').textContent = pc.unit;
         document.getElementById('gen-ip').textContent = pc.public_ip || '-';
         document.getElementById('gen-ip').title = pc.public_ip || '-';
@@ -469,12 +465,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('gen-ram-bar').style.width = (pc.ram_percent||0)+'%';
         document.getElementById('gen-ram-bar').className = `h-1.5 rounded-full ${(pc.ram_percent||0) > 80 ? 'bg-rose-500' : 'bg-purple-500'}`;
         
-        // Salud
         const health = pc.status === 'offline' ? 0 : Math.max(0, 100 - (pc.cpu_load_percent*0.4) - (pc.ram_percent*0.3)).toFixed(0);
         document.getElementById('health-score-val').textContent = health + '%';
         document.getElementById('health-icon-container').innerHTML = `<i data-lucide="${health > 70 ? 'check-circle' : 'alert-triangle'}" class="w-8 h-8 ${health > 70 ? 'text-emerald-500' : 'text-amber-500'}"></i>`;
         
-        // --- NUEVO: Tarjeta Conectividad ---
         document.getElementById('gen-disc-count').textContent = pc.disconnect_count || 0;
         
         if (pc.last_disconnect_time) {
@@ -501,6 +495,10 @@ document.addEventListener('DOMContentLoaded', () => {
             durEl.className = "font-mono text-emerald-500 text-xs text-right font-bold";
         }
 
+        // --- NUEVO: LÓGICA DEL MAPA GPS EN VIVO ---
+        const pcLat = pc.lat || 19.4326; // Default CDMX si falla
+        const pcLng = pc.lng || -99.1332;
+
         if(fullUpdate) {
             updateLatencyChart(pc.latency_history);
             updateHardwareGrid(pc);
@@ -509,7 +507,32 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('form-loc').textContent = pc.pc_name;
             document.getElementById('form-unit').textContent = pc.unit;
             window.renderHeaderDriveUI(pc);
+
+            // Damos un pequeño respiro de 300ms para que el modal termine de abrirse
+            // Esto evita que el mapa cargue gris o recortado.
+            setTimeout(() => {
+                if (!pcMap) {
+                    pcMap = L.map('map-container').setView([pcLat, pcLng], 15);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap'
+                    }).addTo(pcMap);
+                    pcMarker = L.marker([pcLat, pcLng]).addTo(pcMap);
+                } else {
+                    pcMap.setView([pcLat, pcLng], 15);
+                    pcMarker.setLatLng([pcLat, pcLng]);
+                    pcMap.invalidateSize(); 
+                }
+                pcMarker.bindPopup(`<b>${pc.unit}</b><br>ISP: ${pc.isp || 'Desconocido'}<br>IP: ${pc.public_ip || 'Sin IP'}`).openPopup();
+            }, 300);
+
+        } else {
+            // Soft update: Si el modal ya está abierto y la NUC se mueve, se actualiza en tiempo real
+            if (pcMap && pcMarker) {
+                pcMarker.setLatLng([pcLat, pcLng]);
+                pcMap.setView([pcLat, pcLng]);
+            }
         }
+
         lucide.createIcons();
     }
 
@@ -543,16 +566,26 @@ document.addEventListener('DOMContentLoaded', () => {
         charts.latency = new Chart(ctx, { type: 'line', data: { labels: Array(data.length).fill(''), datasets: [{ data: data, borderColor: '#4f46e5', borderWidth: 2, tension: 0.4, pointRadius: 0, fill: true, backgroundColor: 'rgba(79, 70, 229, 0.05)' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: {legend:false}, scales: {x:{display:false}, y:{beginAtZero:true, grid:{color:'#f1f5f9'}}} } });
     }
 
-    window.switchTab = (id) => { document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden')); document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active')); document.getElementById('tab-' + id).classList.remove('hidden'); document.querySelector(`[data-tab="${id}"]`).classList.add('active'); };
+    window.switchTab = (id) => { 
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden')); 
+        document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active')); 
+        document.getElementById('tab-' + id).classList.remove('hidden'); 
+        document.querySelector(`[data-tab="${id}"]`).classList.add('active'); 
+        
+        // Refrescar tamaño del mapa si el usuario cambia de pestaña y vuelve a la general
+        if(id === 'general' && pcMap) {
+            setTimeout(() => pcMap.invalidateSize(), 50);
+        }
+    };
+
     function updateFilters(devices) { const select = document.getElementById('unit-filter'); if(select.options.length > 1) return; [...new Set(devices.map(d => d.unit))].forEach(u => select.appendChild(new Option(u, u))); }
     document.getElementById('modal-tabs').onclick = (e) => { const btn = e.target.closest('.modal-tab'); if(btn) switchTab(btn.dataset.tab); };
     document.getElementById('search-bar').oninput = renderGrid;
     document.getElementById('unit-filter').onchange = renderGrid;
     
-    // INICIO DE LA APP
     fetchDriveLinksFromDB().then(() => {
         updateData();
-        setInterval(updateData, 4000); // 4 Segundos actualizando la vista
+        setInterval(updateData, 4000); 
     });
 });
 </script>
