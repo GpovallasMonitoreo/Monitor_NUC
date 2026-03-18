@@ -1,7 +1,8 @@
 from flask import Blueprint, request, jsonify
 import logging
 from datetime import datetime
-import src  # Acceso a las variables globales: src.monitor, src.supabase
+import time  # NUEVO: Necesario para el reloj del servidor
+import src  
 
 logger = logging.getLogger(__name__)
 
@@ -26,32 +27,60 @@ def receive_report():
         if not device_id:
             return jsonify({"status": "error", "message": "Missing ID"}), 400
 
+        # --- NUEVO: RELOJ DEL SERVIDOR Y ESTADO ---
+        # Le inyectamos la hora exacta del servidor para no depender del reloj de la NUC
+        data['server_timestamp'] = time.time()
+        data['status'] = 'online'
+
+        # --- NUEVO: AUTO-REGISTRO EN SUPABASE ---
+        # Forzamos a la base de datos a crear el equipo si es nuevo, 
+        # y guardamos sus datos de GPS e ISP.
+        if src.supabase and hasattr(src.supabase, 'client'):
+            try:
+                device_payload = {
+                    "device_id": device_id,
+                    "pc_name": data.get('pc_name'),
+                    "unit": data.get('unit', 'CENTRO'),
+                    "status": "online",
+                    "ip_address": data.get('ip'),
+                    "cpu_load": data.get('cpu_load_percent'),
+                    "ram_usage": data.get('ram_percent'),
+                    "sensors": data.get('extended_sensors'),
+                    "last_seen": datetime.utcnow().isoformat()
+                }
+                # Añadimos los campos nuevos de geo si vienen en el paquete
+                if 'public_ip' in data: device_payload['public_ip'] = data['public_ip']
+                if 'lat' in data: device_payload['lat'] = data['lat']
+                if 'lng' in data: device_payload['lng'] = data['lng']
+                if 'city' in data: device_payload['city'] = data['city']
+                if 'isp' in data: device_payload['isp'] = data['isp']
+
+                # Upsert inserta si no existe, o actualiza si ya existe
+                src.supabase.client.table('devices').upsert(device_payload).execute()
+            except Exception as e:
+                logger.error(f"⚠️ Error en auto-registro de DB: {e}")
+
+
         # A. RUTA RÁPIDA: MONITOR EN MEMORIA (Prioridad)
-        # El monitor se encarga de:
-        # 1. Guardar en RAM para el dashboard en vivo.
-        # 2. Procesar la latencia (1 hora o picos).
-        # 3. Guardar sensores y contadores en Supabase.
         if src.monitor:
             src.monitor.ingest_data(data)
             return jsonify({"status": "success", "handler": "monitor"}), 200
         
         # B. RUTA DE RESPALDO: ESCRITURA DIRECTA EN DB
-        # Si el monitor falló o se está reiniciando, guardamos directo para no perder datos.
         elif src.supabase and hasattr(src.supabase, 'upsert_device_status'):
             logger.warning("⚠️ Monitor no disponible, guardando directo en DB (Fallback)")
             
             src.supabase.upsert_device_status({
                 "device_id": device_id,
                 "pc_name": data.get('pc_name'),
-                "status": data.get('status', 'online'),
-                "ip_address": data.get('ip_address'),
+                "status": "online",
+                "ip_address": data.get('ip'),
                 "cpu_load": data.get('cpu_load_percent'),
                 "ram_usage": data.get('ram_percent'),
-                "sensors": data.get('extended_sensors'), # Guardamos sensores
+                "sensors": data.get('extended_sensors'), 
                 "last_seen": datetime.utcnow().isoformat()
             })
             
-            # Intentar guardar métrica de latencia si existe
             if 'latency_ms' in data:
                 src.supabase.buffer_metric(
                     device_id=device_id,
@@ -78,25 +107,43 @@ def get_all_data():
     Devuelve el estado actual de todos los dispositivos ACTIVOS.
     """
     try:
+        current_time = time.time() # NUEVO: Hora actual del servidor
+
         # OPCIÓN A: Leer de RAM (Monitor) - Es lo más rápido y fresco
         if src.monitor:
-            # Filtramos para no enviar equipos dados de baja
-            active_devices = {
-                k: v for k, v in src.monitor.devices_state.items() 
-                if v.get('status') != 'inactive'
-            }
+            active_devices = {}
+            for k, v in src.monitor.devices_state.items():
+                if v.get('status') == 'inactive':
+                    continue
+                
+                # --- NUEVO: EVALUACIÓN ESTRICTA DE DESCONEXIÓN ---
+                # Si pasaron más de 90 segundos desde el último paquete, lo matamos
+                last_seen = v.get('server_timestamp')
+                if last_seen and (current_time - last_seen > 90):
+                    v['status'] = 'offline'
+                    
+                active_devices[k] = v
+                
             return jsonify(active_devices)
 
         # OPCIÓN B: Leer de Base de Datos (Supabase) - Si el monitor no está listo
         elif src.supabase and hasattr(src.supabase, 'client'):
-            # Traemos solo los que NO están inactivos
             response = src.supabase.client.table('devices').select('*').neq('status', 'inactive').execute()
             
             devices_map = {}
             for item in response.data:
-                # MAPEO CRÍTICO: La DB tiene 'sensors', el Frontend espera 'extended_sensors'
                 item['extended_sensors'] = item.get('sensors')
-                item['ram_percent'] = item.get('ram_usage') # DB: ram_usage, Front: ram_percent
+                item['ram_percent'] = item.get('ram_usage') 
+                
+                # --- NUEVO: Evaluar desconexión también en base de datos ---
+                last_seen_iso = item.get('last_seen')
+                if last_seen_iso:
+                    try:
+                        last_seen_dt = datetime.fromisoformat(last_seen_iso.replace('Z', '+00:00')).replace(tzinfo=None)
+                        if (datetime.utcnow() - last_seen_dt).total_seconds() > 90:
+                            item['status'] = 'offline'
+                    except:
+                        pass
                 
                 devices_map[item['pc_name']] = item
                 
@@ -116,14 +163,12 @@ def get_history():
     """Obtiene los logs de mantenimiento para la tabla."""
     try:
         if src.supabase and hasattr(src.supabase, 'client'):
-            # Traemos últimos 200 logs
             response = src.supabase.client.table('logs')\
                 .select('*')\
                 .order('timestamp', desc=True)\
                 .limit(200)\
                 .execute()
             
-            # Adaptamos nombres de campos para el Frontend
             history = []
             for item in response.data:
                 history.append({
@@ -134,7 +179,6 @@ def get_history():
                     "desc": item.get('description'),
                     "req": item.get('requested_by'),
                     "exec": item.get('executed_by'),
-                    # Convertimos a string "true"/"false" para facilitar JS
                     "solved": str(item.get('is_solved')).lower(), 
                     "timestamp": item.get('timestamp')
                 })
@@ -158,7 +202,6 @@ def add_history():
         pc_name = data.get('pc_name')
         action = data.get('action', '')
 
-        # 1. Guardar en Bitácora (Logs)
         payload = {
             "device_id": pc_name,
             "pc_name": pc_name,
@@ -171,29 +214,19 @@ def add_history():
             "timestamp": datetime.utcnow().isoformat()
         }
         
-        # Insertamos en la tabla logs
         src.supabase.client.table('logs').insert(payload).execute()
 
-        # 2. LÓGICA DE BAJA AUTOMÁTICA
-        # Si la acción sugiere que el equipo ya no existe, lo desactivamos del monitor
         action_lower = action.lower()
         if 'baja' in action_lower or 'retiro' in action_lower or 'descontinuado' in action_lower:
             logger.info(f"📉 Procesando BAJA automática para {pc_name}")
             
-            # A. Actualizar tabla devices en Supabase (status = inactive)
-            # Esto hace que deje de salir en el dashboard si se recarga desde la DB
             src.supabase.client.table('devices').update({
                 "status": "inactive",
                 "updated_at": datetime.utcnow().isoformat()
             }).eq("pc_name", pc_name).execute()
             
-            # B. Actualizar memoria del monitor en vivo
-            # Esto hace que desaparezca inmediatamente del dashboard sin recargar
             if src.monitor and pc_name in src.monitor.devices_state:
-                # Opción 1: Marcarlo inactivo
                 src.monitor.devices_state[pc_name]['status'] = 'inactive'
-                # Opción 2 (Más agresiva): Borrarlo de la RAM
-                # del src.monitor.devices_state[pc_name]
 
         return jsonify({"status": "success", "message": "Log guardado y procesado"})
 
