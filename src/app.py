@@ -1,8 +1,12 @@
 import os
 from src import create_app
+from flask_cors import CORS  # <-- 1. AGREGAR ESTA IMPORTACIÓN
 
 # Crear la aplicación usando la fábrica
 app = create_app()
+
+# <-- 2. HABILITAR CORS PARA QUE EL ERP PUEDA LEER LOS DATOS
+CORS(app) 
 
 if __name__ == '__main__':
     # Detectar entorno
