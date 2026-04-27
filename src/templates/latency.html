@@ -29,6 +29,11 @@
     .timeline-dot { position: absolute; left: -9px; top: 0; width: 16px; height: 16px; border-radius: 50%; background: white; border: 3px solid #cbd5e1; }
     /* NUEVO: Ajuste z-index para que el mapa no flote sobre los menús */
     #map-container { z-index: 10; }
+    
+    /* NUEVO: Estilos para badges de clasificación */
+    .badge-biobox { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+    .badge-viaverde { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .badge-ecovalla { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
 </style>
 
 <div class="p-6 max-w-[1800px] mx-auto">
@@ -40,6 +45,13 @@
         <div class="flex items-center gap-3">
             <button onclick="exportAllToCSV()" class="bg-slate-900 hover:bg-black text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition shadow-lg"><i data-lucide="download"></i> Exportar Sensores (CSV)</button>
             <select id="unit-filter" class="p-2.5 text-sm border border-slate-300 rounded-xl outline-none"><option value="all">Todas las Unidades</option></select>
+            <!-- NUEVO: Filtro por clasificación -->
+            <select id="class-filter" class="p-2.5 text-sm border border-slate-300 rounded-xl outline-none">
+                <option value="all">Todas las Clases</option>
+                <option value="BIOBOX">BIOBOX</option>
+                <option value="ViaVerde">ViaVerde</option>
+                <option value="ECOVALLA">ECOVALLA</option>
+            </select>
             <input type="search" id="search-bar" placeholder="Buscar PC..." class="p-2.5 text-sm border border-slate-300 rounded-xl w-64 outline-none">
         </div>
     </div>
@@ -51,7 +63,10 @@
 <div id="pc-modal-overlay" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm hidden items-center justify-center p-4 z-[999]">
     <div id="pc-modal-container" class="bg-white w-full max-w-6xl h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden transform opacity-0 transition-all duration-300">
         <div class="flex justify-between items-start p-6 border-b border-slate-100">
-            <div><h2 id="modal-pc-name" class="text-2xl font-black text-slate-800"></h2><div id="modal-status-line" class="mt-1 flex items-center gap-2 text-sm"></div></div>
+            <div>
+                <h2 id="modal-pc-name" class="text-2xl font-black text-slate-800"></h2>
+                <div id="modal-status-line" class="mt-1 flex items-center gap-2 text-sm"></div>
+            </div>
             <div class="flex gap-2">
                 <div id="drive-header-container" class="flex items-center gap-2 mr-2">
                     <div id="drive-view-mode" class="hidden flex gap-2">
@@ -79,6 +94,8 @@
                     <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm"><h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">IDENTIDAD</h4>
                         <div class="space-y-3 text-sm">
                             <div class="flex justify-between"><span class="text-slate-500">Unidad</span><span id="gen-unit" class="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded"></span></div>
+                            <!-- NUEVO: Campo de clasificación en el modal -->
+                            <div class="flex justify-between"><span class="text-slate-500">Clasificación</span><span id="gen-classification" class="font-bold px-2 py-0.5 rounded text-xs"></span></div>
                             <div class="flex justify-between"><span class="text-slate-500">IP</span><span id="gen-ip" class="font-mono text-slate-700 font-bold"></span></div>
                             <div class="flex justify-between"><span class="text-slate-500">Ubicación</span><span id="gen-location" class="font-bold text-slate-700 text-[11px] text-right truncate max-w-[110px]"></span></div>
                             <div class="flex justify-between"><span class="text-slate-500">ISP</span><span id="gen-isp" class="font-bold text-slate-700 text-[11px] text-right truncate max-w-[110px]"></span></div>
@@ -164,6 +181,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     lucide.createIcons();
 
+    // NUEVO: Función para clasificar dispositivos según nomenclatura
+    function classifyDevice(pcName) {
+        const upperName = pcName.toUpperCase();
+        if (upperName.includes('BB')) return 'BIOBOX';
+        if (upperName.includes('VV')) return 'ViaVerde';
+        return 'ECOVALLA';
+    }
+
+    // NUEVO: Función para obtener la clase CSS del badge según clasificación
+    function getClassificationBadgeClass(classification) {
+        switch(classification) {
+            case 'BIOBOX': return 'badge-biobox';
+            case 'ViaVerde': return 'badge-viaverde';
+            case 'ECOVALLA': return 'badge-ecovalla';
+            default: return '';
+        }
+    }
+
     async function fetchDriveLinksFromDB() {
         try {
             const { data, error } = await supabase.from('devices').select('device_id, drive_link');
@@ -187,6 +222,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(!dev.latency_history) dev.latency_history = Array(12).fill(0);
                 dev.latency_history.push(dev.latency_ms || dev.latency || 0);
                 if(dev.latency_history.length > 12) dev.latency_history.shift();
+                
+                // NUEVO: Asignar clasificación automática
+                dev.classification = classifyDevice(dev.pc_name);
                 
                 const cleanName = dev.pc_name.trim();
                 if (savedDriveLinks[cleanName]) dev.drive_link = savedDriveLinks[cleanName];
@@ -223,16 +261,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('pc-cards-container');
         const search = document.getElementById('search-bar').value.toLowerCase();
         const unitFilter = document.getElementById('unit-filter').value;
+        const classFilter = document.getElementById('class-filter').value; // NUEVO
         container.innerHTML = '';
 
         Object.values(pcDataStore).forEach(pc => {
             if(unitFilter !== 'all' && pc.unit !== unitFilter) return;
+            // NUEVO: Filtro por clasificación
+            if(classFilter !== 'all' && pc.classification !== classFilter) return;
             if(!pc.pc_name.toLowerCase().includes(search) && !(pc.public_ip||'').includes(search)) return;
 
             const lat = pc.latency_ms || pc.latency || 0;
             const isCritical = lat > 100 || (pc.cpu_load_percent||0) > 70 || (pc.ram_percent||0) > 85;
             const statusClass = pc.status === 'offline' ? 'status-offline' : (isCritical ? 'status-warning' : 'status-online');
             const alertClass = (isCritical && pc.status !== 'offline') ? 'critical-alert' : '';
+            
+            // NUEVO: Clase del badge de clasificación
+            const badgeClass = getClassificationBadgeClass(pc.classification);
 
             let blocks = '';
             pc.latency_history.forEach(v => {
@@ -244,7 +288,17 @@ document.addEventListener('DOMContentLoaded', () => {
             card.className = `card cursor-pointer ${alertClass}`;
             card.onclick = () => openModal(pc.pc_name);
             card.innerHTML = `
-                <div class="flex justify-between items-start mb-3"><div class="truncate"><h3 class="font-black text-slate-800 text-sm truncate">${pc.pc_name}</h3><span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">${pc.unit}</span></div><div class="status-dot ${statusClass}"></div></div>
+                <div class="flex justify-between items-start mb-3">
+                    <div class="truncate flex-1">
+                        <h3 class="font-black text-slate-800 text-sm truncate">${pc.pc_name}</h3>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">${pc.unit}</span>
+                            <!-- NUEVO: Badge de clasificación -->
+                            <span class="text-[8px] font-black px-1.5 py-0.5 rounded ${badgeClass}">${pc.classification}</span>
+                        </div>
+                    </div>
+                    <div class="status-dot ${statusClass}"></div>
+                </div>
                 <div class="flex justify-between items-end"><span class="text-2xl font-black text-slate-700 ${lat === 0 ? 'latency-val-hidden' : ''}">${lat}<small class="text-[10px] ml-0.5 text-slate-400">ms</small></span><div class="text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">CPU ${Math.round(pc.cpu_load_percent||0)}%</div></div>
                 <div class="latency-grid">${blocks}</div>`;
             container.appendChild(card);
@@ -252,10 +306,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.exportAllToCSV = () => {
-        let csv = "\uFEFFPC_Name,Unidad,IP,Ubicacion,ISP,Status,Ultima_Conexion,CPU_%,RAM_%,Categoria,Sensor,Valor\n";
+        // NUEVO: Añadida columna de Clasificación al CSV
+        let csv = "\uFEFFPC_Name,Unidad,Clasificacion,IP,Ubicacion,ISP,Status,Ultima_Conexion,CPU_%,RAM_%,Categoria,Sensor,Valor\n";
         const now = new Date().toLocaleString();
         Object.values(pcDataStore).forEach(pc => {
-            const rowBase = `"${pc.pc_name}","${pc.unit}","${pc.public_ip || ''}","${pc.city || ''}","${pc.isp || ''}","${pc.status}","${now}","${pc.cpu_load_percent}%","${pc.ram_percent}%"`;
+            const rowBase = `"${pc.pc_name}","${pc.unit}","${pc.classification || ''}","${pc.public_ip || ''}","${pc.city || ''}","${pc.isp || ''}","${pc.status}","${now}","${pc.cpu_load_percent}%","${pc.ram_percent}%"`;
             if (pc.extended_sensors) {
                 for (const [cat, sensors] of Object.entries(pc.extended_sensors)) {
                     sensors.forEach(s => { csv += `${rowBase},"${cat}","${s.nombre || s.tipo}","${s.valor}"\n`; });
@@ -421,6 +476,11 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('gen-location').textContent = pc.city || 'Desconocida';
         document.getElementById('gen-isp').textContent = pc.isp || 'Desconocido';
         
+        // NUEVO: Mostrar clasificación en el modal
+        const classBadge = document.getElementById('gen-classification');
+        classBadge.textContent = pc.classification || 'ECOVALLA';
+        classBadge.className = `font-bold px-2 py-0.5 rounded text-xs ${getClassificationBadgeClass(pc.classification)}`;
+        
         let lastSeenDate = new Date(pc.timestamp || Date.now());
         document.getElementById('gen-seen').textContent = lastSeenDate.toLocaleTimeString();
         
@@ -529,10 +589,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if(id === 'general' && pcMap) setTimeout(() => pcMap.invalidateSize(), 50);
     };
 
-    function updateFilters(devices) { const select = document.getElementById('unit-filter'); if(select.options.length > 1) return; [...new Set(devices.map(d => d.unit))].forEach(u => select.appendChild(new Option(u, u))); }
+    function updateFilters(devices) { 
+        const select = document.getElementById('unit-filter'); 
+        if(select.options.length > 1) return; 
+        [...new Set(devices.map(d => d.unit))].forEach(u => select.appendChild(new Option(u, u))); 
+    }
+    
     document.getElementById('modal-tabs').onclick = (e) => { const btn = e.target.closest('.modal-tab'); if(btn) switchTab(btn.dataset.tab); };
     document.getElementById('search-bar').oninput = renderGrid;
     document.getElementById('unit-filter').onchange = renderGrid;
+    // NUEVO: Evento para el filtro de clasificación
+    document.getElementById('class-filter').onchange = renderGrid;
     
     fetchDriveLinksFromDB().then(() => {
         updateData();
