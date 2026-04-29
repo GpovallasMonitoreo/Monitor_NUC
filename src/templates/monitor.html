@@ -63,6 +63,87 @@
     .table-header:hover .sort-indicator {
         opacity: 1;
     }
+
+    /* Estilos del Modal */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-overlay.active {
+        display: flex;
+    }
+    .modal-container {
+        background: white;
+        border-radius: 16px;
+        width: 90%;
+        max-width: 900px;
+        max-height: 85vh;
+        overflow-y: auto;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+        animation: slideIn 0.3s ease-out;
+    }
+    @keyframes slideIn {
+        from { transform: translateY(-20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+    .modal-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: sticky;
+        top: 0;
+        background: white;
+        border-radius: 16px 16px 0 0;
+        z-index: 1;
+    }
+    .modal-body {
+        padding: 24px;
+    }
+    .score-circle {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 36px;
+        font-weight: 900;
+        color: white;
+        margin: 0 auto;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+    .stat-card {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 16px;
+        border: 1px solid #e2e8f0;
+    }
+    .recommendation-item {
+        padding: 12px;
+        background: #fefce8;
+        border-left: 4px solid #eab308;
+        border-radius: 8px;
+        margin-bottom: 8px;
+    }
+    .recommendation-item.critical {
+        background: #fef2f2;
+        border-left-color: #ef4444;
+    }
+    .recommendation-item.optimal {
+        background: #f0fdf4;
+        border-left-color: #22c55e;
+    }
 </style>
 
 <div class="flex flex-col xl:flex-row justify-between items-center mb-8 gap-6 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
@@ -97,10 +178,16 @@
             <button class="px-4 py-1.5 text-xs font-bold rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 transition-colors filter-btn" data-filter="BioBox">BioBox</button>
         </div>
 
-        <!-- Botón de Diagnóstico General -->
-        <button onclick="generateDiagnosticReport()" class="w-full md:w-auto flex items-center justify-center px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-600/20 transition-all active:scale-95">
+        <!-- Botón de Diagnóstico General (Modal) -->
+        <button onclick="openDiagnosticModal()" class="w-full md:w-auto flex items-center justify-center px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-600/20 transition-all active:scale-95">
             <i data-lucide="stethoscope" class="w-4 h-4 mr-2"></i>
             Diagnóstico General
+        </button>
+
+        <!-- Botón de Excel -->
+        <button onclick="downloadExcel()" class="w-full md:w-auto flex items-center justify-center px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95">
+            <i data-lucide="file-spreadsheet" class="w-4 h-4 mr-2"></i>
+            Excel
         </button>
 
         <button onclick="downloadReport()" class="w-full md:w-auto flex items-center justify-center px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-xl shadow-lg shadow-slate-900/20 transition-all active:scale-95">
@@ -110,6 +197,25 @@
     </div>
 </div>
 
+<!-- MODAL DE DIAGNÓSTICO GENERAL -->
+<div class="modal-overlay" id="diagnosticModal">
+    <div class="modal-container">
+        <div class="modal-header">
+            <div>
+                <h2 class="text-xl font-bold text-slate-800">🏥 Diagnóstico General de Infraestructura</h2>
+                <p class="text-sm text-slate-500">Análisis completo con recomendaciones</p>
+            </div>
+            <button onclick="closeDiagnosticModal()" class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <i data-lucide="x" class="w-5 h-5 text-slate-500"></i>
+            </button>
+        </div>
+        <div class="modal-body" id="diagnosticContent">
+            <!-- Se llena dinámicamente -->
+        </div>
+    </div>
+</div>
+
+<!-- Resto del contenido (KPIs, gráficos, tabla) -->
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <div class="bg-white p-6 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-slate-100 card-hover relative overflow-hidden">
         <div class="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div> 
@@ -343,6 +449,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <script>
     // --- VARIABLES GLOBALES ---
@@ -426,7 +533,6 @@
 
     // --- 2. LÓGICA DE NEGOCIO Y AI ---
 
-    // Normalizador de Unidad de Negocio
     function normalizeBusinessUnit(item) {
         const validUnits = ['ViaVerde', 'Ecovallas', 'BioBox'];
         
@@ -461,159 +567,14 @@
         return item.unit || 'General';
     }
 
-    // Sistema de filtros por columna
-    function toggleColumnFilter(event, filterId) {
-        event.stopPropagation();
-        const dropdown = document.getElementById(filterId);
-        const isShown = dropdown.classList.contains('show');
-        
-        // Cerrar todos los dropdowns
-        document.querySelectorAll('.filter-dropdown').forEach(d => d.classList.remove('show'));
-        
-        // Abrir el seleccionado si no estaba abierto
-        if (!isShown) {
-            dropdown.classList.add('show');
+    function getTemp(d) {
+        if (d.extended_sensors && d.extended_sensors['Intel CPU']) {
+            const t = d.extended_sensors['Intel CPU'].find(s => s.tipo === 'Temperature');
+            return t ? t.valor : 40;
         }
+        return d.temperature || 40;
     }
 
-    function filterByColumn(event, column, value) {
-        event.stopPropagation();
-        
-        // Actualizar estado del filtro
-        columnFilters[column] = value;
-        
-        // Actualizar UI del dropdown
-        const dropdown = document.getElementById(`${column}Filter`);
-        if (dropdown) {
-            dropdown.querySelectorAll('.filter-option').forEach(opt => opt.classList.remove('selected'));
-            if (event.target) {
-                event.target.classList.add('selected');
-            }
-        }
-        
-        // Cerrar dropdown
-        setTimeout(() => {
-            document.querySelectorAll('.filter-dropdown').forEach(d => d.classList.remove('show'));
-        }, 100);
-        
-        // Aplicar filtros
-        applyAllFilters();
-    }
-
-    function applyAllFilters() {
-        let filteredData = [...globalData];
-        
-        // Aplicar filtro de unidad de negocio principal
-        if (currentFilter !== 'all') {
-            filteredData = filteredData.filter(d => (d.unit || 'General') === currentFilter);
-        }
-        
-        // Aplicar filtros de columna
-        Object.keys(columnFilters).forEach(column => {
-            const value = columnFilters[column];
-            if (value === 'all') return;
-            
-            filteredData = filteredData.filter(d => {
-                const unit = normalizeBusinessUnit(d);
-                const cpu = d.cpu_load_percent || 0;
-                const ram = d.ram_percent || 0;
-                const disk = d.disk_percent || 0;
-                const temp = getTemp(d);
-                const diag = getDiagnosticRule(d);
-                
-                switch(column) {
-                    case 'unit':
-                        return unit === value;
-                    case 'cpu':
-                        if (value === 'critical') return cpu > 85;
-                        if (value === 'warning') return cpu >= 60 && cpu <= 85;
-                        if (value === 'normal') return cpu < 60;
-                        return true;
-                    case 'ram':
-                        if (value === 'critical') return ram > 90;
-                        if (value === 'warning') return ram >= 70 && ram <= 90;
-                        if (value === 'normal') return ram < 70;
-                        return true;
-                    case 'disk':
-                        if (value === 'critical') return disk > 90;
-                        if (value === 'warning') return disk >= 75 && disk <= 90;
-                        if (value === 'normal') return disk < 75;
-                        return true;
-                    case 'temp':
-                        if (value === 'critical') return temp > 80;
-                        if (value === 'warning') return temp >= 60 && temp <= 80;
-                        if (value === 'normal') return temp < 60;
-                        return true;
-                    case 'status':
-                        return diag.status === value;
-                    default:
-                        return true;
-                }
-            });
-        });
-        
-        // Aplicar búsqueda
-        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-        if (searchTerm) {
-            filteredData = filteredData.filter(d => 
-                (d.pc_name || '').toLowerCase().includes(searchTerm) ||
-                (d.public_ip || d.ip || '').toLowerCase().includes(searchTerm)
-            );
-        }
-        
-        updateDashboard(filteredData);
-    }
-
-    function clearAllFilters() {
-        columnFilters = {
-            unit: 'all',
-            cpu: 'all',
-            ram: 'all',
-            disk: 'all',
-            temp: 'all',
-            status: 'all'
-        };
-        
-        // Resetear UI de dropdowns
-        document.querySelectorAll('.filter-dropdown').forEach(dropdown => {
-            const options = dropdown.querySelectorAll('.filter-option');
-            options.forEach((opt, index) => {
-                if (index === 0) opt.classList.add('selected');
-                else opt.classList.remove('selected');
-            });
-        });
-        
-        document.getElementById('searchInput').value = '';
-        applyAllFilters();
-    }
-
-    // Cerrar dropdowns al hacer clic fuera
-    document.addEventListener('click', function(event) {
-        if (!event.target.closest('.table-header')) {
-            document.querySelectorAll('.filter-dropdown').forEach(d => d.classList.remove('show'));
-        }
-    });
-
-    // Filtros principales
-    let currentFilter = 'all';
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            document.querySelectorAll('.filter-btn').forEach(b => {
-                b.classList.remove('bg-white', 'text-slate-700', 'shadow-sm');
-                b.classList.add('text-slate-500');
-            });
-            e.target.classList.remove('text-slate-500');
-            e.target.classList.add('bg-white', 'text-slate-700', 'shadow-sm');
-            currentFilter = e.target.dataset.filter;
-            applyAllFilters();
-        });
-    });
-
-    document.getElementById('searchInput').addEventListener('input', (e) => {
-        applyAllFilters();
-    });
-
-    // MOTOR DE DIAGNÓSTICO PRECISO (Argos AI)
     function getDiagnosticRule(pc) {
         const cpu = pc.cpu_load_percent || 0;
         const ram = pc.ram_percent || 0;
@@ -643,7 +604,6 @@
         return { status: 'Optimal', msg: 'Operación Nominal. Parámetros estables.' };
     }
 
-    // Generar recomendaciones específicas
     function getRecommendation(pc, diag) {
         const unit = normalizeBusinessUnit(pc);
         const cpu = pc.cpu_load_percent || 0;
@@ -653,369 +613,259 @@
         let recommendations = [];
 
         if (diag.status === 'Optimal') {
-            recommendations.push('✅ Mantener monitoreo regular');
-            recommendations.push('📅 Programar mantenimiento preventivo trimestral');
+            recommendations.push('✅ Mantener monitoreo regular. No se requieren acciones inmediatas.');
+            recommendations.push('📅 Programar mantenimiento preventivo trimestral.');
         }
 
         if (diag.status === 'Critical' || diag.status === 'Warning') {
             if (cpu > 85) {
-                recommendations.push('🔴 CPU: Cerrar procesos innecesarios');
+                recommendations.push('🔴 CPU: Cerrar procesos innecesarios. Verificar aplicaciones en segundo plano.');
+                recommendations.push('🔧 Considerar upgrade de hardware si la carga es persistente.');
             }
             if (temp > 80) {
-                recommendations.push('🔥 TEMP: Verificar ventilación y limpiar ventiladores');
+                recommendations.push('🔥 TEMPERATURA: Verificar ventilación del área. Limpiar ventiladores.');
+                recommendations.push('🌡️ Revisar sistema de aire acondicionado del sitio.');
             }
             if (disk > 90) {
-                recommendations.push('💾 DISCO: Eliminar archivos temporales y logs antiguos');
+                recommendations.push('💾 DISCO: Eliminar archivos temporales y logs antiguos.');
+                recommendations.push('📦 Expandir almacenamiento o migrar datos a servidor externo.');
             }
             if (ram > 90) {
-                recommendations.push('🧠 RAM: Identificar procesos con fuga de memoria');
+                recommendations.push('🧠 RAM: Identificar procesos con fuga de memoria.');
+                recommendations.push('⚡ Considerar ampliación de memoria RAM.');
             }
             
             if (unit === 'BioBox' && disk > 85) {
-                recommendations.push('🗄️ BIOBOX: Configurar rotación automática de logs');
+                recommendations.push('🗄️ BIOBOX: Archivar logs de transacciones antiguos.');
             }
             if (unit === 'Ecovallas' && (cpu > 80 || ram > 80)) {
-                recommendations.push('🖥️ ECOVALLAS: Optimizar contenido multimedia');
+                recommendations.push('🖥️ ECOVALLAS: Optimizar contenido multimedia.');
             }
             if (unit === 'ViaVerde' && temp > 75) {
-                recommendations.push('🌿 VIA VERDE: Verificar exposición solar directa');
+                recommendations.push('🌿 VIA VERDE: Verificar exposición solar directa.');
             }
         }
 
         return recommendations;
     }
 
-    // Modal Simulado (Alert) con Diagnóstico Preciso
-    window.analyzePC = (pcName) => {
-        const pc = globalData.find(d => d.pc_name === pcName);
-        if (!pc) return;
-
-        const diag = getDiagnosticRule(pc);
-        const recs = getRecommendation(pc, diag);
-        const recsText = recs.join('\n');
+    // --- 3. MODAL DE DIAGNÓSTICO ---
+    window.openDiagnosticModal = () => {
+        const modal = document.getElementById('diagnosticModal');
+        const content = document.getElementById('diagnosticContent');
         
-        const btn = event.currentTarget;
-        const original = btn.innerHTML;
-        btn.innerHTML = `<i data-lucide="loader-2" class="w-3 h-3 animate-spin"></i>`;
+        const total = globalData.length;
+        const criticals = globalData.filter(d => getDiagnosticRule(d).status === 'Critical').length;
+        const warnings = globalData.filter(d => getDiagnosticRule(d).status === 'Warning').length;
+        const optimals = total - criticals - warnings;
+        const healthScore = total > 0 ? Math.round((optimals / total) * 100) : 100;
         
-        setTimeout(() => {
-            alert(`🔍 REPORTE TÉCNICO NUC: ${pcName}\n\nUnidad: ${normalizeBusinessUnit(pc)}\nEstado: ${diag.status.toUpperCase()}\n\nDIAGNÓSTICO IA:\n"${diag.msg}"\n\nRECOMENDACIONES:\n${recsText}\n\nCPU: ${pc.cpu_load_percent}%\nTemp: ${getTemp(pc)}°C\nRAM: ${pc.ram_percent}%`);
-            btn.innerHTML = original;
-            lucide.createIcons();
-        }, 800);
-    };
+        const avgCpu = total > 0 ? (globalData.reduce((acc, d) => acc + (d.cpu_load_percent || 0), 0) / total).toFixed(1) : 0;
+        const avgRam = total > 0 ? (globalData.reduce((acc, d) => acc + (d.ram_percent || 0), 0) / total).toFixed(1) : 0;
+        const avgTemp = total > 0 ? (globalData.reduce((acc, d) => acc + getTemp(d), 0) / total).toFixed(1) : 0;
 
-    // --- 3. GENERACIÓN DE PDF ---
-    
-    // Diagnóstico General con PDF
-    window.generateDiagnosticReport = () => {
-        const btn = event.currentTarget;
-        if (!btn) return;
-        
-        const originalHTML = btn.innerHTML;
-        btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin mr-2"></i> Generando...';
-        btn.disabled = true;
-        lucide.createIcons();
+        const scoreColor = healthScore > 80 ? '#22c55e' : (healthScore > 50 ? '#eab308' : '#ef4444');
+        const scoreEmoji = healthScore > 80 ? '✅' : (healthScore > 50 ? '⚠️' : '🔴');
 
-        setTimeout(() => {
-            try {
-                const doc = new jsPDF();
-                const date = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-                const time = new Date().toLocaleTimeString('es-MX');
-
-                const primaryColor = [30, 41, 59];
-                const accentColor = [79, 70, 229];
-                const successColor = [16, 185, 129];
-                const warningColor = [245, 158, 11];
-                const dangerColor = [239, 68, 68];
-
-                // PORTADA
-                doc.setFillColor(...primaryColor);
-                doc.rect(0, 0, 210, 297, 'F');
-                
-                doc.setTextColor(255, 255, 255);
-                doc.setFontSize(32);
-                doc.setFont("helvetica", "bold");
-                doc.text("DIAGNÓSTICO GENERAL", 105, 80, { align: 'center' });
-                doc.text("DE INFRAESTRUCTURA", 105, 95, { align: 'center' });
-                
-                doc.setFontSize(14);
-                doc.setFont("helvetica", "normal");
-                doc.text("ARGOS AI ENTERPRISE", 105, 120, { align: 'center' });
-                
-                doc.setFontSize(10);
-                doc.text(`Fecha: ${date}`, 105, 140, { align: 'center' });
-                doc.text(`Hora: ${time}`, 105, 148, { align: 'center' });
-                
-                // PÁGINA 2: RESUMEN EJECUTIVO
-                doc.addPage();
-                const total = globalData.length;
-                const criticals = globalData.filter(d => getDiagnosticRule(d).status === 'Critical').length;
-                const warnings = globalData.filter(d => getDiagnosticRule(d).status === 'Warning').length;
-                const optimals = total - criticals - warnings;
-                
-                const avgCpu = total > 0 ? (globalData.reduce((acc, d) => acc + (d.cpu_load_percent || 0), 0) / total).toFixed(1) : 0;
-                const avgRam = total > 0 ? (globalData.reduce((acc, d) => acc + (d.ram_percent || 0), 0) / total).toFixed(1) : 0;
-                const avgTemp = total > 0 ? (globalData.reduce((acc, d) => acc + getTemp(d), 0) / total).toFixed(1) : 0;
-                
-                const healthScore = total > 0 ? Math.round((optimals / total) * 100) : 100;
-
-                // Encabezado
-                doc.setFillColor(...primaryColor);
-                doc.rect(0, 0, 210, 30, 'F');
-                doc.setTextColor(255, 255, 255);
-                doc.setFontSize(16);
-                doc.setFont("helvetica", "bold");
-                doc.text("RESUMEN EJECUTIVO", 14, 20);
-
-                // Score de salud
-                doc.setTextColor(30, 41, 59);
-                doc.setFontSize(24);
-                doc.setFont("helvetica", "bold");
-                doc.text(`SALUD GENERAL: ${healthScore}%`, 14, 50);
-                
-                // Barra de salud
-                const barColor = healthScore > 80 ? successColor : (healthScore > 50 ? warningColor : dangerColor);
-                doc.setFillColor(230, 230, 230);
-                doc.roundedRect(14, 55, 182, 8, 2, 2, 'F');
-                doc.setFillColor(...barColor);
-                doc.roundedRect(14, 55, Math.max((182 * healthScore) / 100, 1), 8, 2, 2, 'F');
-
-                // KPIs
-                const kpiY = 75;
-                doc.setFontSize(10);
-                doc.setTextColor(100, 100, 100);
-                
-                doc.setFillColor(240, 240, 250);
-                doc.roundedRect(14, kpiY, 42, 30, 3, 3, 'F');
-                doc.text("TOTAL NUCs", 16, kpiY + 10);
-                doc.setFontSize(18);
-                doc.setTextColor(...primaryColor);
-                doc.text(String(total), 16, kpiY + 25);
-                
-                doc.setFillColor(254, 242, 242);
-                doc.roundedRect(60, kpiY, 42, 30, 3, 3, 'F');
-                doc.setFontSize(10);
-                doc.setTextColor(100, 100, 100);
-                doc.text("CRÍTICOS", 62, kpiY + 10);
-                doc.setFontSize(18);
-                doc.setTextColor(...dangerColor);
-                doc.text(String(criticals), 62, kpiY + 25);
-                
-                doc.setFillColor(255, 251, 235);
-                doc.roundedRect(107, kpiY, 42, 30, 3, 3, 'F');
-                doc.setFontSize(10);
-                doc.setTextColor(100, 100, 100);
-                doc.text("WARNINGS", 109, kpiY + 10);
-                doc.setFontSize(18);
-                doc.setTextColor(...warningColor);
-                doc.text(String(warnings), 109, kpiY + 25);
-                
-                doc.setFillColor(236, 253, 243);
-                doc.roundedRect(154, kpiY, 42, 30, 3, 3, 'F');
-                doc.setFontSize(10);
-                doc.setTextColor(100, 100, 100);
-                doc.text("SALUDABLES", 156, kpiY + 10);
-                doc.setFontSize(18);
-                doc.setTextColor(...successColor);
-                doc.text(String(optimals), 156, kpiY + 25);
-
-                // Promedios
-                doc.setFontSize(12);
-                doc.setTextColor(30, 41, 59);
-                doc.setFont("helvetica", "bold");
-                doc.text("PROMEDIOS DE RENDIMIENTO", 14, 125);
-                
-                doc.setFontSize(10);
-                doc.setTextColor(100, 100, 100);
-                doc.text(`CPU Promedio: ${avgCpu}%`, 14, 135);
-                doc.text(`RAM Promedio: ${avgRam}%`, 14, 142);
-                doc.text(`Temperatura Promedio: ${avgTemp}°C`, 14, 149);
-
-                // PÁGINA 3: ANÁLISIS POR UNIDAD DE NEGOCIO
-                doc.addPage();
-                doc.setFillColor(...primaryColor);
-                doc.rect(0, 0, 210, 30, 'F');
-                doc.setTextColor(255, 255, 255);
-                doc.setFontSize(16);
-                doc.text("ANÁLISIS POR UNIDAD DE NEGOCIO", 14, 20);
-
-                const units = ['ViaVerde', 'Ecovallas', 'BioBox'];
-                let yPos = 40;
-
-                units.forEach(unit => {
-                    const unitDevices = globalData.filter(d => normalizeBusinessUnit(d) === unit);
-                    if (unitDevices.length === 0) return;
-                    
-                    const unitCriticals = unitDevices.filter(d => getDiagnosticRule(d).status === 'Critical').length;
-                    const unitWarnings = unitDevices.filter(d => getDiagnosticRule(d).status === 'Warning').length;
-                    const unitAvgCpu = (unitDevices.reduce((acc, d) => acc + (d.cpu_load_percent || 0), 0) / unitDevices.length).toFixed(1);
-                    const unitAvgTemp = (unitDevices.reduce((acc, d) => acc + getTemp(d), 0) / unitDevices.length).toFixed(1);
-                    const unitHealth = ((unitDevices.length - unitCriticals - unitWarnings) / unitDevices.length * 100).toFixed(1);
-
-                    doc.setFontSize(14);
-                    doc.setTextColor(30, 41, 59);
-                    doc.setFont("helvetica", "bold");
-                    doc.text(`${unit} (${unitDevices.length} dispositivos)`, 14, yPos);
-                    
-                    doc.setFontSize(10);
-                    doc.setTextColor(100, 100, 100);
-                    doc.setFont("helvetica", "normal");
-                    doc.text(`Salud: ${unitHealth}% | CPU Avg: ${unitAvgCpu}% | Temp Avg: ${unitAvgTemp}°C`, 14, yPos + 7);
-                    doc.text(`Críticos: ${unitCriticals} | Advertencias: ${unitWarnings}`, 14, yPos + 14);
-
-                    let unitRecs = [];
-                    if (unit === 'BioBox') {
-                        unitRecs = ['• Monitorear espacio en disco para logs', '• Configurar rotación automática de logs cada 30 días', '• Verificar conectividad con servidores centrales'];
-                    } else if (unit === 'Ecovallas') {
-                        unitRecs = ['• Optimizar contenido multimedia para reducir CPU', '• Programar reinicios semanales para liberar memoria', '• Verificar estado de pantallas LED'];
-                    } else if (unit === 'ViaVerde') {
-                        unitRecs = ['• Revisar sistemas de ventilación en muros verdes', '• Monitorear sensores de humedad y temperatura', '• Mantenimiento preventivo de sistemas de riego'];
-                    }
-
-                    doc.setFontSize(9);
-                    doc.setTextColor(80, 80, 80);
-                    doc.text("Recomendaciones:", 14, yPos + 24);
-                    unitRecs.forEach((rec, idx) => {
-                        doc.text(rec, 18, yPos + 31 + (idx * 7));
-                    });
-
-                    yPos += 55;
-                });
-
-                // PÁGINA 4+: DISPOSITIVOS QUE REQUIEREN ATENCIÓN
-                doc.addPage();
-                doc.setFillColor(...primaryColor);
-                doc.rect(0, 0, 210, 30, 'F');
-                doc.setTextColor(255, 255, 255);
-                doc.setFontSize(16);
-                doc.text("DISPOSITIVOS QUE REQUIEREN ATENCIÓN", 14, 20);
-
-                const problematicDevices = globalData.filter(d => {
-                    const diag = getDiagnosticRule(d);
-                    return diag.status === 'Critical' || diag.status === 'Warning';
-                }).sort((a, b) => {
-                    const statusOrder = { 'Critical': 0, 'Warning': 1 };
-                    return statusOrder[getDiagnosticRule(a).status] - statusOrder[getDiagnosticRule(b).status];
-                });
-
-                if (problematicDevices.length > 0) {
-                    const tableBody = problematicDevices.map(d => {
-                        const diag = getDiagnosticRule(d);
-                        const recs = getRecommendation(d, diag);
-                        return [
-                            normalizeBusinessUnit(d),
-                            d.pc_name || 'N/A',
-                            `${Math.round(d.cpu_load_percent || 0)}%`,
-                            `${Math.round(d.ram_percent || 0)}%`,
-                            `${Math.round(d.disk_percent || 0)}%`,
-                            `${Math.round(getTemp(d))}°C`,
-                            diag.status.toUpperCase(),
-                            diag.msg,
-                            recs.join(' | ')
-                        ];
-                    });
-
-                    doc.autoTable({
-                        startY: 35,
-                        head: [['Unidad', 'NUC ID', 'CPU', 'RAM', 'Disk', 'Temp', 'Estado', 'Diagnóstico', 'Recomendaciones']],
-                        body: tableBody,
-                        theme: 'grid',
-                        headStyles: { fillColor: accentColor, textColor: 255, fontStyle: 'bold', fontSize: 8 },
-                        styles: { fontSize: 7, cellPadding: 3 },
-                        columnStyles: {
-                            0: { cellWidth: 20 },
-                            1: { cellWidth: 25 },
-                            7: { cellWidth: 40 },
-                            8: { cellWidth: 50 }
-                        },
-                        didParseCell: function(data) {
-                            if (data.section === 'body' && data.column.index === 6) {
-                                if (data.cell.raw === 'CRITICAL') {
-                                    data.cell.styles.textColor = [220, 38, 38];
-                                    data.cell.styles.fontStyle = 'bold';
-                                }
-                                if (data.cell.raw === 'WARNING') {
-                                    data.cell.styles.textColor = [217, 119, 6];
-                                    data.cell.styles.fontStyle = 'bold';
-                                }
-                            }
-                        }
-                    });
-                } else {
-                    doc.setFontSize(12);
-                    doc.setTextColor(...successColor);
-                    doc.text("✅ No se encontraron dispositivos con problemas.", 14, 40);
-                    doc.setTextColor(100, 100, 100);
-                    doc.setFontSize(10);
-                    doc.text("Todos los NUCs están operando dentro de parámetros normales.", 14, 48);
-                }
-
-                // PÁGINA FINAL: RECOMENDACIONES GENERALES
-                doc.addPage();
-                doc.setFillColor(...primaryColor);
-                doc.rect(0, 0, 210, 30, 'F');
-                doc.setTextColor(255, 255, 255);
-                doc.setFontSize(16);
-                doc.text("RECOMENDACIONES GENERALES Y PLAN DE ACCIÓN", 14, 20);
-
-                const generalRecommendations = [
-                    { priority: 'ALTA', title: 'Actualización de Sistema', desc: 'Mantener todos los NUCs actualizados con los últimos parches de seguridad y firmware.' },
-                    { priority: 'ALTA', title: 'Monitoreo Continuo', desc: 'Configurar alertas automáticas para CPU >85%, Temperatura >80°C y Disco >90%.' },
-                    { priority: 'MEDIA', title: 'Mantenimiento Preventivo', desc: 'Programar limpieza física de ventiladores y revisión de conexiones cada 3 meses.' },
-                    { priority: 'MEDIA', title: 'Backup de Configuraciones', desc: 'Realizar respaldo de configuraciones críticas de cada NUC mensualmente.' },
-                    { priority: 'BAJA', title: 'Optimización de Recursos', desc: 'Revisar aplicaciones y servicios innecesarios que consuman recursos del sistema.' },
-                    { priority: 'BAJA', title: 'Documentación', desc: 'Mantener actualizado el inventario de NUCs con ubicaciones y responsable asignado.' }
-                ];
-
-                let recY = 40;
-                generalRecommendations.forEach(rec => {
-                    const priorityColor = rec.priority === 'ALTA' ? dangerColor : (rec.priority === 'MEDIA' ? warningColor : successColor);
-                    
-                    doc.setFillColor(...priorityColor);
-                    doc.roundedRect(14, recY, 182, 22, 3, 3, 'F');
-                    
-                    doc.setTextColor(255, 255, 255);
-                    doc.setFontSize(8);
-                    doc.setFont("helvetica", "bold");
-                    doc.text(`PRIORIDAD ${rec.priority}`, 18, recY + 8);
-                    
-                    doc.setFontSize(12);
-                    doc.text(rec.title, 18, recY + 18);
-                    
-                    doc.setTextColor(80, 80, 80);
-                    doc.setFontSize(9);
-                    doc.setFont("helvetica", "normal");
-                    doc.text(rec.desc, 20, recY + 28);
-                    
-                    recY += 35;
-                });
-
-                // Pie de página en todas las páginas excepto portada
-                const pageCount = doc.internal.getNumberOfPages();
-                for(let i = 2; i <= pageCount; i++) {
-                    doc.setPage(i);
-                    doc.setFontSize(8);
-                    doc.setTextColor(150, 150, 150);
-                    doc.line(14, 285, 196, 285);
-                    doc.text(`Diagnóstico General Argos AI - Página ${i} de ${pageCount}`, 105, 290, { align: 'center' });
-                }
-
-                doc.save(`Argos_Diagnostico_General_${Date.now()}.pdf`);
-                
-            } catch (error) {
-                console.error("Error generando PDF:", error);
-                alert("Error al generar el PDF. Por favor, revisa la consola para más detalles.");
-            }
+        // Análisis por unidad
+        const units = ['ViaVerde', 'Ecovallas', 'BioBox'];
+        let unitsHTML = '';
+        units.forEach(unit => {
+            const devices = globalData.filter(d => normalizeBusinessUnit(d) === unit);
+            if (devices.length === 0) return;
+            const unitCriticals = devices.filter(d => getDiagnosticRule(d).status === 'Critical').length;
+            const unitWarnings = devices.filter(d => getDiagnosticRule(d).status === 'Warning').length;
+            const unitHealth = devices.length > 0 ? ((devices.length - unitCriticals - unitWarnings) / devices.length * 100).toFixed(1) : 0;
+            const unitColor = unit === 'ViaVerde' ? 'emerald' : (unit === 'Ecovallas' ? 'violet' : 'sky');
             
-            // Restaurar botón
-            btn.innerHTML = originalHTML;
-            btn.disabled = false;
-            lucide.createIcons();
-        }, 1000);
+            unitsHTML += `
+                <div class="stat-card mb-4">
+                    <h4 class="font-bold text-slate-700 mb-2">📌 ${unit} (${devices.length} dispositivos)</h4>
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div><span class="text-slate-500">Salud:</span> <span class="font-bold text-${unitColor}-600">${unitHealth}%</span></div>
+                        <div><span class="text-slate-500">Críticos:</span> <span class="font-bold text-rose-600">${unitCriticals}</span></div>
+                        <div><span class="text-slate-500">Advertencias:</span> <span class="font-bold text-amber-600">${unitWarnings}</span></div>
+                        <div><span class="text-slate-500">Saludables:</span> <span class="font-bold text-emerald-600">${devices.length - unitCriticals - unitWarnings}</span></div>
+                    </div>
+                </div>
+            `;
+        });
+
+        // Dispositivos problemáticos
+        const problematic = globalData.filter(d => {
+            const diag = getDiagnosticRule(d);
+            return diag.status === 'Critical' || diag.status === 'Warning';
+        }).sort((a, b) => {
+            const order = { 'Critical': 0, 'Warning': 1 };
+            return order[getDiagnosticRule(a).status] - order[getDiagnosticRule(b).status];
+        });
+
+        let problemsHTML = '';
+        if (problematic.length > 0) {
+            problemsHTML = '<h4 class="font-bold text-slate-700 mb-3">⚠️ Dispositivos que requieren atención:</h4>';
+            problematic.slice(0, 10).forEach(pc => {
+                const diag = getDiagnosticRule(pc);
+                const recs = getRecommendation(pc, diag);
+                const itemClass = diag.status === 'Critical' ? 'critical' : '';
+                problemsHTML += `
+                    <div class="recommendation-item ${itemClass}">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="font-bold text-sm">${pc.pc_name || 'N/A'}</span>
+                                <span class="text-xs text-slate-500 ml-2">${normalizeBusinessUnit(pc)}</span>
+                            </div>
+                            <span class="text-xs font-bold px-2 py-0.5 rounded ${diag.status === 'Critical' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}">${diag.status}</span>
+                        </div>
+                        <p class="text-xs text-slate-600 mt-1">${diag.msg}</p>
+                        <div class="mt-2 text-xs text-slate-500">
+                            ${recs.map(r => `<div>• ${r}</div>`).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+            if (problematic.length > 10) {
+                problemsHTML += `<p class="text-xs text-slate-400 mt-2">... y ${problematic.length - 10} más</p>`;
+            }
+        } else {
+            problemsHTML = '<div class="text-center py-4 text-emerald-600">✅ Todos los dispositivos están operando correctamente</div>';
+        }
+
+        // Recomendaciones generales
+        const generalRecs = [
+            { priority: 'ALTA', text: 'Actualizar todos los NUCs con últimos parches de seguridad' },
+            { priority: 'ALTA', text: 'Configurar alertas automáticas para CPU >85%, Temp >80°C, Disco >90%' },
+            { priority: 'MEDIA', text: 'Programar limpieza física de ventiladores cada 3 meses' },
+            { priority: 'MEDIA', text: 'Realizar backup de configuraciones críticas mensualmente' },
+            { priority: 'BAJA', text: 'Revisar aplicaciones innecesarias que consuman recursos' },
+            { priority: 'BAJA', text: 'Mantener actualizado el inventario de NUCs con ubicaciones' }
+        ];
+
+        content.innerHTML = `
+            <!-- Score de Salud -->
+            <div class="text-center mb-8">
+                <div class="score-circle" style="background: ${scoreColor}; margin: 0 auto 16px;">
+                    ${scoreEmoji} ${healthScore}%
+                </div>
+                <p class="text-lg font-semibold text-slate-700">Salud General de Infraestructura</p>
+                <p class="text-sm text-slate-500">${new Date().toLocaleString('es-MX')}</p>
+            </div>
+
+            <!-- KPIs -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="stat-card text-center">
+                    <p class="text-2xl font-black text-slate-800">${total}</p>
+                    <p class="text-xs text-slate-500">Total NUCs</p>
+                </div>
+                <div class="stat-card text-center">
+                    <p class="text-2xl font-black text-rose-600">${criticals}</p>
+                    <p class="text-xs text-slate-500">Críticos</p>
+                </div>
+                <div class="stat-card text-center">
+                    <p class="text-2xl font-black text-amber-600">${warnings}</p>
+                    <p class="text-xs text-slate-500">Advertencias</p>
+                </div>
+                <div class="stat-card text-center">
+                    <p class="text-2xl font-black text-emerald-600">${optimals}</p>
+                    <p class="text-xs text-slate-500">Saludables</p>
+                </div>
+            </div>
+
+            <!-- Promedios -->
+            <div class="grid grid-cols-3 gap-4 mb-8">
+                <div class="stat-card text-center">
+                    <p class="text-lg font-bold text-indigo-600">${avgCpu}%</p>
+                    <p class="text-xs text-slate-500">CPU Promedio</p>
+                </div>
+                <div class="stat-card text-center">
+                    <p class="text-lg font-bold text-violet-600">${avgRam}%</p>
+                    <p class="text-xs text-slate-500">RAM Promedio</p>
+                </div>
+                <div class="stat-card text-center">
+                    <p class="text-lg font-bold text-orange-600">${avgTemp}°C</p>
+                    <p class="text-xs text-slate-500">Temp Promedio</p>
+                </div>
+            </div>
+
+            <!-- Análisis por Unidad -->
+            <h3 class="font-bold text-slate-700 mb-4">📊 Análisis por Unidad de Negocio</h3>
+            ${unitsHTML}
+
+            <!-- Dispositivos problemáticos -->
+            <h3 class="font-bold text-slate-700 mb-4 mt-8">🔍 Dispositivos con Problemas</h3>
+            ${problemsHTML}
+
+            <!-- Recomendaciones Generales -->
+            <h3 class="font-bold text-slate-700 mb-4 mt-8">📋 Plan de Acción Recomendado</h3>
+            ${generalRecs.map(rec => {
+                const bgColor = rec.priority === 'ALTA' ? 'bg-rose-50 border-rose-200' : (rec.priority === 'MEDIA' ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200');
+                const textColor = rec.priority === 'ALTA' ? 'text-rose-700' : (rec.priority === 'MEDIA' ? 'text-amber-700' : 'text-emerald-700');
+                return `
+                    <div class="flex items-center gap-3 p-3 rounded-lg border ${bgColor} mb-2">
+                        <span class="text-xs font-bold px-2 py-0.5 rounded ${textColor} bg-white">${rec.priority}</span>
+                        <span class="text-sm text-slate-700">${rec.text}</span>
+                    </div>
+                `;
+            }).join('')}
+        `;
+        
+        modal.classList.add('active');
+        if(typeof lucide !== 'undefined') lucide.createIcons();
     };
 
-    // Informe PDF original
+    window.closeDiagnosticModal = () => {
+        document.getElementById('diagnosticModal').classList.remove('active');
+    };
+
+    // Cerrar modal con Escape o clic fuera
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeDiagnosticModal();
+    });
+    document.getElementById('diagnosticModal').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closeDiagnosticModal();
+    });
+
+    // --- 4. DESCARGA DE EXCEL ---
+    window.downloadExcel = () => {
+        const data = globalData.map(pc => {
+            const diag = getDiagnosticRule(pc);
+            return {
+                'Unidad Negocio': normalizeBusinessUnit(pc),
+                'NUC ID': pc.pc_name || 'N/A',
+                'IP': pc.public_ip || pc.ip || '-',
+                'CPU Load (%)': Math.round(pc.cpu_load_percent || 0),
+                'RAM Load (%)': Math.round(pc.ram_percent || 0),
+                'Almacenamiento (%)': Math.round(pc.disk_percent || 0),
+                'Temperatura (°C)': Math.round(getTemp(pc)),
+                'Diagnóstico': diag.status,
+                'Mensaje': diag.msg,
+                'Estado': pc.status || 'online'
+            };
+        });
+
+        const ws = XLSX.utils.json_to_sheet(data);
+        
+        // Ajustar anchos de columna
+        ws['!cols'] = [
+            {wch: 15}, // Unidad
+            {wch: 40}, // NUC ID
+            {wch: 20}, // IP
+            {wch: 15}, // CPU
+            {wch: 15}, // RAM
+            {wch: 18}, // Almacenamiento
+            {wch: 18}, // Temperatura
+            {wch: 15}, // Diagnóstico
+            {wch: 50}, // Mensaje
+            {wch: 12}  // Estado
+        ];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Inventario NUCs");
+        
+        const date = new Date().toISOString().split('T')[0];
+        XLSX.writeFile(wb, `Argos_Inventario_NUCs_${date}.xlsx`);
+    };
+
+    // --- 5. INFORME PDF ---
     window.downloadReport = () => {
         try {
             const doc = new jsPDF();
@@ -1123,11 +973,143 @@
             doc.save(`Argos_Reporte_Tecnico_${Date.now()}.pdf`);
         } catch (error) {
             console.error("Error generando PDF:", error);
-            alert("Error al generar el PDF. Revisa la consola.");
+            alert("Error al generar el PDF. Por favor, intenta de nuevo.");
         }
     };
 
-    // --- 4. FETCH Y ACTUALIZACIÓN ---
+    // --- 6. FILTROS ---
+    function toggleColumnFilter(event, filterId) {
+        event.stopPropagation();
+        const dropdown = document.getElementById(filterId);
+        const isShown = dropdown.classList.contains('show');
+        
+        document.querySelectorAll('.filter-dropdown').forEach(d => d.classList.remove('show'));
+        
+        if (!isShown) {
+            dropdown.classList.add('show');
+        }
+    }
+
+    function filterByColumn(event, column, value) {
+        event.stopPropagation();
+        
+        columnFilters[column] = value;
+        
+        const dropdown = document.getElementById(`${column}Filter`);
+        if (dropdown) {
+            dropdown.querySelectorAll('.filter-option').forEach(opt => opt.classList.remove('selected'));
+            if (event.target) {
+                event.target.classList.add('selected');
+            }
+        }
+        
+        setTimeout(() => {
+            document.querySelectorAll('.filter-dropdown').forEach(d => d.classList.remove('show'));
+        }, 100);
+        
+        applyAllFilters();
+    }
+
+    function applyAllFilters() {
+        let filteredData = [...globalData];
+        
+        if (currentFilter !== 'all') {
+            filteredData = filteredData.filter(d => (d.unit || 'General') === currentFilter);
+        }
+        
+        Object.keys(columnFilters).forEach(column => {
+            const value = columnFilters[column];
+            if (value === 'all') return;
+            
+            filteredData = filteredData.filter(d => {
+                const unit = normalizeBusinessUnit(d);
+                const cpu = d.cpu_load_percent || 0;
+                const ram = d.ram_percent || 0;
+                const disk = d.disk_percent || 0;
+                const temp = getTemp(d);
+                const diag = getDiagnosticRule(d);
+                
+                switch(column) {
+                    case 'unit': return unit === value;
+                    case 'cpu':
+                        if (value === 'critical') return cpu > 85;
+                        if (value === 'warning') return cpu >= 60 && cpu <= 85;
+                        if (value === 'normal') return cpu < 60;
+                        return true;
+                    case 'ram':
+                        if (value === 'critical') return ram > 90;
+                        if (value === 'warning') return ram >= 70 && ram <= 90;
+                        if (value === 'normal') return ram < 70;
+                        return true;
+                    case 'disk':
+                        if (value === 'critical') return disk > 90;
+                        if (value === 'warning') return disk >= 75 && disk <= 90;
+                        if (value === 'normal') return disk < 75;
+                        return true;
+                    case 'temp':
+                        if (value === 'critical') return temp > 80;
+                        if (value === 'warning') return temp >= 60 && temp <= 80;
+                        if (value === 'normal') return temp < 60;
+                        return true;
+                    case 'status': return diag.status === value;
+                    default: return true;
+                }
+            });
+        });
+        
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        if (searchTerm) {
+            filteredData = filteredData.filter(d => 
+                (d.pc_name || '').toLowerCase().includes(searchTerm) ||
+                (d.public_ip || d.ip || '').toLowerCase().includes(searchTerm)
+            );
+        }
+        
+        updateDashboard(filteredData);
+    }
+
+    function clearAllFilters() {
+        columnFilters = {
+            unit: 'all', cpu: 'all', ram: 'all', disk: 'all', temp: 'all', status: 'all'
+        };
+        
+        document.querySelectorAll('.filter-dropdown').forEach(dropdown => {
+            const options = dropdown.querySelectorAll('.filter-option');
+            options.forEach((opt, index) => {
+                if (index === 0) opt.classList.add('selected');
+                else opt.classList.remove('selected');
+            });
+        });
+        
+        document.getElementById('searchInput').value = '';
+        applyAllFilters();
+    }
+
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.table-header')) {
+            document.querySelectorAll('.filter-dropdown').forEach(d => d.classList.remove('show'));
+        }
+    });
+
+    let currentFilter = 'all';
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.filter-btn').forEach(b => {
+                b.classList.remove('bg-white', 'text-slate-700', 'shadow-sm');
+                b.classList.add('text-slate-500');
+            });
+            e.target.classList.remove('text-slate-500');
+            e.target.classList.add('bg-white', 'text-slate-700', 'shadow-sm');
+            currentFilter = e.target.dataset.filter;
+            applyAllFilters();
+        });
+    });
+
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+        applyAllFilters();
+    });
+
+    // --- 7. FETCH Y ACTUALIZACIÓN ---
     async function fetchData() {
         try {
             const response = await fetch('/api/data');
@@ -1141,7 +1123,6 @@
             }));
             
             globalData = data;
-
             applyAllFilters();
             
             const now = new Date();
@@ -1152,41 +1133,26 @@
         }
     }
 
-    const getTemp = (d) => {
-        if (d.extended_sensors && d.extended_sensors['Intel CPU']) {
-            const t = d.extended_sensors['Intel CPU'].find(s => s.tipo === 'Temperature');
-            return t ? t.valor : 40;
-        }
-        return d.temperature || 40;
-    };
-
     function updateDashboard(data) {
         const total = data.length;
         document.getElementById('showing-text').innerText = `Mostrando ${total} activos`;
 
         if (total === 0) {
             document.getElementById('equipment-table-body').innerHTML = '<tr><td colspan="8" class="text-center py-4 text-slate-400">Sin datos disponibles para este filtro</td></tr>';
-            
-            // Actualizar KPIs a 0
             document.getElementById('kpi-total').innerText = '0';
             document.getElementById('donut-total').innerText = '0';
             document.getElementById('kpi-critical').innerText = '0';
             document.getElementById('kpi-cpu').innerText = '0%';
             document.getElementById('kpi-cpu-bar').style.width = '0%';
             document.getElementById('kpi-temp').innerText = '0°C';
-            
-            // Actualizar gráficos vacíos
             diskChart.data.datasets[0].data = [0, 0, 0];
             diskChart.update();
-            
             topResourceChart.data.labels = [];
             topResourceChart.data.datasets[0].data = [];
             topResourceChart.update();
-            
             businessUnitChart.data.datasets[0].data = [0, 0, 0];
             businessUnitChart.data.datasets[1].data = [0, 0, 0];
             businessUnitChart.update();
-            
             return;
         }
 
@@ -1281,6 +1247,24 @@
         
         if(typeof lucide !== 'undefined') lucide.createIcons();
     }
+
+    window.analyzePC = (pcName) => {
+        const pc = globalData.find(d => d.pc_name === pcName);
+        if (!pc) return;
+
+        const diag = getDiagnosticRule(pc);
+        const recs = getRecommendation(pc, diag);
+        
+        const btn = event.currentTarget;
+        const original = btn.innerHTML;
+        btn.innerHTML = `<i data-lucide="loader-2" class="w-3 h-3 animate-spin"></i>`;
+        
+        setTimeout(() => {
+            alert(`🔍 REPORTE TÉCNICO NUC: ${pcName}\n\nUnidad: ${normalizeBusinessUnit(pc)}\nEstado: ${diag.status.toUpperCase()}\n\nDIAGNÓSTICO IA:\n"${diag.msg}"\n\nRECOMENDACIONES:\n${recs.join('\n')}\n\nCPU: ${pc.cpu_load_percent}%\nTemp: ${getTemp(pc)}°C\nRAM: ${pc.ram_percent}%`);
+            btn.innerHTML = original;
+            lucide.createIcons();
+        }, 800);
+    };
 
     document.addEventListener("DOMContentLoaded", () => {
         fetchData();
