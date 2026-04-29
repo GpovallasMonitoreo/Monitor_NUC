@@ -16,9 +16,9 @@
     .cursor-wait { cursor: wait; }
     
     /* Estilos para filtros de columna */
-    .column-filter {
+    .table-header {
         position: relative;
-        display: inline-block;
+        user-select: none;
     }
     .filter-dropdown {
         display: none;
@@ -28,24 +28,26 @@
         background: white;
         border: 1px solid #e2e8f0;
         border-radius: 8px;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        z-index: 50;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        z-index: 100;
         min-width: 200px;
         padding: 8px;
         margin-top: 4px;
     }
-    .filter-dropdown.active {
+    .filter-dropdown.show {
         display: block;
     }
     .filter-option {
-        padding: 6px 12px;
+        padding: 8px 12px;
         cursor: pointer;
-        border-radius: 4px;
+        border-radius: 6px;
         font-size: 12px;
-        transition: background 0.2s;
+        transition: all 0.2s;
+        color: #475569;
     }
     .filter-option:hover {
         background: #f1f5f9;
+        color: #1e293b;
     }
     .filter-option.selected {
         background: #e0e7ff;
@@ -56,6 +58,10 @@
         display: inline-block;
         margin-left: 4px;
         font-size: 10px;
+        opacity: 0.5;
+    }
+    .table-header:hover .sort-indicator {
+        opacity: 1;
     }
 </style>
 
@@ -91,7 +97,7 @@
             <button class="px-4 py-1.5 text-xs font-bold rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 transition-colors filter-btn" data-filter="BioBox">BioBox</button>
         </div>
 
-        <!-- 🔧 NUEVO: Botón de Diagnóstico General -->
+        <!-- Botón de Diagnóstico General -->
         <button onclick="generateDiagnosticReport()" class="w-full md:w-auto flex items-center justify-center px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-600/20 transition-all active:scale-95">
             <i data-lucide="stethoscope" class="w-4 h-4 mr-2"></i>
             Diagnóstico General
@@ -235,7 +241,6 @@
             </div>
             <h3 class="text-base font-bold text-slate-800">Inventario en Vivo - NUCs</h3>
         </div>
-        <!-- 🔧 NUEVO: Botón para limpiar filtros -->
         <button onclick="clearAllFilters()" class="text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors flex items-center gap-1">
             <i data-lucide="filter-x" class="w-3 h-3"></i>
             Limpiar Filtros
@@ -246,79 +251,78 @@
         <table class="w-full text-left border-collapse" id="mainTable">
             <thead>
                 <tr class="bg-slate-50/50 border-b border-slate-100">
-                    <!-- 🔧 MODIFICADO: Cabeceras con filtros -->
-                    <th class="px-6 py-4 table-header cursor-pointer" onclick="toggleColumnFilter('unitFilter')">
+                    <th class="px-6 py-4 table-header cursor-pointer" onclick="toggleColumnFilter(event, 'unitFilter')">
                         <div class="flex items-center gap-1">
                             Unidad Negocio
                             <span class="sort-indicator">▼</span>
                         </div>
                         <div id="unitFilter" class="filter-dropdown">
-                            <div class="filter-option selected" onclick="filterByColumn('unit', 'all', event)">Todas</div>
-                            <div class="filter-option" onclick="filterByColumn('unit', 'ViaVerde', event)">Via Verde</div>
-                            <div class="filter-option" onclick="filterByColumn('unit', 'Ecovallas', event)">Ecovallas</div>
-                            <div class="filter-option" onclick="filterByColumn('unit', 'BioBox', event)">BioBox</div>
-                            <div class="filter-option" onclick="filterByColumn('unit', 'General', event)">General</div>
+                            <div class="filter-option selected" onclick="filterByColumn(event, 'unit', 'all')">Todas</div>
+                            <div class="filter-option" onclick="filterByColumn(event, 'unit', 'ViaVerde')">Via Verde</div>
+                            <div class="filter-option" onclick="filterByColumn(event, 'unit', 'Ecovallas')">Ecovallas</div>
+                            <div class="filter-option" onclick="filterByColumn(event, 'unit', 'BioBox')">BioBox</div>
+                            <div class="filter-option" onclick="filterByColumn(event, 'unit', 'General')">General</div>
                         </div>
                     </th>
                     <th class="px-6 py-4 table-header">NUC ID / IP</th>
-                    <th class="px-6 py-4 table-header w-32 cursor-pointer" onclick="toggleColumnFilter('cpuFilter')">
+                    <th class="px-6 py-4 table-header w-32 cursor-pointer" onclick="toggleColumnFilter(event, 'cpuFilter')">
                         <div class="flex items-center gap-1">
                             CPU Load
                             <span class="sort-indicator">▼</span>
                         </div>
                         <div id="cpuFilter" class="filter-dropdown">
-                            <div class="filter-option selected" onclick="filterByColumn('cpu', 'all', event)">Todos</div>
-                            <div class="filter-option" onclick="filterByColumn('cpu', 'critical', event)">Crítico (>85%)</div>
-                            <div class="filter-option" onclick="filterByColumn('cpu', 'warning', event)">Advertencia (60-85%)</div>
-                            <div class="filter-option" onclick="filterByColumn('cpu', 'normal', event)">Normal (<60%)</div>
+                            <div class="filter-option selected" onclick="filterByColumn(event, 'cpu', 'all')">Todos</div>
+                            <div class="filter-option" onclick="filterByColumn(event, 'cpu', 'critical')">Crítico (>85%)</div>
+                            <div class="filter-option" onclick="filterByColumn(event, 'cpu', 'warning')">Advertencia (60-85%)</div>
+                            <div class="filter-option" onclick="filterByColumn(event, 'cpu', 'normal')">Normal (<60%)</div>
                         </div>
                     </th>
-                    <th class="px-6 py-4 table-header w-32 cursor-pointer" onclick="toggleColumnFilter('ramFilter')">
+                    <th class="px-6 py-4 table-header w-32 cursor-pointer" onclick="toggleColumnFilter(event, 'ramFilter')">
                         <div class="flex items-center gap-1">
                             RAM Load
                             <span class="sort-indicator">▼</span>
                         </div>
                         <div id="ramFilter" class="filter-dropdown">
-                            <div class="filter-option selected" onclick="filterByColumn('ram', 'all', event)">Todos</div>
-                            <div class="filter-option" onclick="filterByColumn('ram', 'critical', event)">Crítico (>90%)</div>
-                            <div class="filter-option" onclick="filterByColumn('ram', 'warning', event)">Advertencia (70-90%)</div>
-                            <div class="filter-option" onclick="filterByColumn('ram', 'normal', event)">Normal (<70%)</div>
+                            <div class="filter-option selected" onclick="filterByColumn(event, 'ram', 'all')">Todos</div>
+                            <div class="filter-option" onclick="filterByColumn(event, 'ram', 'critical')">Crítico (>90%)</div>
+                            <div class="filter-option" onclick="filterByColumn(event, 'ram', 'warning')">Advertencia (70-90%)</div>
+                            <div class="filter-option" onclick="filterByColumn(event, 'ram', 'normal')">Normal (<70%)</div>
                         </div>
                     </th>
-                    <th class="px-6 py-4 table-header text-center cursor-pointer" onclick="toggleColumnFilter('diskFilter')">
+                    <th class="px-6 py-4 table-header text-center cursor-pointer" onclick="toggleColumnFilter(event, 'diskFilter')">
                         <div class="flex items-center gap-1 justify-center">
                             Almacenamiento
                             <span class="sort-indicator">▼</span>
                         </div>
                         <div id="diskFilter" class="filter-dropdown">
-                            <div class="filter-option selected" onclick="filterByColumn('disk', 'all', event)">Todos</div>
-                            <div class="filter-option" onclick="filterByColumn('disk', 'critical', event)">Crítico (>90%)</div>
-                            <div class="filter-option" onclick="filterByColumn('disk', 'warning', event)">Advertencia (75-90%)</div>
-                            <div class="filter-option" onclick="filterByColumn('disk', 'normal', event)">Normal (<75%)</div>
+                            <div class="filter-option selected" onclick="filterByColumn(event, 'disk', 'all')">Todos</div>
+                            <div class="filter-option" onclick="filterByColumn(event, 'disk', 'critical')">Crítico (>90%)</div>
+                            <div class="filter-option" onclick="filterByColumn(event, 'disk', 'warning')">Advertencia (75-90%)</div>
+                            <div class="filter-option" onclick="filterByColumn(event, 'disk', 'normal')">Normal (<75%)</div>
                         </div>
                     </th>
-                    <th class="px-6 py-4 table-header cursor-pointer" onclick="toggleColumnFilter('tempFilter')">
+                    <th class="px-6 py-4 table-header cursor-pointer" onclick="toggleColumnFilter(event, 'tempFilter')">
                         <div class="flex items-center gap-1">
                             Temperatura
                             <span class="sort-indicator">▼</span>
                         </div>
                         <div id="tempFilter" class="filter-dropdown">
-                            <div class="filter-option selected" onclick="filterByColumn('temp', 'all', event)">Todos</div>
-                            <div class="filter-option" onclick="filterByColumn('temp', 'critical', event)">Crítico (>80°C)</div>
-                            <div class="filter-option" onclick="filterByColumn('temp', 'warning', event)">Advertencia (60-80°C)</div>
-                            <div class="filter-option" onclick="filterByColumn('temp', 'normal', event)">Normal (<60°C)</div>
+                            <div class="filter-option selected" onclick="filterByColumn(event, 'temp', 'all')">Todos</div>
+                            <div class="filter-option" onclick="filterByColumn(event, 'temp', 'critical')">Crítico (>80°C)</div>
+                            <div class="filter-option" onclick="filterByColumn(event, 'temp', 'warning')">Advertencia (60-80°C)</div>
+                            <div class="filter-option" onclick="filterByColumn(event, 'temp', 'normal')">Normal (<60°C)</div>
                         </div>
                     </th>
-                    <th class="px-6 py-4 table-header cursor-pointer" onclick="toggleColumnFilter('statusFilter')">
+                    <th class="px-6 py-4 table-header cursor-pointer" onclick="toggleColumnFilter(event, 'statusFilter')">
                         <div class="flex items-center gap-1">
                             Diagnóstico AI
                             <span class="sort-indicator">▼</span>
                         </div>
                         <div id="statusFilter" class="filter-dropdown">
-                            <div class="filter-option selected" onclick="filterByColumn('status', 'all', event)">Todos</div>
-                            <div class="filter-option" onclick="filterByColumn('status', 'Optimal', event)">Optimal</div>
-                            <div class="filter-option" onclick="filterByColumn('status', 'Warning', event)">Warning</div>
-                            <div class="filter-option" onclick="filterByColumn('status', 'Critical', event)">Critical</div>
+                            <div class="filter-option selected" onclick="filterByColumn(event, 'status', 'all')">Todos</div>
+                            <div class="filter-option" onclick="filterByColumn(event, 'status', 'Optimal')">Optimal</div>
+                            <div class="filter-option" onclick="filterByColumn(event, 'status', 'Warning')">Warning</div>
+                            <div class="filter-option" onclick="filterByColumn(event, 'status', 'Critical')">Critical</div>
                         </div>
                     </th>
                     <th class="px-6 py-4 table-header text-right">Acciones</th>
@@ -422,7 +426,7 @@
 
     // --- 2. LÓGICA DE NEGOCIO Y AI ---
 
-    // 🔧 NUEVA FUNCIÓN: Normalizador de Unidad de Negocio
+    // Normalizador de Unidad de Negocio
     function normalizeBusinessUnit(item) {
         const validUnits = ['ViaVerde', 'Ecovallas', 'BioBox'];
         
@@ -457,23 +461,22 @@
         return item.unit || 'General';
     }
 
-    // 🔧 NUEVO: Sistema de filtros por columna
-    function toggleColumnFilter(filterId) {
+    // Sistema de filtros por columna
+    function toggleColumnFilter(event, filterId) {
+        event.stopPropagation();
         const dropdown = document.getElementById(filterId);
-        const isActive = dropdown.classList.contains('active');
+        const isShown = dropdown.classList.contains('show');
         
         // Cerrar todos los dropdowns
-        document.querySelectorAll('.filter-dropdown').forEach(d => d.classList.remove('active'));
+        document.querySelectorAll('.filter-dropdown').forEach(d => d.classList.remove('show'));
         
-        // Abrir el seleccionado si no estaba activo
-        if (!isActive) {
-            dropdown.classList.add('active');
+        // Abrir el seleccionado si no estaba abierto
+        if (!isShown) {
+            dropdown.classList.add('show');
         }
-        
-        event.stopPropagation();
     }
 
-    function filterByColumn(column, value, event) {
+    function filterByColumn(event, column, value) {
         event.stopPropagation();
         
         // Actualizar estado del filtro
@@ -481,8 +484,17 @@
         
         // Actualizar UI del dropdown
         const dropdown = document.getElementById(`${column}Filter`);
-        dropdown.querySelectorAll('.filter-option').forEach(opt => opt.classList.remove('selected'));
-        event.target.classList.add('selected');
+        if (dropdown) {
+            dropdown.querySelectorAll('.filter-option').forEach(opt => opt.classList.remove('selected'));
+            if (event.target) {
+                event.target.classList.add('selected');
+            }
+        }
+        
+        // Cerrar dropdown
+        setTimeout(() => {
+            document.querySelectorAll('.filter-dropdown').forEach(d => d.classList.remove('show'));
+        }, 100);
         
         // Aplicar filtros
         applyAllFilters();
@@ -540,6 +552,15 @@
             });
         });
         
+        // Aplicar búsqueda
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        if (searchTerm) {
+            filteredData = filteredData.filter(d => 
+                (d.pc_name || '').toLowerCase().includes(searchTerm) ||
+                (d.public_ip || d.ip || '').toLowerCase().includes(searchTerm)
+            );
+        }
+        
         updateDashboard(filteredData);
     }
 
@@ -555,18 +576,22 @@
         
         // Resetear UI de dropdowns
         document.querySelectorAll('.filter-dropdown').forEach(dropdown => {
-            dropdown.querySelectorAll('.filter-option').forEach((opt, index) => {
+            const options = dropdown.querySelectorAll('.filter-option');
+            options.forEach((opt, index) => {
                 if (index === 0) opt.classList.add('selected');
                 else opt.classList.remove('selected');
             });
         });
         
+        document.getElementById('searchInput').value = '';
         applyAllFilters();
     }
 
     // Cerrar dropdowns al hacer clic fuera
-    document.addEventListener('click', () => {
-        document.querySelectorAll('.filter-dropdown').forEach(d => d.classList.remove('active'));
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.table-header')) {
+            document.querySelectorAll('.filter-dropdown').forEach(d => d.classList.remove('show'));
+        }
     });
 
     // Filtros principales
@@ -580,17 +605,12 @@
             e.target.classList.remove('text-slate-500');
             e.target.classList.add('bg-white', 'text-slate-700', 'shadow-sm');
             currentFilter = e.target.dataset.filter;
-            applyAllFilters(); // Usar el nuevo sistema de filtros
+            applyAllFilters();
         });
     });
 
     document.getElementById('searchInput').addEventListener('input', (e) => {
-        const term = e.target.value.toLowerCase();
-        const rows = document.querySelectorAll('#equipment-table-body tr');
-        rows.forEach(row => {
-            const text = row.innerText.toLowerCase();
-            row.style.display = text.includes(term) ? '' : 'none';
-        });
+        applyAllFilters();
     });
 
     // MOTOR DE DIAGNÓSTICO PRECISO (Argos AI)
@@ -623,7 +643,7 @@
         return { status: 'Optimal', msg: 'Operación Nominal. Parámetros estables.' };
     }
 
-    // 🔧 NUEVO: Generar recomendaciones específicas
+    // Generar recomendaciones específicas
     function getRecommendation(pc, diag) {
         const unit = normalizeBusinessUnit(pc);
         const cpu = pc.cpu_load_percent || 0;
@@ -633,36 +653,32 @@
         let recommendations = [];
 
         if (diag.status === 'Optimal') {
-            recommendations.push('✅ Mantener monitoreo regular. No se requieren acciones inmediatas.');
-            recommendations.push('📅 Programar mantenimiento preventivo trimestral.');
+            recommendations.push('✅ Mantener monitoreo regular');
+            recommendations.push('📅 Programar mantenimiento preventivo trimestral');
         }
 
         if (diag.status === 'Critical' || diag.status === 'Warning') {
             if (cpu > 85) {
-                recommendations.push('🔴 CPU: Cerrar procesos innecesarios. Verificar aplicaciones en segundo plano.');
-                recommendations.push('🔧 Considerar upgrade de hardware si la carga es persistente.');
+                recommendations.push('🔴 CPU: Cerrar procesos innecesarios');
             }
             if (temp > 80) {
-                recommendations.push('🔥 TEMPERATURA: Verificar ventilación del área. Limpiar ventiladores y disipadores.');
-                recommendations.push('🌡️ Revisar sistema de aire acondicionado del sitio.');
+                recommendations.push('🔥 TEMP: Verificar ventilación y limpiar ventiladores');
             }
             if (disk > 90) {
-                recommendations.push('💾 DISCO: Eliminar archivos temporales y logs antiguos.');
-                recommendations.push('📦 Expandir almacenamiento o migrar datos a servidor externo.');
+                recommendations.push('💾 DISCO: Eliminar archivos temporales y logs antiguos');
             }
             if (ram > 90) {
-                recommendations.push('🧠 RAM: Identificar procesos con fuga de memoria. Reiniciar servicios críticos.');
-                recommendations.push('⚡ Considerar ampliación de memoria RAM.');
+                recommendations.push('🧠 RAM: Identificar procesos con fuga de memoria');
             }
             
             if (unit === 'BioBox' && disk > 85) {
-                recommendations.push('🗄️ BIOBOX: Archivar logs de transacciones antiguos. Configurar rotación automática de logs.');
+                recommendations.push('🗄️ BIOBOX: Configurar rotación automática de logs');
             }
             if (unit === 'Ecovallas' && (cpu > 80 || ram > 80)) {
-                recommendations.push('🖥️ ECOVALLAS: Optimizar contenido multimedia. Reducir resolución de videos si es posible.');
+                recommendations.push('🖥️ ECOVALLAS: Optimizar contenido multimedia');
             }
             if (unit === 'ViaVerde' && temp > 75) {
-                recommendations.push('🌿 VIA VERDE: Verificar exposición solar directa. Instalar protección térmica adicional.');
+                recommendations.push('🌿 VIA VERDE: Verificar exposición solar directa');
             }
         }
 
@@ -675,328 +691,322 @@
         if (!pc) return;
 
         const diag = getDiagnosticRule(pc);
+        const recs = getRecommendation(pc, diag);
+        const recsText = recs.join('\n');
         
         const btn = event.currentTarget;
         const original = btn.innerHTML;
         btn.innerHTML = `<i data-lucide="loader-2" class="w-3 h-3 animate-spin"></i>`;
         
         setTimeout(() => {
-            alert(`🔍 REPORTE TÉCNICO NUC: ${pcName}\n\nUnidad: ${normalizeBusinessUnit(pc)}\nEstado: ${diag.status.toUpperCase()}\n\nDIAGNÓSTICO IA:\n"${diag.msg}"\n\nCPU: ${pc.cpu_load_percent}%\nTemp: ${getTemp(pc)}°C\nRAM: ${pc.ram_percent}%`);
+            alert(`🔍 REPORTE TÉCNICO NUC: ${pcName}\n\nUnidad: ${normalizeBusinessUnit(pc)}\nEstado: ${diag.status.toUpperCase()}\n\nDIAGNÓSTICO IA:\n"${diag.msg}"\n\nRECOMENDACIONES:\n${recsText}\n\nCPU: ${pc.cpu_load_percent}%\nTemp: ${getTemp(pc)}°C\nRAM: ${pc.ram_percent}%`);
             btn.innerHTML = original;
             lucide.createIcons();
         }, 800);
     };
 
-    // --- 3. GENERACIÓN DE PDF PROFESIONAL ---
+    // --- 3. GENERACIÓN DE PDF ---
     
-    // 🔧 NUEVO: Función para Diagnóstico General con PDF
+    // Diagnóstico General con PDF
     window.generateDiagnosticReport = () => {
         const btn = event.currentTarget;
+        if (!btn) return;
+        
         const originalHTML = btn.innerHTML;
         btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin mr-2"></i> Generando...';
         btn.disabled = true;
+        lucide.createIcons();
 
         setTimeout(() => {
-            const doc = new jsPDF();
-            const date = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            const time = new Date().toLocaleTimeString('es-MX');
+            try {
+                const doc = new jsPDF();
+                const date = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                const time = new Date().toLocaleTimeString('es-MX');
 
-            // COLORES
-            const primaryColor = [30, 41, 59];
-            const accentColor = [79, 70, 229];
-            const successColor = [16, 185, 129];
-            const warningColor = [245, 158, 11];
-            const dangerColor = [239, 68, 68];
+                const primaryColor = [30, 41, 59];
+                const accentColor = [79, 70, 229];
+                const successColor = [16, 185, 129];
+                const warningColor = [245, 158, 11];
+                const dangerColor = [239, 68, 68];
 
-            // PORTADA
-            doc.setFillColor(...primaryColor);
-            doc.rect(0, 0, 210, 297, 'F');
-            
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(32);
-            doc.setFont("helvetica", "bold");
-            doc.text("DIAGNÓSTICO GENERAL", 105, 80, { align: 'center' });
-            doc.text("DE INFRAESTRUCTURA", 105, 95, { align: 'center' });
-            
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "normal");
-            doc.text("ARGOS AI ENTERPRISE", 105, 120, { align: 'center' });
-            
-            doc.setFontSize(10);
-            doc.text(`Fecha: ${date}`, 105, 140, { align: 'center' });
-            doc.text(`Hora: ${time}`, 105, 148, { align: 'center' });
-            
-            doc.addPage();
-
-            // PÁGINA 2: RESUMEN EJECUTIVO
-            const total = globalData.length;
-            const criticals = globalData.filter(d => getDiagnosticRule(d).status === 'Critical').length;
-            const warnings = globalData.filter(d => getDiagnosticRule(d).status === 'Warning').length;
-            const optimals = total - criticals - warnings;
-            
-            const avgCpu = (globalData.reduce((acc, d) => acc + (d.cpu_load_percent || 0), 0) / total).toFixed(1);
-            const avgRam = (globalData.reduce((acc, d) => acc + (d.ram_percent || 0), 0) / total).toFixed(1);
-            const avgTemp = (globalData.reduce((acc, d) => acc + getTemp(d), 0) / total).toFixed(1);
-            
-            // Calcular salud general (0-100)
-            const healthScore = total > 0 ? Math.round((optimals / total) * 100) : 100;
-
-            doc.setFillColor(...primaryColor);
-            doc.rect(0, 0, 210, 30, 'F');
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(16);
-            doc.setFont("helvetica", "bold");
-            doc.text("RESUMEN EJECUTIVO", 14, 20);
-
-            // Score de salud
-            doc.setTextColor(30, 41, 59);
-            doc.setFontSize(24);
-            doc.setFont("helvetica", "bold");
-            doc.text(`SALUD GENERAL: ${healthScore}%`, 14, 50);
-            
-            // Barra de salud
-            const barColor = healthScore > 80 ? successColor : (healthScore > 50 ? warningColor : dangerColor);
-            doc.setFillColor(230, 230, 230);
-            doc.roundedRect(14, 55, 182, 8, 2, 2, 'F');
-            doc.setFillColor(...barColor);
-            doc.roundedRect(14, 55, (182 * healthScore) / 100, 8, 2, 2, 'F');
-
-            // KPIs
-            const kpiY = 75;
-            doc.setFontSize(10);
-            doc.setTextColor(100, 100, 100);
-            
-            doc.setFillColor(240, 240, 250);
-            doc.roundedRect(14, kpiY, 42, 30, 3, 3, 'F');
-            doc.text("TOTAL NUCs", 16, kpiY + 10);
-            doc.setFontSize(18);
-            doc.setTextColor(...primaryColor);
-            doc.text(String(total), 16, kpiY + 25);
-            
-            doc.setFillColor(254, 242, 242);
-            doc.roundedRect(60, kpiY, 42, 30, 3, 3, 'F');
-            doc.setFontSize(10);
-            doc.setTextColor(100, 100, 100);
-            doc.text("CRÍTICOS", 62, kpiY + 10);
-            doc.setFontSize(18);
-            doc.setTextColor(...dangerColor);
-            doc.text(String(criticals), 62, kpiY + 25);
-            
-            doc.setFillColor(255, 251, 235);
-            doc.roundedRect(107, kpiY, 42, 30, 3, 3, 'F');
-            doc.setFontSize(10);
-            doc.setTextColor(100, 100, 100);
-            doc.text("WARNINGS", 109, kpiY + 10);
-            doc.setFontSize(18);
-            doc.setTextColor(...warningColor);
-            doc.text(String(warnings), 109, kpiY + 25);
-            
-            doc.setFillColor(236, 253, 243);
-            doc.roundedRect(154, kpiY, 42, 30, 3, 3, 'F');
-            doc.setFontSize(10);
-            doc.setTextColor(100, 100, 100);
-            doc.text("SALUDABLES", 156, kpiY + 10);
-            doc.setFontSize(18);
-            doc.setTextColor(...successColor);
-            doc.text(String(optimals), 156, kpiY + 25);
-
-            // Promedios
-            doc.setFontSize(12);
-            doc.setTextColor(30, 41, 59);
-            doc.setFont("helvetica", "bold");
-            doc.text("PROMEDIOS DE RENDIMIENTO", 14, 125);
-            
-            doc.setFontSize(10);
-            doc.setTextColor(100, 100, 100);
-            doc.text(`CPU Promedio: ${avgCpu}%`, 14, 135);
-            doc.text(`RAM Promedio: ${avgRam}%`, 14, 142);
-            doc.text(`Temperatura Promedio: ${avgTemp}°C`, 14, 149);
-
-            // PÁGINA 3: ANÁLISIS POR UNIDAD DE NEGOCIO
-            doc.addPage();
-            doc.setFillColor(...primaryColor);
-            doc.rect(0, 0, 210, 30, 'F');
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(16);
-            doc.text("ANÁLISIS POR UNIDAD DE NEGOCIO", 14, 20);
-
-            const units = ['ViaVerde', 'Ecovallas', 'BioBox'];
-            let yPos = 40;
-
-            units.forEach(unit => {
-                const unitDevices = globalData.filter(d => normalizeBusinessUnit(d) === unit);
-                if (unitDevices.length === 0) return;
-                
-                const unitCriticals = unitDevices.filter(d => getDiagnosticRule(d).status === 'Critical').length;
-                const unitWarnings = unitDevices.filter(d => getDiagnosticRule(d).status === 'Warning').length;
-                const unitAvgCpu = (unitDevices.reduce((acc, d) => acc + (d.cpu_load_percent || 0), 0) / unitDevices.length).toFixed(1);
-                const unitAvgTemp = (unitDevices.reduce((acc, d) => acc + getTemp(d), 0) / unitDevices.length).toFixed(1);
-                const unitHealth = ((unitDevices.length - unitCriticals - unitWarnings) / unitDevices.length * 100).toFixed(1);
-
-                doc.setFontSize(14);
-                doc.setTextColor(30, 41, 59);
-                doc.setFont("helvetica", "bold");
-                doc.text(`${unit} (${unitDevices.length} dispositivos)`, 14, yPos);
-                
-                doc.setFontSize(10);
-                doc.setTextColor(100, 100, 100);
-                doc.setFont("helvetica", "normal");
-                doc.text(`Salud: ${unitHealth}% | CPU Avg: ${unitAvgCpu}% | Temp Avg: ${unitAvgTemp}°C`, 14, yPos + 7);
-                doc.text(`Críticos: ${unitCriticals} | Advertencias: ${unitWarnings}`, 14, yPos + 14);
-
-                // Recomendaciones por unidad
-                let unitRecs = [];
-                if (unit === 'BioBox') {
-                    unitRecs = [
-                        '• Monitorear espacio en disco para logs de transacciones',
-                        '• Configurar rotación automática de logs cada 30 días',
-                        '• Verificar conectividad con servidores centrales'
-                    ];
-                } else if (unit === 'Ecovallas') {
-                    unitRecs = [
-                        '• Optimizar contenido multimedia para reducir carga de CPU',
-                        '• Programar reinicios semanales para liberar memoria',
-                        '• Verificar estado de pantallas LED'
-                    ];
-                } else if (unit === 'ViaVerde') {
-                    unitRecs = [
-                        '• Revisar sistemas de ventilación en muros verdes',
-                        '• Monitorear sensores de humedad y temperatura',
-                        '• Mantenimiento preventivo de sistemas de riego'
-                    ];
-                }
-
-                doc.setFontSize(9);
-                doc.setTextColor(80, 80, 80);
-                doc.text("Recomendaciones:", 14, yPos + 24);
-                unitRecs.forEach((rec, idx) => {
-                    doc.text(rec, 18, yPos + 31 + (idx * 7));
-                });
-
-                yPos += 55;
-            });
-
-            // PÁGINA 4+: DISPOSITIVOS CRÍTICOS Y ADVERTENCIAS
-            doc.addPage();
-            doc.setFillColor(...primaryColor);
-            doc.rect(0, 0, 210, 30, 'F');
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(16);
-            doc.text("DISPOSITIVOS QUE REQUIEREN ATENCIÓN", 14, 20);
-
-            const problematicDevices = globalData.filter(d => {
-                const diag = getDiagnosticRule(d);
-                return diag.status === 'Critical' || diag.status === 'Warning';
-            }).sort((a, b) => {
-                const statusOrder = { 'Critical': 0, 'Warning': 1 };
-                return statusOrder[getDiagnosticRule(a).status] - statusOrder[getDiagnosticRule(b).status];
-            });
-
-            if (problematicDevices.length > 0) {
-                const tableBody = problematicDevices.map(d => {
-                    const diag = getDiagnosticRule(d);
-                    const recs = getRecommendation(d, diag);
-                    return [
-                        normalizeBusinessUnit(d),
-                        d.pc_name,
-                        `${Math.round(d.cpu_load_percent || 0)}%`,
-                        `${Math.round(d.ram_percent || 0)}%`,
-                        `${Math.round(d.disk_percent || 0)}%`,
-                        `${Math.round(getTemp(d))}°C`,
-                        diag.status.toUpperCase(),
-                        diag.msg,
-                        recs.join(' | ')
-                    ];
-                });
-
-                doc.autoTable({
-                    startY: 35,
-                    head: [['Unidad', 'NUC ID', 'CPU', 'RAM', 'Disk', 'Temp', 'Estado', 'Diagnóstico', 'Recomendaciones']],
-                    body: tableBody,
-                    theme: 'grid',
-                    headStyles: { fillColor: accentColor, textColor: 255, fontStyle: 'bold', fontSize: 8 },
-                    styles: { fontSize: 7, cellPadding: 3 },
-                    columnStyles: {
-                        0: { cellWidth: 20 },
-                        1: { cellWidth: 30 },
-                        7: { cellWidth: 40 },
-                        8: { cellWidth: 60 }
-                    },
-                    didParseCell: function(data) {
-                        if (data.section === 'body' && data.column.index === 6) {
-                            if (data.cell.raw === 'CRITICAL') {
-                                data.cell.styles.textColor = [220, 38, 38];
-                                data.cell.styles.fontStyle = 'bold';
-                            }
-                            if (data.cell.raw === 'WARNING') {
-                                data.cell.styles.textColor = [217, 119, 6];
-                                data.cell.styles.fontStyle = 'bold';
-                            }
-                        }
-                    }
-                });
-            } else {
-                doc.setFontSize(12);
-                doc.setTextColor(...successColor);
-                doc.text("✅ No se encontraron dispositivos con problemas.", 14, 40);
-                doc.setTextColor(100, 100, 100);
-                doc.setFontSize(10);
-                doc.text("Todos los NUCs están operando dentro de parámetros normales.", 14, 48);
-            }
-
-            // PÁGINA FINAL: RECOMENDACIONES GENERALES
-            doc.addPage();
-            doc.setFillColor(...primaryColor);
-            doc.rect(0, 0, 210, 30, 'F');
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(16);
-            doc.text("RECOMENDACIONES GENERALES Y PLAN DE ACCIÓN", 14, 20);
-
-            const generalRecommendations = [
-                { priority: 'ALTA', title: 'Actualización de Sistema', desc: 'Mantener todos los NUCs actualizados con los últimos parches de seguridad y firmware.' },
-                { priority: 'ALTA', title: 'Monitoreo Continuo', desc: 'Configurar alertas automáticas para CPU >85%, Temperatura >80°C y Disco >90%.' },
-                { priority: 'MEDIA', title: 'Mantenimiento Preventivo', desc: 'Programar limpieza física de ventiladores y revisión de conexiones cada 3 meses.' },
-                { priority: 'MEDIA', title: 'Backup de Configuraciones', desc: 'Realizar respaldo de configuraciones críticas de cada NUC mensualmente.' },
-                { priority: 'BAJA', title: 'Optimización de Recursos', desc: 'Revisar aplicaciones y servicios innecesarios que consuman recursos del sistema.' },
-                { priority: 'BAJA', title: 'Documentación', desc: 'Mantener actualizado el inventario de NUCs con ubicaciones y responsable asignado.' }
-            ];
-
-            let recY = 40;
-            generalRecommendations.forEach(rec => {
-                const priorityColor = rec.priority === 'ALTA' ? dangerColor : (rec.priority === 'MEDIA' ? warningColor : successColor);
-                
-                doc.setFillColor(...priorityColor);
-                doc.roundedRect(14, recY, 182, 22, 3, 3, 'F');
+                // PORTADA
+                doc.setFillColor(...primaryColor);
+                doc.rect(0, 0, 210, 297, 'F');
                 
                 doc.setTextColor(255, 255, 255);
-                doc.setFontSize(8);
+                doc.setFontSize(32);
                 doc.setFont("helvetica", "bold");
-                doc.text(`PRIORIDAD ${rec.priority}`, 18, recY + 8);
+                doc.text("DIAGNÓSTICO GENERAL", 105, 80, { align: 'center' });
+                doc.text("DE INFRAESTRUCTURA", 105, 95, { align: 'center' });
                 
-                doc.setFontSize(12);
-                doc.text(rec.title, 18, recY + 18);
-                
-                doc.setTextColor(80, 80, 80);
-                doc.setFontSize(9);
+                doc.setFontSize(14);
                 doc.setFont("helvetica", "normal");
-                doc.text(rec.desc, 20, recY + 28);
+                doc.text("ARGOS AI ENTERPRISE", 105, 120, { align: 'center' });
                 
-                recY += 35;
-            });
+                doc.setFontSize(10);
+                doc.text(`Fecha: ${date}`, 105, 140, { align: 'center' });
+                doc.text(`Hora: ${time}`, 105, 148, { align: 'center' });
+                
+                // PÁGINA 2: RESUMEN EJECUTIVO
+                doc.addPage();
+                const total = globalData.length;
+                const criticals = globalData.filter(d => getDiagnosticRule(d).status === 'Critical').length;
+                const warnings = globalData.filter(d => getDiagnosticRule(d).status === 'Warning').length;
+                const optimals = total - criticals - warnings;
+                
+                const avgCpu = total > 0 ? (globalData.reduce((acc, d) => acc + (d.cpu_load_percent || 0), 0) / total).toFixed(1) : 0;
+                const avgRam = total > 0 ? (globalData.reduce((acc, d) => acc + (d.ram_percent || 0), 0) / total).toFixed(1) : 0;
+                const avgTemp = total > 0 ? (globalData.reduce((acc, d) => acc + getTemp(d), 0) / total).toFixed(1) : 0;
+                
+                const healthScore = total > 0 ? Math.round((optimals / total) * 100) : 100;
 
-            // Pie de página
-            const pageCount = doc.internal.getNumberOfPages();
-            for(let i = 1; i <= pageCount; i++) {
-                doc.setPage(i);
-                doc.setFontSize(8);
-                doc.setTextColor(150, 150, 150);
-                if (i > 1) { // No mostrar en portada
+                // Encabezado
+                doc.setFillColor(...primaryColor);
+                doc.rect(0, 0, 210, 30, 'F');
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(16);
+                doc.setFont("helvetica", "bold");
+                doc.text("RESUMEN EJECUTIVO", 14, 20);
+
+                // Score de salud
+                doc.setTextColor(30, 41, 59);
+                doc.setFontSize(24);
+                doc.setFont("helvetica", "bold");
+                doc.text(`SALUD GENERAL: ${healthScore}%`, 14, 50);
+                
+                // Barra de salud
+                const barColor = healthScore > 80 ? successColor : (healthScore > 50 ? warningColor : dangerColor);
+                doc.setFillColor(230, 230, 230);
+                doc.roundedRect(14, 55, 182, 8, 2, 2, 'F');
+                doc.setFillColor(...barColor);
+                doc.roundedRect(14, 55, Math.max((182 * healthScore) / 100, 1), 8, 2, 2, 'F');
+
+                // KPIs
+                const kpiY = 75;
+                doc.setFontSize(10);
+                doc.setTextColor(100, 100, 100);
+                
+                doc.setFillColor(240, 240, 250);
+                doc.roundedRect(14, kpiY, 42, 30, 3, 3, 'F');
+                doc.text("TOTAL NUCs", 16, kpiY + 10);
+                doc.setFontSize(18);
+                doc.setTextColor(...primaryColor);
+                doc.text(String(total), 16, kpiY + 25);
+                
+                doc.setFillColor(254, 242, 242);
+                doc.roundedRect(60, kpiY, 42, 30, 3, 3, 'F');
+                doc.setFontSize(10);
+                doc.setTextColor(100, 100, 100);
+                doc.text("CRÍTICOS", 62, kpiY + 10);
+                doc.setFontSize(18);
+                doc.setTextColor(...dangerColor);
+                doc.text(String(criticals), 62, kpiY + 25);
+                
+                doc.setFillColor(255, 251, 235);
+                doc.roundedRect(107, kpiY, 42, 30, 3, 3, 'F');
+                doc.setFontSize(10);
+                doc.setTextColor(100, 100, 100);
+                doc.text("WARNINGS", 109, kpiY + 10);
+                doc.setFontSize(18);
+                doc.setTextColor(...warningColor);
+                doc.text(String(warnings), 109, kpiY + 25);
+                
+                doc.setFillColor(236, 253, 243);
+                doc.roundedRect(154, kpiY, 42, 30, 3, 3, 'F');
+                doc.setFontSize(10);
+                doc.setTextColor(100, 100, 100);
+                doc.text("SALUDABLES", 156, kpiY + 10);
+                doc.setFontSize(18);
+                doc.setTextColor(...successColor);
+                doc.text(String(optimals), 156, kpiY + 25);
+
+                // Promedios
+                doc.setFontSize(12);
+                doc.setTextColor(30, 41, 59);
+                doc.setFont("helvetica", "bold");
+                doc.text("PROMEDIOS DE RENDIMIENTO", 14, 125);
+                
+                doc.setFontSize(10);
+                doc.setTextColor(100, 100, 100);
+                doc.text(`CPU Promedio: ${avgCpu}%`, 14, 135);
+                doc.text(`RAM Promedio: ${avgRam}%`, 14, 142);
+                doc.text(`Temperatura Promedio: ${avgTemp}°C`, 14, 149);
+
+                // PÁGINA 3: ANÁLISIS POR UNIDAD DE NEGOCIO
+                doc.addPage();
+                doc.setFillColor(...primaryColor);
+                doc.rect(0, 0, 210, 30, 'F');
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(16);
+                doc.text("ANÁLISIS POR UNIDAD DE NEGOCIO", 14, 20);
+
+                const units = ['ViaVerde', 'Ecovallas', 'BioBox'];
+                let yPos = 40;
+
+                units.forEach(unit => {
+                    const unitDevices = globalData.filter(d => normalizeBusinessUnit(d) === unit);
+                    if (unitDevices.length === 0) return;
+                    
+                    const unitCriticals = unitDevices.filter(d => getDiagnosticRule(d).status === 'Critical').length;
+                    const unitWarnings = unitDevices.filter(d => getDiagnosticRule(d).status === 'Warning').length;
+                    const unitAvgCpu = (unitDevices.reduce((acc, d) => acc + (d.cpu_load_percent || 0), 0) / unitDevices.length).toFixed(1);
+                    const unitAvgTemp = (unitDevices.reduce((acc, d) => acc + getTemp(d), 0) / unitDevices.length).toFixed(1);
+                    const unitHealth = ((unitDevices.length - unitCriticals - unitWarnings) / unitDevices.length * 100).toFixed(1);
+
+                    doc.setFontSize(14);
+                    doc.setTextColor(30, 41, 59);
+                    doc.setFont("helvetica", "bold");
+                    doc.text(`${unit} (${unitDevices.length} dispositivos)`, 14, yPos);
+                    
+                    doc.setFontSize(10);
+                    doc.setTextColor(100, 100, 100);
+                    doc.setFont("helvetica", "normal");
+                    doc.text(`Salud: ${unitHealth}% | CPU Avg: ${unitAvgCpu}% | Temp Avg: ${unitAvgTemp}°C`, 14, yPos + 7);
+                    doc.text(`Críticos: ${unitCriticals} | Advertencias: ${unitWarnings}`, 14, yPos + 14);
+
+                    let unitRecs = [];
+                    if (unit === 'BioBox') {
+                        unitRecs = ['• Monitorear espacio en disco para logs', '• Configurar rotación automática de logs cada 30 días', '• Verificar conectividad con servidores centrales'];
+                    } else if (unit === 'Ecovallas') {
+                        unitRecs = ['• Optimizar contenido multimedia para reducir CPU', '• Programar reinicios semanales para liberar memoria', '• Verificar estado de pantallas LED'];
+                    } else if (unit === 'ViaVerde') {
+                        unitRecs = ['• Revisar sistemas de ventilación en muros verdes', '• Monitorear sensores de humedad y temperatura', '• Mantenimiento preventivo de sistemas de riego'];
+                    }
+
+                    doc.setFontSize(9);
+                    doc.setTextColor(80, 80, 80);
+                    doc.text("Recomendaciones:", 14, yPos + 24);
+                    unitRecs.forEach((rec, idx) => {
+                        doc.text(rec, 18, yPos + 31 + (idx * 7));
+                    });
+
+                    yPos += 55;
+                });
+
+                // PÁGINA 4+: DISPOSITIVOS QUE REQUIEREN ATENCIÓN
+                doc.addPage();
+                doc.setFillColor(...primaryColor);
+                doc.rect(0, 0, 210, 30, 'F');
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(16);
+                doc.text("DISPOSITIVOS QUE REQUIEREN ATENCIÓN", 14, 20);
+
+                const problematicDevices = globalData.filter(d => {
+                    const diag = getDiagnosticRule(d);
+                    return diag.status === 'Critical' || diag.status === 'Warning';
+                }).sort((a, b) => {
+                    const statusOrder = { 'Critical': 0, 'Warning': 1 };
+                    return statusOrder[getDiagnosticRule(a).status] - statusOrder[getDiagnosticRule(b).status];
+                });
+
+                if (problematicDevices.length > 0) {
+                    const tableBody = problematicDevices.map(d => {
+                        const diag = getDiagnosticRule(d);
+                        const recs = getRecommendation(d, diag);
+                        return [
+                            normalizeBusinessUnit(d),
+                            d.pc_name || 'N/A',
+                            `${Math.round(d.cpu_load_percent || 0)}%`,
+                            `${Math.round(d.ram_percent || 0)}%`,
+                            `${Math.round(d.disk_percent || 0)}%`,
+                            `${Math.round(getTemp(d))}°C`,
+                            diag.status.toUpperCase(),
+                            diag.msg,
+                            recs.join(' | ')
+                        ];
+                    });
+
+                    doc.autoTable({
+                        startY: 35,
+                        head: [['Unidad', 'NUC ID', 'CPU', 'RAM', 'Disk', 'Temp', 'Estado', 'Diagnóstico', 'Recomendaciones']],
+                        body: tableBody,
+                        theme: 'grid',
+                        headStyles: { fillColor: accentColor, textColor: 255, fontStyle: 'bold', fontSize: 8 },
+                        styles: { fontSize: 7, cellPadding: 3 },
+                        columnStyles: {
+                            0: { cellWidth: 20 },
+                            1: { cellWidth: 25 },
+                            7: { cellWidth: 40 },
+                            8: { cellWidth: 50 }
+                        },
+                        didParseCell: function(data) {
+                            if (data.section === 'body' && data.column.index === 6) {
+                                if (data.cell.raw === 'CRITICAL') {
+                                    data.cell.styles.textColor = [220, 38, 38];
+                                    data.cell.styles.fontStyle = 'bold';
+                                }
+                                if (data.cell.raw === 'WARNING') {
+                                    data.cell.styles.textColor = [217, 119, 6];
+                                    data.cell.styles.fontStyle = 'bold';
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    doc.setFontSize(12);
+                    doc.setTextColor(...successColor);
+                    doc.text("✅ No se encontraron dispositivos con problemas.", 14, 40);
+                    doc.setTextColor(100, 100, 100);
+                    doc.setFontSize(10);
+                    doc.text("Todos los NUCs están operando dentro de parámetros normales.", 14, 48);
+                }
+
+                // PÁGINA FINAL: RECOMENDACIONES GENERALES
+                doc.addPage();
+                doc.setFillColor(...primaryColor);
+                doc.rect(0, 0, 210, 30, 'F');
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(16);
+                doc.text("RECOMENDACIONES GENERALES Y PLAN DE ACCIÓN", 14, 20);
+
+                const generalRecommendations = [
+                    { priority: 'ALTA', title: 'Actualización de Sistema', desc: 'Mantener todos los NUCs actualizados con los últimos parches de seguridad y firmware.' },
+                    { priority: 'ALTA', title: 'Monitoreo Continuo', desc: 'Configurar alertas automáticas para CPU >85%, Temperatura >80°C y Disco >90%.' },
+                    { priority: 'MEDIA', title: 'Mantenimiento Preventivo', desc: 'Programar limpieza física de ventiladores y revisión de conexiones cada 3 meses.' },
+                    { priority: 'MEDIA', title: 'Backup de Configuraciones', desc: 'Realizar respaldo de configuraciones críticas de cada NUC mensualmente.' },
+                    { priority: 'BAJA', title: 'Optimización de Recursos', desc: 'Revisar aplicaciones y servicios innecesarios que consuman recursos del sistema.' },
+                    { priority: 'BAJA', title: 'Documentación', desc: 'Mantener actualizado el inventario de NUCs con ubicaciones y responsable asignado.' }
+                ];
+
+                let recY = 40;
+                generalRecommendations.forEach(rec => {
+                    const priorityColor = rec.priority === 'ALTA' ? dangerColor : (rec.priority === 'MEDIA' ? warningColor : successColor);
+                    
+                    doc.setFillColor(...priorityColor);
+                    doc.roundedRect(14, recY, 182, 22, 3, 3, 'F');
+                    
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(8);
+                    doc.setFont("helvetica", "bold");
+                    doc.text(`PRIORIDAD ${rec.priority}`, 18, recY + 8);
+                    
+                    doc.setFontSize(12);
+                    doc.text(rec.title, 18, recY + 18);
+                    
+                    doc.setTextColor(80, 80, 80);
+                    doc.setFontSize(9);
+                    doc.setFont("helvetica", "normal");
+                    doc.text(rec.desc, 20, recY + 28);
+                    
+                    recY += 35;
+                });
+
+                // Pie de página en todas las páginas excepto portada
+                const pageCount = doc.internal.getNumberOfPages();
+                for(let i = 2; i <= pageCount; i++) {
+                    doc.setPage(i);
+                    doc.setFontSize(8);
+                    doc.setTextColor(150, 150, 150);
                     doc.line(14, 285, 196, 285);
                     doc.text(`Diagnóstico General Argos AI - Página ${i} de ${pageCount}`, 105, 290, { align: 'center' });
                 }
-            }
 
-            doc.save(`Argos_Diagnostico_General_${Date.now()}.pdf`);
+                doc.save(`Argos_Diagnostico_General_${Date.now()}.pdf`);
+                
+            } catch (error) {
+                console.error("Error generando PDF:", error);
+                alert("Error al generar el PDF. Por favor, revisa la consola para más detalles.");
+            }
             
             // Restaurar botón
             btn.innerHTML = originalHTML;
@@ -1005,110 +1015,116 @@
         }, 1000);
     };
 
+    // Informe PDF original
     window.downloadReport = () => {
-        const doc = new jsPDF();
-        const date = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-        const time = new Date().toLocaleTimeString('es-MX');
+        try {
+            const doc = new jsPDF();
+            const date = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const time = new Date().toLocaleTimeString('es-MX');
 
-        const primaryColor = [30, 41, 59];
-        const accentColor = [79, 70, 229];
+            const primaryColor = [30, 41, 59];
+            const accentColor = [79, 70, 229];
 
-        doc.setFillColor(...primaryColor);
-        doc.rect(0, 0, 210, 40, 'F');
+            doc.setFillColor(...primaryColor);
+            doc.rect(0, 0, 210, 40, 'F');
 
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(22);
-        doc.text("INFORME OPERATIVO TÉCNICO", 14, 20);
-        
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.text("ARGOS AI ENTERPRISE MONITOR", 14, 28);
-
-        doc.text(`Fecha: ${date} - ${time}`, 200, 20, { align: 'right' });
-        doc.text("Reporte ID: " + Math.floor(Math.random() * 1000000), 200, 28, { align: 'right' });
-
-        const total = globalData.length;
-        const criticals = globalData.filter(d => getDiagnosticRule(d).status === 'Critical').length;
-        const warnings = globalData.filter(d => getDiagnosticRule(d).status === 'Warning').length;
-        const optimal = total - criticals - warnings;
-
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(14);
-        doc.setFont("helvetica", "bold");
-        doc.text("1. RESUMEN EJECUTIVO DE INFRAESTRUCTURA", 14, 55);
-
-        const drawStatBox = (x, title, value, color) => {
-            doc.setDrawColor(200, 200, 200);
-            doc.setFillColor(250, 250, 250);
-            doc.roundedRect(x, 60, 40, 25, 3, 3, 'FD');
-            doc.setFontSize(8);
-            doc.setTextColor(100, 100, 100);
-            doc.text(title, x + 20, 68, { align: 'center' });
-            doc.setFontSize(16);
-            doc.setTextColor(...color);
             doc.setFont("helvetica", "bold");
-            doc.text(String(value), x + 20, 80, { align: 'center' });
-        };
-
-        drawStatBox(14, "TOTAL NUCs", total, [30, 41, 59]);
-        drawStatBox(60, "CRÍTICOS", criticals, [225, 29, 72]);
-        drawStatBox(106, "ADVERTENCIA", warnings, [217, 119, 6]);
-        drawStatBox(152, "OPERATIVOS", optimal, [16, 185, 129]);
-
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(14);
-        doc.text("2. DETALLE DE ACTIVOS CRÍTICOS Y ADVERTENCIAS", 14, 100);
-
-        const tableBody = globalData
-            .filter(d => getDiagnosticRule(d).status !== 'Optimal')
-            .map(d => {
-                const diag = getDiagnosticRule(d);
-                return [
-                    normalizeBusinessUnit(d),
-                    d.pc_name,
-                    `${Math.round(d.cpu_load_percent)}%`,
-                    `${getTemp(d)}°C`,
-                    diag.status.toUpperCase(),
-                    diag.msg
-                ];
-            });
-
-        if (tableBody.length > 0) {
-            doc.autoTable({
-                startY: 105,
-                head: [['Unidad', 'NUC ID', 'CPU', 'Temp', 'Estado', 'Diagnóstico AI']],
-                body: tableBody,
-                theme: 'grid',
-                headStyles: { fillColor: accentColor, textColor: 255, fontStyle: 'bold' },
-                styles: { fontSize: 8, cellPadding: 3 },
-                columnStyles: {
-                    0: { cellWidth: 25 },
-                    5: { cellWidth: 'auto' }
-                },
-                didParseCell: function(data) {
-                    if (data.section === 'body' && data.column.index === 4) {
-                        if (data.cell.raw === 'CRITICAL') data.cell.styles.textColor = [220, 38, 38];
-                        if (data.cell.raw === 'WARNING') data.cell.styles.textColor = [217, 119, 6];
-                    }
-                }
-            });
-        } else {
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(22);
+            doc.text("INFORME OPERATIVO TÉCNICO", 14, 20);
+            
             doc.setFontSize(10);
-            doc.setTextColor(100, 100, 100);
-            doc.text("Felicidades. No se detectaron anomalías críticas en la red.", 14, 115);
-        }
+            doc.setFont("helvetica", "normal");
+            doc.text("ARGOS AI ENTERPRISE MONITOR", 14, 28);
 
-        const pageCount = doc.internal.getNumberOfPages();
-        for(let i = 1; i <= pageCount; i++) {
-            doc.setPage(i);
-            doc.setFontSize(8);
-            doc.setTextColor(150, 150, 150);
-            doc.line(14, 285, 196, 285);
-            doc.text(`Generado automáticamente por Argos AI System - Página ${i} de ${pageCount}`, 105, 290, { align: 'center' });
-        }
+            doc.text(`Fecha: ${date} - ${time}`, 200, 20, { align: 'right' });
+            doc.text("Reporte ID: " + Math.floor(Math.random() * 1000000), 200, 28, { align: 'right' });
 
-        doc.save(`Argos_Reporte_Tecnico_${Date.now()}.pdf`);
+            const total = globalData.length;
+            const criticals = globalData.filter(d => getDiagnosticRule(d).status === 'Critical').length;
+            const warnings = globalData.filter(d => getDiagnosticRule(d).status === 'Warning').length;
+            const optimal = total - criticals - warnings;
+
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.text("1. RESUMEN EJECUTIVO DE INFRAESTRUCTURA", 14, 55);
+
+            const drawStatBox = (x, title, value, color) => {
+                doc.setDrawColor(200, 200, 200);
+                doc.setFillColor(250, 250, 250);
+                doc.roundedRect(x, 60, 40, 25, 3, 3, 'FD');
+                doc.setFontSize(8);
+                doc.setTextColor(100, 100, 100);
+                doc.text(title, x + 20, 68, { align: 'center' });
+                doc.setFontSize(16);
+                doc.setTextColor(...color);
+                doc.setFont("helvetica", "bold");
+                doc.text(String(value), x + 20, 80, { align: 'center' });
+            };
+
+            drawStatBox(14, "TOTAL NUCs", total, [30, 41, 59]);
+            drawStatBox(60, "CRÍTICOS", criticals, [225, 29, 72]);
+            drawStatBox(106, "ADVERTENCIA", warnings, [217, 119, 6]);
+            drawStatBox(152, "OPERATIVOS", optimal, [16, 185, 129]);
+
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(14);
+            doc.text("2. DETALLE DE ACTIVOS CRÍTICOS Y ADVERTENCIAS", 14, 100);
+
+            const tableBody = globalData
+                .filter(d => getDiagnosticRule(d).status !== 'Optimal')
+                .map(d => {
+                    const diag = getDiagnosticRule(d);
+                    return [
+                        normalizeBusinessUnit(d),
+                        d.pc_name || 'N/A',
+                        `${Math.round(d.cpu_load_percent || 0)}%`,
+                        `${Math.round(getTemp(d))}°C`,
+                        diag.status.toUpperCase(),
+                        diag.msg
+                    ];
+                });
+
+            if (tableBody.length > 0) {
+                doc.autoTable({
+                    startY: 105,
+                    head: [['Unidad', 'NUC ID', 'CPU', 'Temp', 'Estado', 'Diagnóstico AI']],
+                    body: tableBody,
+                    theme: 'grid',
+                    headStyles: { fillColor: accentColor, textColor: 255, fontStyle: 'bold' },
+                    styles: { fontSize: 8, cellPadding: 3 },
+                    columnStyles: {
+                        0: { cellWidth: 25 },
+                        5: { cellWidth: 'auto' }
+                    },
+                    didParseCell: function(data) {
+                        if (data.section === 'body' && data.column.index === 4) {
+                            if (data.cell.raw === 'CRITICAL') data.cell.styles.textColor = [220, 38, 38];
+                            if (data.cell.raw === 'WARNING') data.cell.styles.textColor = [217, 119, 6];
+                        }
+                    }
+                });
+            } else {
+                doc.setFontSize(10);
+                doc.setTextColor(100, 100, 100);
+                doc.text("Felicidades. No se detectaron anomalías críticas en la red.", 14, 115);
+            }
+
+            const pageCount = doc.internal.getNumberOfPages();
+            for(let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(150, 150, 150);
+                doc.line(14, 285, 196, 285);
+                doc.text(`Generado automáticamente por Argos AI System - Página ${i} de ${pageCount}`, 105, 290, { align: 'center' });
+            }
+
+            doc.save(`Argos_Reporte_Tecnico_${Date.now()}.pdf`);
+        } catch (error) {
+            console.error("Error generando PDF:", error);
+            alert("Error al generar el PDF. Revisa la consola.");
+        }
     };
 
     // --- 4. FETCH Y ACTUALIZACIÓN ---
@@ -1126,7 +1142,7 @@
             
             globalData = data;
 
-            applyAllFilters(); // Usar el nuevo sistema de filtros
+            applyAllFilters();
             
             const now = new Date();
             document.getElementById('last-sync').textContent = now.toLocaleTimeString();
@@ -1150,6 +1166,27 @@
 
         if (total === 0) {
             document.getElementById('equipment-table-body').innerHTML = '<tr><td colspan="8" class="text-center py-4 text-slate-400">Sin datos disponibles para este filtro</td></tr>';
+            
+            // Actualizar KPIs a 0
+            document.getElementById('kpi-total').innerText = '0';
+            document.getElementById('donut-total').innerText = '0';
+            document.getElementById('kpi-critical').innerText = '0';
+            document.getElementById('kpi-cpu').innerText = '0%';
+            document.getElementById('kpi-cpu-bar').style.width = '0%';
+            document.getElementById('kpi-temp').innerText = '0°C';
+            
+            // Actualizar gráficos vacíos
+            diskChart.data.datasets[0].data = [0, 0, 0];
+            diskChart.update();
+            
+            topResourceChart.data.labels = [];
+            topResourceChart.data.datasets[0].data = [];
+            topResourceChart.update();
+            
+            businessUnitChart.data.datasets[0].data = [0, 0, 0];
+            businessUnitChart.data.datasets[1].data = [0, 0, 0];
+            businessUnitChart.update();
+            
             return;
         }
 
@@ -1171,7 +1208,7 @@
         diskChart.update();
 
         const sorted = [...data].sort((a, b) => (b.cpu_load_percent||0) - (a.cpu_load_percent||0)).slice(0, 7);
-        topResourceChart.data.labels = sorted.map(d => d.pc_name);
+        topResourceChart.data.labels = sorted.map(d => d.pc_name || 'N/A');
         topResourceChart.data.datasets[0].data = sorted.map(d => d.cpu_load_percent||0);
         topResourceChart.update();
 
@@ -1214,7 +1251,7 @@
                         <span class="px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wide border ${unitClass}">${unit}</span>
                     </td>
                     <td class="px-6 py-4">
-                        <div class="text-xs font-bold text-slate-700">${pc.pc_name}</div>
+                        <div class="text-xs font-bold text-slate-700">${pc.pc_name || 'N/A'}</div>
                         <div class="text-[10px] font-mono text-slate-400">${pc.public_ip || pc.ip || '-'}</div>
                     </td>
                     <td class="px-6 py-4">
