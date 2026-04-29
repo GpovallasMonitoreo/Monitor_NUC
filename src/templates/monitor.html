@@ -184,13 +184,14 @@
             Diagnóstico General
         </button>
 
-        <!-- Botón de Excel -->
-        <button onclick="downloadExcel()" class="w-full md:w-auto flex items-center justify-center px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95">
+        <!-- Botón de Excel - CORREGIDO: Pasa el evento como parámetro -->
+        <button onclick="downloadExcel(event)" class="w-full md:w-auto flex items-center justify-center px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95">
             <i data-lucide="file-spreadsheet" class="w-4 h-4 mr-2"></i>
             Excel
         </button>
 
-        <button onclick="downloadReport()" class="w-full md:w-auto flex items-center justify-center px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-xl shadow-lg shadow-slate-900/20 transition-all active:scale-95">
+        <!-- Botón de PDF - CORREGIDO: Pasa el evento como parámetro -->
+        <button onclick="downloadReport(event)" class="w-full md:w-auto flex items-center justify-center px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-xl shadow-lg shadow-slate-900/20 transition-all active:scale-95">
             <i data-lucide="file-down" class="w-4 h-4 mr-2 text-indigo-300"></i>
             Informe PDF
         </button>
@@ -447,10 +448,8 @@
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<!-- CORRECCIÓN: jspdf sin typo -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-<!-- CORRECCIÓN: SheetJS para Excel -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <script>
@@ -464,7 +463,6 @@
         temp: 'all',
         status: 'all'
     };
-    // CORRECCIÓN: Usar window.jspdf.jsPDF (con j minúscula)
     const jsPDF = window.jspdf.jsPDF;
 
     // --- 1. CONFIGURACIÓN VISUAL (Chart.js) ---
@@ -827,8 +825,8 @@
         if (e.target === e.currentTarget) closeDiagnosticModal();
     });
 
-    // --- 4. DESCARGA DE EXCEL (AGREGADO) ---
-    window.downloadExcel = () => {
+    // --- 4. DESCARGA DE EXCEL (CORREGIDO) ---
+    window.downloadExcel = (event) => {
         try {
             const data = globalData.map(pc => {
                 const diag = getDiagnosticRule(pc);
@@ -872,9 +870,10 @@
             const btn = event.currentTarget;
             const originalHTML = btn.innerHTML;
             btn.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4 mr-2"></i> ¡Descargado!';
+            if(typeof lucide !== 'undefined') lucide.createIcons();
             setTimeout(() => {
                 btn.innerHTML = originalHTML;
-                lucide.createIcons();
+                if(typeof lucide !== 'undefined') lucide.createIcons();
             }, 2000);
         } catch (error) {
             console.error("Error generando Excel:", error);
@@ -883,9 +882,8 @@
     };
 
     // --- 5. INFORME PDF (CORREGIDO) ---
-    window.downloadReport = () => {
+    window.downloadReport = (event) => {
         try {
-            // CORRECCIÓN: Usar la variable jsPDF correcta
             const doc = new jsPDF();
             const date = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
             const time = new Date().toLocaleTimeString('es-MX');
@@ -990,13 +988,14 @@
 
             doc.save(`Argos_Reporte_Tecnico_${Date.now()}.pdf`);
             
-            // CORRECCIÓN: Notificación de éxito
+            // Notificación de éxito
             const btn = event.currentTarget;
             const originalHTML = btn.innerHTML;
             btn.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4 mr-2 text-emerald-300"></i> ¡PDF Generado!';
+            if(typeof lucide !== 'undefined') lucide.createIcons();
             setTimeout(() => {
                 btn.innerHTML = originalHTML;
-                lucide.createIcons();
+                if(typeof lucide !== 'undefined') lucide.createIcons();
             }, 2000);
             
         } catch (error) {
