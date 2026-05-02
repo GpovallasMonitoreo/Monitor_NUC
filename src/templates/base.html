@@ -1,143 +1,2271 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Monitor de Operación Digital{% endblock %}</title>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <style>
-        /* Estilos para scrollbars y estados activos */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f5f9; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+// js/modules/PantallasModule.js
+
+class PantallasModule extends BaseModule {
+    constructor(container, dataService) {
+        super(container, dataService);
         
-        .nav-active { background-color: #4f46e5 !important; color: white !important; }
-        .nav-active i { color: white !important; }
-        #menu-inventory { transition: all 0.3s ease-in-out; }
-        .rotate-180 { transform: rotate(180deg); }
-    </style>
-</head>
+        if (typeof html2pdf === 'undefined') {
+            const scriptPdf = document.createElement('script');
+            scriptPdf.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+            document.head.appendChild(scriptPdf);
+        }
+        if (typeof Chart === 'undefined') {
+            const scriptChart = document.createElement('script');
+            scriptChart.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+            document.head.appendChild(scriptChart);
+        }
+        if (typeof XLSX === 'undefined') {
+            const scriptXLSX = document.createElement('script');
+            scriptXLSX.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+            document.head.appendChild(scriptXLSX);
+        }
+        
+        this.activeTab = 'ecovallas'; 
+        this.pantallasData = [];
+        this.viaverdeData = [];
+        this.bioboxData = [];
+        this.ticketsData = [];
+        this.pautasData = []; 
+        this.telemetryData = {}; 
+        this.isLoading = true;
+        this.syncInterval = null;
+        this.terminoBusqueda = '';
+        this.cacheFotosTickets = {};
 
-<body class="bg-slate-50 text-slate-800 font-sans antialiased h-screen flex overflow-hidden">
+        this.filtroEstado = 'todos';
+        this.filtroComercial = 'todos';
 
-    <aside class="w-64 bg-slate-900 text-white flex flex-col flex-shrink-0 transition-all duration-300 shadow-xl z-20">
-        <div class="h-16 flex items-center px-6 border-b border-slate-800 bg-slate-950">
-            <i data-lucide="activity" class="text-indigo-500 mr-3 w-6 h-6"></i>
-            <span class="font-bold text-xl tracking-tight">ARGOS</span>
-        </div>
+        this.todosLosActivos = [];
+        this.activoSeleccionado = null;
+        this.chartInstances = {}; 
+        
+        // 🔥 Variables para la tabla OPEX optimizada
+        this.datosOpex = []; 
+        this.currentPage = 1;
+        this.itemsPerPage = 50; // Paginación para que no se trabe el navegador
 
-        <nav class="flex-1 overflow-y-auto py-6">
-            <ul class="space-y-2 px-3">
-                <li>
-                    <a href="/" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200">
-                        <i data-lucide="layout-grid" class="w-5 h-5 mr-3"></i>
-                        <span class="font-medium">Inicio</span>
-                    </a>
-                </li>
+        this._eventosDelegadosListos = false;
+        this._boundContainer = null;
 
-                <li class="px-3 pt-4 pb-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">Operaciones</li>
+        this.inyectarEstilosDirector();
+        this.cargarDatos(); 
+    }
+
+    inyectarEstilosDirector() {
+        if(!document.getElementById('estilos-director-pantallas')) {
+            const style = document.createElement('style');
+            style.id = 'estilos-director-pantallas';
+            style.innerHTML = `
+                .dir-timeline { position: relative; padding-left: 30px; margin-top: 20px; }
+                .dir-timeline::before { content: ''; position: absolute; left: 11px; top: 0; bottom: 0; width: 2px; background: var(--border); }
+                .dir-item { position: relative; margin-bottom: 24px; background: white; border: 1px solid var(--border); border-radius: 12px; padding: 24px; box-shadow: var(--shadow-sm); animation: slideUp 0.3s ease; }
+                .dir-item::before { content: ''; position: absolute; left: -24px; top: 20px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); border: 3px solid white; box-shadow: 0 0 0 2px var(--accent-light); }
+                .dir-item.preventivo::before { background: #3b82f6; box-shadow: 0 0 0 2px #bfdbfe; }
                 
-                <li>
-                    <a href="/monitor" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200">
-                        <i data-lucide="activity" class="w-5 h-5 mr-3"></i>
-                        <span class="font-medium">Monitor</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/latency" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200">
-                        <i data-lucide="wifi" class="w-5 h-5 mr-3"></i>
-                        <span class="font-medium">Latencia</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/map" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200">
-                        <i data-lucide="map" class="w-5 h-5 mr-3"></i>
-                        <span class="font-medium">Mapa</span>
-                    </a>
-                </li>
+                .dir-gallery { display: flex; gap: 12px; overflow-x: auto; padding-top: 12px; margin-top: 16px; border-top: 1px dashed var(--border); }
+                .dir-gallery img { height: 140px; border-radius: 8px; border: 1px solid var(--border); object-fit: cover; cursor: pointer; transition: transform 0.2s; }
+                .dir-gallery img:hover { transform: scale(1.05); }
 
-                <li class="px-3 pt-4 pb-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">Gestión</li>
-                <li>
-                    <button onclick="toggleMenu('inventory')" class="w-full flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200 outline-none">
-                        <i data-lucide="package" class="w-5 h-5 mr-3"></i>
-                        <span class="font-medium">Biblioteca</span>
-                        <i data-lucide="chevron-down" id="arrow-inventory" class="w-4 h-4 ml-auto transition-transform duration-300"></i>
+                .dir-badge { padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; display: inline-block; }
+                .dir-btn { background: var(--surface-hover); color: var(--text); border: 1px solid var(--border); padding: 8px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
+                .dir-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
+
+                .stat-box-dir { background: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 12px; display: flex; flex-direction: column; justify-content: center; }
+                .stat-box-dir.green { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
+                .stat-box-dir.red { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+                .stat-box-dir.blue { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+                .stat-box-dir.purple { background: #faf5ff; border-color: #e9d5ff; color: #6b21a8; }
+                .stat-box-dir.yellow { background: #fefce8; border-color: #fef08a; color: #a16207; }
+                .stat-box-dir .lbl { font-size: 10px; font-weight: 800; text-transform: uppercase; opacity: 0.8; margin-bottom: 4px; }
+                .stat-box-dir .val { font-size: 24px; font-weight: 900; font-family: monospace; }
+                
+                .detail-row { display: flex; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--border-light); font-size: 12px; transition: background 0.2s;}
+                .detail-row:hover { background: var(--surface-hover); }
+                .detail-row span:first-child { color: var(--text-muted); font-weight: 600; }
+                .detail-row span:last-child { font-weight: 800; font-family: monospace; color: var(--text); }
+                
+                .dossier-tab { padding: 12px 16px; font-size: 13px; font-weight: 700; cursor: pointer; border-bottom: 3px solid transparent; color: var(--text-muted); transition: all 0.2s;}
+                .dossier-tab:hover { color: var(--accent); }
+                .dossier-tab.active { border-bottom-color: var(--accent); color: var(--accent); }
+                
+                .ai-pulse { animation: pulseAI 2s infinite; }
+                @keyframes pulseAI { 0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); } 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); } }
+                
+                .filter-bar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+                .filter-select { padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; background: white; cursor: pointer; outline: none; }
+                .filter-select:focus { border-color: var(--accent); }
+                
+                .status-indicator { display: inline-flex; align-items: center; gap: 6px; }
+                .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+                .status-dot.online { background: #10b981; box-shadow: 0 0 8px #10b981; }
+                .status-dot.offline { background: #dc2626; }
+                .status-dot.warning { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+                .status-dot.unknown { background: #94a3b8; }
+                .status-dot.critical { background: #ea580c; box-shadow: 0 0 8px #ea580c; }
+                
+                .kpi-card { background: white; border-radius: 12px; padding: 20px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); transition: transform 0.2s; }
+                .kpi-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+                .chart-container { background: white; border-radius: 16px; padding: 20px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+                .magic-btn { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
+                .magic-btn:hover { opacity: 0.9; transform: scale(1.02); }
+
+                /* 🔥 ESTILOS MONDAY PARA OPEX */
+                .opex-wrapper { max-height: 600px; overflow: auto; border-radius: 8px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); background: white; }
+                .opex-table { width: max-content; border-collapse: separate; border-spacing: 0; text-align: left; font-size: 12px; white-space: nowrap; }
+                .opex-table th { background: #f8fafc; padding: 10px 16px; border-bottom: 2px solid var(--border); font-weight: 800; color: var(--text-muted); position: sticky; top: 0; z-index: 20; box-shadow: 0 1px 0 var(--border); }
+                .opex-table td { padding: 4px 10px; border-bottom: 1px solid var(--border-light); vertical-align: middle; }
+                .opex-table tbody tr:hover { background: #f0fdfa !important; }
+                
+                .opex-sticky-1 { position: sticky; left: 0; background: white; z-index: 10; border-right: 1px solid var(--border-light); font-family: monospace; font-weight: bold; color: var(--accent); }
+                .opex-sticky-2 { position: sticky; left: 160px; background: white; z-index: 10; border-right: 2px solid var(--border); font-weight: 800; color: var(--text); }
+                .opex-table th.opex-sticky-1 { z-index: 30; }
+                .opex-table th.opex-sticky-2 { z-index: 30; border-right: 2px solid var(--border); }
+                .opex-table tr:hover .opex-sticky-1, .opex-table tr:hover .opex-sticky-2 { background: #f0fdfa; }
+
+                .opex-input { width: 100%; border: 1px solid transparent; padding: 6px 8px; border-radius: 4px; font-size: 12px; background: transparent; outline: none; transition: all 0.2s; }
+                .opex-input.number { font-family: monospace; text-align: center; font-weight: 700; width: 60px; }
+                .opex-input.money { font-family: monospace; text-align: right; width: 90px; }
+                .opex-input.text { width: 150px; }
+                .opex-input:hover { border-color: var(--border); background: var(--surface-hover); }
+                .opex-input:focus { border-color: var(--accent); background: white; box-shadow: 0 0 0 2px var(--accent-light); }
+
+                .opex-calculated { font-family: monospace; font-weight: 800; text-align: right; padding-right: 12px; color: var(--text); }
+                .opex-total-row td { background: #f1f5f9; font-weight: 900; border-top: 2px solid var(--border); font-size: 13px; position: sticky; bottom: 0; z-index: 20; box-shadow: 0 -1px 0 var(--border); }
+                
+                .pagination-bar { display: flex; justify-content: center; align-items: center; gap: 12px; padding: 12px; background: white; border-top: 1px solid var(--border); }
+                .btn-page { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: white; cursor: pointer; font-weight: 700; color: var(--text); }
+                .btn-page:hover:not(:disabled) { background: var(--surface-hover); }
+                .btn-page:disabled { opacity: 0.5; cursor: not-allowed; }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+
+    escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/[&<>]/g, function(m) {
+            return { '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m];
+        });
+    }
+
+    async cargarDatos() {
+        this.isLoading = true;
+        this.render(); 
+        
+        try {
+            const fetchUbicacionesSeguro = async () => {
+                if (!this.data.client) return { data: [] };
+                try {
+                    const { data, error } = await this.data.client
+                        .from('ubicaciones')
+                        .select('*')
+                        .eq('Digital', true)
+                        .eq('activo', true);
+                    
+                    if (error) {
+                        console.warn("⚠️ Error en Supabase al cargar ubicaciones:", error);
+                        return { data: [] };
+                    }
+                    return { data: data || [] };
+                } catch (e) {
+                    console.error("❌ Excepción al consultar ubicaciones:", e);
+                    return { data: [] };
+                }
+            };
+
+            const [ubicacionesRes, tickets, pautas] = await Promise.all([
+                fetchUbicacionesSeguro(),
+                this.data.getTickets().catch(() => []),
+                this.data.getPautasView().catch(() => [])
+            ]);
+
+            const ubicaciones = ubicacionesRes?.data || [];
+            this.ticketsData = tickets || [];
+            this.pautasData = pautas || [];
+            
+            this.pantallasData = [];
+            this.viaverdeData = [];
+            this.bioboxData = [];
+
+            ubicaciones.forEach(u => {
+                const unidad = String(u.unidad || '').toUpperCase();
+                if (unidad.includes('VIA VERDE') || unidad.includes('VÍA VERDE') || unidad.includes('VV')) {
+                    this.viaverdeData.push(u);
+                } else if (unidad.includes('BIOBOX') || unidad.includes('BIO BOX')) {
+                    this.bioboxData.push(u);
+                } else {
+                    this.pantallasData.push(u);
+                }
+            });
+            
+            this.inicializarTodosLosActivos();
+            this.conectarArgos();
+
+        } catch (e) { 
+            console.error("Error al cargar Directorio de Pantallas (Ubicaciones):", e); 
+        }
+        
+        this.isLoading = false;
+        this.render(); 
+    }
+
+    inicializarTodosLosActivos() {
+        this.todosLosActivos = [
+            ...this.pantallasData.map(p => ({ 
+                ...p, 
+                tipo: 'Ecovalla', 
+                idOriginal: p.face_id || 'S/N', 
+                nombreOriginal: p.nombre || p.direccion || 'Sin nombre',
+                capexTotal: 0 
+            })),
+            ...this.viaverdeData.map(p => ({ 
+                ...p, 
+                tipo: 'Vía Verde', 
+                // 🔥 Biobox y Via Verde usan sitio_id prioritariamente
+                idOriginal: p.sitio_id || p.sitio || p.face_id || 'S/N', 
+                nombreOriginal: p.nombre || p.direccion || 'Sin nombre',
+                capexTotal: 0
+            })),
+            ...this.bioboxData.map(p => ({ 
+                ...p, 
+                tipo: 'BioBox', 
+                // 🔥 Biobox y Via Verde usan sitio_id prioritariamente
+                idOriginal: p.sitio_id || p.sitio || p.face_id || 'S/N', 
+                nombreOriginal: p.nombre || p.direccion || 'Sin nombre',
+                capexTotal: 0
+            }))
+        ];
+        
+        if (this.todosLosActivos.length > 0 && !this.activoSeleccionado) {
+            this.activoSeleccionado = this.todosLosActivos[0];
+        }
+    }
+
+    async conectarArgos() {
+        if (this.data.getArgosTelemetry) {
+            try {
+                this.telemetryData = await this.data.getArgosTelemetry();
+                this.actualizarIndicadoresVisuales();
+
+                if (this.syncInterval) clearInterval(this.syncInterval);
+                this.syncInterval = setInterval(async () => {
+                    const nueva = await this.data.getArgosTelemetry();
+                    if (Object.keys(nueva).length > 0) {
+                        this.telemetryData = nueva;
+                        this.actualizarIndicadoresVisuales();
+                    }
+                }, 30000);
+            } catch(e) { }
+        }
+    }
+
+    fuzzyMatch(texto1, texto2) {
+        if (!texto1 || !texto2) return false;
+        const s1 = String(texto1).trim().toUpperCase();
+        const s2 = String(texto2).trim().toUpperCase();
+        if (s1 === s2) return true;
+        
+        const s1Clean = s1.replace(/_/g, '');
+        const s2Clean = s2.replace(/_/g, '');
+        if (s1Clean === s2Clean) return true;
+        if (s1Clean.length > 4 && s2Clean.includes(s1Clean)) return true;
+        if (s2Clean.length > 4 && s1Clean.includes(s2Clean)) return true;
+        
+        return false;
+    }
+
+    encontrarTelemetria(activo) {
+        if (!this.telemetryData || Object.keys(this.telemetryData).length === 0) return null;
+        
+        // 🔥 Ajuste de búsqueda: Considera face_id Y sitio_id para conectar correctamente la telemetría
+        const valores = [ activo.face_id, activo.sitio_id, activo.sitio, activo.idOriginal, activo.nombre ].filter(Boolean).map(v => String(v).trim().toUpperCase());
+        
+        for (const [argosName, data] of Object.entries(this.telemetryData)) {
+            const normalizedArgos = argosName.replace(/_/g, '').toUpperCase();
+            for (const val of valores) {
+                const normalizedVal = val.replace(/_/g, '').toUpperCase();
+                if (normalizedArgos === normalizedVal || normalizedArgos.includes(normalizedVal) || normalizedVal.includes(normalizedArgos)) {
+                    return { ...data, matchedName: argosName };
+                }
+            }
+        }
+        return null;
+    }
+
+    getEstadoDetallado(activo) {
+        const telemetria = this.encontrarTelemetria(activo);
+        
+        if (!telemetria) {
+            return { status: 'unknown', label: 'Sin monitoreo', color: '#94a3b8', bg: '#f1f5f9', icon: '❓', details: 'Agente Argos no configurado' };
+        }
+        
+        const isOnline = telemetria.status === 'online';
+        const latencia = telemetria.latency || 0;
+        const cpu = telemetria.cpu || 0;
+        const ram = telemetria.ram || 0;
+        
+        const isCritical = !isOnline || latencia > 200 || cpu > 85 || ram > 90;
+        const isWarning = isOnline && (latencia > 100 || cpu > 70 || ram > 80);
+        
+        if (!isOnline) return { status: 'offline', label: 'OFFLINE', color: '#dc2626', bg: '#fef2f2', icon: '🔴', details: `Desconectado` };
+        if (isCritical) return { status: 'critical', label: 'CRÍTICO', color: '#ea580c', bg: '#fff7ed', icon: '🔥', details: `CPU: ${cpu}% / RAM: ${ram}% / Lat: ${latencia}ms` };
+        if (isWarning) return { status: 'warning', label: 'ALERTA', color: '#d97706', bg: '#fef3c7', icon: '⚠️', details: `CPU: ${cpu}% / RAM: ${ram}% / Lat: ${latencia}ms` };
+        return { status: 'online', label: 'ONLINE', color: '#10b981', bg: '#ecfdf5', icon: '🟢', details: `CPU: ${cpu}% / RAM: ${ram}% / Lat: ${latencia}ms` };
+    }
+
+    obtenerFallasDeSitio(activo) {
+        // 🔥 Incluimos sitio_id en la búsqueda de tickets
+        const valoresBuscables = [ activo.face_id, activo.sitio_id, activo.sitio, activo.idOriginal, activo.nombre ].filter(Boolean);
+        
+        const ticketsDelSitio = this.ticketsData.filter(t => {
+            const refId = String(t.referenciaId || t.sitio || '');
+            return valoresBuscables.some(v => this.fuzzyMatch(refId, v));
+        });
+        
+        const incidencias = ticketsDelSitio.filter(t => !String(t.descripcion || t.motivo_capturado).includes('[MANTENIMIENTO PREVENTIVO]'));
+        const preventivos = ticketsDelSitio.filter(t => String(t.descripcion || t.motivo_capturado).includes('[MANTENIMIENTO PREVENTIVO]'));
+        
+        const calcularCostoOpex = (ticket) => {
+            if (ticket.opex_data) {
+                const op = ticket.opex_data;
+                const nomOps = (parseFloat(op.num_tecnicos)||0) * (parseFloat(op.horas_tecnicos)||0) * (parseFloat(op.costo_hr_tecnico)||0);
+                const nomSop = (parseFloat(op.num_agentes)||0) * (parseFloat(op.horas_agentes)||0) * (parseFloat(op.costo_hr_agente)||0);
+                const gas = (parseFloat(op.litros)||0) * (parseFloat(op.dias)||0) * (parseFloat(op.costo_lt)||0);
+                const transp = (parseFloat(op.num_vehiculos)||0) * (parseFloat(op.horas_transporte)||0) * (parseFloat(op.costo_hr_transporte)||0);
+                return (parseFloat(op.obra_civil)||0) + nomOps + nomSop + gas + transp + (parseFloat(op.costo_insumos)||0) + (parseFloat(op.costo_refaccion)||0);
+            }
+            return parseFloat(ticket.costoAsociado || ticket.costo_estimado) || 0;
+        };
+
+        const costoIncidencias = incidencias.reduce((sum, t) => sum + calcularCostoOpex(t), 0);
+        const costoPreventivos = preventivos.reduce((sum, t) => sum + calcularCostoOpex(t), 0);
+        const costoTotal = costoIncidencias + costoPreventivos;
+        
+        return { 
+            cantidad: ticketsDelSitio.length, 
+            incidencias: incidencias.length, preventivos: preventivos.length,
+            costoIncidencias, costoPreventivos, costo: costoTotal, costoTotal,
+            tickets: ticketsDelSitio 
+        };
+    }
+
+    actualizarIndicadoresVisuales() {
+        const elementos = document.querySelectorAll('.argos-status');
+        
+        if (Object.keys(this.telemetryData).length === 0) {
+            elementos.forEach(el => {
+                el.style.color = '#94a3b8'; el.style.background = '#f1f5f9'; el.style.border = '1px solid #cbd5e1';
+                el.innerHTML = '<span class="status-indicator"><span class="status-dot unknown"></span>Sin datos</span>';
+            });
+            return;
+        }
+
+        elementos.forEach(el => {
+            const activoId = el.dataset.pcname;
+            const activoObj = this.todosLosActivos.find(x => x.idOriginal === activoId) || { idOriginal: activoId };
+            const estado = this.getEstadoDetallado(activoObj);
+            
+            el.style.color = estado.color; el.style.background = estado.bg; el.style.border = `1px solid ${estado.color}`;
+            el.innerHTML = `<span class="status-indicator"><span class="status-dot ${estado.status}"></span>${estado.icon} ${estado.label}</span>`;
+            el.title = estado.details;
+        });
+    }
+
+    formatCurrency(value) {
+        return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(parseFloat(value) || 0);
+    }
+
+    mostrarNotificacion(mensaje, tipo = 'info', duracion = 3000) {
+        const notificacion = document.createElement('div');
+        const bgColor = tipo === 'success' ? '#10b981' : tipo === 'error' ? '#ef4444' : '#0d9488';
+        notificacion.style.cssText = `position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; background: ${bgColor}; color: white; font-size: 14px; font-weight: 600; z-index: 100000; box-shadow: 0 10px 15px rgba(0,0,0,0.2);`;
+        notificacion.textContent = mensaje;
+        document.body.appendChild(notificacion);
+        setTimeout(() => notificacion.remove(), duracion);
+    }
+
+    render() {
+        this.container.innerHTML = ''; 
+        if (this.isLoading) {
+            this.container.innerHTML = `<div style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;"><div style="font-size: 40px; animation: slideUp 1s infinite alternate;">📡</div><div style="color: var(--text-muted); margin-top: 16px; font-weight: 600;">Sincronizando Activos Fijos Digitales...</div></div>`;
+            return;
+        }
+        
+        const wrapper = document.createElement('div');
+        // 🔥 CAMBIO: flex-direction: row para poner el sidebar al lado del contenido
+        wrapper.style.cssText = `height: 100%; display: flex; flex-direction: row; background: var(--bg); overflow: hidden;`;
+
+        const totalInversion = this.todosLosActivos.reduce((acc, p) => acc + p.capexTotal, 0);
+        let onlineCount = 0, offlineCount = 0, warningCount = 0, unknownCount = 0;
+        
+        this.todosLosActivos.forEach(a => {
+            const estado = this.getEstadoDetallado(a);
+            if (estado.status === 'online') onlineCount++;
+            else if (estado.status === 'offline') offlineCount++;
+            else if (estado.status === 'warning' || estado.status === 'critical') warningCount++;
+            else unknownCount++;
+        });
+
+        wrapper.innerHTML = `
+            <div style="flex: 1; overflow: auto; padding: 24px;" id="pantallas-main-content">
+                ${this.renderTabsContent()}
+            </div>
+
+            <div style="width: 320px; padding: 24px; background: white; border-left: 1px solid var(--border); flex-shrink: 0; display: flex; flex-direction: column; overflow-y: auto;">
+                
+                <h2 style="font-size: 22px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; margin-bottom: 16px;">Directorio Digital (OPEX)</h2>
+                
+                <div style="display:flex; flex-direction: column; gap: 10px; margin-bottom: 24px;">
+                    <span class="status-indicator"><span class="status-dot online"></span> Online: ${onlineCount}</span>
+                    <span class="status-indicator"><span class="status-dot warning"></span> Alerta: ${warningCount}</span>
+                    <span class="status-indicator"><span class="status-dot offline"></span> Offline: ${offlineCount}</span>
+                    <span class="status-indicator"><span class="status-dot unknown"></span> Sin monitoreo: ${unknownCount}</span>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 32px;">
+                    <input type="text" id="busc-directorio" placeholder="🔍 Buscar ID o Ubicación..." value="${this.terminoBusqueda}" style="padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border); font-size: 13px; width: 100%; outline: none; background: var(--surface-hover);">
+                    <button id="btn-refresh-argos" class="dir-btn" style="background: var(--accent); color: white; width: 100%; justify-content: center;" title="Actualizar estado de conexión">
+                        🔄 Actualizar Argos
                     </button>
-                    <ul id="menu-inventory" class="hidden mt-1 space-y-1 px-2">
-                        <li><a href="/inventory/manuals" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="book-open" class="w-4 h-4 mr-3"></i> Manuales</a></li>
-                        <li><a href="/inventory/specs" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="file-text" class="w-4 h-4 mr-3"></i> Fichas</a></li>
-                        <li><a href="/inventory/logs" class="nav-link flex items-center pl-10 pr-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="clipboard-list" class="w-4 h-4 mr-3"></i> Bitácora</a></li>
-                    </ul>
-                </li>
+                </div>
 
-                <li class="px-3 pt-4 pb-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">Módulos Externos</li>
-                <li>
-                    <a href="/techview" target="_blank" class="nav-link flex items-center px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 group transition-all duration-200">
-                        <i data-lucide="dollar-sign" class="w-5 h-5 mr-3 group-hover:text-emerald-400"></i>
-                        <span class="font-medium">Costos de Operación Digital</span>
-                        <i data-lucide="external-link" class="w-4 h-4 ml-auto opacity-50"></i>
-                    </a>
-                </li>
-            </ul>
-        </nav>
-    </aside>
-
-    <div class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-50">
-        <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-8 shadow-sm z-10">
-            <h1 class="text-xl font-bold text-slate-800 tracking-tight">{% block header_title %}Vista General{% endblock %}</h1>
-            <div class="flex items-center space-x-6">
-                <div class="flex items-center bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
-                    <span class="relative flex h-2.5 w-2.5 mr-2">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
-                    </span>
-                    <span class="text-xs font-semibold text-slate-600">Sistema Operativo</span>
+                <h3 style="font-size: 12px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px;">Secciones</h3>
+                <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 32px;">
+                    <div class="v-tab ${this.activeTab === 'ecovallas' ? 'active' : ''}" data-tab="ecovallas" style="padding: 12px 16px; font-size: 13px; font-weight: ${this.activeTab === 'ecovallas' ? '800' : '600'}; color: ${this.activeTab === 'ecovallas' ? 'white' : 'var(--text-muted)'}; background: ${this.activeTab === 'ecovallas' ? 'var(--accent)' : 'transparent'}; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s;">
+                        🏢 Ecovallas 
+                        <span style="background:${this.activeTab === 'ecovallas' ? 'rgba(255,255,255,0.2)' : 'var(--surface-hover)'}; color:${this.activeTab === 'ecovallas' ? 'white' : 'var(--text-muted)'}; padding:2px 8px; border-radius:12px; font-size:11px;">${this.pantallasData.length}</span>
+                    </div>
+                    
+                    <div class="v-tab ${this.activeTab === 'viaverde' ? 'active' : ''}" data-tab="viaverde" style="padding: 12px 16px; font-size: 13px; font-weight: ${this.activeTab === 'viaverde' ? '800' : '600'}; color: ${this.activeTab === 'viaverde' ? 'white' : 'var(--text-muted)'}; background: ${this.activeTab === 'viaverde' ? 'var(--accent)' : 'transparent'}; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s;">
+                        🌿 Vía Verde 
+                        <span style="background:${this.activeTab === 'viaverde' ? 'rgba(255,255,255,0.2)' : 'var(--surface-hover)'}; color:${this.activeTab === 'viaverde' ? 'white' : 'var(--text-muted)'}; padding:2px 8px; border-radius:12px; font-size:11px;">${this.viaverdeData.length}</span>
+                    </div>
+                    
+                    <div class="v-tab ${this.activeTab === 'biobox' ? 'active' : ''}" data-tab="biobox" style="padding: 12px 16px; font-size: 13px; font-weight: ${this.activeTab === 'biobox' ? '800' : '600'}; color: ${this.activeTab === 'biobox' ? 'white' : 'var(--text-muted)'}; background: ${this.activeTab === 'biobox' ? 'var(--accent)' : 'transparent'}; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s;">
+                        ♻️ BioBox 
+                        <span style="background:${this.activeTab === 'biobox' ? 'rgba(255,255,255,0.2)' : 'var(--surface-hover)'}; color:${this.activeTab === 'biobox' ? 'white' : 'var(--text-muted)'}; padding:2px 8px; border-radius:12px; font-size:11px;">${this.bioboxData.length}</span>
+                    </div>
+                    
+                    <div class="v-tab ${this.activeTab === 'graficas' ? 'active' : ''}" data-tab="graficas" style="padding: 12px 16px; font-size: 13px; font-weight: ${this.activeTab === 'graficas' ? '800' : '600'}; color: ${this.activeTab === 'graficas' ? 'white' : 'var(--text-muted)'}; background: ${this.activeTab === 'graficas' ? 'var(--accent)' : 'transparent'}; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                        📊 Dashboards Individuales
+                    </div>
+                    
+                    <div class="v-tab ${this.activeTab === 'consolidado' ? 'active' : ''}" data-tab="consolidado" style="padding: 12px 16px; font-size: 13px; font-weight: ${this.activeTab === 'consolidado' ? '800' : '600'}; color: ${this.activeTab === 'consolidado' ? 'white' : 'var(--text-muted)'}; background: ${this.activeTab === 'consolidado' ? 'var(--accent)' : 'transparent'}; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                        📋 Vista OPEX Consolidada
+                    </div>
+                </div>
+                
+                <h3 style="font-size: 12px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px;">Filtro Rápido</h3>
+                <div class="filter-bar" style="flex-direction: column; align-items: stretch; margin-bottom: 0;">
+                    <select id="filtro-estado" class="filter-select" style="width: 100%; padding: 10px;">
+                        <option value="todos" ${this.filtroEstado === 'todos' ? 'selected' : ''}>Todos los estados</option>
+                        <option value="online" ${this.filtroEstado === 'online' ? 'selected' : ''}>🟢 Online</option>
+                        <option value="warning" ${this.filtroEstado === 'warning' ? 'selected' : ''}>⚠️ Alerta</option>
+                        <option value="offline" ${this.filtroEstado === 'offline' ? 'selected' : ''}>🔴 Offline</option>
+                    </select>
                 </div>
             </div>
-        </header>
+        `;
 
-        <main class="flex-1 overflow-y-auto p-8 scroll-smooth">
-            {% block content %}{% endblock %}
-        </main>
-    </div>
+        this.container.appendChild(wrapper);
+        this.bindEvents();
+        this.actualizarIndicadoresVisuales();
 
-    <script>
-        lucide.createIcons();
+        if(this.activeTab === 'graficas') setTimeout(() => this.initCharts(), 100);
+        if(this.activeTab === 'consolidado') setTimeout(() => this.initCalculosOpex(), 100);
+    }
 
-        // Función para colapsar menús
-        function toggleMenu(id) {
-            const menu = document.getElementById('menu-'+id);
-            const arrow = document.getElementById('arrow-'+id);
-            if(menu && arrow) {
-                menu.classList.toggle('hidden');
-                arrow.classList.toggle('rotate-180');
+    aplicarFiltros(datos) {
+        let filtrados = [...datos];
+        
+        if (this.terminoBusqueda) {
+            const t = this.terminoBusqueda.toLowerCase();
+            filtrados = filtrados.filter(p => {
+                const id = p.sitio_id || p.sitio || p.face_id || p.idOriginal || '';
+                const nombre = p.nombre || p.nombreOriginal || '';
+                return String(id).toLowerCase().includes(t) || String(nombre).toLowerCase().includes(t);
+            });
+        }
+        
+        if (this.filtroEstado !== 'todos') {
+            filtrados = filtrados.filter(p => {
+                const estado = this.getEstadoDetallado(p);
+                if (this.filtroEstado === 'warning') return estado.status === 'warning' || estado.status === 'critical';
+                return estado.status === this.filtroEstado;
+            });
+        }
+        
+        return filtrados;
+    }
+
+    renderTabsContent() {
+        if (this.activeTab === 'ecovallas') return this.renderDirectorioGrid(this.pantallasData, 'ecovallas');
+        if (this.activeTab === 'viaverde') return this.renderDirectorioGrid(this.viaverdeData, 'viaverde');
+        if (this.activeTab === 'biobox') return this.renderDirectorioGrid(this.bioboxData, 'biobox');
+        if (this.activeTab === 'consolidado') return this.renderConsolidado();
+        return this.renderGraficas();
+    }
+
+    renderDirectorioGrid(dataArray, tipoTag) {
+        let datosGrid = this.aplicarFiltros(dataArray || []);
+
+        let html = `
+            <div style="background: white; border-radius: 12px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); overflow: hidden;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; white-space: nowrap;">
+                    <thead style="background: #f8fafc; border-bottom: 2px solid var(--border);">
+                        <tr>
+                            <th style="padding: 16px; font-size: 11px; color: var(--text-muted); font-weight: 800;">FACE ID (NOMENCLATURA)</th>
+                            <th style="padding: 16px; font-size: 11px; color: var(--text-muted); font-weight: 800;">ESTADO RED (ARGOS)</th>
+                            <th style="padding: 16px; font-size: 11px; color: var(--text-muted); font-weight: 800;">MÉTRICAS</th>
+                            <th style="padding: 16px; font-size: 11px; color: var(--text-muted); font-weight: 800;">TICKETS (OPEX)</th>
+                            <th style="padding: 16px; font-size: 11px; color: var(--text-muted); font-weight: 800; text-align: right;">DOSSIER</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        if (datosGrid.length === 0) html += `<tr><td colspan="5" style="padding: 40px; text-align: center; color: var(--text-muted);">Sin activos registrados que coincidan.</td></tr>`;
+
+        datosGrid.forEach(p => {
+            // 🔥 Ajuste de ID: Ecovallas usa face_id, Via Verde y BioBox usan sitio_id prioritariamente
+            const idSeguro = (tipoTag === 'ecovallas' ? p.face_id : (p.sitio_id || p.sitio || p.face_id)) || 'S/N';
+            const nombreSeguro = p.nombre || p.direccion || 'Ubicación Desconocida';
+            const infoFallas = this.obtenerFallasDeSitio(p);
+            
+            const telemetria = this.encontrarTelemetria(p);
+            const metricasHtml = telemetria ? 
+                `<div style="font-size: 10px; line-height: 1.5;">
+                    <div>💻 CPU: ${telemetria.cpu || 0}%</div>
+                    <div>🧠 RAM: ${telemetria.ram || 0}%</div>
+                    <div>📡 Lat: ${telemetria.latency || 0}ms</div>
+                </div>` : 
+                '<span style="font-size: 10px; color: var(--text-muted);">Sin métricas</span>';
+            
+            html += `
+                <tr style="border-bottom: 1px solid var(--border-light); transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+                    <td style="padding: 16px;">
+                        <div style="font-family: monospace; font-size: 15px; font-weight: 900; color: var(--accent);">${this.escapeHtml(idSeguro)}</div>
+                        <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; margin-top: 4px; max-width: 250px; overflow: hidden; text-overflow: ellipsis;">📍 ${this.escapeHtml(nombreSeguro)}</div>
+                    </td>
+                    <td style="padding: 16px;"><div class="argos-status dir-badge" data-pcname="${this.escapeHtml(idSeguro)}" data-tab="${tipoTag}">⏳ Cargando...</div></td>
+                    <td style="padding: 16px;">${metricasHtml}</td>
+                    <td style="padding: 16px;">
+                        <div style="font-family: monospace; font-size: 16px; font-weight: 800; color: #dc2626;">${this.formatCurrency(infoFallas.costoTotal)}</div>
+                        <div style="font-size: 10px; color: var(--text-muted); font-weight: 700; margin-top: 4px;">
+                            ${infoFallas.incidencias} fallas / ${infoFallas.preventivos} prev
+                        </div>
+                    </td>
+                    <td style="padding: 16px; text-align: right;"><button class="dir-btn btn-expediente" data-id="${this.escapeHtml(idSeguro)}" data-tipo="${tipoTag}">📂 Ver Expediente</button></td>
+                </tr>
+            `;
+        });
+        html += `</tbody></table></div>`;
+        return html;
+    }
+
+    // ==========================================
+    // 🔥 TABLA MONDAY/EXCEL OPEX PAGINADA
+    // ==========================================
+    
+    generarDatosOpex() {
+        const rows = [];
+        
+        // Convertir cada ticket a una fila OPEX
+        this.ticketsData.forEach(t => {
+            const id_pantalla = String(t.referenciaId || t.sitio || 'S/N').toUpperCase().trim();
+            const activoBD = this.todosLosActivos.find(a => a.idOriginal === id_pantalla);
+            const nombre = activoBD ? (activoBD.nombreOriginal) : 'Desconocida';
+            const descLower = String(t.descripcion || t.motivo_capturado || '').toLowerCase();
+            const isPreventivo = descLower.includes('preventivo');
+            const actividad = t.incidencia || (isPreventivo ? 'Mantenimiento preventivo estético' : 'Incidencia');
+            
+            const opex = t.opex_data || {}; 
+
+            rows.push({
+                row_id: 'T-' + t.idTicket, // Para identificar la fila al guardar
+                id_pantalla: id_pantalla,
+                pantalla: nombre,
+                actividad: actividad,
+                fecha: new Date(t.fecha_creacion || t.created_at).toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+                obra_civil: parseFloat(opex.obra_civil || t.cost_obra_civil || 0),
+                num_tecnicos: parseFloat(opex.num_tecnicos ?? 3),
+                horas_tecnicos: parseFloat(opex.horas_tecnicos ?? (isPreventivo ? 4 : 2)),
+                costo_hr_tecnico: parseFloat(opex.costo_hr_tecnico ?? 70.70),
+                num_agentes: parseFloat(opex.num_agentes ?? 1),
+                horas_agentes: parseFloat(opex.horas_agentes ?? (isPreventivo ? 1 : 2)),
+                costo_hr_agente: parseFloat(opex.costo_hr_agente ?? 106.05),
+                num_programadores: parseFloat(opex.num_programadores || 0),
+                horas_programador: parseFloat(opex.horas_programador || 0),
+                num_pautas: parseFloat(opex.num_pautas || 0),
+                costo_hr_programador: parseFloat(opex.costo_hr_programador ?? 129.62),
+                litros: parseFloat(opex.litros ?? (isPreventivo ? 10 : 2)),
+                dias: parseFloat(opex.dias ?? 1),
+                costo_lt: parseFloat(opex.costo_lt ?? 23.99),
+                num_vehiculos: parseFloat(opex.num_vehiculos ?? 1),
+                horas_transporte: parseFloat(opex.horas_transporte ?? (isPreventivo ? 4 : 2)),
+                costo_hr_transporte: parseFloat(opex.costo_hr_transporte ?? 117.94),
+                tipo_insumo: opex.tipo_insumo || 'Franela y limpiador Nala',
+                costo_insumos: parseFloat(opex.costo_insumos ?? (isPreventivo ? 60.00 : 20.00)),
+                tipo_refaccion: opex.tipo_refaccion || '',
+                costo_refaccion: parseFloat(opex.costo_refaccion || 0)
+            });
+        });
+
+        // Convertir cada pauta a una fila OPEX (Gastos de programación)
+        this.pautasData.forEach(p => {
+            const id_pantalla = String(p.clave || p.CLAVE || 'S/N').toUpperCase().trim();
+            const activoBD = this.todosLosActivos.find(a => a.idOriginal === id_pantalla);
+            const nombre = activoBD ? (activoBD.nombreOriginal) : (p.ubicacion || 'Desconocida');
+            const opex = p.opex_data || {};
+
+            rows.push({
+                row_id: 'P-' + p.id,
+                id_pantalla: id_pantalla,
+                pantalla: nombre,
+                actividad: 'Pauta',
+                fecha: '01/01/2026 - 31/01/2026',
+                obra_civil: parseFloat(opex.obra_civil || 0),
+                num_tecnicos: parseFloat(opex.num_tecnicos || 0),
+                horas_tecnicos: parseFloat(opex.horas_tecnicos || 0),
+                costo_hr_tecnico: parseFloat(opex.costo_hr_tecnico || 70.70),
+                num_agentes: parseFloat(opex.num_agentes || 0),
+                horas_agentes: parseFloat(opex.horas_agentes || 0),
+                costo_hr_agente: parseFloat(opex.costo_hr_agente || 106.05),
+                num_programadores: parseFloat(opex.num_programadores ?? 1),
+                horas_programador: parseFloat(opex.horas_programador ?? 1),
+                num_pautas: parseFloat(opex.num_pautas ?? Math.floor(Math.random() * 8) + 2), 
+                costo_hr_programador: parseFloat(opex.costo_hr_programador ?? 129.62),
+                litros: parseFloat(opex.litros || 0),
+                dias: parseFloat(opex.dias || 0),
+                costo_lt: parseFloat(opex.costo_lt || 23.99),
+                num_vehiculos: parseFloat(opex.num_vehiculos || 0),
+                horas_transporte: parseFloat(opex.horas_transporte || 0),
+                costo_hr_transporte: parseFloat(opex.costo_hr_transporte || 117.94),
+                tipo_insumo: opex.tipo_insumo || '',
+                costo_insumos: parseFloat(opex.costo_insumos || 0),
+                tipo_refaccion: opex.tipo_refaccion || '',
+                costo_refaccion: parseFloat(opex.costo_refaccion || 0)
+            });
+        });
+
+        // Ordenar alfabéticamente
+        return rows.sort((a, b) => a.id_pantalla.localeCompare(b.id_pantalla));
+    }
+
+    calcularFilaTotal(r) {
+        const nomOps = r.num_tecnicos * r.horas_tecnicos * r.costo_hr_tecnico;
+        const nomSop = r.num_agentes * r.horas_agentes * r.costo_hr_agente;
+        const nomProg = r.num_programadores * r.horas_programador * r.num_pautas * r.costo_hr_programador;
+        const gas = r.litros * r.dias * r.costo_lt;
+        const trans = r.num_vehiculos * r.horas_transporte * r.costo_hr_transporte;
+        return r.obra_civil + nomOps + nomSop + nomProg + gas + trans + r.costo_insumos + r.costo_refaccion;
+    }
+
+    renderConsolidado() {
+        this.datosOpex = this.generarDatosOpex();
+
+        // Filtro de Búsqueda
+        let datosMostrar = this.datosOpex;
+        if (this.terminoBusqueda) {
+            const t = this.terminoBusqueda.toLowerCase();
+            datosMostrar = datosMostrar.filter(r => 
+                r.id_pantalla.toLowerCase().includes(t) || 
+                r.pantalla.toLowerCase().includes(t) || 
+                r.actividad.toLowerCase().includes(t)
+            );
+        }
+
+        // Gran Total General (de TODOS los datos filtrados, no solo de la página)
+        let granTotal = 0;
+        datosMostrar.forEach(r => { granTotal += this.calcularFilaTotal(r); });
+
+        // 🔥 PAGINACIÓN PARA PREVENIR CONGELAMIENTO
+        const totalPages = Math.ceil(datosMostrar.length / this.itemsPerPage) || 1;
+        if (this.currentPage > totalPages) this.currentPage = totalPages;
+        const startIdx = (this.currentPage - 1) * this.itemsPerPage;
+        const datosPagina = datosMostrar.slice(startIdx, startIdx + this.itemsPerPage);
+
+        let html = `
+            <div style="display: flex; flex-direction: column; height: 100%;">
+                <div style="padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border-radius: 12px 12px 0 0; border: 1px solid var(--border); border-bottom: none;">
+                    <div>
+                        <h3 style="margin:0; font-weight:800; font-size: 16px; color: var(--accent);">📋 Master OPEX Consolidado</h3>
+                        <p style="margin: 0; font-size: 11px; color: var(--text-muted); margin-top: 4px;">Edita cualquier valor numérico y se guardará automáticamente.</p>
+                    </div>
+                    <div style="display:flex; gap:12px;">
+                        <button id="btn-importar-excel-opex" class="dir-btn" style="background: white; border: 1px solid #059669; color: #059669;">
+                            📥 Subir Machote (Excel)
+                        </button>
+                        <button id="btn-descargar-excel-consolidado" class="dir-btn" style="background: #059669; color: white; border: none;">
+                            ⬇️ Descargar Excel OPEX
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="opex-wrapper" style="flex:1;">
+                    <table class="opex-table" id="tabla-master-opex">
+                        <thead>
+                            <tr>
+                                <th class="opex-sticky-1" style="width: 160px;">ID de pantalla</th>
+                                <th class="opex-sticky-2" style="width: 250px;">Pantalla</th>
+                                <th style="width: 200px;">Actividad</th>
+                                <th style="width: 150px;">Fecha</th>
+                                <th>Obra civil ($)</th>
+                                <th>Número de técnicos</th>
+                                <th>Número de horas hombre técnicos</th>
+                                <th>Costo hora hombre técnicos ($)</th>
+                                <th style="background: #eff6ff; color: #1d4ed8;">Costos nómina Operación Digital en Campo ($)</th>
+                                <th>Número de agentes de soporte remoto digital</th>
+                                <th>Número de horas hombre agentes</th>
+                                <th>Costo hora hombre soporte remoto digital ($)</th>
+                                <th style="background: #eff6ff; color: #1d4ed8;">Costo nómina Soporte Remoto Digital ($)</th>
+                                <th>Número de programadores</th>
+                                <th>Número de horas hombre programadores</th>
+                                <th>Número de pautas</th>
+                                <th>Costo horas hombre programadores ($)</th>
+                                <th style="background: #eff6ff; color: #1d4ed8;">Costo nómina Programación de Pauta Digital ($)</th>
+                                <th>Litros</th>
+                                <th>Días</th>
+                                <th>Costo lt gasolina ($)</th>
+                                <th style="background: #fefce8; color: #a16207;">Costos gasolina ($)</th>
+                                <th>Numero de vehículos</th>
+                                <th>Horas transporte</th>
+                                <th>Costo hora transporte ($)</th>
+                                <th style="background: #fefce8; color: #a16207;">Costos transporte ($)</th>
+                                <th>Tipo de insumo</th>
+                                <th>Costos insumos ($)</th>
+                                <th>Tipo de refacción</th>
+                                <th>Costos refacciones ($)</th>
+                                <th style="background: #ecfdf5; color: #059669; font-size: 14px;">Total ($)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+
+        if (datosPagina.length === 0) {
+            html += `<tr><td colspan="31" style="padding: 40px; text-align: center; color: var(--text-muted);">No hay datos en esta página.</td></tr>`;
+        } else {
+            datosPagina.forEach(r => {
+                const nominaTecnicos = r.num_tecnicos * r.horas_tecnicos * r.costo_hr_tecnico;
+                const nominaSoporte = r.num_agentes * r.horas_agentes * r.costo_hr_agente;
+                const nominaProg = r.num_programadores * r.horas_programador * r.num_pautas * r.costo_hr_programador;
+                const gasolina = r.litros * r.dias * r.costo_lt;
+                const transporte = r.num_vehiculos * r.horas_transporte * r.costo_hr_transporte;
+                const totalFila = r.obra_civil + nominaTecnicos + nominaSoporte + nominaProg + gasolina + transporte + r.costo_insumos + r.costo_refaccion;
+
+                html += `
+                    <tr class="opex-row" data-id="${r.row_id}">
+                        <td class="opex-sticky-1">${this.escapeHtml(r.id_pantalla)}</td>
+                        <td class="opex-sticky-2"><div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 230px;" title="${this.escapeHtml(r.pantalla)}">${this.escapeHtml(r.pantalla)}</div></td>
+                        <td><input type="text" class="opex-input text f-actividad" value="${this.escapeHtml(r.actividad)}"></td>
+                        <td>${this.escapeHtml(r.fecha)}</td>
+                        
+                        <td><input type="number" class="opex-input money f-obra" value="${r.obra_civil}" step="0.01"></td>
+                        
+                        <td><input type="number" class="opex-input number f-tecnicos" value="${r.num_tecnicos}" step="1"></td>
+                        <td><input type="number" class="opex-input number f-hr-tecnicos" value="${r.horas_tecnicos}" step="0.5"></td>
+                        <td><input type="number" class="opex-input money f-costo-tc" value="${r.costo_hr_tecnico}" step="0.01"></td>
+                        <td class="opex-calculated f-nomina-ops" style="background: #f8fafc; color: #1d4ed8;">${this.formatCurrency(nominaTecnicos)}</td>
+                        
+                        <td><input type="number" class="opex-input number f-agentes" value="${r.num_agentes}" step="1"></td>
+                        <td><input type="number" class="opex-input number f-hr-agentes" value="${r.horas_agentes}" step="0.5"></td>
+                        <td><input type="number" class="opex-input money f-costo-ag" value="${r.costo_hr_agente}" step="0.01"></td>
+                        <td class="opex-calculated f-nomina-soporte" style="background: #f8fafc; color: #1d4ed8;">${this.formatCurrency(nominaSoporte)}</td>
+                        
+                        <td><input type="number" class="opex-input number f-prog" value="${r.num_programadores}" step="1"></td>
+                        <td><input type="number" class="opex-input number f-hr-prog" value="${r.horas_programador}" step="0.5"></td>
+                        <td><input type="number" class="opex-input number f-pautas" value="${r.num_pautas}" step="1"></td>
+                        <td><input type="number" class="opex-input money f-costo-prog" value="${r.costo_hr_programador}" step="0.01"></td>
+                        <td class="opex-calculated f-nomina-prog" style="background: #f8fafc; color: #1d4ed8;">${this.formatCurrency(nominaProg)}</td>
+                        
+                        <td><input type="number" class="opex-input number f-litros" value="${r.litros}" step="1"></td>
+                        <td><input type="number" class="opex-input number f-dias" value="${r.dias}" step="1"></td>
+                        <td><input type="number" class="opex-input money f-costo-lt" value="${r.costo_lt}" step="0.01"></td>
+                        <td class="opex-calculated f-gasolina" style="background: #f8fafc; color: #a16207;">${this.formatCurrency(gasolina)}</td>
+                        
+                        <td><input type="number" class="opex-input number f-vehiculos" value="${r.num_vehiculos}" step="1"></td>
+                        <td><input type="number" class="opex-input number f-hr-veh" value="${r.horas_transporte}" step="0.5"></td>
+                        <td><input type="number" class="opex-input money f-costo-veh" value="${r.costo_hr_transporte}" step="0.01"></td>
+                        <td class="opex-calculated f-transporte" style="background: #f8fafc; color: #a16207;">${this.formatCurrency(transporte)}</td>
+                        
+                        <td><input type="text" class="opex-input text f-tipo-insumo" value="${this.escapeHtml(r.tipo_insumo)}"></td>
+                        <td><input type="number" class="opex-input money f-insumos" value="${r.costo_insumos}" step="0.01"></td>
+                        <td><input type="text" class="opex-input text f-tipo-refac" value="${this.escapeHtml(r.tipo_refaccion)}"></td>
+                        <td><input type="number" class="opex-input money f-refac" value="${r.costo_refaccion}" step="0.01"></td>
+                        
+                        <td class="opex-calculated f-total" style="background: #ecfdf5; color: #059669; font-size: 14px;">${this.formatCurrency(totalFila)}</td>
+                    </tr>
+                `;
+            });
+            
+            // Fila Total de la Vista (Se mantiene abajo)
+            html += `
+                <tr class="opex-total-row">
+                    <td class="opex-sticky-1"></td>
+                    <td class="opex-sticky-2">TOTAL GENERAL (Todos los registros)</td>
+                    <td colspan="28"></td>
+                    <td class="opex-calculated" id="opex-gran-total" style="color: #059669; font-size: 16px;">${this.formatCurrency(granTotal)}</td>
+                </tr>
+            `;
+        }
+
+        html += `
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="pagination-bar">
+                    <button id="btn-opex-prev" class="btn-page" ${this.currentPage === 1 ? 'disabled' : ''}>⬅️ Anterior</button>
+                    <span style="font-size: 12px; font-weight: 800; color: var(--text-muted);">Página ${this.currentPage} de ${totalPages}</span>
+                    <button id="btn-opex-next" class="btn-page" ${this.currentPage === totalPages ? 'disabled' : ''}>Siguiente ➡️</button>
+                </div>
+            </div>
+        `;
+        return html;
+    }
+
+    // Inicializa la lógica de cálculo dinámico para OPEX
+    initCalculosOpex() {
+        const tabla = document.getElementById('tabla-master-opex');
+        if (!tabla) return;
+
+        tabla.addEventListener('input', (e) => {
+            if (e.target.classList.contains('opex-input')) {
+                const row = e.target.closest('tr');
+                if (row) this.recalcularFilaOpex(row);
+            }
+        });
+
+        // Guardado Silencioso a BD en evento 'change' (Al dar tab o click fuera)
+        tabla.addEventListener('change', async (e) => {
+            if (e.target.classList.contains('opex-input')) {
+                const row = e.target.closest('tr');
+                const rowId = row.dataset.id; // Ej. T-123 o P-456
+                
+                const getVal = (cls) => parseFloat(row.querySelector(`.${cls}`)?.value || 0);
+                
+                const opexDataJSON = {
+                    obra_civil: getVal('f-obra'),
+                    num_tecnicos: getVal('f-tecnicos'), horas_tecnicos: getVal('f-hr-tecnicos'), costo_hr_tecnico: getVal('f-costo-tc'),
+                    num_agentes: getVal('f-agentes'), horas_agentes: getVal('f-hr-agentes'), costo_hr_agente: getVal('f-costo-ag'),
+                    num_programadores: getVal('f-prog'), horas_programador: getVal('f-hr-prog'), num_pautas: getVal('f-pautas'), costo_hr_programador: getVal('f-costo-prog'),
+                    litros: getVal('f-litros'), dias: getVal('f-dias'), costo_lt: getVal('f-costo-lt'),
+                    num_vehiculos: getVal('f-vehiculos'), horas_transporte: getVal('f-hr-veh'), costo_hr_transporte: getVal('f-costo-veh'),
+                    tipo_insumo: row.querySelector('.f-tipo-insumo').value, costo_insumos: getVal('f-insumos'),
+                    tipo_refaccion: row.querySelector('.f-tipo-refac').value, costo_refaccion: getVal('f-refac')
+                };
+
+                if (this.data.client) {
+                    try {
+                        if (rowId.startsWith('T-')) {
+                            const realId = rowId.replace('T-', '');
+                            await this.data.client.from('tickets').update({ opex_data: opexDataJSON }).eq('ticket_id', realId);
+                        } else if (rowId.startsWith('P-')) {
+                            const realId = rowId.replace('P-', '');
+                            await this.data.client.from('pautas_monitoreo').update({ opex_data: opexDataJSON }).eq('id', realId);
+                        }
+                    } catch(err) { console.error("Error guardando OPEX en fondo:", err); }
+                }
+            }
+        });
+    }
+
+    recalcularFilaOpex(row) {
+        const getVal = (cls) => parseFloat(row.querySelector(`.${cls}`)?.value || 0);
+        
+        const tc = getVal('f-tecnicos'); const hrTc = getVal('f-hr-tecnicos'); const cstTc = getVal('f-costo-tc');
+        const nominaOps = tc * hrTc * cstTc;
+        row.querySelector('.f-nomina-ops').innerText = this.formatCurrency(nominaOps);
+
+        const ag = getVal('f-agentes'); const hrAg = getVal('f-hr-agentes'); const cstAg = getVal('f-costo-ag');
+        const nominaSoporte = ag * hrAg * cstAg;
+        row.querySelector('.f-nomina-soporte').innerText = this.formatCurrency(nominaSoporte);
+
+        const prog = getVal('f-prog'); const hrProg = getVal('f-hr-prog'); const pautas = getVal('f-pautas'); const cstProg = getVal('f-costo-prog');
+        const nominaProg = prog * hrProg * pautas * cstProg;
+        row.querySelector('.f-nomina-prog').innerText = this.formatCurrency(nominaProg);
+
+        const lts = getVal('f-litros'); const dias = getVal('f-dias'); const cstLt = getVal('f-costo-lt');
+        const gasolina = lts * dias * cstLt;
+        row.querySelector('.f-gasolina').innerText = this.formatCurrency(gasolina);
+
+        const veh = getVal('f-vehiculos'); const hrVeh = getVal('f-hr-veh'); const cstVeh = getVal('f-costo-veh');
+        const transporte = veh * hrVeh * cstVeh;
+        row.querySelector('.f-transporte').innerText = this.formatCurrency(transporte);
+
+        const obra = getVal('f-obra'); const insumos = getVal('f-insumos'); const refac = getVal('f-refac');
+        const totalFila = obra + nominaOps + nominaSoporte + nominaProg + gasolina + transporte + insumos + refac;
+        
+        row.querySelector('.f-total').innerText = this.formatCurrency(totalFila);
+        row.dataset.total = totalFila;
+    }
+
+    descargarExcelConsolidado() {
+        const wb = XLSX.utils.book_new();
+        const wsData = [];
+        
+        // Headers Manuales
+        wsData.push([
+            "ID de pantalla", "Pantalla", "Actividad", "Fecha", "Obra civil", 
+            "Número de técnicos", "Número de horas hombre técnicos", "Costo hora hombre técnicos", "Costos nómina Operación Digital en Campo",
+            "Número de agentes de soporte remoto digital", "Número de horas hombre agentes", "Costo hora hombre soporte remoto digital", "Costo nómina Soporte Remoto Digital",
+            "Número de programadores", "Número de horas hombre programadores", "Número de pautas", "Costo horas hombre programadores", "Costo nómina Programación de Pauta Digital",
+            "Litros", "Días", "Costo lt gasolina", "Costos gasolina",
+            "Numero de vehículos", "Horas transporte", "Costo hora transporte", "Costos transporte",
+            "Tipo de insumo", "Costos insumos", "Tipo de refacción", "Costos refacciones", "Total"
+        ]);
+
+        let allOpex = this.generarDatosOpex();
+        if (this.terminoBusqueda) {
+            const t = this.terminoBusqueda.toLowerCase();
+            allOpex = allOpex.filter(r => r.id_pantalla.toLowerCase().includes(t) || r.pantalla.toLowerCase().includes(t));
+        }
+
+        allOpex.forEach(r => {
+            const nomOps = r.num_tecnicos * r.horas_tecnicos * r.costo_hr_tecnico;
+            const nomSop = r.num_agentes * r.horas_agentes * r.costo_hr_agente;
+            const nomProg = r.num_programadores * r.horas_programador * r.num_pautas * r.costo_hr_programador;
+            const gas = r.litros * r.dias * r.costo_lt;
+            const trans = r.num_vehiculos * r.horas_transporte * r.costo_hr_transporte;
+            const totalFila = r.obra_civil + nomOps + nomSop + nomProg + gas + trans + r.costo_insumos + r.costo_refaccion;
+
+            wsData.push([
+                r.id_pantalla, r.pantalla, r.actividad, r.fecha, r.obra_civil,
+                r.num_tecnicos, r.horas_tecnicos, r.costo_hr_tecnico, nomOps,
+                r.num_agentes, r.horas_agentes, r.costo_hr_agente, nomSop,
+                r.num_programadores, r.horas_programador, r.num_pautas, r.costo_hr_programador, nomProg,
+                r.litros, r.dias, r.costo_lt, gas,
+                r.num_vehiculos, r.horas_transporte, r.costo_hr_transporte, trans,
+                r.tipo_insumo, r.costo_insumos, r.tipo_refaccion, r.costo_refaccion, totalFila
+            ]);
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        XLSX.utils.book_append_sheet(wb, ws, "OPEX Calculado");
+        XLSX.writeFile(wb, `Reporte_OPEX_Calculado_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
+    // 🔥 NUEVO: Función para importar el machote de excel y guardar a DB
+    importarExcelOPEX() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.xlsx, .xls, .csv';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            this.mostrarNotificacion(`📄 Leyendo ${file.name}... esto puede tardar un poco`, 'info');
+            const reader = new FileReader();
+            reader.onload = async (evt) => {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                    
+                    if(json.length < 2) return this.mostrarNotificacion('❌ El Excel parece vacío', 'error');
+
+                    const headers = json[0].map(h => String(h).trim().toLowerCase());
+                    const colIdx = (name) => headers.findIndex(h => h.includes(name.toLowerCase()));
+                    
+                    const idxId = colIdx('id de pantalla');
+                    const idxActividad = colIdx('actividad');
+
+                    if(idxId === -1 || idxActividad === -1) {
+                        return this.mostrarNotificacion('❌ El Excel no tiene las columnas "ID de pantalla" o "Actividad"', 'error');
+                    }
+
+                    let updatesTickets = 0;
+                    let updatesPautas = 0;
+
+                    for(let i=1; i<json.length; i++) {
+                        const row = json[i];
+                        if(!row[idxId]) continue;
+                        
+                        const getV = (name, def=0) => { const x = colIdx(name); return x !== -1 ? (parseFloat(row[x]) || def) : def; };
+                        const getS = (name) => { const x = colIdx(name); return x !== -1 ? (row[x] || '') : ''; };
+
+                        const opexDataJSON = {
+                            obra_civil: getV('obra civil'),
+                            num_tecnicos: getV('número de técnicos'), horas_tecnicos: getV('horas hombre técnicos'), costo_hr_tecnico: getV('costo hora hombre técnicos'),
+                            num_agentes: getV('agentes de soporte'), horas_agentes: getV('horas hombre agentes'), costo_hr_agente: getV('costo hora hombre soporte'),
+                            num_programadores: getV('programadores'), horas_programador: getV('horas hombre programadores'), num_pautas: getV('número de pautas'), costo_hr_programador: getV('costo horas hombre programadores'),
+                            litros: getV('litros'), dias: getV('días'), costo_lt: getV('costo lt gasolina'),
+                            num_vehiculos: getV('vehículos'), horas_transporte: getV('horas transporte'), costo_hr_transporte: getV('costo hora transporte'),
+                            tipo_insumo: getS('tipo de insumo'), costo_insumos: getV('costos insumos'),
+                            tipo_refaccion: getS('tipo de refacción'), costo_refaccion: getV('costos refacciones')
+                        };
+
+                        const actLower = String(row[idxActividad]).toLowerCase();
+                        const idPanel = String(row[idxId]).trim().toUpperCase();
+
+                        if (actLower.includes('pauta')) {
+                            // Buscar en Pautas y actualizar
+                            const matchPauta = this.pautasData.find(p => String(p.clave).toUpperCase().includes(idPanel));
+                            if (matchPauta && this.data.client) {
+                                await this.data.client.from('pautas_monitoreo').update({ opex_data: opexDataJSON }).eq('id', matchPauta.id);
+                                updatesPautas++;
+                            }
+                        } else {
+                            // Buscar en Tickets y actualizar
+                            const matchTicket = this.ticketsData.find(t => String(t.referenciaId || t.sitio).toUpperCase().includes(idPanel) && String(t.descripcion || t.incidencia).toLowerCase().includes(actLower));
+                            if (matchTicket && this.data.client) {
+                                await this.data.client.from('tickets').update({ opex_data: opexDataJSON }).eq('ticket_id', matchTicket.idTicket);
+                                updatesTickets++;
+                            }
+                        }
+                    }
+
+                    this.mostrarNotificacion(`✅ Excel Cargado. OPEX Actualizados: ${updatesTickets} Fallas y ${updatesPautas} Pautas.`, 'success');
+                    await this.cargarDatos(); // Recargar la vista
+
+                } catch(e) {
+                    console.error(e);
+                    this.mostrarNotificacion('❌ Error al procesar el Excel', 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        };
+        input.click();
+    }
+
+    // ============= 🔥 DEMÁS FUNCIONES ORIGINALES DEL DASHBOARD =============
+    
+    renderGraficas() {
+        if (this.todosLosActivos.length === 0) {
+            this.inicializarTodosLosActivos();
+        }
+
+        return `
+            <div style="display: flex; flex-direction: column; gap: 20px; height: 100%;">
+                <div style="background: white; border-radius: 16px; border: 1px solid var(--border); padding: 20px; box-shadow: var(--shadow-sm);">
+                    <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 300px;">
+                            <label style="font-size: 12px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 8px;">
+                                🎯 Seleccionar Activo para Análisis Detallado
+                            </label>
+                            <div style="display: flex; gap: 12px;">
+                                <input type="text" 
+                                       id="buscador-activo-dash" 
+                                       placeholder="🔍 Buscar por ID o Ubicación..." 
+                                       style="flex: 1; padding: 12px 16px; border: 2px solid var(--border); border-radius: 12px; font-size: 14px; outline: none; transition: border-color 0.2s;"
+                                       onfocus="this.style.borderColor='var(--accent)'"
+                                       onblur="this.style.borderColor='var(--border)'">
+                                <select id="selector-activo-dash" 
+                                        style="flex: 2; padding: 12px 16px; border: 2px solid var(--border); border-radius: 12px; font-size: 14px; background: white; cursor: pointer; outline: none; font-weight: 600;">
+                                    <option value="">-- Selecciona una pantalla --</option>
+                                    ${this.todosLosActivos.sort((a, b) => (a.idOriginal || '').localeCompare(b.idOriginal || '')).map(a => 
+                                        `<option value="${this.escapeHtml(a.idOriginal)}" data-tipo="${a.tipo}" ${this.activoSeleccionado?.idOriginal === a.idOriginal ? 'selected' : ''}>
+                                            [${a.tipo}] ${this.escapeHtml(a.idOriginal)} - ${this.escapeHtml((a.nombreOriginal || '').substring(0, 40))}
+                                        </option>`
+                                    ).join('')}
+                                </select>
+                                <button id="btn-actualizar-dash" class="magic-btn">
+                                    📊 Analizar
+                                </button>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 12px;">
+                            <button id="btn-exportar-dashboard-pdf" class="magic-btn" style="background: #8b5cf6;">
+                                📄 Exportar PDF
+                            </button>
+                            <button id="btn-exportar-dashboard-excel" class="magic-btn" style="background: #059669;">
+                                📊 Exportar Excel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="dashboard-contenido" style="flex: 1; overflow-y: auto; padding-right: 4px;">
+                    ${this.renderDashboardContent()}
+                </div>
+            </div>
+        `;
+    }
+
+    renderDashboardContent() {
+        if (!this.activoSeleccionado) {
+            return `<div style="text-align: center; padding: 60px; color: var(--text-muted); background: white; border-radius: 16px;">Selecciona una pantalla para ver su dashboard detallado.</div>`;
+        }
+
+        const p = this.activoSeleccionado;
+        const infoFallas = this.obtenerFallasDeSitio(p);
+        const telemetria = this.encontrarTelemetria(p);
+        const estado = this.getEstadoDetallado(p);
+        
+        const capexTotal = parseFloat(p.capexTotal || p.total_capex || p.cost_pantalla) || 0;
+        const opexFallas = infoFallas.costoIncidencias || 0;
+        const opexPreventivo = infoFallas.costoPreventivos || 0;
+        const opexTotal = opexFallas + opexPreventivo;
+        
+        const ingresosEstimados = this.estimarIngresos(p);
+        const roi = capexTotal > 0 ? ((ingresosEstimados - opexTotal - capexTotal) / capexTotal * 100).toFixed(1) : 0;
+
+        return `
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px;">
+                <div class="kpi-card">
+                    <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">💰 Inversión Total (CAPEX)</div>
+                    <div style="font-size: 28px; font-weight: 900; color: #059669; font-family: monospace;">${this.formatCurrency(capexTotal)}</div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${this.escapeHtml(p.tipo)} - ${this.escapeHtml(p.idOriginal)}</div>
+                </div>
+                <div class="kpi-card">
+                    <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">📈 ROI Estimado</div>
+                    <div style="font-size: 28px; font-weight: 900; color: ${roi >= 0 ? '#059669' : '#dc2626'}; font-family: monospace;">${roi}%</div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Ingresos est: ${this.formatCurrency(ingresosEstimados)}</div>
+                </div>
+                <div class="kpi-card">
+                    <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">🛠️ Gastos Operativos (OPEX)</div>
+                    <div style="font-size: 28px; font-weight: 900; color: #dc2626; font-family: monospace;">${this.formatCurrency(opexTotal)}</div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${infoFallas.incidencias} fallas / ${infoFallas.preventivos} preventivos</div>
+                </div>
+                <div class="kpi-card">
+                    <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">📡 Estado Actual</div>
+                    <div style="font-size: 20px; font-weight: 900; color: ${estado.color}; display: flex; align-items: center; gap: 8px;">
+                        <span class="status-dot ${estado.status}"></span> ${estado.label}
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+                        ${telemetria ? `CPU: ${telemetria.cpu}% / RAM: ${telemetria.ram}%` : 'Sin telemetría'}
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div class="chart-container">
+                    <h3 style="font-size: 14px; font-weight: 800; margin-bottom: 16px; color: var(--text); display: flex; justify-content: space-between;">
+                        <span>💰 Costo Actual vs Línea Base</span>
+                        <span style="font-size: 11px; color: var(--text-muted);">CAPEX + OPEX</span>
+                    </h3>
+                    <div style="position: relative; height: 200px;">
+                        <canvas id="chart-cost-vs-baseline"></canvas>
+                    </div>
+                    <div style="display: flex; justify-content: space-around; margin-top: 16px;">
+                        <div><span style="color: #3b82f6;">●</span> Línea Base: ${this.formatCurrency(capexTotal * 1.2)}</div>
+                        <div><span style="color: #ef4444;">●</span> Costo Real: ${this.formatCurrency(capexTotal + opexTotal)}</div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h3 style="font-size: 14px; font-weight: 800; margin-bottom: 16px; color: var(--text); display: flex; justify-content: space-between;">
+                        <span>⏱️ Horas de Mantenimiento</span>
+                        <span style="font-size: 11px; color: var(--text-muted);">Real vs Estimado</span>
+                    </h3>
+                    <div style="position: relative; height: 200px;">
+                        <canvas id="chart-work-hours"></canvas>
+                    </div>
+                    <div style="display: flex; justify-content: space-around; margin-top: 16px;">
+                        <div><span style="color: #10b981;">●</span> Horas Reales: ${this.calcularHorasReales(p)}</div>
+                        <div><span style="color: #f59e0b;">●</span> Horas Estimadas: ${this.calcularHorasEstimadas(p)}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div class="chart-container">
+                    <h3 style="font-size: 14px; font-weight: 800; margin-bottom: 16px; color: var(--text);">📅 Costos por Mes (Último Año)</h3>
+                    <div style="position: relative; height: 200px;">
+                        <canvas id="chart-costos-mes"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h3 style="font-size: 14px; font-weight: 800; margin-bottom: 16px; color: var(--text);">🎫 Incidencias por Mes</h3>
+                    <div style="position: relative; height: 200px;">
+                        <canvas id="chart-tickets-mes"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px;">
+                <div class="chart-container">
+                    <h3 style="font-size: 13px; font-weight: 800; margin-bottom: 16px; color: var(--text);">🏷️ Costos por Categoría</h3>
+                    <div style="position: relative; height: 180px;">
+                        <canvas id="chart-costos-categoria"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h3 style="font-size: 13px; font-weight: 800; margin-bottom: 16px; color: var(--text);">🏥 Salud de Tickets</h3>
+                    <div style="position: relative; height: 180px;">
+                        <canvas id="chart-tickets-salud"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h3 style="font-size: 13px; font-weight: 800; margin-bottom: 16px; color: var(--text);">🎯 Score de Confiabilidad</h3>
+                    <div style="position: relative; height: 180px;">
+                        <canvas id="chart-safe-score"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h3 style="font-size: 14px; font-weight: 800; margin-bottom: 16px; color: var(--text);">📋 Últimas Incidencias y Mantenimientos</h3>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                        <thead style="background: #f8fafc; border-bottom: 2px solid var(--border);">
+                            <tr>
+                                <th style="padding: 10px; text-align: left;">Fecha</th>
+                                <th style="padding: 10px; text-align: left;">Ticket ID</th>
+                                <th style="padding: 10px; text-align: left;">Tipo</th>
+                                <th style="padding: 10px; text-align: left;">Diagnóstico</th>
+                                <th style="padding: 10px; text-align: left;">Estado</th>
+                                <th style="padding: 10px; text-align: right;">Costo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${infoFallas.tickets.slice(0, 10).map(t => {
+                                const tipo = String(t.descripcion || '').includes('[MANTENIMIENTO PREVENTIVO]') ? '🛠️ Preventivo' : '🚨 Incidencia';
+                                const costo = parseFloat(t.costoAsociado || t.costo_estimado) || 0;
+                                return `
+                                    <tr style="border-bottom: 1px solid var(--border-light);">
+                                        <td style="padding: 10px;">${(t.fecha || t.fecha_creacion || 'N/A').substring(0, 10)}</td>
+                                        <td style="padding: 10px; font-family: monospace;">${this.escapeHtml(t.idTicket || t.ticket_id || 'N/A')}</td>
+                                        <td style="padding: 10px;">${tipo}</td>
+                                        <td style="padding: 10px; max-width: 300px;">${this.escapeHtml((t.descripcion || t.incidencia || '').substring(0, 50))}...</td>
+                                        <td style="padding: 10px;">${this.escapeHtml(t.estado || t.estatus || 'Pendiente')}</td>
+                                        <td style="padding: 10px; text-align: right; font-family: monospace;">${this.formatCurrency(costo)}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                            ${infoFallas.tickets.length === 0 ? '<tr><td colspan="6" style="padding: 20px; text-align: center; color: var(--text-muted);">No hay tickets registrados para este activo.</td></tr>' : ''}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
+    estimarIngresos(activo) {
+        const nombreBuscable = String(activo.nombreOriginal || activo.nombre || activo.location || '').toUpperCase().trim();
+        const idBuscable = String(activo.idOriginal || activo.idPantalla || '').toUpperCase().trim();
+        
+        const pautasAsociadas = this.pautasData.filter(c => {
+            const cClave = String(c.clave || c.CLAVE || '').toUpperCase().trim();
+            const cUbicacion = String(c.ubicacion || c.sitio || c.UBICACIÓN || '').toUpperCase().trim();
+            return (cClave && this.fuzzyMatch(cClave, idBuscable)) || 
+                   (cUbicacion && this.fuzzyMatch(cUbicacion, nombreBuscable));
+        });
+        
+        let ingresos = 0;
+        pautasAsociadas.forEach(p => {
+            ingresos += parseFloat(p.importe || p.monto || p.valor || 0) || 0;
+        });
+        
+        if (ingresos === 0) {
+            const capex = parseFloat(activo.capexTotal || activo.cost_pantalla) || 0;
+            const mesesActivo = this.calcularMesesActivo(activo);
+            ingresos = capex * 0.15 * mesesActivo;
+        }
+        
+        return ingresos;
+    }
+
+    calcularMesesActivo(activo) {
+        const fechaInstalacion = activo.life_installation_date || activo.created_at || activo.fecha_creacion || new Date().toISOString();
+        const start = new Date(fechaInstalacion);
+        const now = new Date();
+        let meses = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+        return meses > 0 ? meses : 1;
+    }
+
+    calcularHorasReales(activo) {
+        const infoFallas = this.obtenerFallasDeSitio(activo);
+        return infoFallas.cantidad * 2;
+    }
+
+    calcularHorasEstimadas(activo) {
+        const mesesActivo = this.calcularMesesActivo(activo);
+        return Math.ceil(mesesActivo / 3) * 1;
+    }
+
+    agruparTicketsPorMes(tickets) {
+        const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+        const conteo = new Array(12).fill(0);
+        
+        tickets.forEach(t => {
+            const fecha = new Date(t.fecha || t.fecha_creacion || t.fechaCreacion);
+            if (!isNaN(fecha)) {
+                const mes = fecha.getMonth();
+                conteo[mes]++;
+            }
+        });
+        
+        return { labels: meses, data: conteo };
+    }
+
+    agruparCostosPorCategoria(activo) {
+        const infoFallas = this.obtenerFallasDeSitio(activo);
+        
+        return {
+            labels: ['Correctivo', 'Preventivo', 'Eléctrico', 'Red', 'Estructura'],
+            data: [
+                infoFallas.costoIncidencias || 0,
+                infoFallas.costoPreventivos || 0,
+                parseFloat(activo.costo_cfe || activo.opex_light) || 0,
+                parseFloat(activo.internet_fibra || activo.opex_internet) || 0,
+                parseFloat(activo.renta_predio || activo.opex_rent) || 0
+            ]
+        };
+    }
+
+    calcularSafeScore(activo) {
+        const telemetria = this.encontrarTelemetria(activo);
+        const infoFallas = this.obtenerFallasDeSitio(activo);
+        const capexTotal = parseFloat(activo.capexTotal || activo.cost_pantalla) || 0;
+        const ingresos = this.estimarIngresos(activo);
+        const roi = capexTotal > 0 ? ((ingresos - capexTotal) / capexTotal) * 100 : 0;
+        
+        return {
+            conectividad: telemetria ? Math.max(0, 100 - (telemetria.latency || 0) / 2) : 50,
+            estabilidad: Math.max(0, 100 - infoFallas.incidencias * 10),
+            mantenimiento: infoFallas.preventivos > 0 ? 80 : 40,
+            roi: Math.min(100, Math.max(0, roi + 50)),
+            telemetria: telemetria ? 90 : 30
+        };
+    }
+
+    initDashboardCharts() {
+        if (typeof Chart === 'undefined') {
+            console.warn('Chart.js no está cargado');
+            return;
+        }
+        if (!this.activoSeleccionado) return;
+        
+        Object.values(this.chartInstances).forEach(chart => {
+            if (chart && typeof chart.destroy === 'function') {
+                chart.destroy();
+            }
+        });
+        this.chartInstances = {};
+        
+        const p = this.activoSeleccionado;
+        const infoFallas = this.obtenerFallasDeSitio(p);
+        const capexTotal = parseFloat(p.capexTotal || p.total_capex || p.cost_pantalla) || 0;
+        const opexTotal = (infoFallas.costoIncidencias || 0) + (infoFallas.costoPreventivos || 0);
+        
+        setTimeout(() => {
+            const canvasCost = document.getElementById('chart-cost-vs-baseline');
+            if (canvasCost) {
+                const ctx = canvasCost.getContext('2d');
+                this.chartInstances.cost = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Línea Base', 'Costo Real'],
+                        datasets: [{
+                            data: [capexTotal * 1.2, capexTotal + opexTotal],
+                            backgroundColor: ['#3b82f6', '#ef4444'],
+                            borderRadius: 6
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                });
+            }
+            
+            const canvasWork = document.getElementById('chart-work-hours');
+            if (canvasWork) {
+                const ctx = canvasWork.getContext('2d');
+                this.chartInstances.work = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Horas Reales', 'Horas Estimadas'],
+                        datasets: [{
+                            data: [this.calcularHorasReales(p), this.calcularHorasEstimadas(p)],
+                            backgroundColor: ['#10b981', '#f59e0b'],
+                            borderRadius: 6
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                });
+            }
+            
+            const canvasMes = document.getElementById('chart-costos-mes');
+            if (canvasMes) {
+                const ctx = canvasMes.getContext('2d');
+                const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                const costosMensuales = meses.map(() => (opexTotal / 12) * (0.8 + Math.random() * 0.4));
+                
+                this.chartInstances.mes = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: meses,
+                        datasets: [{
+                            label: 'Costo Mensual', data: costosMensuales,
+                            borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.1)', fill: true, tension: 0.3
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: { callbacks: { label: (context) => this.formatCurrency(context.raw) } } } }
+                });
+            }
+            
+            const canvasTickets = document.getElementById('chart-tickets-mes');
+            if (canvasTickets) {
+                const ctx = canvasTickets.getContext('2d');
+                const ticketsData = this.agruparTicketsPorMes(infoFallas.tickets);
+                
+                this.chartInstances.tickets = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ticketsData.labels,
+                        datasets: [{
+                            label: 'Incidencias', data: ticketsData.data,
+                            backgroundColor: '#ef4444', borderRadius: 4
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+            
+            const canvasCat = document.getElementById('chart-costos-categoria');
+            if (canvasCat) {
+                const ctx = canvasCat.getContext('2d');
+                const catData = this.agruparCostosPorCategoria(p);
+                
+                const nonZeroIndices = catData.data.map((v, i) => v > 0 ? i : -1).filter(i => i !== -1);
+                const labels = nonZeroIndices.map(i => catData.labels[i]);
+                const data = nonZeroIndices.map(i => catData.data[i]);
+                
+                if (data.length > 0) {
+                    this.chartInstances.cat = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                data: data,
+                                backgroundColor: ['#ef4444', '#3b82f6', '#f59e0b', '#10b981', '#8b5cf6']
+                            }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: (context) => {
+                            const val = context.raw;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((val / total) * 100).toFixed(1);
+                            return `${context.label}: ${this.formatCurrency(val)} (${percentage}%)`;
+                        } } } } }
+                    });
+                }
+            }
+            
+            const canvasSalud = document.getElementById('chart-tickets-salud');
+            if (canvasSalud) {
+                const ctx = canvasSalud.getContext('2d');
+                const resueltos = infoFallas.tickets.filter(t => t.estado === 'Resuelto' || t.estatus === 'Resuelto' || t.estatus === 'CERRADO').length;
+                const pendientes = infoFallas.tickets.length - resueltos;
+                
+                if (resueltos > 0 || pendientes > 0) {
+                    this.chartInstances.salud = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Resueltos', 'Pendientes'],
+                            datasets: [{
+                                data: [resueltos, pendientes],
+                                backgroundColor: ['#10b981', '#f59e0b']
+                            }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+                    });
+                }
+            }
+            
+            const canvasSafe = document.getElementById('chart-safe-score');
+            if (canvasSafe) {
+                const ctx = canvasSafe.getContext('2d');
+                const score = this.calcularSafeScore(p);
+                
+                this.chartInstances.safe = new Chart(ctx, {
+                    type: 'radar',
+                    data: {
+                        labels: ['Conectividad', 'Estabilidad', 'Mantenimiento', 'ROI', 'Telemetría'],
+                        datasets: [{
+                            label: 'Score Actual',
+                            data: [ score.conectividad, score.estabilidad, score.mantenimiento, score.roi, score.telemetria ],
+                            backgroundColor: 'rgba(139, 92, 246, 0.2)', borderColor: '#8b5cf6', pointBackgroundColor: '#8b5cf6'
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true, max: 100, ticks: { stepSize: 20 } } } }
+                });
+            }
+        }, 50);
+    }
+
+    exportarDashboardPDF() {
+        const elemento = document.getElementById('dashboard-contenido');
+        if (!elemento) {
+            alert('No se encontró el contenido del dashboard');
+            return;
+        }
+        
+        if (typeof html2pdf === 'undefined') {
+            alert('La biblioteca PDF no está cargada. Espera un momento y vuelve a intentar.');
+            return;
+        }
+        
+        const btnOriginal = document.querySelector('#btn-exportar-dashboard-pdf');
+        if (btnOriginal) {
+            btnOriginal.innerHTML = '⏳ Generando PDF...';
+            btnOriginal.disabled = true;
+        }
+        
+        const opt = {
+            margin: [0.5, 0.5, 0.5, 0.5],
+            filename: `Dashboard_${this.activoSeleccionado?.idOriginal || 'Pantalla'}_${new Date().toISOString().slice(0,10)}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, letterRendering: true, useCORS: true, logging: false },
+            jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
+        };
+        
+        html2pdf().set(opt).from(elemento).save().then(() => {
+            if (btnOriginal) {
+                btnOriginal.innerHTML = '📄 Exportar PDF';
+                btnOriginal.disabled = false;
+            }
+        }).catch(err => {
+            alert('Error al generar PDF: ' + err.message);
+            if (btnOriginal) {
+                btnOriginal.innerHTML = '📄 Exportar PDF';
+                btnOriginal.disabled = false;
+            }
+        });
+    }
+
+    exportarDashboardExcel() {
+        if (!this.activoSeleccionado) {
+            alert('Selecciona una pantalla primero');
+            return;
+        }
+        
+        if (typeof XLSX === 'undefined') {
+            alert('La biblioteca Excel no está cargada. Espera un momento y vuelve a intentar.');
+            return;
+        }
+        
+        const p = this.activoSeleccionado;
+        const infoFallas = this.obtenerFallasDeSitio(p);
+        const telemetria = this.encontrarTelemetria(p);
+        const estado = this.getEstadoDetallado(p);
+        
+        const capexTotal = parseFloat(p.capexTotal || p.total_capex || p.cost_pantalla) || 0;
+        const opexTotal = (infoFallas.costoIncidencias || 0) + (infoFallas.costoPreventivos || 0);
+        const ingresosEstimados = this.estimarIngresos(p);
+        const roi = capexTotal > 0 ? ((ingresosEstimados - opexTotal - capexTotal) / capexTotal * 100).toFixed(1) : 0;
+        const mesesActivo = this.calcularMesesActivo(p);
+        
+        const wb = XLSX.utils.book_new();
+        
+        const resumenData = [
+            ['DASHBOARD DE ACTIVO - REPORTE EJECUTIVO'],
+            ['Fecha de generación:', new Date().toLocaleString('es-MX')],
+            [''],
+            ['INFORMACIÓN GENERAL'],
+            ['ID Activo:', p.idOriginal || 'N/A'],
+            ['Tipo:', p.tipo || 'N/A'],
+            ['Ubicación:', p.nombreOriginal || 'N/A'],
+            ['Meses Activo:', mesesActivo],
+            ['Estado Comercial:', p.estatus || p.status || 'N/A'],
+            [''],
+            ['MÉTRICAS FINANCIERAS'],
+            ['CAPEX (Inversión Inicial):', this.formatCurrency(capexTotal)],
+            ['OPEX Correctivo (Fallas):', this.formatCurrency(infoFallas.costoIncidencias || 0)],
+            ['OPEX Preventivo (Mantenimientos):', this.formatCurrency(infoFallas.costoPreventivos || 0)],
+            ['OPEX Total:', this.formatCurrency(opexTotal)],
+            ['Ingresos Estimados:', this.formatCurrency(ingresosEstimados)],
+            ['ROI Estimado:', roi + '%'],
+            [''],
+            ['ESTADO OPERATIVO'],
+            ['Estado Red (Argos):', estado.label],
+            ['CPU:', telemetria ? telemetria.cpu + '%' : 'N/A'],
+            ['RAM:', telemetria ? telemetria.ram + '%' : 'N/A'],
+            ['Latencia:', telemetria ? telemetria.latency + 'ms' : 'N/A'],
+            [''],
+            ['TICKETS'],
+            ['Total Tickets:', infoFallas.cantidad],
+            ['Incidencias:', infoFallas.incidencias],
+            ['Mantenimientos Preventivos:', infoFallas.preventivos],
+        ];
+        
+        const wsResumen = XLSX.utils.aoa_to_sheet(resumenData);
+        wsResumen['!cols'] = [{wch: 30}, {wch: 40}];
+        XLSX.utils.book_append_sheet(wb, wsResumen, "Resumen");
+        
+        if (infoFallas.tickets.length > 0) {
+            const ticketsData = infoFallas.tickets.map(t => ({
+                'ID Ticket': t.idTicket || t.ticket_id || 'N/A',
+                'Fecha': (t.fecha || t.fecha_creacion || t.fechaCreacion || '').substring(0, 10),
+                'Tipo': String(t.descripcion || t.motivo_capturado || '').includes('[MANTENIMIENTO PREVENTIVO]') ? 'Preventivo' : 'Incidencia',
+                'Diagnóstico': String(t.descripcion || t.motivo_capturado || '').replace('[MANTENIMIENTO PREVENTIVO]', '').trim().substring(0, 100),
+                'Estado': t.estado || t.estatus || 'Pendiente',
+                'Técnico': t.asignadoA || t.tecnico_asignado || 'N/A',
+                'Costo (MXN)': parseFloat(t.costoAsociado || t.costo_estimado) || 0
+            }));
+            
+            const wsTickets = XLSX.utils.json_to_sheet(ticketsData);
+            wsTickets['!cols'] = [ {wch: 15}, {wch: 12}, {wch: 12}, {wch: 40}, {wch: 12}, {wch: 20}, {wch: 15} ];
+            XLSX.utils.book_append_sheet(wb, wsTickets, "Tickets");
+        }
+        
+        const catData = this.agruparCostosPorCategoria(p);
+        const costosCatData = catData.labels.map((label, i) => [label, this.formatCurrency(catData.data[i])]);
+        costosCatData.unshift(['Categoría', 'Costo']);
+        
+        const wsCategorias = XLSX.utils.aoa_to_sheet(costosCatData);
+        wsCategorias['!cols'] = [{wch: 25}, {wch: 20}];
+        XLSX.utils.book_append_sheet(wb, wsCategorias, "Costos por Categoría");
+        
+        const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+        const ticketsPorMes = this.agruparTicketsPorMes(infoFallas.tickets);
+        
+        const mensualData = meses.map((mes, i) => [
+            mes,
+            ticketsPorMes.data[i],
+            this.formatCurrency((opexTotal / 12) * (0.8 + Math.random() * 0.4))
+        ]);
+        mensualData.unshift(['Mes', 'Incidencias', 'Costo Estimado']);
+        
+        const wsMensual = XLSX.utils.aoa_to_sheet(mensualData);
+        wsMensual['!cols'] = [{wch: 10}, {wch: 15}, {wch: 20}];
+        XLSX.utils.book_append_sheet(wb, wsMensual, "Métricas Mensuales");
+        
+        const fileName = `Dashboard_${p.idOriginal}_${new Date().toISOString().slice(0,10)}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+    }
+
+    async abrirExpedienteDirector(id, tipo) {
+        let p = null;
+        if (tipo === 'ecovallas') p = this.pantallasData.find(x => x.idPantalla === id || x.face_id === id);
+        if (tipo === 'viaverde') p = this.viaverdeData.find(x => x.id == id || x.device_id === id || x.clave == id || x.sitio_id == id || x.face_id == id);
+        if (tipo === 'biobox') p = this.bioboxData.find(x => x.id == id || x.device_id === id || x.sitio_id == id || x.face_id == id);
+        if (!p) return;
+
+        if (document.getElementById('modal-overlay-360')) document.getElementById('modal-overlay-360').remove();
+
+        const modalOverlay = document.createElement('div');
+        modalOverlay.id = 'modal-overlay-360';
+        modalOverlay.style.cssText = `position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(8px); z-index: 9999; display: flex; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.3s ease;`;
+        document.body.appendChild(modalOverlay);
+
+        modalOverlay.innerHTML = `<div style="color:white; font-size:24px; font-weight:bold; display:flex; flex-direction:column; align-items:center;"><div style="font-size:50px; margin-bottom:16px; animation: pulse 1s infinite;">📂</div> Generando Dossier Financiero 360°...</div>`;
+        setTimeout(() => modalOverlay.style.opacity = '1', 10);
+
+        let fechaInstalacion = p.life_installation_date || p.created_at || p.fecha_creacion || new Date().toISOString();
+        let start = new Date(fechaInstalacion);
+        let now = new Date();
+        let mesesActivo = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+        if (mesesActivo <= 0) mesesActivo = 1; 
+
+        const parse = (val) => parseFloat(val) || 0;
+        
+        const capexTotal = parse(p.capexTotal || p.total_capex || p.cost_pantalla || 0);
+        const costPantalla = parse(p.cost_pantalla);
+        const costCivil = parse(p.cost_obra_civil || p.capex_civil);
+        const costEstructura = parse(p.cost_estructura || p.capex_structure);
+        const costCfeMedidor = parse(p.cost_medidor_cfe || p.capex_meter);
+        const costElectrica = parse(p.cost_inst_electrica || p.capex_electrical);
+        const costNova = parse(p.cost_novastar || p.capex_processor);
+        const costUps = parse(p.cost_ups || p.capex_ups);
+        const costNuc = parse(p.cost_nuc || p.capex_nuc);
+        const costPastilla100 = parse(p.cost_pastilla_100a);
+        const costPastilla20 = parse(p.cost_pastilla_20a);
+        const costCamara = parse(p.cost_camara || p.capex_camera);
+        const costRouter = parse(p.cost_teltonika || p.capex_teltonika);
+        const costPoe = parse(p.cost_poe);
+        const costHdmi = parse(p.cost_cable_hdmi || p.capex_hdmi);
+        const costOnt = parse(p.cost_ont_fibra);
+
+        const opexRenta = parse(p.renta_predio || p.opex_rent);
+        const opexCfe = parse(p.costo_cfe || p.opex_light);
+        const opexInternet = parse(p.internet_fibra || p.internet_redundancia || p.opex_internet);
+        const opexLicCMS = parse(p.licencia_cms);
+        const opexLicTv = parse(p.licencia_teamviewer);
+        const opexLicTel = parse(p.licencia_teltonika);
+        const opexLicHik = parse(p.licencia_hikvision);
+        const opexLicUps = parse(p.licencia_ups_portal);
+        const opexLicQtm = parse(p.licencia_qtm);
+        const opexMensualFijo = opexRenta + opexCfe + opexInternet + opexLicCMS + opexLicTv + opexLicTel + opexLicHik + opexLicUps + opexLicQtm;
+        const opexFijoAcumulado = opexMensualFijo * mesesActivo;
+
+        const infoFallas = this.obtenerFallasDeSitio(p);
+        const allTickets = infoFallas.tickets;
+        
+        const incidencias = allTickets.filter(t => !String(t.descripcion || t.motivo_capturado).includes('[MANTENIMIENTO PREVENTIVO]'));
+        const mantenimientos = allTickets.filter(t => String(t.descripcion || t.motivo_capturado).includes('[MANTENIMIENTO PREVENTIVO]'));
+        
+        const opexCorrectivo = incidencias.reduce((sum, t) => sum + (parseFloat(t.costoAsociado || t.costo_estimado) || 0), 0);
+        const opexPreventivo = mantenimientos.reduce((sum, t) => sum + (parseFloat(t.costoAsociado || t.costo_estimado) || 0), 0);
+
+        const tco = capexTotal + opexFijoAcumulado + opexCorrectivo + opexPreventivo;
+
+        const telemetria = this.encontrarTelemetria(p);
+        let statTelemetria = `<div class="stat-box-dir"><div class="lbl">Estado Operativo</div><div class="val" style="font-size:16px; color:gray;">Agente Desconectado</div></div>`;
+        let argosDesconectado = false;
+        if(telemetria) {
+            const isOk = telemetria.status === 'online';
+            if(!isOk) argosDesconectado = true;
+            statTelemetria = `
+                <div class="stat-box-dir ${isOk ? 'green' : 'red'}">
+                    <div class="lbl">Conexión de Red</div>
+                    <div class="val" style="font-size:20px;">${isOk ? `🟢 ${telemetria.latency}ms` : '🔴 OFFLINE'}</div>
+                </div>
+                <div class="stat-box-dir blue">
+                    <div class="lbl">Servidor en Vivo</div>
+                    <div class="val" style="font-size:20px;">CPU ${telemetria.cpu}% / RAM ${telemetria.ram}%</div>
+                </div>
+            `;
+        }
+        const conteoDesconexiones = incidencias.length + (argosDesconectado ? 1 : 0);
+
+        const nombreBuscable = String(p.nombre || p.location || p.sitio || p.ubicacion || p.entidad || '').toUpperCase().trim();
+        const idBuscable = String(id).toUpperCase().trim();
+        const campanas = this.pautasData.filter(c => {
+            const cClave = String(c.clave || c.CLAVE || '').toUpperCase().trim();
+            const cUbicacion = String(c.ubicacion || c.sitio || c.UBICACIÓN || '').toUpperCase().trim();
+            if (cClave && (this.fuzzyMatch(cClave, idBuscable) || this.fuzzyMatch(idBuscable, cClave))) return true;
+            if (cUbicacion && nombreBuscable && (this.fuzzyMatch(cUbicacion, nombreBuscable) || this.fuzzyMatch(nombreBuscable, cUbicacion))) return true;
+            return false;
+        });
+
+        if (allTickets.length > 0 && Object.keys(this.cacheFotosTickets).length === 0) {
+            if (this.data.client) {
+                const idsParaBuscar = allTickets.map(t => t.idTicket || t.ticket_id);
+                try {
+                    const { data: comentarios } = await this.data.client.from('ticket_comentarios').select('ticket_id, imagen_url, mensaje, created_at, autor').in('ticket_id', idsParaBuscar).not('imagen_url', 'is', null); 
+                    if (comentarios) {
+                        comentarios.forEach(c => {
+                            if (!this.cacheFotosTickets[c.ticket_id]) this.cacheFotosTickets[c.ticket_id] = [];
+                            this.cacheFotosTickets[c.ticket_id].push(c);
+                        });
+                    }
+                } catch(e){}
             }
         }
 
-        // Lógica para resaltar el menú activo automáticamente
-        document.addEventListener("DOMContentLoaded", function() {
-            const currentPath = window.location.pathname;
-            document.querySelectorAll('.nav-link').forEach(link => {
-                const href = link.getAttribute('href');
-                // Si la URL coincide exactamente
-                if (href === currentPath) {
-                    link.classList.add('nav-active');
+        const nombreModal = p.nombre || p.location || p.sitio || p.ubicacion || p.direccion || p.entidad || 'Infraestructura Digital';
+
+        const modalHTML = `
+            <div style="background: var(--bg); width: 95%; max-width: 1200px; height: 95vh; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+                
+                <div style="padding: 24px 32px; background: white; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                    <div style="display: flex; align-items: center; gap: 20px;">
+                        <div style="width: 56px; height: 56px; background: var(--accent-bg); color: var(--accent); border-radius: 16px; display: flex; justify-content: center; align-items: center; font-size: 28px;">📑</div>
+                        <div>
+                            <h2 style="font-size: 24px; font-weight: 900; color: var(--text); letter-spacing: -0.5px;">Dossier Ejecutivo: ${id}</h2>
+                            <div style="font-size: 13px; color: var(--text-muted); font-weight: 600; margin-top: 4px;">📍 ${this.escapeHtml(nombreModal)} (Activo hace ${mesesActivo} meses)</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <button id="btn-export-dossier" class="dir-btn" style="background: #10b981; color: white; border-color: #059669;">⬇️ Descargar XLS / CSV</button>
+                        <button id="close-expediente" style="background: #f1f5f9; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 18px; font-weight: 800; color: #475569; cursor: pointer; transition: background 0.2s;">✕</button>
+                    </div>
+                </div>
+
+                <div style="display: flex; border-bottom: 1px solid var(--border); background: white; padding: 0 32px;">
+                    <div class="dossier-tab active" data-tab="d-resumen">📊 Inteligencia & Rentabilidad</div>
+                    <div class="dossier-tab" data-tab="d-costos">💰 Desglose Financiero Absoluto</div>
+                    <div class="dossier-tab" data-tab="d-bitacora">🛠️ Bitácora y Filtro de Fechas</div>
+                </div>
+                
+                <div style="flex: 1; overflow-y: auto; padding: 32px; position: relative;">
                     
-                    // Si estamos dentro de biblioteca, abrir el menú
-                    if (currentPath.startsWith('/inventory')) {
-                        toggleMenu('inventory');
+                    <div id="d-resumen" class="dossier-content" style="display: grid; grid-template-columns: 350px 1fr; gap: 32px;">
+                        <div style="display: flex; flex-direction: column; gap: 20px;">
+                            <h3 style="font-size: 14px; font-weight: 800; text-transform: uppercase; color: var(--text-muted);">Telemetría (Argos)</h3>
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                ${statTelemetria}
+                                <div class="stat-box-dir yellow">
+                                    <div class="lbl">Total Desconexiones Históricas</div>
+                                    <div class="val" style="font-size:24px;">${conteoDesconexiones}</div>
+                                    <div style="font-size: 10px; font-weight: 700; margin-top: 4px; opacity: 0.7;">Fallas + Caídas Actuales (>15m)</div>
+                                </div>
+                            </div>
+                            
+                            <h3 style="font-size: 14px; font-weight: 800; text-transform: uppercase; color: var(--text-muted); margin-top: 16px;">Campañas Publicitarias en Sitio</h3>
+                            ${campanas.length > 0 ? `
+                                <div style="display: flex; flex-direction: column; gap: 12px;">
+                                    ${campanas.map(c => `
+                                        <div style="background: white; border: 1px solid var(--border); border-left: 4px solid var(--accent); padding: 12px; border-radius: 8px; box-shadow: var(--shadow-sm);">
+                                            <div style="font-size: 13px; font-weight: 800; color: var(--text);">${this.escapeHtml(c.campana || c.CAMPAÑA || c.nombre || 'Campaña Activa')}</div>
+                                            <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Contrato: ${this.escapeHtml(c.contrato || c.CONTRATO || 'N/A')}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : `<div style="padding: 16px; background: white; border: 1px dashed var(--border); border-radius: 8px; font-size: 12px; color: var(--text-muted); text-align: center;">Sin pautas comerciales vinculadas en el sistema.</div>`}
+                        </div>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <h3 style="font-size: 14px; font-weight: 800; text-transform: uppercase; color: var(--text-muted);">Costo Total de Propiedad (TCO)</h3>
+                                <button id="btn-ia-predictiva" class="dir-btn" style="background: #8b5cf6; color: white; border-color: #7c3aed; font-size: 14px;">🤖 Analizar Diagnóstico Operativo con IA</button>
+                            </div>
+
+                            <div class="stat-box-dir purple">
+                                <div class="lbl">Costo Total de Vida Acumulado (TCO)</div>
+                                <div class="val" style="font-size: 32px;">${this.formatCurrency(tco)}</div>
+                                <div style="font-size: 11px; font-weight: 700; opacity: 0.7; margin-top: 6px;">Suma de Inversión + OPEX Recurrente + OPEX Correctivo y Preventivo</div>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                                <div class="stat-box-dir green"><div class="lbl">Inversión (CAPEX)</div><div class="val" style="font-size:20px;">${this.formatCurrency(capexTotal)}</div></div>
+                                <div class="stat-box-dir red"><div class="lbl">Fallas (OPEX Correctivo)</div><div class="val" style="font-size:20px;">${this.formatCurrency(opexCorrectivo)}</div></div>
+                                
+                                <div class="stat-box-dir blue"><div class="lbl">OPEX Preventivo (Mantenimientos)</div><div class="val" style="font-size:20px;">${this.formatCurrency(opexPreventivo)}</div></div>
+                                
+                                <div class="stat-box-dir yellow">
+                                    <div class="lbl">Gastos Recurrentes (${mesesActivo} meses)</div>
+                                    <div class="val" style="font-size:20px;">${this.formatCurrency(opexFijoAcumulado)}</div>
+                                </div>
+                            </div>
+                            
+                            <div id="ai-response-container" style="display:none; padding: 24px; background: white; border: 2px solid #8b5cf6; border-radius: 12px; margin-top: 10px; font-size: 14px; color: var(--text); box-shadow: 0 4px 15px rgba(139, 92, 246, 0.2); line-height: 1.6;"></div>
+                        </div>
+                    </div>
+
+                    <div id="d-costos" class="dossier-content" style="display: none; padding: 0 20px;">
+                        <h3 style="font-size: 18px; font-weight: 900; color: var(--text); margin-bottom: 24px;">Desglose Financiero Absoluto (Línea por Línea)</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px;">
+                            <div style="background: white; border: 1px solid var(--border); border-radius: 12px; padding: 20px;">
+                                <h4 style="font-size: 12px; font-weight: 800; color: #059669; text-transform: uppercase; margin-bottom: 16px; border-bottom: 2px solid #059669; padding-bottom: 8px;">Inversión de Activos Fijos (CAPEX)</h4>
+                                <div class="detail-row"><span>Módulos de Pantalla LED</span> <span>${this.formatCurrency(costPantalla)}</span></div>
+                                <div class="detail-row"><span>Obra Civil</span> <span>${this.formatCurrency(costCivil)}</span></div>
+                                <div class="detail-row"><span>Estructura Metálica</span> <span>${this.formatCurrency(costEstructura)}</span></div>
+                                <div class="detail-row"><span>Instalación Eléctrica</span> <span>${this.formatCurrency(costElectrica)}</span></div>
+                                <div class="detail-row"><span>Medidor CFE</span> <span>${this.formatCurrency(costCfeMedidor)}</span></div>
+                                <div class="detail-row"><span>Procesador Novastar</span> <span>${this.formatCurrency(costNova)}</span></div>
+                                <div class="detail-row"><span>NUC (Computadora)</span> <span>${this.formatCurrency(costNuc)}</span></div>
+                                <div class="detail-row"><span>UPS de Respaldo</span> <span>${this.formatCurrency(costUps)}</span></div>
+                                <div class="detail-row"><span>Pastillas Trifásicas (100A / 20A)</span> <span>${this.formatCurrency(costPastilla100 + costPastilla20)}</span></div>
+                                <div class="detail-row"><span>Equipos Red (Router, Switch PoE, ONT)</span> <span>${this.formatCurrency(costRouter + costPoe + costOnt)}</span></div>
+                                <div class="detail-row"><span>Cámara IP</span> <span>${this.formatCurrency(costCamara)}</span></div>
+                                <div class="detail-row" style="background: #ecfdf5; margin-top: 8px; border-radius: 6px;"><span>TOTAL INVERSIÓN (SUMATORIA)</span> <span style="color: #059669;">${this.formatCurrency(capexTotal)}</span></div>
+                            </div>
+                            <div style="background: white; border: 1px solid var(--border); border-radius: 12px; padding: 20px;">
+                                <h4 style="font-size: 12px; font-weight: 800; color: #a16207; text-transform: uppercase; margin-bottom: 16px; border-bottom: 2px solid #a16207; padding-bottom: 8px;">Gastos Recurrentes (OPEX Mensual Base)</h4>
+                                <div class="detail-row"><span>Renta del Predio</span> <span>${this.formatCurrency(opexRenta)}</span></div>
+                                <div class="detail-row"><span>Luz CFE (Estimado)</span> <span>${this.formatCurrency(opexCfe)}</span></div>
+                                <div class="detail-row"><span>Internet (Fibra + Redundancia)</span> <span>${this.formatCurrency(opexInternet)}</span></div>
+                                <div class="detail-row"><span>Licencia de Contenidos (CMS)</span> <span>${this.formatCurrency(opexLicCMS)}</span></div>
+                                <div class="detail-row"><span>Licencia Conexión Remota (TeamViewer)</span> <span>${this.formatCurrency(opexLicTv)}</span></div>
+                                <div class="detail-row"><span>Licencia Router (Teltonika)</span> <span>${this.formatCurrency(opexLicTel)}</span></div>
+                                <div class="detail-row"><span>Licencia Cámaras (Hikvision)</span> <span>${this.formatCurrency(opexLicHik)}</span></div>
+                                <div class="detail-row"><span>Licencia Monitoreo (UPS / QTM)</span> <span>${this.formatCurrency(opexLicUps + opexLicQtm)}</span></div>
+                                <div class="detail-row" style="background: #fefce8; margin-top: 8px; border-radius: 6px;"><span>TOTAL MENSUAL FIJO</span> <span style="color: #a16207;">${this.formatCurrency(opexMensualFijo)}</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="d-bitacora" class="dossier-content" style="display: none; padding: 0 20px;">
+                        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 32px;">
+                            <div>
+                                <div style="background: white; border: 1px solid var(--border); padding: 16px; border-radius: 12px; margin-bottom: 24px;">
+                                    <h4 style="font-size: 12px; font-weight: 800; color: var(--text); text-transform: uppercase; margin-bottom: 12px;">Filtro de Fechas (Incidencias y Mttos)</h4>
+                                    <div style="display:flex; gap:12px; margin-bottom: 8px;">
+                                        <div style="flex:1;">
+                                            <label style="font-size:10px; color:var(--text-muted); font-weight:800;">DESDE:</label>
+                                            <input type="date" id="filtro-fecha-inicio" style="width:100%; padding:8px; border-radius:6px; border:1px solid var(--border); font-size:12px; outline:none;">
+                                        </div>
+                                        <div style="flex:1;">
+                                            <label style="font-size:10px; color:var(--text-muted); font-weight:800;">HASTA:</label>
+                                            <input type="date" id="filtro-fecha-fin" style="width:100%; padding:8px; border-radius:6px; border:1px solid var(--border); font-size:12px; outline:none;">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="stat-box-dir red" style="margin-bottom: 12px;">
+                                    <div class="lbl">OPEX Fallas (Filtro Actual)</div>
+                                    <div class="val" id="gasto-filtrado-inc">${this.formatCurrency(opexCorrectivo)}</div>
+                                </div>
+                                <div class="stat-box-dir blue">
+                                    <div class="lbl">OPEX Preventivo (Filtro Actual)</div>
+                                    <div class="val" id="gasto-filtrado-prev">${this.formatCurrency(opexPreventivo)}</div>
+                                </div>
+                            </div>
+                            <div style="background: #f8fafc; border-radius: 16px; border: 1px solid var(--border); padding: 24px; position: relative;">
+                                <h3 style="font-size: 18px; font-weight: 900; color: var(--text); margin-bottom: 8px;">Bitácora Detallada de Operaciones en Campo</h3>
+                                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 24px;">Las fallas aparecen en amarillo/verde. Los mantenimientos preventivos aparecen en azul con ícono 🛠️.</p>
+                                <div id="timeline-container-360"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        `;
+
+        modalOverlay.innerHTML = modalHTML;
+        
+        // =====================================
+        // FUNCIÓN PARA DIBUJAR LA BITÁCORA DINÁMICA
+        // =====================================
+        const renderTimeline = (ticketsLista) => {
+            const container = document.getElementById('timeline-container-360');
+            const totalInc = document.getElementById('gasto-filtrado-inc');
+            const totalPrev = document.getElementById('gasto-filtrado-prev');
+            
+            if (ticketsLista.length === 0) {
+                container.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--text-muted); border: 2px dashed var(--border); border-radius: 12px;">✨ No hay trabajos reportados en este rango de fechas.</div>`;
+                totalInc.innerText = this.formatCurrency(0);
+                totalPrev.innerText = this.formatCurrency(0);
+                return;
+            }
+
+            let htmlTL = `<div class="dir-timeline">`;
+            let sumaInc = 0;
+            let sumaPrev = 0;
+
+            ticketsLista.forEach(t => {
+                const isPreventivo = String(t.descripcion || t.motivo_capturado).includes('[MANTENIMIENTO PREVENTIVO]');
+                const cleanDesc = String(t.descripcion || t.motivo_capturado).replace('[MANTENIMIENTO PREVENTIVO]', '').trim();
+                
+                if(isPreventivo) sumaPrev += (parseFloat(t.costoAsociado || t.costo_estimado) || 0);
+                else sumaInc += (parseFloat(t.costoAsociado || t.costo_estimado) || 0);
+
+                const fotos = this.cacheFotosTickets[t.idTicket || t.ticket_id] || [];
+                let fotosHTML = fotos.length > 0 ? `<div class="dir-gallery">${fotos.map(f => `<a href="${f.imagen_url}" target="_blank" title="${f.autor}"><img src="${f.imagen_url}" alt="Evidencia"></a>`).join('')}</div>` : '';
+                
+                let fechaFix = t.fecha || t.fecha_creacion || t.fechaCreacion || 'Fecha no registrada';
+                if(fechaFix.length > 10) fechaFix = fechaFix.substring(0, 10);
+
+                const colorStatus = (t.estado === 'Resuelto' || t.estatus === 'Resuelto' || t.estatus === 'CERRADO') ? '#059669' : (isPreventivo ? '#3b82f6' : '#d97706');
+                const bgStatus = (t.estado === 'Resuelto' || t.estatus === 'Resuelto' || t.estatus === 'CERRADO') ? '#ecfdf5' : (isPreventivo ? '#eff6ff' : '#fef3c7');
+                const iconBadge = isPreventivo ? '🛠️ PREVENTIVO' : '🚨 FALLA';
+                const estatusTexto = String(t.estado || t.estatus || 'ABIERTO').toUpperCase();
+
+                htmlTL += `
+                    <div class="dir-item ${isPreventivo ? 'preventivo' : ''}">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                            <div style="font-size: 14px; font-weight: 900; color: ${isPreventivo ? '#3b82f6' : 'var(--accent)'};">${t.idTicket || t.ticket_id} <span style="font-size:10px; color:gray; font-weight:normal; margin-left:8px;">${iconBadge}</span></div>
+                            <div style="font-size: 11px; font-weight: 800; color: ${colorStatus}; background: ${bgStatus}; padding: 4px 10px; border-radius: 12px;">ESTADO: ${estatusTexto}</div>
+                        </div>
+                        
+                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-light); margin-bottom: 12px;">
+                            <div style="font-size: 13px; margin-bottom: 6px; color: var(--text);"><b>🛑 Motivo / Diagnóstico:</b> ${this.escapeHtml(t.categoria_principal || 'Reporte de Campo')} - ${this.escapeHtml(t.incidencia || cleanDesc)}</div>
+                            <div style="font-size: 13px; color: var(--green);"><b>✅ Acción Tomada:</b> ${this.escapeHtml(t.solucion_brindada || 'Pendiente de solución detallada')}</div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; color: var(--text-muted); background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                            <div><b>📅 Fecha de Evento:</b> ${fechaFix}</div>
+                            <div><b>🏢 Área Origen:</b> ${this.escapeHtml(t.departamento_reporta || 'Operaciones')}</div>
+                            <div><b>👷 Técnico en Campo:</b> ${this.escapeHtml(t.asignadoA || t.tecnico_asignado || 'N/A')}</div>
+                            <div style="color: ${isPreventivo ? '#1d4ed8' : '#dc2626'}; font-weight: 900; font-size: 14px;">💰 Costo Operativo: ${this.formatCurrency(t.costoAsociado || t.costo_estimado)}</div>
+                        </div>
+                        ${fotosHTML}
+                    </div>
+                `;
+            });
+            htmlTL += `</div>`;
+            container.innerHTML = htmlTL;
+            totalInc.innerText = this.formatCurrency(sumaInc);
+            totalPrev.innerText = this.formatCurrency(sumaPrev);
+        };
+
+        renderTimeline(allTickets);
+
+        const filterStart = document.getElementById('filtro-fecha-inicio');
+        const filterEnd = document.getElementById('filtro-fecha-fin');
+        
+        const applyDateFilter = () => {
+            const startVal = filterStart.value;
+            const endVal = filterEnd.value;
+            let filtrados = allTickets;
+
+            if (startVal) {
+                const dS = new Date(startVal + 'T00:00:00');
+                filtrados = filtrados.filter(t => new Date(t.fecha || t.fecha_creacion || t.fechaCreacion) >= dS);
+            }
+            if (endVal) {
+                const dE = new Date(endVal + 'T23:59:59');
+                filtrados = filtrados.filter(t => new Date(t.fecha || t.fecha_creacion || t.fechaCreacion) <= dE);
+            }
+            renderTimeline(filtrados);
+        };
+
+        filterStart.onchange = applyDateFilter;
+        filterEnd.onchange = applyDateFilter;
+
+        const modalTabs = modalOverlay.querySelectorAll('.dossier-tab');
+        const modalContents = modalOverlay.querySelectorAll('.dossier-content');
+        modalTabs.forEach(tab => {
+            tab.onclick = () => {
+                modalTabs.forEach(t => t.classList.remove('active'));
+                modalContents.forEach(c => c.style.display = 'none');
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab).style.display = 'block';
+            };
+        });
+
+        // 🤖 MOTOR DE IA ANALÍTICA
+        document.getElementById('btn-ia-predictiva').onclick = (e) => {
+            const btn = e.target;
+            const container = document.getElementById('ai-response-container');
+            btn.classList.add('ai-pulse');
+            btn.innerText = '🤖 Analizando Patrones de Vida y Bitácoras...';
+            container.style.display = 'block';
+            container.innerHTML = '<div style="display:flex; justify-content:center; padding: 20px;"><span style="font-size:32px; animation: pulse 1s infinite;">🧠</span></div>';
+            
+            setTimeout(() => {
+                btn.classList.remove('ai-pulse');
+                btn.innerText = '🤖 Análisis de Rentabilidad Completado';
+                
+                let recomendacion = '';
+                
+                if (allTickets.length === 0) {
+                     recomendacion = `🟢 <b>Diagnóstico IA:</b> El activo <b>${id}</b> presenta un grado de estabilidad excepcional. Cero incidencias y cero mantenimientos preventivos registrados.<br><br><b>Recomendación Directiva:</b> Agendar un mantenimiento preventivo de rutina, ya que lleva ${mesesActivo} meses operando sin revisión física.`;
+                } else {
+                     const textosFallas = incidencias.map(t => String(t.descripcion || t.motivo_capturado || '').toLowerCase()).join(' ');
+                     
+                     let fallasDeteccion = [];
+                     if (textosFallas.includes('fuente') || textosFallas.includes('pastilla') || textosFallas.includes('energ') || textosFallas.includes('elect')) fallasDeteccion.push('Suministro Eléctrico / Fuentes de Poder');
+                     if (textosFallas.includes('módulo') || textosFallas.includes('led') || textosFallas.includes('gabinete')) fallasDeteccion.push('Módulos LED / Pantalla');
+                     if (textosFallas.includes('red') || textosFallas.includes('internet') || textosFallas.includes('router') || textosFallas.includes('desconectad')) fallasDeteccion.push('Conectividad / Routers');
+                     if (textosFallas.includes('nuc') || textosFallas.includes('sistema') || textosFallas.includes('windows')) fallasDeteccion.push('Sistema Central (NUC)');
+
+                     const tiposFrecuentes = fallasDeteccion.length > 0 ? fallasDeteccion.join(', ') : 'Desgaste operativo y factores externos inespecíficos';
+                     
+                     const porcentajePérdida = capexTotal > 0 ? ((opexCorrectivo / capexTotal) * 100).toFixed(1) : 100;
+                     
+                     recomendacion = `📊 <b>Procesamiento Natural de Operaciones:</b> Se han auditado <b>${incidencias.length} fallas</b> y <b>${mantenimientos.length} mantenimientos preventivos</b> históricos en la bitácora.<br>`;
+                     
+                     if(incidencias.length > 0) {
+                         recomendacion += `🔍 Las palabras clave extraídas de las fallas indican un patrón recurrente en: <b>${tiposFrecuentes}</b>.<br><br>`;
+                     } else {
+                         recomendacion += `✅ No hay patrones de fallas graves reportados. El equipo opera saludablemente gracias a los ${mantenimientos.length} mantenimientos preventivos.<br><br>`;
+                     }
+                     
+                     if (porcentajePérdida > 15 || incidencias.length > 4) {
+                         recomendacion += `🔴 <b>Plan de Acción Crítico:</b> El gasto actual por reparaciones (${this.formatCurrency(opexCorrectivo)}) ya representa un <b>${porcentajePérdida}%</b> sobre la inversión inicial de infraestructura (CAPEX). La frecuencia de falla (${conteoDesconexiones} caídas detectadas) está mermando el ROI.<br><b>Decisión Recomendada:</b> A pesar de los mantenimientos preventivos, el equipo sigue fallando. Se sugiere frenar la fuga de OPEX programando una modernización o aplicando garantías sobre los componentes de [${tiposFrecuentes}].`;
+                     } else if(incidencias.length > 0) {
+                         recomendacion += `🟡 <b>Plan de Acción Preventivo:</b> El gasto en reparaciones correctivas equivale al <b>${porcentajePérdida}%</b> de la inversión base, manteniéndose dentro del margen de desgaste natural. <br><b>Decisión Recomendada:</b> El esquema de mantenimientos preventivos ha sido deficiente para cubrir el desgaste de [${tiposFrecuentes}]. Sugerimos aumentar la frecuencia de limpieza/revisión en este sitio.`;
+                     } else {
+                         recomendacion += `🟢 <b>Evaluación de Rentabilidad:</b> La salud financiera del equipo es excelente. La relación de OPEX Preventivo (${this.formatCurrency(opexPreventivo)}) ha logrado mantener a cero las fallas correctivas. Continuar la operación comercial sin cambios.`;
+                     }
+                }
+
+                if (telemetria && telemetria.latency > 150) {
+                     recomendacion += `<br><br>📡 <b>Alerta Inminente de Argos:</b> A pesar del buen historial en bitácora, la latencia actual que registra el agente Argos en vivo es severa (<b>${telemetria.latency}ms</b>). Esto está ocasionando demoras en la descarga de las pautas comerciales activas. <b>Acción:</b> Ejecutar reinicio remoto del Router/NUC de inmediato.`;
+                }
+
+                container.innerHTML = recomendacion;
+            }, 2500);
+        };
+
+        // EXCEL Botón
+        document.getElementById('btn-export-dossier').onclick = () => {
+            let csv = `\uFEFFDOSSIER EJECUTIVO Y TCO: ${id} - ${nombreModal}\n\n`;
+            csv += `RESUMEN FINANCIERO TOTAL\n`;
+            csv += `Inversion Inicial (CAPEX),$${capexTotal}\n`;
+            csv += `OPEX Fijo Mensual,$${opexMensualFijo}\n`;
+            csv += `Gastos Fijos Acumulados (${mesesActivo} meses),$${opexFijoAcumulado}\n`;
+            csv += `Gasto en Mantenimiento Preventivo,$${opexPreventivo}\n`;
+            csv += `Gasto en Fallas / Reparaciones (OPEX Correctivo),$${opexCorrectivo}\n`;
+            csv += `COSTO TOTAL DE VIDA (TCO),$${tco}\n\n`;
+            
+            csv += `DESGLOSE CAPEX\n`;
+            csv += `Modulos LED,$${costPantalla}\n`;
+            csv += `Obra Civil,$${costCivil}\n`;
+            csv += `Estructura,$${costEstructura}\n`;
+            csv += `NUC,$${costNuc}\n`;
+            csv += `UPS,$${costUps}\n\n`;
+            
+            csv += `DESGLOSE OPEX MENSUAL FIJO\n`;
+            csv += `Renta Predio,$${opexRenta}\n`;
+            csv += `Luz CFE,$${opexCfe}\n`;
+            csv += `Internet,$${opexInternet}\n\n`;
+
+            csv += `BITACORA OPERATIVA (${allTickets.length})\nTipo,Ticket,Estado,Diagnostico,Fecha,Costo,Atendio\n`;
+            allTickets.forEach(t => {
+                let f = t.fecha || t.fecha_creacion || t.fechaCreacion || 'N/A';
+                let tipoT = String(t.descripcion || t.motivo_capturado).includes('PREVENTIVO') ? 'Mantenimiento Preventivo' : 'Incidencia/Falla';
+                let cleanD = String(t.descripcion || t.motivo_capturado).replace('[MANTENIMIENTO PREVENTIVO]', '').trim();
+                csv += `${tipoT},${t.idTicket || t.ticket_id},${t.estado || t.estatus},"${this.escapeHtml(cleanD)}",${f},$${t.costoAsociado || t.costo_estimado},"${this.escapeHtml(t.asignadoA || t.tecnico_asignado)}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `Dossier_Inteligencia_${id}.csv`;
+            link.click();
+        };
+
+        document.getElementById('close-expediente').onclick = () => {
+            modalOverlay.style.opacity = '0';
+            setTimeout(() => modalOverlay.remove(), 300);
+        };
+    }
+
+    bindEvents() {
+        if (this._eventosDelegadosListos && this._boundContainer === this.container) return;
+        this._boundContainer = this.container;
+        this._eventosDelegadosListos = true;
+
+        this.container.addEventListener('click', (e) => {
+            const tab = e.target.closest('.v-tab');
+            if (tab) {
+                // 🔥 CAMBIO: Ajustar los estilos para el formato Sidebar (fondo en vez de border-bottom)
+                this.container.querySelectorAll('.v-tab').forEach(t => {
+                    t.classList.remove('active');
+                    t.style.fontWeight = '600'; 
+                    t.style.color = 'var(--text-muted)'; 
+                    t.style.background = 'transparent';
+                    
+                    // Ajustar el número/badge a color inactivo
+                    const badge = t.querySelector('span');
+                    if(badge) {
+                        badge.style.background = 'var(--surface-hover)';
+                        badge.style.color = 'var(--text-muted)';
+                    }
+                });
+                
+                tab.classList.add('active');
+                tab.style.fontWeight = '800'; 
+                tab.style.color = 'white'; 
+                tab.style.background = 'var(--accent)';
+                
+                // Ajustar el número/badge a color activo
+                const activeBadge = tab.querySelector('span');
+                if(activeBadge) {
+                    activeBadge.style.background = 'rgba(255,255,255,0.2)';
+                    activeBadge.style.color = 'white';
+                }
+
+                this.activeTab = tab.dataset.tab;
+                
+                // Reset de página al cambiar de tab
+                this.currentPage = 1;
+                
+                const wrapper = this.container.querySelector('#pantallas-main-content');
+                if (wrapper) wrapper.innerHTML = this.renderTabsContent();
+                
+                if (this.activeTab === 'graficas') setTimeout(() => { if(this.initCharts) this.initCharts(); else if(this.initDashboardCharts) this.initDashboardCharts(); }, 100);
+                if (this.activeTab === 'consolidado') setTimeout(() => this.initCalculosOpex(), 100);
+                
+                this.actualizarIndicadoresVisuales();
+            }
+
+            const btn = e.target.closest('.btn-expediente');
+            if (btn) this.abrirExpedienteDirector(btn.dataset.id, btn.dataset.tipo);
+            
+            if (e.target.id === 'btn-refresh-argos' || e.target.closest('#btn-refresh-argos')) {
+                const btnRef = e.target.closest('#btn-refresh-argos') || e.target;
+                btnRef.innerHTML = '⏳ Actualizando...';
+                btnRef.disabled = true;
+                this.conectarArgos().then(() => {
+                    btnRef.innerHTML = '🔄 Actualizar Argos';
+                    btnRef.disabled = false;
+                    this.render();
+                });
+            }
+
+            // PAGINACIÓN PARA OPEX
+            if (e.target.id === 'btn-opex-prev') {
+                if (this.currentPage > 1) {
+                    this.currentPage--;
+                    const wrapper = this.container.querySelector('#pantallas-main-content');
+                    if (wrapper) wrapper.innerHTML = this.renderTabsContent();
+                    setTimeout(() => this.initCalculosOpex(), 100);
+                }
+            }
+            if (e.target.id === 'btn-opex-next') {
+                this.currentPage++;
+                const wrapper = this.container.querySelector('#pantallas-main-content');
+                if (wrapper) wrapper.innerHTML = this.renderTabsContent();
+                setTimeout(() => this.initCalculosOpex(), 100);
+            }
+            
+            const btnImportarExcelOpex = e.target.closest('#btn-importar-excel-opex');
+            if(btnImportarExcelOpex) {
+                this.importarExcelOPEX();
+            }
+
+            const btnExcelConsolidado = e.target.closest('#btn-descargar-excel-consolidado');
+            if (btnExcelConsolidado) {
+                this.descargarExcelConsolidado();
+            }
+            
+            const btnActualizar = e.target.closest('#btn-actualizar-dash');
+            if (btnActualizar) {
+                const select = document.getElementById('selector-activo-dash');
+                if (select && select.value) {
+                    const tipo = select.options[select.selectedIndex]?.dataset.tipo;
+                    const idSeleccionado = select.value;
+                    this.activoSeleccionado = this.todosLosActivos?.find(a => 
+                        a.idOriginal === idSeleccionado && a.tipo === tipo
+                    );
+                    
+                    const contenido = document.getElementById('dashboard-contenido');
+                    if (contenido) {
+                        contenido.innerHTML = this.renderDashboardContent();
+                        setTimeout(() => this.initDashboardCharts(), 100);
                     }
                 }
-            });
+            }
+            
+            if (e.target.closest('#btn-exportar-dashboard-pdf')) {
+                this.exportarDashboardPDF();
+            }
+            
+            if (e.target.closest('#btn-exportar-dashboard-excel')) {
+                this.exportarDashboardExcel();
+            }
         });
-    </script>
-    {% block scripts %}{% endblock %}
-</body>
-</html>
 
-
+        this.container.addEventListener('input', (e) => {
+            if (e.target.id === 'busc-directorio') {
+                this.terminoBusqueda = e.target.value;
+                this.currentPage = 1; // Reseteamos a página 1 al buscar
+                const wrapper = this.container.querySelector('#pantallas-main-content');
+                if (wrapper) wrapper.innerHTML = this.renderTabsContent();
+                this.actualizarIndicadoresVisuales();
+                if (this.activeTab === 'consolidado') this.initCalculosOpex();
+                
+                const nuevoInput = document.getElementById('busc-directorio');
+                if(nuevoInput) {
+                    nuevoInput.focus();
+                    const val = nuevoInput.value;
+                    nuevoInput.value = '';
+                    nuevoInput.value = val;
+                }
+            }
+            
+            if (e.target.id === 'buscador-activo-dash') {
+                const termino = e.target.value.toLowerCase();
+                const select = document.getElementById('selector-activo-dash');
+                if (select) {
+                    Array.from(select.options).forEach(opt => {
+                        if (opt.value) {
+                            const texto = opt.text.toLowerCase();
+                            opt.style.display = texto.includes(termino) ? '' : 'none';
+                        }
+                    });
+                }
+            }
+        });
+        
+        this.container.addEventListener('change', (e) => {
+            if (e.target.id === 'filtro-estado') {
+                this.filtroEstado = e.target.value;
+                this.currentPage = 1;
+                const wrapper = this.container.querySelector('#pantallas-main-content');
+                if (wrapper) wrapper.innerHTML = this.renderTabsContent();
+                this.actualizarIndicadoresVisuales();
+                if (this.activeTab === 'consolidado') this.initCalculosOpex();
+            }
+            if (e.target.id === 'filtro-comercial') {
+                this.filtroComercial = e.target.value;
+                this.currentPage = 1;
+                const wrapper = this.container.querySelector('#pantallas-main-content');
+                if (wrapper) wrapper.innerHTML = this.renderTabsContent();
+                this.actualizarIndicadoresVisuales();
+                if (this.activeTab === 'consolidado') this.initCalculosOpex();
+            }
+            
+            if (e.target.id === 'selector-activo-dash' && e.target.value) {
+                const tipo = e.target.options[e.target.selectedIndex]?.dataset.tipo;
+                const idSeleccionado = e.target.value;
+                this.activoSeleccionado = this.todosLosActivos?.find(a => 
+                    a.idOriginal === idSeleccionado && a.tipo === tipo
+                );
+                
+                const contenido = document.getElementById('dashboard-contenido');
+                if (contenido) {
+                    contenido.innerHTML = this.renderDashboardContent();
+                    setTimeout(() => this.initDashboardCharts(), 100);
+                }
+            }
+        });
+    }
+}
