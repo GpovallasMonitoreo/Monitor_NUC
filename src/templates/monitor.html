@@ -11,439 +11,174 @@
 
 {% block content %}
 <style>
-    .card-hover { transition: all 0.3s ease; }
-    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01); }
-    .cursor-wait { cursor: wait; }
-    
-    /* Estilos para filtros de columna */
-    .table-header {
-        position: relative;
-        user-select: none;
-    }
-    .filter-dropdown {
-        display: none;
-        position: absolute;
-        top: 100%;
-        left: 0;
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-        z-index: 100;
-        min-width: 200px;
-        padding: 8px;
-        margin-top: 4px;
-    }
-    .filter-dropdown.show {
-        display: block;
-    }
-    .filter-option {
-        padding: 8px 12px;
-        cursor: pointer;
-        border-radius: 6px;
-        font-size: 12px;
-        transition: all 0.2s;
-        color: #475569;
-    }
-    .filter-option:hover {
-        background: #f1f5f9;
-        color: #1e293b;
-    }
-    .filter-option.selected {
-        background: #e0e7ff;
-        color: #4338ca;
-        font-weight: 600;
-    }
-    .sort-indicator {
-        display: inline-block;
-        margin-left: 4px;
-        font-size: 10px;
-        opacity: 0.5;
-    }
-    .table-header:hover .sort-indicator {
-        opacity: 1;
-    }
-
-    /* Estilos del Modal */
-    .modal-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(4px);
-        z-index: 1000;
-        align-items: center;
-        justify-content: center;
-    }
-    .modal-overlay.active {
-        display: flex;
-    }
-    .modal-container {
-        background: white;
-        border-radius: 16px;
-        width: 90%;
-        max-width: 900px;
-        max-height: 85vh;
-        overflow-y: auto;
-        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
-        animation: slideIn 0.3s ease-out;
-    }
-    @keyframes slideIn {
-        from { transform: translateY(-20px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
-    }
-    .modal-header {
-        padding: 20px 24px;
-        border-bottom: 1px solid #e2e8f0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        position: sticky;
-        top: 0;
-        background: white;
-        border-radius: 16px 16px 0 0;
-        z-index: 1;
-    }
-    .modal-body {
-        padding: 24px;
-    }
-    .score-circle {
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 36px;
-        font-weight: 900;
-        color: white;
-        margin: 0 auto;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-    }
-    .stat-card {
-        background: #f8fafc;
-        border-radius: 12px;
-        padding: 16px;
-        border: 1px solid #e2e8f0;
-    }
-    .recommendation-item {
-        padding: 12px;
-        background: #fefce8;
-        border-left: 4px solid #eab308;
-        border-radius: 8px;
-        margin-bottom: 8px;
-    }
-    .recommendation-item.critical {
-        background: #fef2f2;
-        border-left-color: #ef4444;
-    }
-    .recommendation-item.optimal {
-        background: #f0fdf4;
-        border-left-color: #22c55e;
-    }
+    .chart-container { position: relative; height: 260px; width: 100%; }
+    .card { @apply bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col transition-all duration-300; }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); }
+    .stat-value { @apply text-2xl font-bold text-gray-800 tracking-tight; }
+    .stat-label { @apply text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1; }
+    .ai-loading { @apply animate-pulse bg-indigo-50 text-indigo-400; }
+    .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
 </style>
 
-<div class="flex flex-col xl:flex-row justify-between items-center mb-8 gap-6 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-    <div class="flex items-center gap-4">
-        <div class="flex flex-col">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Estado del Sistema</span>
-            <div class="flex items-center gap-2 mt-1">
-                <span class="relative flex h-2.5 w-2.5">
+<!-- Action Bar (Sustituye al Navbar del código de ejemplo para integrarse en tu ERP) -->
+<div class="bg-indigo-900 text-white p-4 rounded-2xl mb-6 shadow-md flex flex-wrap justify-between items-center gap-4">
+    <div class="flex items-center gap-3">
+        <div class="bg-white/10 p-2 rounded-lg text-emerald-400 shadow-inner">
+            <i data-lucide="server" class="w-6 h-6"></i>
+        </div>
+        <div>
+            <h1 class="text-xl font-bold italic tracking-tight">Argos Pro <span class="font-light text-indigo-300">| Enterprise Monitor</span> ✨</h1>
+            <div class="flex items-center gap-2 mt-0.5">
+                <span class="relative flex h-2 w-2">
                   <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
-                <span class="text-sm font-bold text-emerald-700">ARGOS AI ACTIVO</span>
+                <span class="text-[10px] font-mono text-indigo-200" id="last-sync">Conectando...</span>
             </div>
         </div>
-        <div class="h-8 w-px bg-slate-200 mx-2"></div> 
-        <div class="flex flex-col">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Última Sincronización</span>
-            <span id="last-sync" class="text-sm font-mono font-medium text-slate-600">Conectando...</span>
-        </div>
     </div>
-
-    <div class="flex flex-col md:flex-row items-center gap-3 w-full xl:w-auto">
-        <div class="relative w-full md:w-64 group">
-            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors"></i>
-            <input type="text" id="searchInput" placeholder="Buscar por NUC o IP..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
-        </div>
-        
-        <div class="flex bg-slate-100/80 p-1 rounded-xl border border-slate-200">
-            <button class="px-4 py-1.5 text-xs font-bold rounded-lg bg-white text-slate-700 shadow-sm border border-slate-100 filter-btn" data-filter="all">Todas</button>
-            <button class="px-4 py-1.5 text-xs font-bold rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 transition-colors filter-btn" data-filter="ViaVerde">Via Verde</button>
-            <button class="px-4 py-1.5 text-xs font-bold rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 transition-colors filter-btn" data-filter="Ecovallas">Ecovallas</button>
-            <button class="px-4 py-1.5 text-xs font-bold rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 transition-colors filter-btn" data-filter="BioBox">BioBox</button>
-        </div>
-
-        <!-- Botón de Diagnóstico General (Modal) -->
-        <button onclick="openDiagnosticModal()" class="w-full md:w-auto flex items-center justify-center px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-600/20 transition-all active:scale-95">
-            <i data-lucide="stethoscope" class="w-4 h-4 mr-2"></i>
-            Diagnóstico General
+    <div class="flex items-center gap-3 flex-wrap">
+        <button onclick="downloadExcel(event)" class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+            <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Excel
         </button>
-
-        <!-- Botón de Excel - CORREGIDO: Pasa el evento como parámetro -->
-        <button onclick="downloadExcel(event)" class="w-full md:w-auto flex items-center justify-center px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95">
-            <i data-lucide="file-spreadsheet" class="w-4 h-4 mr-2"></i>
-            Excel
+        <button onclick="downloadReport(event)" class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+            <i data-lucide="file-down" class="w-4 h-4"></i> PDF
         </button>
-
-        <!-- Botón de PDF - CORREGIDO: Pasa el evento como parámetro -->
-        <button onclick="downloadReport(event)" class="w-full md:w-auto flex items-center justify-center px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-xl shadow-lg shadow-slate-900/20 transition-all active:scale-95">
-            <i data-lucide="file-down" class="w-4 h-4 mr-2 text-indigo-300"></i>
-            Informe PDF
+        <button onclick="generateAITrends()" class="bg-emerald-500 hover:bg-emerald-400 text-white px-4 py-2 rounded-lg font-bold text-sm transition-all shadow-sm flex items-center gap-2">
+            ✨ Diagnóstico IA Global
         </button>
     </div>
 </div>
 
-<!-- MODAL DE DIAGNÓSTICO GENERAL -->
-<div class="modal-overlay" id="diagnosticModal">
-    <div class="modal-container">
-        <div class="modal-header">
-            <div>
-                <h2 class="text-xl font-bold text-slate-800">🏥 Diagnóstico General de Infraestructura</h2>
-                <p class="text-sm text-slate-500">Análisis completo con recomendaciones</p>
-            </div>
-            <button onclick="closeDiagnosticModal()" class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                <i data-lucide="x" class="w-5 h-5 text-slate-500"></i>
-            </button>
-        </div>
-        <div class="modal-body" id="diagnosticContent">
-            <!-- Se llena dinámicamente -->
-        </div>
+<!-- AI Insight Box -->
+<div id="ai-insight-container" class="hidden card bg-gradient-to-br from-indigo-900 to-indigo-800 text-white border-none shadow-xl mb-6">
+    <div class="flex justify-between items-start mb-3">
+        <h3 class="font-bold flex items-center gap-2 text-lg">
+            <span>✨</span> Análisis Predictivo Argos IA
+        </h3>
+        <button onclick="this.parentElement.parentElement.classList.add('hidden')" class="text-indigo-300 hover:text-white transition-colors text-xl">&times;</button>
+    </div>
+    <div id="ai-insight-content" class="text-indigo-100 text-sm leading-relaxed whitespace-pre-wrap opacity-90 border-l-2 border-emerald-400 pl-4 py-1">
+        Procesando telemetría de la red...
     </div>
 </div>
 
-<!-- Resto del contenido (KPIs, gráficos, tabla) -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-    <div class="bg-white p-6 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-slate-100 card-hover relative overflow-hidden">
-        <div class="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div> 
-        <div class="flex justify-between items-start">
-            <div>
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Total Activos</p>
-                <h3 class="text-4xl font-black text-slate-800 tracking-tight" id="kpi-total">0</h3>
-                <span class="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded mt-2 inline-block">● Infraestructura</span>
-            </div>
-            <div class="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-                <i data-lucide="server" class="w-6 h-6"></i>
-            </div>
-        </div>
+<!-- Métricas de Alto Nivel -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
+    <div class="card border-l-4 border-indigo-500">
+        <p class="stat-label">Total NUCs Activos</p>
+        <p id="total-nucs" class="stat-value">0</p>
     </div>
-
-    <div class="bg-white p-6 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-slate-100 card-hover relative overflow-hidden">
-        <div class="absolute top-0 left-0 w-1 h-full bg-rose-500"></div>
-        <div class="flex justify-between items-start">
-            <div>
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Estado Crítico</p>
-                <h3 class="text-4xl font-black text-slate-800 tracking-tight" id="kpi-critical">0</h3>
-                <span class="text-xs font-medium text-rose-600 bg-rose-50 px-2 py-0.5 rounded mt-2 inline-block">Requiere Atención</span>
-            </div>
-            <div class="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-500">
-                <i data-lucide="alert-octagon" class="w-6 h-6"></i>
-            </div>
-        </div>
+    <div class="card border-l-4 border-emerald-500">
+        <p class="stat-label">Promedio CPU</p>
+        <p id="avg-cpu" class="stat-value">0%</p>
     </div>
-
-    <div class="bg-white p-6 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-slate-100 card-hover relative overflow-hidden">
-        <div class="absolute top-0 left-0 w-1 h-full bg-violet-500"></div>
-        <div class="flex justify-between items-start mb-4">
-            <div>
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Carga CPU (Avg)</p>
-                <h3 class="text-4xl font-black text-slate-800 tracking-tight" id="kpi-cpu">0%</h3>
-            </div>
-            <div class="w-12 h-12 rounded-2xl bg-violet-50 flex items-center justify-center text-violet-600">
-                <i data-lucide="cpu" class="w-6 h-6"></i>
-            </div>
-        </div>
-        <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-            <div id="kpi-cpu-bar" class="bg-gradient-to-r from-violet-500 to-indigo-500 h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
-        </div>
+    <div class="card border-l-4 border-amber-500">
+        <p class="stat-label">NUCs en Advertencia</p>
+        <p id="warning-nucs" class="stat-value">0</p>
     </div>
-
-    <div class="bg-white p-6 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-slate-100 card-hover relative overflow-hidden">
-        <div class="absolute top-0 left-0 w-1 h-full bg-orange-500"></div>
-        <div class="flex justify-between items-start">
-            <div>
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Temperatura (Avg)</p>
-                <h3 class="text-4xl font-black text-slate-800 tracking-tight" id="kpi-temp">0°C</h3>
-                 <span class="text-xs font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded mt-2 inline-block">Termometría</span>
-            </div>
-            <div class="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-500">
-                <i data-lucide="thermometer-sun" class="w-6 h-6"></i>
-            </div>
-        </div>
+    <div class="card border-l-4 border-rose-500">
+        <p class="stat-label">Estado Crítico</p>
+        <p id="critical-nucs" class="stat-value text-rose-600">0</p>
     </div>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-[380px]">
-        <div class="flex items-center justify-between mb-6">
-            <h3 class="text-base font-bold text-slate-700 flex items-center gap-2">
-                <div class="w-2 h-6 bg-slate-800 rounded-sm"></div>
-                Salud de Infraestructura
-            </h3>
-        </div>
-        
-        <div class="flex-1 flex items-center justify-center relative">
-            <canvas id="diskChart"></canvas>
-            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span class="block text-4xl font-black text-slate-800 tracking-tighter" id="donut-total">0</span>
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">NUCs</span>
-            </div>
-        </div>
-        
-        <div class="mt-6 flex justify-center gap-6">
-            <div class="flex flex-col items-center">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 mb-1"></span>
-                <span class="text-[10px] font-bold text-slate-500">OPTIMAL</span>
-            </div>
-            <div class="flex flex-col items-center">
-                <span class="w-2 h-2 rounded-full bg-amber-400 mb-1"></span>
-                <span class="text-[10px] font-bold text-slate-500">WARNING</span>
-            </div>
-            <div class="flex flex-col items-center">
-                <span class="w-2 h-2 rounded-full bg-rose-400 mb-1"></span>
-                <span class="text-[10px] font-bold text-slate-500">CRITICAL</span>
-            </div>
+<!-- Gráficos -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <div class="card lg:col-span-1">
+        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2 border-b pb-2 border-gray-50 text-sm uppercase tracking-wider">
+            <span class="p-1 bg-indigo-50 text-indigo-600 rounded"><i data-lucide="pie-chart" class="w-4 h-4"></i></span>
+            Distribución por Unidad
+        </h3>
+        <div class="chart-container">
+            <canvas id="unitChart"></canvas>
         </div>
     </div>
 
-    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 lg:col-span-2 h-[380px]">
-        <div class="flex justify-between items-center mb-6">
-            <h3 class="text-base font-bold text-slate-700 flex items-center gap-2">
-                <div class="w-2 h-6 bg-indigo-600 rounded-sm"></div>
-                Top Consumo (CPU Lead)
-            </h3>
-            <div class="flex space-x-1 bg-slate-50 p-1 rounded-lg border border-slate-100">
-                <span class="px-3 py-1 text-[10px] font-bold bg-white text-indigo-600 shadow-sm rounded border border-slate-100 cursor-default">CPU</span>
-                <span class="px-3 py-1 text-[10px] font-bold text-slate-400 cursor-default">RAM</span>
-            </div>
-        </div>
-        <div class="h-[280px]">
+    <div class="card lg:col-span-2">
+        <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2 border-b pb-2 border-gray-50 text-sm uppercase tracking-wider">
+            <span class="p-1 bg-rose-50 text-rose-600 rounded"><i data-lucide="cpu" class="w-4 h-4"></i></span>
+            Top NUCs Mayor Consumo CPU
+        </h3>
+        <div class="chart-container">
             <canvas id="topResourceChart"></canvas>
         </div>
     </div>
 </div>
 
-<div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-8">
-    <div class="flex justify-between items-center mb-6">
-        <h3 class="text-base font-bold text-slate-700 flex items-center gap-2">
-            <div class="w-2 h-6 bg-violet-600 rounded-sm"></div>
-            Rendimiento por Unidad de Negocio
-        </h3>
-        <span class="text-xs text-slate-400 font-medium bg-slate-50 px-3 py-1 rounded-full border border-slate-100">Analytics en tiempo real</span>
+<!-- Listado Detallado (Inventario) -->
+<div class="card overflow-hidden">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div>
+            <h3 class="font-bold text-gray-700 text-sm uppercase tracking-wider">Inventario y Telemetría en Vivo</h3>
+            <p id="data-counter" class="text-[10px] text-gray-400">Cargando registros...</p>
+        </div>
+        
+        <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <!-- Buscador -->
+            <div class="relative flex-grow md:flex-grow-0 group">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 group-focus-within:text-indigo-500">
+                    <i data-lucide="search" class="w-4 h-4"></i>
+                </span>
+                <input type="text" id="table-search" oninput="applyFilters()" placeholder="Buscar NUC, IP o Unidad..." 
+                       class="pl-9 pr-4 py-2 bg-slate-50 border border-gray-200 rounded-lg text-xs w-full md:w-64 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all">
+            </div>
+
+            <!-- Filtro de Unidad (Botones estilo original adaptados) -->
+            <div class="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                <button class="px-3 py-1.5 text-[10px] font-bold rounded-md bg-white text-slate-700 shadow-sm filter-btn" data-filter="all">Todas</button>
+                <button class="px-3 py-1.5 text-[10px] font-bold rounded-md text-slate-500 hover:text-slate-700 filter-btn" data-filter="ViaVerde">VV</button>
+                <button class="px-3 py-1.5 text-[10px] font-bold rounded-md text-slate-500 hover:text-slate-700 filter-btn" data-filter="Ecovallas">Eco</button>
+                <button class="px-3 py-1.5 text-[10px] font-bold rounded-md text-slate-500 hover:text-slate-700 filter-btn" data-filter="BioBox">BBX</button>
+            </div>
+        </div>
     </div>
-    <div class="h-[250px] w-full">
-        <canvas id="businessUnitChart"></canvas>
+
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-100 text-[11px]">
+            <thead class="bg-slate-50 font-bold text-gray-500 uppercase tracking-tight">
+                <tr>
+                    <th class="px-4 py-3 text-left">Unidad</th>
+                    <th class="px-4 py-3 text-left">NUC ID / IP</th>
+                    <th class="px-4 py-3 text-left w-32">Carga CPU</th>
+                    <th class="px-4 py-3 text-left w-32">Carga RAM</th>
+                    <th class="px-4 py-3 text-center">Temp.</th>
+                    <th class="px-4 py-3 text-left">Estatus IA</th>
+                    <th class="px-4 py-3 text-center">Analizar ✨</th>
+                </tr>
+            </thead>
+            <tbody id="equipment-table-body" class="bg-white divide-y divide-gray-50">
+                <!-- JS Generator -->
+            </tbody>
+        </table>
+    </div>
+    
+    <div id="no-results" class="hidden py-10 text-center text-gray-400 text-xs italic">
+        No se encontraron activos que coincidan con la búsqueda o filtro.
     </div>
 </div>
 
-<div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-12">
-    <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white">
-        <div class="flex items-center gap-3">
-            <div class="p-2 bg-indigo-50 rounded-lg text-indigo-600">
-                <i data-lucide="list" class="w-4 h-4"></i>
-            </div>
-            <h3 class="text-base font-bold text-slate-800">Inventario en Vivo - NUCs</h3>
+<!-- Modal IA Individual (Resolución Técnica) -->
+<div id="ai-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-[60]">
+    <div class="bg-white rounded-3xl max-w-xl w-full p-8 shadow-2xl overflow-hidden relative">
+        <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-400 to-indigo-600"></div>
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold text-gray-800 flex items-center gap-3">
+                <span class="bg-emerald-100 p-2 rounded-xl text-emerald-600">✨</span>
+                Resolución Técnica NUC
+            </h2>
+            <button onclick="closeAIModal()" class="text-gray-400 hover:text-gray-900 transition-colors text-3xl font-light">&times;</button>
         </div>
-        <button onclick="clearAllFilters()" class="text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors flex items-center gap-1">
-            <i data-lucide="filter-x" class="w-3 h-3"></i>
-            Limpiar Filtros
-        </button>
-    </div>
-    
-    <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse" id="mainTable">
-            <thead>
-                <tr class="bg-slate-50/50 border-b border-slate-100">
-                    <th class="px-6 py-4 table-header cursor-pointer" onclick="toggleColumnFilter(event, 'unitFilter')">
-                        <div class="flex items-center gap-1">
-                            Unidad Negocio
-                            <span class="sort-indicator">▼</span>
-                        </div>
-                        <div id="unitFilter" class="filter-dropdown">
-                            <div class="filter-option selected" onclick="filterByColumn(event, 'unit', 'all')">Todas</div>
-                            <div class="filter-option" onclick="filterByColumn(event, 'unit', 'ViaVerde')">Via Verde</div>
-                            <div class="filter-option" onclick="filterByColumn(event, 'unit', 'Ecovallas')">Ecovallas</div>
-                            <div class="filter-option" onclick="filterByColumn(event, 'unit', 'BioBox')">BioBox</div>
-                            <div class="filter-option" onclick="filterByColumn(event, 'unit', 'General')">General</div>
-                        </div>
-                    </th>
-                    <th class="px-6 py-4 table-header">NUC ID / IP</th>
-                    <th class="px-6 py-4 table-header w-32 cursor-pointer" onclick="toggleColumnFilter(event, 'cpuFilter')">
-                        <div class="flex items-center gap-1">
-                            CPU Load
-                            <span class="sort-indicator">▼</span>
-                        </div>
-                        <div id="cpuFilter" class="filter-dropdown">
-                            <div class="filter-option selected" onclick="filterByColumn(event, 'cpu', 'all')">Todos</div>
-                            <div class="filter-option" onclick="filterByColumn(event, 'cpu', 'critical')">Crítico (>85%)</div>
-                            <div class="filter-option" onclick="filterByColumn(event, 'cpu', 'warning')">Advertencia (60-85%)</div>
-                            <div class="filter-option" onclick="filterByColumn(event, 'cpu', 'normal')">Normal (<60%)</div>
-                        </div>
-                    </th>
-                    <th class="px-6 py-4 table-header w-32 cursor-pointer" onclick="toggleColumnFilter(event, 'ramFilter')">
-                        <div class="flex items-center gap-1">
-                            RAM Load
-                            <span class="sort-indicator">▼</span>
-                        </div>
-                        <div id="ramFilter" class="filter-dropdown">
-                            <div class="filter-option selected" onclick="filterByColumn(event, 'ram', 'all')">Todos</div>
-                            <div class="filter-option" onclick="filterByColumn(event, 'ram', 'critical')">Crítico (>90%)</div>
-                            <div class="filter-option" onclick="filterByColumn(event, 'ram', 'warning')">Advertencia (70-90%)</div>
-                            <div class="filter-option" onclick="filterByColumn(event, 'ram', 'normal')">Normal (<70%)</div>
-                        </div>
-                    </th>
-                    <th class="px-6 py-4 table-header text-center cursor-pointer" onclick="toggleColumnFilter(event, 'diskFilter')">
-                        <div class="flex items-center gap-1 justify-center">
-                            Almacenamiento
-                            <span class="sort-indicator">▼</span>
-                        </div>
-                        <div id="diskFilter" class="filter-dropdown">
-                            <div class="filter-option selected" onclick="filterByColumn(event, 'disk', 'all')">Todos</div>
-                            <div class="filter-option" onclick="filterByColumn(event, 'disk', 'critical')">Crítico (>90%)</div>
-                            <div class="filter-option" onclick="filterByColumn(event, 'disk', 'warning')">Advertencia (75-90%)</div>
-                            <div class="filter-option" onclick="filterByColumn(event, 'disk', 'normal')">Normal (<75%)</div>
-                        </div>
-                    </th>
-                    <th class="px-6 py-4 table-header cursor-pointer" onclick="toggleColumnFilter(event, 'tempFilter')">
-                        <div class="flex items-center gap-1">
-                            Temperatura
-                            <span class="sort-indicator">▼</span>
-                        </div>
-                        <div id="tempFilter" class="filter-dropdown">
-                            <div class="filter-option selected" onclick="filterByColumn(event, 'temp', 'all')">Todos</div>
-                            <div class="filter-option" onclick="filterByColumn(event, 'temp', 'critical')">Crítico (>80°C)</div>
-                            <div class="filter-option" onclick="filterByColumn(event, 'temp', 'warning')">Advertencia (60-80°C)</div>
-                            <div class="filter-option" onclick="filterByColumn(event, 'temp', 'normal')">Normal (<60°C)</div>
-                        </div>
-                    </th>
-                    <th class="px-6 py-4 table-header cursor-pointer" onclick="toggleColumnFilter(event, 'statusFilter')">
-                        <div class="flex items-center gap-1">
-                            Diagnóstico AI
-                            <span class="sort-indicator">▼</span>
-                        </div>
-                        <div id="statusFilter" class="filter-dropdown">
-                            <div class="filter-option selected" onclick="filterByColumn(event, 'status', 'all')">Todos</div>
-                            <div class="filter-option" onclick="filterByColumn(event, 'status', 'Optimal')">Optimal</div>
-                            <div class="filter-option" onclick="filterByColumn(event, 'status', 'Warning')">Warning</div>
-                            <div class="filter-option" onclick="filterByColumn(event, 'status', 'Critical')">Critical</div>
-                        </div>
-                    </th>
-                    <th class="px-6 py-4 table-header text-right">Acciones</th>
-                </tr>
-            </thead>
-            <tbody id="equipment-table-body" class="text-sm divide-y divide-slate-50">
-                </tbody>
-        </table>
-    </div>
-    <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 text-xs text-slate-500 font-medium flex justify-between">
-        <span id="showing-text">Cargando...</span>
-        <span>Argos v4.0 Enterprise</span>
+        <div id="ai-modal-content" class="text-gray-600 text-sm leading-relaxed max-h-[50vh] overflow-y-auto pr-3 scrollbar-thin">
+            Solicitando diagnóstico a la IA...
+        </div>
+        <div class="mt-8 flex justify-end">
+            <button onclick="closeAIModal()" class="bg-slate-900 text-white px-8 py-3 rounded-2xl hover:bg-black font-bold transition-all shadow-lg hover:shadow-indigo-200">Entendido</button>
+        </div>
     </div>
 </div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -454,116 +189,22 @@
 
 <script>
     // --- VARIABLES GLOBALES ---
+    const apiKey = ""; // Configura tu API Key de Gemini si la usarás
     let globalData = [];
-    let columnFilters = {
-        unit: 'all',
-        cpu: 'all',
-        ram: 'all',
-        disk: 'all',
-        temp: 'all',
-        status: 'all'
-    };
-    const jsPDF = window.jspdf.jsPDF;
+    let filteredData = [];
+    let charts = {};
+    let currentUnitFilter = 'all';
 
-    // --- 1. CONFIGURACIÓN VISUAL (Chart.js) ---
-    Chart.defaults.font.family = "'Inter', system-ui, -apple-system, sans-serif";
-    Chart.defaults.color = '#94a3b8';
-    
-    const commonPlugins = {
-        legend: { display: false },
-        tooltip: {
-            backgroundColor: '#1e293b',
-            padding: 12,
-            titleFont: { size: 13, weight: 'bold' },
-            cornerRadius: 8
-        }
-    };
-
-    // A) DONUT CHART
-    const ctxDisk = document.getElementById('diskChart').getContext('2d');
-    let diskChart = new Chart(ctxDisk, {
-        type: 'doughnut',
-        data: {
-            labels: ['Optimo', 'Atención', 'Crítico'],
-            datasets: [{
-                data: [0, 0, 0],
-                backgroundColor: ['#34d399', '#fbbf24', '#f43f5e'],
-                borderWidth: 0, hoverOffset: 10
-            }]
-        },
-        options: { cutout: '82%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-    });
-
-    // B) TOP RESOURCES CHART
-    const ctxTop = document.getElementById('topResourceChart').getContext('2d');
-    let topResourceChart = new Chart(ctxTop, {
-        type: 'bar',
-        data: {
-            labels: [],
-            datasets: [{
-                label: 'CPU %',
-                data: [],
-                backgroundColor: (ctx) => ctx.raw > 90 ? '#f43f5e' : (ctx.raw > 75 ? '#fbbf24' : '#6366f1'),
-                borderRadius: 6, barThickness: 12
-            }]
-        },
-        options: {
-            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-            plugins: commonPlugins,
-            scales: { x: { beginAtZero: true, max: 100, grid: { display: false } }, y: { grid: { display: false } } }
-        }
-    });
-
-    // C) BUSINESS UNITS CHART
-    const ctxBus = document.getElementById('businessUnitChart').getContext('2d');
-    let businessUnitChart = new Chart(ctxBus, {
-        type: 'bar',
-        data: {
-            labels: ['ViaVerde', 'Ecovallas', 'BioBox'],
-            datasets: [
-                { label: 'CPU Avg', data: [0, 0, 0], backgroundColor: '#6366f1', borderRadius: 6 },
-                { label: 'RAM Avg', data: [0, 0, 0], backgroundColor: '#a855f7', borderRadius: 6 }
-            ]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { position: 'bottom' } },
-            scales: { y: { beginAtZero: true, max: 100 }, x: { grid: { display: false } } }
-        }
-    });
-
-    // --- 2. LÓGICA DE NEGOCIO Y AI ---
-
+    // --- LÓGICA DE NEGOCIO ARGOS (Original) ---
     function normalizeBusinessUnit(item) {
         const validUnits = ['ViaVerde', 'Ecovallas', 'BioBox'];
-        
-        if (item.unit && validUnits.includes(item.unit)) {
-            return item.unit;
-        }
+        if (item.unit && validUnits.includes(item.unit)) return item.unit;
         
         const searchText = `${item.business_unit || ''} ${item.pc_name || ''} ${item.name || ''} ${item.unit || ''}`.toUpperCase();
         
-        if (searchText.includes('BBX') || 
-            searchText.includes('BB-') || 
-            searchText.includes('_BB_') || 
-            searchText.includes('BIOBOX') ||
-            searchText.includes('BBX-') ||
-            /\bBB\d/.test(searchText) ||
-            /\bBBX-?\d/.test(searchText)) {
-            return 'BioBox';
-        }
-        
-        if (searchText.includes('ECOVALLAS') || 
-            searchText.includes('ECO VALLAS') ||
-            searchText.includes('_EC_')) {
-            return 'Ecovallas';
-        }
-        
-        if (searchText.includes('VIAVERDE') || 
-            searchText.includes('VIA VERDE') ||
-            searchText.includes('_VV_')) {
-            return 'ViaVerde';
-        }
+        if (searchText.includes('BBX') || searchText.includes('BB-') || searchText.includes('_BB_') || searchText.includes('BIOBOX') || /\bBB\d/.test(searchText) || /\bBBX-?\d/.test(searchText)) return 'BioBox';
+        if (searchText.includes('ECOVALLAS') || searchText.includes('ECO VALLAS') || searchText.includes('_EC_')) return 'Ecovallas';
+        if (searchText.includes('VIAVERDE') || searchText.includes('VIA VERDE') || searchText.includes('_VV_')) return 'ViaVerde';
         
         return item.unit || 'General';
     }
@@ -586,16 +227,12 @@
 
         if (isOffline) return { status: 'Critical', msg: 'Pérdida de conectividad. Verificar energía y enlace de red.' };
 
-        if (unit === 'ViaVerde') {
-            if (temp > 80) return { status: 'Critical', msg: 'Riesgo Térmico en Muro Verde. Peligro de daño a sensores.' };
-        } 
-        else if (unit === 'Ecovallas') {
+        if (unit === 'ViaVerde' && temp > 80) return { status: 'Critical', msg: 'Riesgo Térmico en Muro Verde. Peligro de daño a sensores.' };
+        if (unit === 'Ecovallas') {
             if (cpu > 95) return { status: 'Critical', msg: 'Saturación de Renderizado. Pantalla posiblemente congelada.' };
             if (ram > 90) return { status: 'Warning', msg: 'Memory Leak en reproductor de contenido.' };
         }
-        else if (unit === 'BioBox') {
-            if (disk > 95) return { status: 'Critical', msg: 'Almacenamiento Lleno. Fallo inminente en logs de transacciones.' };
-        }
+        if (unit === 'BioBox' && disk > 95) return { status: 'Critical', msg: 'Almacenamiento Lleno. Fallo inminente en logs de transacciones.' };
 
         if (temp > 90) return { status: 'Critical', msg: 'SOBRECALENTAMIENTO EXTREMO. Apagado térmico inminente.' };
         if (cpu > 90 && temp > 85) return { status: 'Critical', msg: 'Thermal Throttling. Limpieza de ventiladores urgente.' };
@@ -606,7 +243,6 @@
     }
 
     function getRecommendation(pc, diag) {
-        const unit = normalizeBusinessUnit(pc);
         const cpu = pc.cpu_load_percent || 0;
         const ram = pc.ram_percent || 0;
         const disk = pc.disk_percent || 0;
@@ -615,542 +251,27 @@
 
         if (diag.status === 'Optimal') {
             recommendations.push('✅ Mantener monitoreo regular. No se requieren acciones inmediatas.');
-            recommendations.push('📅 Programar mantenimiento preventivo trimestral.');
+        } else {
+            if (cpu > 85) recommendations.push('🔴 CPU: Cerrar procesos innecesarios. Verificar aplicaciones en segundo plano.');
+            if (temp > 80) recommendations.push('🔥 TEMPERATURA: Verificar ventilación del área. Limpiar ventiladores.');
+            if (disk > 90) recommendations.push('💾 DISCO: Eliminar archivos temporales y logs antiguos.');
+            if (ram > 90) recommendations.push('🧠 RAM: Identificar procesos con fuga de memoria.');
         }
-
-        if (diag.status === 'Critical' || diag.status === 'Warning') {
-            if (cpu > 85) {
-                recommendations.push('🔴 CPU: Cerrar procesos innecesarios. Verificar aplicaciones en segundo plano.');
-                recommendations.push('🔧 Considerar upgrade de hardware si la carga es persistente.');
-            }
-            if (temp > 80) {
-                recommendations.push('🔥 TEMPERATURA: Verificar ventilación del área. Limpiar ventiladores.');
-                recommendations.push('🌡️ Revisar sistema de aire acondicionado del sitio.');
-            }
-            if (disk > 90) {
-                recommendations.push('💾 DISCO: Eliminar archivos temporales y logs antiguos.');
-                recommendations.push('📦 Expandir almacenamiento o migrar datos a servidor externo.');
-            }
-            if (ram > 90) {
-                recommendations.push('🧠 RAM: Identificar procesos con fuga de memoria.');
-                recommendations.push('⚡ Considerar ampliación de memoria RAM.');
-            }
-            
-            if (unit === 'BioBox' && disk > 85) {
-                recommendations.push('🗄️ BIOBOX: Archivar logs de transacciones antiguos.');
-            }
-            if (unit === 'Ecovallas' && (cpu > 80 || ram > 80)) {
-                recommendations.push('🖥️ ECOVALLAS: Optimizar contenido multimedia.');
-            }
-            if (unit === 'ViaVerde' && temp > 75) {
-                recommendations.push('🌿 VIA VERDE: Verificar exposición solar directa.');
-            }
-        }
-
         return recommendations;
     }
 
-    // --- 3. MODAL DE DIAGNÓSTICO ---
-    window.openDiagnosticModal = () => {
-        const modal = document.getElementById('diagnosticModal');
-        const content = document.getElementById('diagnosticContent');
-        
-        const total = globalData.length;
-        const criticals = globalData.filter(d => getDiagnosticRule(d).status === 'Critical').length;
-        const warnings = globalData.filter(d => getDiagnosticRule(d).status === 'Warning').length;
-        const optimals = total - criticals - warnings;
-        const healthScore = total > 0 ? Math.round((optimals / total) * 100) : 100;
-        
-        const avgCpu = total > 0 ? (globalData.reduce((acc, d) => acc + (d.cpu_load_percent || 0), 0) / total).toFixed(1) : 0;
-        const avgRam = total > 0 ? (globalData.reduce((acc, d) => acc + (d.ram_percent || 0), 0) / total).toFixed(1) : 0;
-        const avgTemp = total > 0 ? (globalData.reduce((acc, d) => acc + getTemp(d), 0) / total).toFixed(1) : 0;
-
-        const scoreColor = healthScore > 80 ? '#22c55e' : (healthScore > 50 ? '#eab308' : '#ef4444');
-        const scoreEmoji = healthScore > 80 ? '✅' : (healthScore > 50 ? '⚠️' : '🔴');
-
-        // Análisis por unidad
-        const units = ['ViaVerde', 'Ecovallas', 'BioBox'];
-        let unitsHTML = '';
-        units.forEach(unit => {
-            const devices = globalData.filter(d => normalizeBusinessUnit(d) === unit);
-            if (devices.length === 0) return;
-            const unitCriticals = devices.filter(d => getDiagnosticRule(d).status === 'Critical').length;
-            const unitWarnings = devices.filter(d => getDiagnosticRule(d).status === 'Warning').length;
-            const unitHealth = devices.length > 0 ? ((devices.length - unitCriticals - unitWarnings) / devices.length * 100).toFixed(1) : 0;
-            const unitColor = unit === 'ViaVerde' ? 'emerald' : (unit === 'Ecovallas' ? 'violet' : 'sky');
-            
-            unitsHTML += `
-                <div class="stat-card mb-4">
-                    <h4 class="font-bold text-slate-700 mb-2">📌 ${unit} (${devices.length} dispositivos)</h4>
-                    <div class="grid grid-cols-2 gap-3 text-sm">
-                        <div><span class="text-slate-500">Salud:</span> <span class="font-bold text-${unitColor}-600">${unitHealth}%</span></div>
-                        <div><span class="text-slate-500">Críticos:</span> <span class="font-bold text-rose-600">${unitCriticals}</span></div>
-                        <div><span class="text-slate-500">Advertencias:</span> <span class="font-bold text-amber-600">${unitWarnings}</span></div>
-                        <div><span class="text-slate-500">Saludables:</span> <span class="font-bold text-emerald-600">${devices.length - unitCriticals - unitWarnings}</span></div>
-                    </div>
-                </div>
-            `;
-        });
-
-        // Dispositivos problemáticos
-        const problematic = globalData.filter(d => {
-            const diag = getDiagnosticRule(d);
-            return diag.status === 'Critical' || diag.status === 'Warning';
-        }).sort((a, b) => {
-            const order = { 'Critical': 0, 'Warning': 1 };
-            return order[getDiagnosticRule(a).status] - order[getDiagnosticRule(b).status];
-        });
-
-        let problemsHTML = '';
-        if (problematic.length > 0) {
-            problemsHTML = '<h4 class="font-bold text-slate-700 mb-3">⚠️ Dispositivos que requieren atención:</h4>';
-            problematic.slice(0, 10).forEach(pc => {
-                const diag = getDiagnosticRule(pc);
-                const recs = getRecommendation(pc, diag);
-                const itemClass = diag.status === 'Critical' ? 'critical' : '';
-                problemsHTML += `
-                    <div class="recommendation-item ${itemClass}">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <span class="font-bold text-sm">${pc.pc_name || 'N/A'}</span>
-                                <span class="text-xs text-slate-500 ml-2">${normalizeBusinessUnit(pc)}</span>
-                            </div>
-                            <span class="text-xs font-bold px-2 py-0.5 rounded ${diag.status === 'Critical' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}">${diag.status}</span>
-                        </div>
-                        <p class="text-xs text-slate-600 mt-1">${diag.msg}</p>
-                        <div class="mt-2 text-xs text-slate-500">
-                            ${recs.map(r => `<div>• ${r}</div>`).join('')}
-                        </div>
-                    </div>
-                `;
-            });
-            if (problematic.length > 10) {
-                problemsHTML += `<p class="text-xs text-slate-400 mt-2">... y ${problematic.length - 10} más</p>`;
-            }
-        } else {
-            problemsHTML = '<div class="text-center py-4 text-emerald-600">✅ Todos los dispositivos están operando correctamente</div>';
-        }
-
-        // Recomendaciones generales
-        const generalRecs = [
-            { priority: 'ALTA', text: 'Actualizar todos los NUCs con últimos parches de seguridad' },
-            { priority: 'ALTA', text: 'Configurar alertas automáticas para CPU >85%, Temp >80°C, Disco >90%' },
-            { priority: 'MEDIA', text: 'Programar limpieza física de ventiladores cada 3 meses' },
-            { priority: 'MEDIA', text: 'Realizar backup de configuraciones críticas mensualmente' },
-            { priority: 'BAJA', text: 'Revisar aplicaciones innecesarias que consuman recursos' },
-            { priority: 'BAJA', text: 'Mantener actualizado el inventario de NUCs con ubicaciones' }
-        ];
-
-        content.innerHTML = `
-            <!-- Score de Salud -->
-            <div class="text-center mb-8">
-                <div class="score-circle" style="background: ${scoreColor}; margin: 0 auto 16px;">
-                    ${scoreEmoji} ${healthScore}%
-                </div>
-                <p class="text-lg font-semibold text-slate-700">Salud General de Infraestructura</p>
-                <p class="text-sm text-slate-500">${new Date().toLocaleString('es-MX')}</p>
-            </div>
-
-            <!-- KPIs -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <div class="stat-card text-center">
-                    <p class="text-2xl font-black text-slate-800">${total}</p>
-                    <p class="text-xs text-slate-500">Total NUCs</p>
-                </div>
-                <div class="stat-card text-center">
-                    <p class="text-2xl font-black text-rose-600">${criticals}</p>
-                    <p class="text-xs text-slate-500">Críticos</p>
-                </div>
-                <div class="stat-card text-center">
-                    <p class="text-2xl font-black text-amber-600">${warnings}</p>
-                    <p class="text-xs text-slate-500">Advertencias</p>
-                </div>
-                <div class="stat-card text-center">
-                    <p class="text-2xl font-black text-emerald-600">${optimals}</p>
-                    <p class="text-xs text-slate-500">Saludables</p>
-                </div>
-            </div>
-
-            <!-- Promedios -->
-            <div class="grid grid-cols-3 gap-4 mb-8">
-                <div class="stat-card text-center">
-                    <p class="text-lg font-bold text-indigo-600">${avgCpu}%</p>
-                    <p class="text-xs text-slate-500">CPU Promedio</p>
-                </div>
-                <div class="stat-card text-center">
-                    <p class="text-lg font-bold text-violet-600">${avgRam}%</p>
-                    <p class="text-xs text-slate-500">RAM Promedio</p>
-                </div>
-                <div class="stat-card text-center">
-                    <p class="text-lg font-bold text-orange-600">${avgTemp}°C</p>
-                    <p class="text-xs text-slate-500">Temp Promedio</p>
-                </div>
-            </div>
-
-            <!-- Análisis por Unidad -->
-            <h3 class="font-bold text-slate-700 mb-4">📊 Análisis por Unidad de Negocio</h3>
-            ${unitsHTML}
-
-            <!-- Dispositivos problemáticos -->
-            <h3 class="font-bold text-slate-700 mb-4 mt-8">🔍 Dispositivos con Problemas</h3>
-            ${problemsHTML}
-
-            <!-- Recomendaciones Generales -->
-            <h3 class="font-bold text-slate-700 mb-4 mt-8">📋 Plan de Acción Recomendado</h3>
-            ${generalRecs.map(rec => {
-                const bgColor = rec.priority === 'ALTA' ? 'bg-rose-50 border-rose-200' : (rec.priority === 'MEDIA' ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200');
-                const textColor = rec.priority === 'ALTA' ? 'text-rose-700' : (rec.priority === 'MEDIA' ? 'text-amber-700' : 'text-emerald-700');
-                return `
-                    <div class="flex items-center gap-3 p-3 rounded-lg border ${bgColor} mb-2">
-                        <span class="text-xs font-bold px-2 py-0.5 rounded ${textColor} bg-white">${rec.priority}</span>
-                        <span class="text-sm text-slate-700">${rec.text}</span>
-                    </div>
-                `;
-            }).join('')}
-        `;
-        
-        modal.classList.add('active');
-        if(typeof lucide !== 'undefined') lucide.createIcons();
-    };
-
-    window.closeDiagnosticModal = () => {
-        document.getElementById('diagnosticModal').classList.remove('active');
-    };
-
-    // Cerrar modal con Escape o clic fuera
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeDiagnosticModal();
-    });
-    document.getElementById('diagnosticModal').addEventListener('click', (e) => {
-        if (e.target === e.currentTarget) closeDiagnosticModal();
-    });
-
-    // --- 4. DESCARGA DE EXCEL (CORREGIDO) ---
-    window.downloadExcel = (event) => {
-        try {
-            const data = globalData.map(pc => {
-                const diag = getDiagnosticRule(pc);
-                return {
-                    'Unidad Negocio': normalizeBusinessUnit(pc),
-                    'NUC ID': pc.pc_name || 'N/A',
-                    'IP': pc.public_ip || pc.ip || '-',
-                    'CPU Load (%)': Math.round(pc.cpu_load_percent || 0),
-                    'RAM Load (%)': Math.round(pc.ram_percent || 0),
-                    'Almacenamiento (%)': Math.round(pc.disk_percent || 0),
-                    'Temperatura (°C)': Math.round(getTemp(pc)),
-                    'Diagnóstico': diag.status,
-                    'Mensaje': diag.msg,
-                    'Estado': pc.status || 'online'
-                };
-            });
-
-            const ws = XLSX.utils.json_to_sheet(data);
-            
-            // Ajustar anchos de columna
-            ws['!cols'] = [
-                {wch: 15},
-                {wch: 40},
-                {wch: 20},
-                {wch: 15},
-                {wch: 15},
-                {wch: 18},
-                {wch: 18},
-                {wch: 15},
-                {wch: 50},
-                {wch: 12}
-            ];
-
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Inventario NUCs");
-            
-            const date = new Date().toISOString().split('T')[0];
-            XLSX.writeFile(wb, `Argos_Inventario_NUCs_${date}.xlsx`);
-            
-            // Pequeña notificación visual
-            const btn = event.currentTarget;
-            const originalHTML = btn.innerHTML;
-            btn.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4 mr-2"></i> ¡Descargado!';
-            if(typeof lucide !== 'undefined') lucide.createIcons();
-            setTimeout(() => {
-                btn.innerHTML = originalHTML;
-                if(typeof lucide !== 'undefined') lucide.createIcons();
-            }, 2000);
-        } catch (error) {
-            console.error("Error generando Excel:", error);
-            alert("Error al generar el Excel. Verifica la consola.");
-        }
-    };
-
-    // --- 5. INFORME PDF (CORREGIDO) ---
-    window.downloadReport = (event) => {
-        try {
-            const doc = new jsPDF();
-            const date = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            const time = new Date().toLocaleTimeString('es-MX');
-
-            const primaryColor = [30, 41, 59];
-            const accentColor = [79, 70, 229];
-
-            doc.setFillColor(...primaryColor);
-            doc.rect(0, 0, 210, 40, 'F');
-
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(22);
-            doc.text("INFORME OPERATIVO TÉCNICO", 14, 20);
-            
-            doc.setFontSize(10);
-            doc.setFont("helvetica", "normal");
-            doc.text("ARGOS AI ENTERPRISE MONITOR", 14, 28);
-
-            doc.text(`Fecha: ${date} - ${time}`, 200, 20, { align: 'right' });
-            doc.text("Reporte ID: " + Math.floor(Math.random() * 1000000), 200, 28, { align: 'right' });
-
-            const total = globalData.length;
-            const criticals = globalData.filter(d => getDiagnosticRule(d).status === 'Critical').length;
-            const warnings = globalData.filter(d => getDiagnosticRule(d).status === 'Warning').length;
-            const optimal = total - criticals - warnings;
-
-            doc.setTextColor(0, 0, 0);
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.text("1. RESUMEN EJECUTIVO DE INFRAESTRUCTURA", 14, 55);
-
-            const drawStatBox = (x, title, value, color) => {
-                doc.setDrawColor(200, 200, 200);
-                doc.setFillColor(250, 250, 250);
-                doc.roundedRect(x, 60, 40, 25, 3, 3, 'FD');
-                doc.setFontSize(8);
-                doc.setTextColor(100, 100, 100);
-                doc.text(title, x + 20, 68, { align: 'center' });
-                doc.setFontSize(16);
-                doc.setTextColor(...color);
-                doc.setFont("helvetica", "bold");
-                doc.text(String(value), x + 20, 80, { align: 'center' });
-            };
-
-            drawStatBox(14, "TOTAL NUCs", total, [30, 41, 59]);
-            drawStatBox(60, "CRÍTICOS", criticals, [225, 29, 72]);
-            drawStatBox(106, "ADVERTENCIA", warnings, [217, 119, 6]);
-            drawStatBox(152, "OPERATIVOS", optimal, [16, 185, 129]);
-
-            doc.setTextColor(0, 0, 0);
-            doc.setFontSize(14);
-            doc.text("2. DETALLE DE ACTIVOS CRÍTICOS Y ADVERTENCIAS", 14, 100);
-
-            const tableBody = globalData
-                .filter(d => getDiagnosticRule(d).status !== 'Optimal')
-                .map(d => {
-                    const diag = getDiagnosticRule(d);
-                    return [
-                        normalizeBusinessUnit(d),
-                        d.pc_name || 'N/A',
-                        `${Math.round(d.cpu_load_percent || 0)}%`,
-                        `${Math.round(getTemp(d))}°C`,
-                        diag.status.toUpperCase(),
-                        diag.msg
-                    ];
-                });
-
-            if (tableBody.length > 0) {
-                doc.autoTable({
-                    startY: 105,
-                    head: [['Unidad', 'NUC ID', 'CPU', 'Temp', 'Estado', 'Diagnóstico AI']],
-                    body: tableBody,
-                    theme: 'grid',
-                    headStyles: { fillColor: accentColor, textColor: 255, fontStyle: 'bold' },
-                    styles: { fontSize: 8, cellPadding: 3 },
-                    columnStyles: {
-                        0: { cellWidth: 25 },
-                        5: { cellWidth: 'auto' }
-                    },
-                    didParseCell: function(data) {
-                        if (data.section === 'body' && data.column.index === 4) {
-                            if (data.cell.raw === 'CRITICAL') data.cell.styles.textColor = [220, 38, 38];
-                            if (data.cell.raw === 'WARNING') data.cell.styles.textColor = [217, 119, 6];
-                        }
-                    }
-                });
-            } else {
-                doc.setFontSize(10);
-                doc.setTextColor(100, 100, 100);
-                doc.text("Felicidades. No se detectaron anomalías críticas en la red.", 14, 115);
-            }
-
-            const pageCount = doc.internal.getNumberOfPages();
-            for(let i = 1; i <= pageCount; i++) {
-                doc.setPage(i);
-                doc.setFontSize(8);
-                doc.setTextColor(150, 150, 150);
-                doc.line(14, 285, 196, 285);
-                doc.text(`Generado automáticamente por Argos AI System - Página ${i} de ${pageCount}`, 105, 290, { align: 'center' });
-            }
-
-            doc.save(`Argos_Reporte_Tecnico_${Date.now()}.pdf`);
-            
-            // Notificación de éxito
-            const btn = event.currentTarget;
-            const originalHTML = btn.innerHTML;
-            btn.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4 mr-2 text-emerald-300"></i> ¡PDF Generado!';
-            if(typeof lucide !== 'undefined') lucide.createIcons();
-            setTimeout(() => {
-                btn.innerHTML = originalHTML;
-                if(typeof lucide !== 'undefined') lucide.createIcons();
-            }, 2000);
-            
-        } catch (error) {
-            console.error("Error generando PDF:", error);
-            alert("Error al generar el PDF. Revisa la consola para más detalles.");
-        }
-    };
-
-    // --- 6. FILTROS ---
-    function toggleColumnFilter(event, filterId) {
-        event.stopPropagation();
-        const dropdown = document.getElementById(filterId);
-        const isShown = dropdown.classList.contains('show');
-        
-        document.querySelectorAll('.filter-dropdown').forEach(d => d.classList.remove('show'));
-        
-        if (!isShown) {
-            dropdown.classList.add('show');
-        }
-    }
-
-    function filterByColumn(event, column, value) {
-        event.stopPropagation();
-        
-        columnFilters[column] = value;
-        
-        const dropdown = document.getElementById(`${column}Filter`);
-        if (dropdown) {
-            dropdown.querySelectorAll('.filter-option').forEach(opt => opt.classList.remove('selected'));
-            if (event.target) {
-                event.target.classList.add('selected');
-            }
-        }
-        
-        setTimeout(() => {
-            document.querySelectorAll('.filter-dropdown').forEach(d => d.classList.remove('show'));
-        }, 100);
-        
-        applyAllFilters();
-    }
-
-    function applyAllFilters() {
-        let filteredData = [...globalData];
-        
-        if (currentFilter !== 'all') {
-            filteredData = filteredData.filter(d => (d.unit || 'General') === currentFilter);
-        }
-        
-        Object.keys(columnFilters).forEach(column => {
-            const value = columnFilters[column];
-            if (value === 'all') return;
-            
-            filteredData = filteredData.filter(d => {
-                const unit = normalizeBusinessUnit(d);
-                const cpu = d.cpu_load_percent || 0;
-                const ram = d.ram_percent || 0;
-                const disk = d.disk_percent || 0;
-                const temp = getTemp(d);
-                const diag = getDiagnosticRule(d);
-                
-                switch(column) {
-                    case 'unit': return unit === value;
-                    case 'cpu':
-                        if (value === 'critical') return cpu > 85;
-                        if (value === 'warning') return cpu >= 60 && cpu <= 85;
-                        if (value === 'normal') return cpu < 60;
-                        return true;
-                    case 'ram':
-                        if (value === 'critical') return ram > 90;
-                        if (value === 'warning') return ram >= 70 && ram <= 90;
-                        if (value === 'normal') return ram < 70;
-                        return true;
-                    case 'disk':
-                        if (value === 'critical') return disk > 90;
-                        if (value === 'warning') return disk >= 75 && disk <= 90;
-                        if (value === 'normal') return disk < 75;
-                        return true;
-                    case 'temp':
-                        if (value === 'critical') return temp > 80;
-                        if (value === 'warning') return temp >= 60 && temp <= 80;
-                        if (value === 'normal') return temp < 60;
-                        return true;
-                    case 'status': return diag.status === value;
-                    default: return true;
-                }
-            });
-        });
-        
-        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-        if (searchTerm) {
-            filteredData = filteredData.filter(d => 
-                (d.pc_name || '').toLowerCase().includes(searchTerm) ||
-                (d.public_ip || d.ip || '').toLowerCase().includes(searchTerm)
-            );
-        }
-        
-        updateDashboard(filteredData);
-    }
-
-    function clearAllFilters() {
-        columnFilters = {
-            unit: 'all', cpu: 'all', ram: 'all', disk: 'all', temp: 'all', status: 'all'
-        };
-        
-        document.querySelectorAll('.filter-dropdown').forEach(dropdown => {
-            const options = dropdown.querySelectorAll('.filter-option');
-            options.forEach((opt, index) => {
-                if (index === 0) opt.classList.add('selected');
-                else opt.classList.remove('selected');
-            });
-        });
-        
-        document.getElementById('searchInput').value = '';
-        applyAllFilters();
-    }
-
-    document.addEventListener('click', function(event) {
-        if (!event.target.closest('.table-header')) {
-            document.querySelectorAll('.filter-dropdown').forEach(d => d.classList.remove('show'));
-        }
-    });
-
-    let currentFilter = 'all';
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            document.querySelectorAll('.filter-btn').forEach(b => {
-                b.classList.remove('bg-white', 'text-slate-700', 'shadow-sm');
-                b.classList.add('text-slate-500');
-            });
-            e.target.classList.remove('text-slate-500');
-            e.target.classList.add('bg-white', 'text-slate-700', 'shadow-sm');
-            currentFilter = e.target.dataset.filter;
-            applyAllFilters();
-        });
-    });
-
-    document.getElementById('searchInput').addEventListener('input', (e) => {
-        applyAllFilters();
-    });
-
-    // --- 7. FETCH Y ACTUALIZACIÓN ---
+    // --- FETCH DATA ---
     async function fetchData() {
         try {
             const response = await fetch('/api/data');
             const rawData = await response.json();
             
-            let data = Object.values(rawData);
-            
-            data = data.map(item => ({
+            globalData = Object.values(rawData).map(item => ({
                 ...item,
                 unit: normalizeBusinessUnit(item)
             }));
             
-            globalData = data;
-            applyAllFilters();
+            applyFilters();
             
             const now = new Date();
             document.getElementById('last-sync').textContent = now.toLocaleTimeString();
@@ -1160,142 +281,297 @@
         }
     }
 
-    function updateDashboard(data) {
-        const total = data.length;
-        document.getElementById('showing-text').innerText = `Mostrando ${total} activos`;
+    // --- FILTROS (Búsqueda + Unidades) ---
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.filter-btn').forEach(b => {
+                b.classList.remove('bg-white', 'text-slate-700', 'shadow-sm');
+                b.classList.add('text-slate-500');
+            });
+            e.target.classList.remove('text-slate-500');
+            e.target.classList.add('bg-white', 'text-slate-700', 'shadow-sm');
+            currentUnitFilter = e.target.dataset.filter;
+            applyFilters();
+        });
+    });
 
+    function applyFilters() {
+        const searchTerm = document.getElementById('table-search').value.toLowerCase();
+        
+        filteredData = globalData.filter(d => {
+            const matchesSearch = (d.pc_name || '').toLowerCase().includes(searchTerm) || (d.public_ip || d.ip || '').toLowerCase().includes(searchTerm) || (d.unit || '').toLowerCase().includes(searchTerm);
+            const matchesUnit = currentUnitFilter === 'all' || d.unit === currentUnitFilter;
+            return matchesSearch && matchesUnit;
+        });
+
+        updateUI();
+    }
+
+    // --- ACTUALIZAR INTERFAZ (Dashboard Tickets Style) ---
+    function updateUI() {
+        if (!globalData || globalData.length === 0) return;
+
+        const total = filteredData.length;
+        document.getElementById('data-counter').textContent = `Viendo ${total} de ${globalData.length} equipos`;
+        
+        const noResults = document.getElementById('no-results');
+        const tableBody = document.getElementById('equipment-table-body');
+        
         if (total === 0) {
-            document.getElementById('equipment-table-body').innerHTML = '<tr><td colspan="8" class="text-center py-4 text-slate-400">Sin datos disponibles para este filtro</td></tr>';
-            document.getElementById('kpi-total').innerText = '0';
-            document.getElementById('donut-total').innerText = '0';
-            document.getElementById('kpi-critical').innerText = '0';
-            document.getElementById('kpi-cpu').innerText = '0%';
-            document.getElementById('kpi-cpu-bar').style.width = '0%';
-            document.getElementById('kpi-temp').innerText = '0°C';
-            diskChart.data.datasets[0].data = [0, 0, 0];
-            diskChart.update();
-            topResourceChart.data.labels = [];
-            topResourceChart.data.datasets[0].data = [];
-            topResourceChart.update();
-            businessUnitChart.data.datasets[0].data = [0, 0, 0];
-            businessUnitChart.data.datasets[1].data = [0, 0, 0];
-            businessUnitChart.update();
-            return;
+            noResults.classList.remove('hidden');
+            tableBody.innerHTML = '';
+        } else {
+            noResults.classList.add('hidden');
+            renderTable(filteredData);
         }
 
-        const criticals = data.filter(d => getDiagnosticRule(d).status === 'Critical').length;
-        const warnings = data.filter(d => getDiagnosticRule(d).status === 'Warning').length;
-        const optimals = total - criticals - warnings;
+        // Actualizar KPIs (basado en lo filtrado o global, decidimos global para tener vista general)
+        const criticals = globalData.filter(d => getDiagnosticRule(d).status === 'Critical').length;
+        const warnings = globalData.filter(d => getDiagnosticRule(d).status === 'Warning').length;
+        const avgCpu = globalData.length ? (globalData.reduce((acc, curr) => acc + (curr.cpu_load_percent || 0), 0) / globalData.length).toFixed(1) : 0;
+
+        document.getElementById('total-nucs').textContent = globalData.length.toLocaleString();
+        document.getElementById('avg-cpu').textContent = avgCpu + '%';
+        document.getElementById('warning-nucs').textContent = warnings;
+        document.getElementById('critical-nucs').textContent = criticals;
+
+        // Datos para Gráficos
+        const unitCounts = countOccurrences(globalData, 'unit');
         
-        const avgCpu = (data.reduce((acc, curr) => acc + (curr.cpu_load_percent || 0), 0) / total).toFixed(1);
-        const avgTemp = (data.reduce((acc, curr) => acc + getTemp(curr), 0) / total).toFixed(1);
+        // NUCs con mayor CPU
+        const topCPU = [...globalData].sort((a, b) => (b.cpu_load_percent || 0) - (a.cpu_load_percent || 0)).slice(0, 10);
+        const topCPUData = {
+            labels: topCPU.map(d => d.pc_name || 'N/A'),
+            values: topCPU.map(d => d.cpu_load_percent || 0)
+        };
 
-        document.getElementById('kpi-total').innerText = total;
-        document.getElementById('donut-total').innerText = total;
-        document.getElementById('kpi-critical').innerText = criticals;
-        document.getElementById('kpi-cpu').innerText = avgCpu + '%';
-        document.getElementById('kpi-cpu-bar').style.width = avgCpu + '%';
-        document.getElementById('kpi-temp').innerText = avgTemp + '°C';
+        renderChart('unitChart', 'doughnut', unitCounts, ['#4f46e5', '#10b981', '#f59e0b', '#ef4444']);
+        renderChart('topResourceChart', 'bar', topCPUData, '#f43f5e', true);
+    }
 
-        diskChart.data.datasets[0].data = [optimals, warnings, criticals];
-        diskChart.update();
-
-        const sorted = [...data].sort((a, b) => (b.cpu_load_percent||0) - (a.cpu_load_percent||0)).slice(0, 7);
-        topResourceChart.data.labels = sorted.map(d => d.pc_name || 'N/A');
-        topResourceChart.data.datasets[0].data = sorted.map(d => d.cpu_load_percent||0);
-        topResourceChart.update();
-
-        const units = { 'ViaVerde': [], 'Ecovallas': [], 'BioBox': [] };
-        data.forEach(d => { 
-            const unit = normalizeBusinessUnit(d);
-            if(units[unit]) units[unit].push(d); 
+    function countOccurrences(data, key) {
+        const counts = {};
+        data.forEach(item => {
+            let val = item[key] || 'Desconocido';
+            counts[val] = (counts[val] || 0) + 1;
         });
-        const getUnitAvg = (arr, key) => arr.length ? arr.reduce((a,b) => a + (b[key]||0), 0)/arr.length : 0;
+        const sortedKeys = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+        return { labels: sortedKeys, values: sortedKeys.map(k => counts[k]) };
+    }
+
+    function renderChart(canvasId, type, dataObj, colors, horizontal = false) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        if (charts[canvasId]) charts[canvasId].destroy();
+        const ctx = canvas.getContext('2d');
         
-        businessUnitChart.data.datasets[0].data = [getUnitAvg(units['ViaVerde'], 'cpu_load_percent'), getUnitAvg(units['Ecovallas'], 'cpu_load_percent'), getUnitAvg(units['BioBox'], 'cpu_load_percent')];
-        businessUnitChart.data.datasets[1].data = [getUnitAvg(units['ViaVerde'], 'ram_percent'), getUnitAvg(units['Ecovallas'], 'ram_percent'), getUnitAvg(units['BioBox'], 'ram_percent')];
-        businessUnitChart.update();
+        // Definir color de barras dinámico si es el de CPU
+        let bgColors = colors;
+        if (canvasId === 'topResourceChart') {
+            bgColors = dataObj.values.map(val => val > 90 ? '#f43f5e' : (val > 75 ? '#f59e0b' : '#6366f1'));
+        }
 
-        const tableBody = document.getElementById('equipment-table-body');
-        tableBody.innerHTML = ''; 
+        charts[canvasId] = new Chart(ctx, {
+            type: type,
+            data: {
+                labels: dataObj.labels,
+                datasets: [{ data: dataObj.values, backgroundColor: bgColors, borderRadius: 5, borderWidth: 0 }]
+            },
+            options: {
+                indexAxis: horizontal ? 'y' : 'x',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: type === 'doughnut', position: 'bottom' } },
+                scales: horizontal ? { x: { beginAtZero: true, max: 100 } } : {}
+            }
+        });
+    }
 
-        data.forEach(pc => {
+    function renderTable(data) {
+        const tbody = document.getElementById('equipment-table-body');
+        
+        tbody.innerHTML = data.map(pc => {
             const cpu = Math.round(pc.cpu_load_percent || 0);
             const ram = Math.round(pc.ram_percent || 0);
-            const disk = Math.round(pc.disk_percent || 0);
             const temp = Math.round(getTemp(pc));
-            const unit = normalizeBusinessUnit(pc);
             const diag = getDiagnosticRule(pc);
             
-            let unitClass = 'bg-slate-100 text-slate-600 border-slate-200';
-            if(unit === 'ViaVerde') unitClass = 'bg-emerald-50 text-emerald-700 border-emerald-100';
-            if(unit === 'Ecovallas') unitClass = 'bg-violet-50 text-violet-700 border-violet-100';
-            if(unit === 'BioBox') unitClass = 'bg-sky-50 text-sky-700 border-sky-100';
+            // Estilos
+            let unitClass = 'bg-indigo-50 text-indigo-600';
+            if(pc.unit === 'ViaVerde') unitClass = 'bg-emerald-50 text-emerald-700';
+            if(pc.unit === 'Ecovallas') unitClass = 'bg-violet-50 text-violet-700';
+            if(pc.unit === 'BioBox') unitClass = 'bg-sky-50 text-sky-700';
 
-            let statusHtml = `<div class="flex items-center text-emerald-600 font-bold text-xs bg-emerald-50 px-2 py-1 rounded-md w-fit"><i data-lucide="check-circle-2" class="w-3 h-3 mr-1.5"></i> Optimal</div>`;
-            if (diag.status === 'Warning') statusHtml = `<div class="flex items-center text-amber-600 font-bold text-xs bg-amber-50 px-2 py-1 rounded-md w-fit"><i data-lucide="alert-triangle" class="w-3 h-3 mr-1.5"></i> Warning</div>`;
-            if (diag.status === 'Critical') statusHtml = `<div class="flex items-center text-rose-600 font-bold text-xs bg-rose-50 px-2 py-1 rounded-md w-fit"><i data-lucide="alert-octagon" class="w-3 h-3 mr-1.5"></i> Critical</div>`;
+            let statusHtml = `<span class="px-2 py-0.5 rounded-full font-black text-[8px] uppercase bg-emerald-100 text-emerald-700">Optimal</span>`;
+            if (diag.status === 'Warning') statusHtml = `<span class="px-2 py-0.5 rounded-full font-black text-[8px] uppercase bg-amber-100 text-amber-700">Warning</span>`;
+            if (diag.status === 'Critical') statusHtml = `<span class="px-2 py-0.5 rounded-full font-black text-[8px] uppercase bg-rose-100 text-rose-700">Critical</span>`;
 
-            let tempColor = temp > 80 ? 'text-rose-600 font-bold' : 'text-slate-600 font-medium';
-            
-            const row = `
-                <tr class="hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 group">
-                    <td class="px-6 py-4">
-                        <span class="px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wide border ${unitClass}">${unit}</span>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="text-xs font-bold text-slate-700">${pc.pc_name || 'N/A'}</div>
-                        <div class="text-[10px] font-mono text-slate-400">${pc.public_ip || pc.ip || '-'}</div>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="flex flex-col gap-1">
-                            <div class="flex justify-between text-[10px] font-bold text-slate-500"><span>CPU</span><span>${cpu}%</span></div>
-                            <div class="w-full bg-slate-100 rounded-full h-1.5"><div class="${cpu > 80 ? 'bg-rose-500' : 'bg-indigo-500'} h-1.5 rounded-full" style="width: ${cpu}%"></div></div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="flex flex-col gap-1">
-                            <div class="flex justify-between text-[10px] font-bold text-slate-500"><span>RAM</span><span>${ram}%</span></div>
-                            <div class="w-full bg-slate-100 rounded-full h-1.5"><div class="bg-violet-400 h-1.5 rounded-full" style="width: ${ram}%"></div></div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 text-center"><span class="text-xs font-bold text-slate-600">${disk}%</span></td>
-                    <td class="px-6 py-4 ${tempColor} text-xs"><i data-lucide="thermometer" class="w-3 h-3 inline mr-1 opacity-50"></i>${temp}°C</td>
-                    <td class="px-6 py-4">${statusHtml}</td>
-                    <td class="px-6 py-4 text-right">
-                        <button onclick="analyzePC('${pc.pc_name}')" class="group inline-flex items-center px-3 py-1.5 bg-white text-indigo-600 border border-indigo-200 shadow-sm rounded-lg text-xs font-bold hover:bg-indigo-50 hover:border-indigo-300 transition-all">
-                            <i data-lucide="microscope" class="w-3 h-3 mr-1.5"></i> Detalles
-                        </button>
-                    </td>
-                </tr>
+            return `
+            <tr class="hover:bg-indigo-50/30 transition-colors">
+                <td class="px-4 py-3">
+                    <span class="${unitClass} px-2 py-0.5 rounded font-black text-[9px] uppercase border border-slate-100">
+                        ${pc.unit}
+                    </span>
+                </td>
+                <td class="px-4 py-3">
+                    <div class="font-bold text-indigo-900 text-xs">${pc.pc_name || 'N/A'}</div>
+                    <div class="text-[9px] font-mono text-gray-400">${pc.public_ip || pc.ip || '-'}</div>
+                </td>
+                <td class="px-4 py-3">
+                    <div class="flex flex-col gap-1">
+                        <div class="flex justify-between text-[9px] font-bold text-slate-500"><span>${cpu}%</span></div>
+                        <div class="w-full bg-slate-100 rounded-full h-1.5"><div class="${cpu > 80 ? 'bg-rose-500' : 'bg-indigo-500'} h-1.5 rounded-full" style="width: ${cpu}%"></div></div>
+                    </div>
+                </td>
+                <td class="px-4 py-3">
+                    <div class="flex flex-col gap-1">
+                        <div class="flex justify-between text-[9px] font-bold text-slate-500"><span>${ram}%</span></div>
+                        <div class="w-full bg-slate-100 rounded-full h-1.5"><div class="bg-violet-400 h-1.5 rounded-full" style="width: ${ram}%"></div></div>
+                    </div>
+                </td>
+                <td class="px-4 py-3 text-center text-xs ${temp > 80 ? 'text-rose-600 font-bold' : 'text-slate-600'}">
+                    ${temp}°C
+                </td>
+                <td class="px-4 py-3">
+                    ${statusHtml}
+                </td>
+                <td class="px-4 py-3 text-center">
+                    <button onclick="analyzePC('${pc.pc_name}')" class="text-indigo-500 hover:text-emerald-500 hover:scale-125 transition-all p-1">
+                        ✨
+                    </button>
+                </td>
+            </tr>
             `;
-            tableBody.innerHTML += row;
-        });
+        }).join('');
         
         if(typeof lucide !== 'undefined') lucide.createIcons();
     }
 
-    window.analyzePC = (pcName) => {
+    // --- INTEGRACIÓN IA (Gemini Modal) ---
+    async function callGemini(prompt, systemInstruction = "") {
+        if (!apiKey) return "API Key no configurada. Por ahora, aquí tienes las reglas estáticas: \n\n" + prompt.split("Sugiere")[0];
+        
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+        const payload = {
+            contents: [{ parts: [{ text: prompt }] }],
+            systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined
+        };
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            return result.candidates?.[0]?.content?.parts?.[0]?.text || "Respuesta no disponible.";
+        } catch (e) { return "Error al conectar con la IA."; }
+    }
+
+    async function analyzePC(pcName) {
         const pc = globalData.find(d => d.pc_name === pcName);
         if (!pc) return;
 
         const diag = getDiagnosticRule(pc);
         const recs = getRecommendation(pc, diag);
+
+        const modal = document.getElementById('ai-modal');
+        const content = document.getElementById('ai-modal-content');
+        modal.classList.remove('hidden');
         
-        const btn = event.currentTarget;
-        const original = btn.innerHTML;
-        btn.innerHTML = `<i data-lucide="loader-2" class="w-3 h-3 animate-spin"></i>`;
+        // Mostramos primero el diagnóstico local
+        let localHtml = `
+            <div class="mb-4">
+                <p class="font-bold text-slate-800">Unidad: <span class="font-normal">${pc.unit}</span></p>
+                <p class="font-bold text-slate-800">Estado Local: <span class="font-normal">${diag.status}</span></p>
+                <p class="font-bold text-slate-800">Diagnóstico del Sistema:</p>
+                <p class="text-indigo-600 bg-indigo-50 p-2 rounded-lg text-xs italic mt-1 border border-indigo-100">"${diag.msg}"</p>
+                <div class="mt-2 text-xs">
+                    ${recs.map(r => `<div>• ${r}</div>`).join('')}
+                </div>
+            </div>
+            <hr class="my-4 border-slate-100">
+            <div class="ai-loading p-4 rounded-lg">Solicitando análisis avanzado a Gemini IA...</div>
+        `;
+        content.innerHTML = localHtml;
+
+        // Llamada a la IA si se desea
+        const prompt = `NUC: ${pc.pc_name}, Unidad: ${pc.unit}, CPU: ${pc.cpu_load_percent}%, RAM: ${pc.ram_percent}%, Temp: ${getTemp(pc)}°C. Problema detectado: ${diag.msg}. Sugiere pasos de solución técnica a nivel hardware/software.`;
+        const res = await callGemini(prompt, "Eres un ingeniero experto en soporte de infraestructura hardware y software IoT.");
         
-        setTimeout(() => {
-            alert(`🔍 REPORTE TÉCNICO NUC: ${pcName}\n\nUnidad: ${normalizeBusinessUnit(pc)}\nEstado: ${diag.status.toUpperCase()}\n\nDIAGNÓSTICO IA:\n"${diag.msg}"\n\nRECOMENDACIONES:\n${recs.join('\n')}\n\nCPU: ${pc.cpu_load_percent}%\nTemp: ${getTemp(pc)}°C\nRAM: ${pc.ram_percent}%`);
-            btn.innerHTML = original;
-            lucide.createIcons();
-        }, 800);
+        content.innerHTML = localHtml.replace('<div class="ai-loading p-4 rounded-lg">Solicitando análisis avanzado a Gemini IA...</div>', `<div class="mt-4"><h4 class="font-bold text-emerald-700 mb-2 flex items-center gap-2">✨ Insight Gemini:</h4><div class="bg-emerald-50 text-slate-700 p-4 rounded-lg text-xs leading-relaxed border border-emerald-100">${res.replace(/\n/g, '<br>')}</div></div>`);
+    }
+
+    async function generateAITrends() {
+        const container = document.getElementById('ai-insight-container');
+        const content = document.getElementById('ai-insight-content');
+        container.classList.remove('hidden');
+        content.classList.add('ai-loading');
+        content.textContent = "Analizando estado global de la red...";
+
+        const criticals = globalData.filter(d => getDiagnosticRule(d).status === 'Critical').slice(0, 5);
+        if (criticals.length === 0) {
+            content.classList.remove('ai-loading');
+            content.innerHTML = "✅ <b>Red estable.</b> No se detectan anomalías graves que requieran análisis de la IA en este momento.";
+            return;
+        }
+
+        const prompt = `Analiza estos NUCs en estado crítico: ${JSON.stringify(criticals.map(c => ({ id: c.pc_name, error: getDiagnosticRule(c).msg }))) }. ¿Qué patrón detectas y cuál es la recomendación técnica a nivel infraestructura?`;
+
+        const res = await callGemini(prompt, "Eres un analista experto en infraestructura. Da una respuesta breve y al punto.");
+        content.innerHTML = res.replace(/\n/g, '<br>');
+        content.classList.remove('ai-loading');
+    }
+
+    function closeAIModal() { document.getElementById('ai-modal').classList.add('hidden'); }
+
+    // --- DESCARGAS (Originales adaptadas) ---
+    window.downloadExcel = (event) => {
+        try {
+            const data = globalData.map(pc => {
+                const diag = getDiagnosticRule(pc);
+                return {
+                    'Unidad Negocio': pc.unit, 'NUC ID': pc.pc_name || 'N/A', 'IP': pc.public_ip || pc.ip || '-',
+                    'CPU Load (%)': Math.round(pc.cpu_load_percent || 0), 'RAM Load (%)': Math.round(pc.ram_percent || 0),
+                    'Almacenamiento (%)': Math.round(pc.disk_percent || 0), 'Temperatura (°C)': Math.round(getTemp(pc)),
+                    'Diagnóstico': diag.status, 'Mensaje': diag.msg
+                };
+            });
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Inventario NUCs");
+            XLSX.writeFile(wb, `Argos_Inventario_NUCs_${new Date().toISOString().split('T')[0]}.xlsx`);
+        } catch (error) { alert("Error al generar el Excel. Verifica la consola."); }
     };
 
+    window.downloadReport = (event) => {
+        try {
+            const doc = new jsPDF();
+            doc.text("INFORME OPERATIVO TÉCNICO - ARGOS", 14, 20);
+            
+            const tableBody = globalData.filter(d => getDiagnosticRule(d).status !== 'Optimal').map(d => {
+                const diag = getDiagnosticRule(d);
+                return [pc.unit, d.pc_name || 'N/A', `${Math.round(d.cpu_load_percent || 0)}%`, `${Math.round(getTemp(d))}°C`, diag.status, diag.msg];
+            });
+
+            if (tableBody.length > 0) {
+                doc.autoTable({
+                    startY: 30,
+                    head: [['Unidad', 'NUC ID', 'CPU', 'Temp', 'Estado', 'Diagnóstico AI']],
+                    body: tableBody,
+                    styles: { fontSize: 8 }
+                });
+            } else {
+                doc.text("No se detectaron anomalías críticas en la red.", 14, 40);
+            }
+            doc.save(`Argos_Reporte_Tecnico_${Date.now()}.pdf`);
+        } catch (error) { alert("Error al generar el PDF."); }
+    };
+
+    // --- INICIALIZACIÓN ---
     document.addEventListener("DOMContentLoaded", () => {
+        if(typeof lucide !== 'undefined') lucide.createIcons();
         fetchData();
-        setInterval(fetchData, 5000);
+        setInterval(fetchData, 10000); // Polling cada 10s
     });
 </script>
 {% endblock %}
